@@ -20,8 +20,8 @@ type ContactContent = SiteContent["contact"];
 type FooterContent = SiteContent["footer"];
 
 export default function Home() {
-const [locale, setLocale] = useState<Locale>("en");
-const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [locale, setLocale] = useState<Locale>("en");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const content = siteContent[locale];
 
   return (
@@ -29,157 +29,157 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
       <BlueprintBackground />
 
       <header className="relative z-30">
-  <nav className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-10">
-    <div className="flex items-center gap-3">
-      <div className="h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.9)]" />
-      <span className="text-[11px] font-medium uppercase tracking-[0.25em] text-white/90 sm:text-sm">
-        YM Creations
-      </span>
-    </div>
+        <nav className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-10">
+          <div className="flex items-center gap-3">
+            <div className="h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.9)]" />
+            <span className="text-[11px] font-medium uppercase tracking-[0.25em] text-white/90 sm:text-sm">
+              YM Creations
+            </span>
+          </div>
 
-    <div className="hidden items-center gap-8 text-sm text-white/70 md:flex">
-      <a href="#services" className="transition hover:text-white">
-        {content.nav.services}
-      </a>
-      <a href="#projects" className="transition hover:text-white">
-        {content.nav.projects}
-      </a>
-      <a href="#about" className="transition hover:text-white">
-        {content.nav.about}
-      </a>
-      <a href="#contact" className="transition hover:text-white">
-        {content.nav.contact}
-      </a>
-    </div>
+          <div className="hidden items-center gap-8 text-sm text-white/70 md:flex">
+            <a href="#services" className="transition hover:text-white">
+              {content.nav.services}
+            </a>
+            <a href="#projects" className="transition hover:text-white">
+              {content.nav.projects}
+            </a>
+            <a href="#about" className="transition hover:text-white">
+              {content.nav.about}
+            </a>
+            <a href="#contact" className="transition hover:text-white">
+              {content.nav.contact}
+            </a>
+          </div>
 
-    <div className="hidden items-center gap-3 md:flex">
-      <div className="rounded-full border border-white/10 bg-white/5 p-1">
-        <button
-          onClick={() => setLocale("en")}
-          className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-            locale === "en"
-              ? "bg-white text-black"
-              : "text-white/65 hover:text-white"
-          }`}
+          <div className="hidden items-center gap-3 md:flex">
+            <div className="rounded-full border border-white/10 bg-white/5 p-1">
+              <button
+                onClick={() => setLocale("en")}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  locale === "en"
+                    ? "bg-white text-black"
+                    : "text-white/65 hover:text-white"
+                }`}
+              >
+                EN
+              </button>
+              <button
+                onClick={() => setLocale("nl")}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  locale === "nl"
+                    ? "bg-white text-black"
+                    : "text-white/65 hover:text-white"
+                }`}
+              >
+                NL
+              </button>
+            </div>
+
+            <a
+              href="#contact"
+              className="rounded-full border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
+            >
+              {content.nav.cta}
+            </a>
+          </div>
+
+          <div className="flex items-center gap-2 md:hidden">
+            <a
+              href="#contact"
+              className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
+            >
+              {content.nav.cta}
+            </a>
+
+            <button
+              type="button"
+              aria-label="Toggle menu"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/5"
+            >
+              <div className="flex flex-col gap-1.5">
+                <span
+                  className={`block h-px w-5 bg-white transition ${
+                    mobileMenuOpen ? "translate-y-[7px] rotate-45" : ""
+                  }`}
+                />
+                <span
+                  className={`block h-px w-5 bg-white transition ${
+                    mobileMenuOpen ? "opacity-0" : ""
+                  }`}
+                />
+                <span
+                  className={`block h-px w-5 bg-white transition ${
+                    mobileMenuOpen ? "-translate-y-[7px] -rotate-45" : ""
+                  }`}
+                />
+              </div>
+            </button>
+          </div>
+        </nav>
+
+        <motion.div
+          initial={false}
+          animate={{
+            opacity: mobileMenuOpen ? 1 : 0,
+            y: mobileMenuOpen ? 0 : -10,
+            pointerEvents: mobileMenuOpen ? "auto" : "none",
+          }}
+          transition={{ duration: 0.22 }}
+          className="absolute inset-x-4 top-full mt-2 rounded-[1.75rem] border border-white/10 bg-black/90 p-4 backdrop-blur-md md:hidden"
         >
-          EN
-        </button>
-        <button
-          onClick={() => setLocale("nl")}
-          className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-            locale === "nl"
-              ? "bg-white text-black"
-              : "text-white/65 hover:text-white"
-          }`}
-        >
-          NL
-        </button>
-      </div>
+          <div className="mb-4 flex rounded-full border border-white/10 bg-white/5 p-1">
+            <button
+              onClick={() => setLocale("en")}
+              className={`flex-1 rounded-full px-3 py-2 text-xs font-medium transition ${
+                locale === "en" ? "bg-white text-black" : "text-white/65"
+              }`}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => setLocale("nl")}
+              className={`flex-1 rounded-full px-3 py-2 text-xs font-medium transition ${
+                locale === "nl" ? "bg-white text-black" : "text-white/65"
+              }`}
+            >
+              NL
+            </button>
+          </div>
 
-      <a
-        href="#contact"
-        className="rounded-full border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
-      >
-        {content.nav.cta}
-      </a>
-    </div>
-
-    <div className="flex items-center gap-2 md:hidden">
-      <a
-        href="#contact"
-        className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
-      >
-        {content.nav.cta}
-      </a>
-
-      <button
-        type="button"
-        aria-label="Toggle menu"
-        onClick={() => setMobileMenuOpen((prev) => !prev)}
-        className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/5"
-      >
-        <div className="flex flex-col gap-1.5">
-          <span
-            className={`block h-px w-5 bg-white transition ${
-              mobileMenuOpen ? "translate-y-[7px] rotate-45" : ""
-            }`}
-          />
-          <span
-            className={`block h-px w-5 bg-white transition ${
-              mobileMenuOpen ? "opacity-0" : ""
-            }`}
-          />
-          <span
-            className={`block h-px w-5 bg-white transition ${
-              mobileMenuOpen ? "-translate-y-[7px] -rotate-45" : ""
-            }`}
-          />
-        </div>
-      </button>
-    </div>
-  </nav>
-
-  <motion.div
-    initial={false}
-    animate={{
-      opacity: mobileMenuOpen ? 1 : 0,
-      y: mobileMenuOpen ? 0 : -10,
-      pointerEvents: mobileMenuOpen ? "auto" : "none",
-    }}
-    transition={{ duration: 0.22 }}
-    className="absolute inset-x-4 top-full mt-2 rounded-[1.75rem] border border-white/10 bg-black/90 p-4 backdrop-blur-md md:hidden"
-  >
-    <div className="mb-4 flex rounded-full border border-white/10 bg-white/5 p-1">
-      <button
-        onClick={() => setLocale("en")}
-        className={`flex-1 rounded-full px-3 py-2 text-xs font-medium transition ${
-          locale === "en" ? "bg-white text-black" : "text-white/65"
-        }`}
-      >
-        EN
-      </button>
-      <button
-        onClick={() => setLocale("nl")}
-        className={`flex-1 rounded-full px-3 py-2 text-xs font-medium transition ${
-          locale === "nl" ? "bg-white text-black" : "text-white/65"
-        }`}
-      >
-        NL
-      </button>
-    </div>
-
-    <div className="flex flex-col">
-      <a
-        href="#services"
-        onClick={() => setMobileMenuOpen(false)}
-        className="rounded-2xl px-4 py-3 text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
-      >
-        {content.nav.services}
-      </a>
-      <a
-        href="#projects"
-        onClick={() => setMobileMenuOpen(false)}
-        className="rounded-2xl px-4 py-3 text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
-      >
-        {content.nav.projects}
-      </a>
-      <a
-        href="#about"
-        onClick={() => setMobileMenuOpen(false)}
-        className="rounded-2xl px-4 py-3 text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
-      >
-        {content.nav.about}
-      </a>
-      <a
-        href="#contact"
-        onClick={() => setMobileMenuOpen(false)}
-        className="rounded-2xl px-4 py-3 text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
-      >
-        {content.nav.contact}
-      </a>
-    </div>
-  </motion.div>
-</header>
+          <div className="flex flex-col">
+            <a
+              href="#services"
+              onClick={() => setMobileMenuOpen(false)}
+              className="rounded-2xl px-4 py-3 text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
+            >
+              {content.nav.services}
+            </a>
+            <a
+              href="#projects"
+              onClick={() => setMobileMenuOpen(false)}
+              className="rounded-2xl px-4 py-3 text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
+            >
+              {content.nav.projects}
+            </a>
+            <a
+              href="#about"
+              onClick={() => setMobileMenuOpen(false)}
+              className="rounded-2xl px-4 py-3 text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
+            >
+              {content.nav.about}
+            </a>
+            <a
+              href="#contact"
+              onClick={() => setMobileMenuOpen(false)}
+              className="rounded-2xl px-4 py-3 text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
+            >
+              {content.nav.contact}
+            </a>
+          </div>
+        </motion.div>
+      </header>
 
       <section className="relative z-20 mx-auto flex min-h-[calc(100vh-88px)] w-full max-w-7xl items-center px-4 pb-16 pt-6 sm:px-6 sm:pb-20 sm:pt-10 lg:px-10">
         <div className="grid w-full gap-10 sm:gap-14 lg:grid-cols-[1.2fr_0.8fr] lg:items-center lg:gap-16">
@@ -197,7 +197,7 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: 0.1 }}
-            className="max-w-4xl text-[3rem] font-semibold leading-[0.98] text-white sm:text-6xl lg:text-7xl"
+              className="max-w-4xl text-[3rem] font-semibold leading-[0.98] text-white sm:text-6xl lg:text-7xl"
             >
               {content.hero.title}
             </motion.h1>
@@ -411,7 +411,11 @@ function BlueprintSystemMap({ labels }: { labels: readonly string[] }) {
               initial={{ pathLength: 0, opacity: 0.2 }}
               whileInView={{ pathLength: 1, opacity: 1 }}
               viewport={{ once: false, amount: 0.45 }}
-              transition={{ duration: 1.4, delay: index * 0.08, ease: "easeInOut" }}
+              transition={{
+                duration: 1.4,
+                delay: index * 0.08,
+                ease: "easeInOut",
+              }}
             />
           ))}
         </svg>
@@ -514,17 +518,17 @@ function ProjectsDrawIntro({ content }: { content: ProjectsContent }) {
   const headingReveal = useTransform(
     scrollYProgress,
     [0.1, 0.3],
-    ["inset(0 100% 0 0)", "inset(0 0% 0 0)"]
+    ["inset(0 100% 0 0)", "inset(0 0% 0 0)"],
   );
   const cardReveal = useTransform(
     scrollYProgress,
     [0.16, 0.62],
-    ["inset(0 100% 0 0 round 2rem)", "inset(0 0% 0 0 round 2rem)"]
+    ["inset(0 100% 0 0 round 2rem)", "inset(0 0% 0 0 round 2rem)"],
   );
   const sideReveal = useTransform(
     scrollYProgress,
     [0.24, 0.76],
-    ["inset(0 100% 0 0)", "inset(0 0% 0 0)"]
+    ["inset(0 100% 0 0)", "inset(0 0% 0 0)"],
   );
 
   const pencilX = useTransform(scrollYProgress, [0.08, 0.78], [-140, 540]);
@@ -533,22 +537,26 @@ function ProjectsDrawIntro({ content }: { content: ProjectsContent }) {
   const pencilOpacity = useTransform(
     scrollYProgress,
     [0, 0.08, 0.8, 0.9, 1],
-    [0, 1, 1, 0, 0]
+    [0, 1, 1, 0, 0],
   );
 
   const mobileCardReveal = useTransform(
     scrollYProgress,
     [0.14, 0.62],
-    ["inset(0 100% 0 0 round 1.5rem)", "inset(0 0% 0 0 round 1.5rem)"]
+    ["inset(0 100% 0 0 round 1.5rem)", "inset(0 0% 0 0 round 1.5rem)"],
   );
 
-  const mobilePencilX = useTransform(scrollYProgress, [0.1, 0.72], [-40, 210]);
-  const mobilePencilY = useTransform(scrollYProgress, [0.1, 0.72], [-10, 120]);
-  const mobilePencilRotate = useTransform(scrollYProgress, [0.1, 0.72], [-16, 6]);
+  const mobilePencilX = useTransform(scrollYProgress, [0.02, 0.62], [-40, 210]);
+  const mobilePencilY = useTransform(scrollYProgress, [0.02, 0.62], [-10, 120]);
+  const mobilePencilRotate = useTransform(
+    scrollYProgress,
+    [0.02, 0.62],
+    [-14, 8],
+  );
   const mobilePencilOpacity = useTransform(
     scrollYProgress,
-    [0, 0.08, 0.72, 0.82, 1],
-    [0, 1, 1, 0, 0]
+    [0, 0.02, 0.62, 0.74, 1],
+    [0, 1, 1, 0, 0],
   );
 
   return (
@@ -615,14 +623,16 @@ function ProjectsDrawIntro({ content }: { content: ProjectsContent }) {
       </div>
 
       <div className="space-y-6 lg:hidden">
-        <div className="relative h-[520px] overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#050505]">
+        <div className="relative h-[600px] overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#050505]">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:32px_32px]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(34,211,238,0.12),transparent_34%)]" />
 
           <ProjectSketchLayer progress={drawProgress} />
 
           <motion.div
-            style={shouldReduceMotion ? undefined : { clipPath: mobileCardReveal }}
+            style={
+              shouldReduceMotion ? undefined : { clipPath: mobileCardReveal }
+            }
             className="absolute inset-0 p-4"
           >
             <FinalProjectPanelMobile content={content} />
@@ -640,18 +650,16 @@ function ProjectsDrawIntro({ content }: { content: ProjectsContent }) {
                       opacity: mobilePencilOpacity,
                     }
               }
-              className="absolute left-[42%] top-[76px] w-[220px] origin-center"
+              className="absolute left-[40%] top-[88px] w-[190px] origin-center"
             >
-              <div style={{ transform: "scaleX(-1)" }}>
-                <Image
-                  src="/images/pencil.png"
-                  alt=""
-                  width={1600}
-                  height={900}
-                  priority
-                  className="h-auto w-full select-none object-contain drop-shadow-[0_16px_32px_rgba(0,0,0,0.72)]"
-                />
-              </div>
+<Image
+  src="/images/pencil.png"
+  alt=""
+  width={1600}
+  height={900}
+  priority
+  className="h-auto w-full select-none object-contain drop-shadow-[0_16px_32px_rgba(0,0,0,0.72)]"
+/>
             </motion.div>
           </div>
         </div>
@@ -696,7 +704,7 @@ function ProjectsDrawIntro({ content }: { content: ProjectsContent }) {
           }
           className="absolute left-[44%] top-[170px] w-[380px] origin-center"
         >
-          <div style={{ transform: "scaleX(-1)" }}>
+          <div>
             <Image
               src="/images/pencil.png"
               alt=""
@@ -724,49 +732,44 @@ function FinalProjectPanelMobile({ content }: { content: ProjectsContent }) {
         </span>
       </div>
 
-      <div className="relative h-[calc(100%-49px)] overflow-hidden">
+      <div className="relative h-[calc(100%-49px)] overflow-hidden p-4">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:28px_28px]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_35%_20%,rgba(34,211,238,0.14),transparent_34%)]" />
 
-        <div className="absolute left-[12%] top-[9%] h-14 w-40 rounded-2xl border border-cyan-300/30 bg-cyan-400/8" />
-        <div className="absolute left-[63%] top-[11%] h-20 w-20 rounded-full border border-white/12" />
-
-        <div className="absolute left-[12%] top-[22%] right-[12%] rounded-[1.2rem] border border-white/10 bg-black/28 p-4">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-white/35">
-            Progress
-          </p>
-          <div className="mt-4 space-y-3">
-            {content.stages.map((stage, index) => (
-              <div key={stage} className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-cyan-400/25 bg-cyan-400/8 text-[11px] text-cyan-200">
-                  {index + 1}
+        <div className="relative z-10 flex h-full flex-col justify-between">
+          <div className="rounded-[1.2rem] border border-white/10 bg-black/25 p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-white/35">
+              Progress
+            </p>
+            <div className="mt-4 space-y-3">
+              {content.stages.map((stage, index) => (
+                <div key={stage} className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-cyan-400/25 bg-cyan-400/8 text-[11px] text-cyan-200">
+                    {index + 1}
+                  </div>
+                  <span className="text-sm uppercase tracking-[0.18em] text-white/78">
+                    {stage}
+                  </span>
                 </div>
-                <span className="text-sm uppercase tracking-[0.18em] text-white/78">
-                  {stage}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="absolute bottom-[10%] left-[10%] right-[10%] rounded-[1.2rem] border border-white/10 bg-black/55 p-4 backdrop-blur">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-300/70">
-            Premium build
-          </p>
-          <p className="mt-3 text-sm leading-7 text-white/68">
-            Clean structure, deliberate hierarchy, and a polished final presentation.
-          </p>
+          <div className="rounded-[1.2rem] border border-white/10 bg-black/55 p-4 backdrop-blur">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-300/70">
+              Premium build
+            </p>
+            <p className="mt-3 text-sm leading-7 text-white/68">
+              Clean structure, deliberate hierarchy, and a polished final presentation.
+            </p>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function ProjectSketchLayer({
-  progress,
-}: {
-  progress: MotionValue<number>;
-}) {
+function ProjectSketchLayer({ progress }: { progress: MotionValue<number> }) {
   const lineOpacity = useTransform(progress, [0, 0.15, 1], [0.12, 0.4, 0.7]);
 
   return (
@@ -934,7 +937,7 @@ function ProcessTimeline({ steps }: { steps: AboutContent["steps"] }) {
         {steps.map((step, index) => (
           <RevealSection key={step.title} delay={index * 0.05}>
             <div className="relative">
-             <div className="absolute -left-[22px] top-2 h-4 w-4 rounded-full border border-cyan-300/30 bg-cyan-400 shadow-[0_0_16px_rgba(34,211,238,0.8)] sm:-left-[32px]" />
+              <div className="absolute -left-[22px] top-2 h-4 w-4 rounded-full border border-cyan-300/30 bg-cyan-400 shadow-[0_0_16px_rgba(34,211,238,0.8)] sm:-left-[32px]" />
 
               <div className="grid gap-4 md:grid-cols-[100px_1fr] md:gap-8">
                 <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/75">
