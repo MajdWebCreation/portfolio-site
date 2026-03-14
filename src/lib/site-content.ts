@@ -38,6 +38,8 @@ export const siteContent = {
         "Performance-focused",
         "Built for growth",
       ],
+      blueprintLabel: "System blueprint",
+      coreLabel: "Core system",
     },
     projects: {
       eyebrow: "Selected projects",
@@ -48,6 +50,18 @@ export const siteContent = {
       itemTitle: "Featured project concept",
       itemText:
         "A conceptual project reveal showing how rough ideas evolve into a refined digital presence.",
+      conceptLabel: "Concept",
+      progressLabel: "Progress",
+      premiumBuildLabel: "Premium build",
+      premiumBuildText:
+        "Clean structure, deliberate hierarchy, and a polished final presentation.",
+      refinedDirectionLabel: "Refined direction",
+      sideTexts: [
+        "Loose concept and direction take shape first.",
+        "The structure becomes clearer and more deliberate.",
+        "The interface gains refinement, hierarchy, and rhythm.",
+        "The result feels polished and ready to represent a brand.",
+      ],
     },
     about: {
       eyebrow: "About YM Creations",
@@ -104,6 +118,11 @@ export const siteContent = {
       contact: "Contact",
       kvkLabel: "KVK",
     },
+    meta: {
+      title: "YM Creations | Premium Web Design & Development",
+      description:
+        "Premium web design and development for businesses that want a stronger digital presence.",
+    },
   },
 
   nl: {
@@ -145,6 +164,8 @@ export const siteContent = {
         "Performance-first",
         "Gebouwd voor groei",
       ],
+      blueprintLabel: "System blueprint",
+      coreLabel: "Core system",
     },
     projects: {
       eyebrow: "Uitgelichte projecten",
@@ -155,6 +176,18 @@ export const siteContent = {
       itemTitle: "Uitgelicht projectconcept",
       itemText:
         "Een conceptuele projectweergave die laat zien hoe ruwe ideeën veranderen in een verfijnde online presentatie.",
+      conceptLabel: "Concept",
+      progressLabel: "Progress",
+      premiumBuildLabel: "Premium build",
+      premiumBuildText:
+        "Clean structure, deliberate hierarchy, and a polished final presentation.",
+      refinedDirectionLabel: "Refined direction",
+      sideTexts: [
+        "Het concept en de richting worden eerst zichtbaar.",
+        "De structuur wordt helderder en doordachter.",
+        "De interface krijgt meer verfijning, hiërarchie en ritme.",
+        "Het resultaat voelt gepolijst en klaar om een merk sterk te presenteren.",
+      ],
     },
     about: {
       eyebrow: "Over YM Creations",
@@ -211,7 +244,17 @@ export const siteContent = {
       contact: "Contact",
       kvkLabel: "KVK",
     },
+    meta: {
+      title: "YM Creations | Premium Webdesign & Development",
+      description:
+        "Premium webdesign en development voor bedrijven die online sterker willen overkomen.",
+    },
   },
 } as const;
 
-export type Locale = keyof typeof siteContent;
+export const locales = ["en", "nl"] as const;
+export type Locale = (typeof locales)[number];
+
+export function isValidLocale(value: string): value is Locale {
+  return locales.includes(value as Locale);
+}
