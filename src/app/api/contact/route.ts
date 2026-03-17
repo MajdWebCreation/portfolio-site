@@ -1,7 +1,5 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 type ContactPayload = {
   name: string;
   email: string;
@@ -42,13 +40,16 @@ export async function POST(request: Request) {
 
     const to = process.env.CONTACT_TO_EMAIL;
     const from = process.env.CONTACT_FROM_EMAIL;
+    const resendApiKey = process.env.RESEND_API_KEY;
 
-    if (!to || !from || !process.env.RESEND_API_KEY) {
+    if (!to || !from || !resendApiKey) {
       return Response.json(
         { error: "Missing mail configuration." },
         { status: 500 }
       );
     }
+
+    const resend = new Resend(resendApiKey);
 
     const adminSubject = `New website inquiry from ${name}`;
 
