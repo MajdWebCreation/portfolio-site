@@ -9,21 +9,21 @@ export const siteContent = {
     },
     hero: {
       eyebrow: "Premium web design & development",
-      title: "We build websites that make businesses look impossible to ignore.",
+      title: "We build websites that make businesses stand out.",
       description:
-        "YM Creations creates modern, interactive, high-performance websites for companies that want more than just an online presence. We build premium digital experiences designed to impress, convert, and stand out.",
+        "YM Creations builds modern, high-performance websites for businesses that want a stronger online presence.",
       primaryCta: "View our work",
       secondaryCta: "Contact us",
       cardEyebrow: "Experience-driven web design",
       cardText:
-        "Layered motion, strong structure, and premium interaction built for modern brands.",
+        "Strong structure, smooth motion, and a premium look for modern brands.",
       blueprintLabel: "Live blueprint",
     },
     services: {
       eyebrow: "Services",
-      title: "Every service is part of one custom-built digital system.",
+      title: "Custom websites built for real business goals.",
       description:
-        "Instead of offering disconnected deliverables, we design and build web experiences where structure, performance, storytelling, and conversion work together.",
+        "We design and build websites that combine structure, performance, and clear communication.",
       labels: [
         "Business Websites",
         "Portfolio Websites",
@@ -43,68 +43,68 @@ export const siteContent = {
     },
     projects: {
       eyebrow: "Selected projects",
-      title: "From first concept to polished digital experience.",
+      title: "From first idea to final website.",
       description:
-        "A more creative look at how ideas turn into premium web experiences through design, structure, and refinement.",
+        "A simple look at how ideas turn into clear, modern websites.",
       stages: ["Sketch", "Structure", "Interface", "Launch"],
       itemTitle: "Featured project concept",
       itemText:
-        "A conceptual project reveal showing how rough ideas evolve into a refined digital presence.",
+        "A project concept showing how rough ideas turn into a polished online presence.",
       conceptLabel: "Concept",
       progressLabel: "Progress",
       premiumBuildLabel: "Premium build",
       premiumBuildText:
-        "Clean structure, deliberate hierarchy, and a polished final presentation.",
+        "Clean structure, clear hierarchy, and a polished final result.",
       refinedDirectionLabel: "Refined direction",
       sideTexts: [
-        "Loose concept and direction take shape first.",
+        "The first idea starts with a simple direction.",
         "The structure becomes clearer and more deliberate.",
-        "The interface gains refinement, hierarchy, and rhythm.",
-        "The result feels polished and ready to represent a brand.",
+        "The interface becomes sharper and more refined.",
+        "The final result feels polished and ready for launch.",
       ],
     },
     about: {
       eyebrow: "About YM Creations",
-      title: "We combine design, development, and motion into one deliberate process.",
+      title: "Design, development, and motion in one clear process.",
       description:
-        "YM Creations is a web studio focused on building custom websites that feel premium from the very first scroll. We work with a strong process, modern tooling, and a sharp visual eye to create websites that make businesses look more serious online.",
+        "YM Creations is a web studio focused on building custom websites that look sharp and feel professional from the first scroll.",
       steps: [
         {
           number: "01",
           title: "Strategy",
-          text: "We define what the website needs to communicate, who it is for, and how it should position the business.",
+          text: "We define what the website should say, who it is for, and how it should position the business.",
         },
         {
           number: "02",
           title: "Design",
-          text: "We shape the visual language, structure, and user experience with a focus on clarity and premium presentation.",
+          text: "We shape the visual style, structure, and user experience with clarity and quality in mind.",
         },
         {
           number: "03",
           title: "Development",
-          text: "We build the site with performance, responsiveness, and interaction in mind from the start.",
+          text: "We build the site with performance, responsiveness, and smooth interaction from the start.",
         },
         {
           number: "04",
           title: "Refinement",
-          text: "We improve motion, details, responsiveness, and overall polish until the experience feels complete.",
+          text: "We improve the details, motion, and polish until the full experience feels right.",
         },
       ],
     },
     contact: {
       eyebrow: "Start a project",
-      title: "Ready to give your business a website that actually stands out?",
+      title: "Ready for a website that helps your business stand out?",
       description:
-        "Whether you need a premium company website, a webshop, a landing page, or a custom web solution, we’d love to hear about it.",
+        "Need a company website, webshop, landing page, or custom solution? We'd love to hear about it.",
       primary: "Book a call",
       secondary: "Send an email",
-      email: "hello@ymcreations.com",
+      email: "contact@ymcreations.com",
       phone: "+31 6 12345678",
       signal: "Open transmission",
     },
     footer: {
       description:
-        "Premium web design and development for businesses that want a stronger digital presence.",
+        "Premium web design and development for businesses that want a stronger online presence.",
       company: "Company",
       companyLinks: ["Home", "Services", "Projects", "About", "Contact"],
       services: "Services",
@@ -121,7 +121,7 @@ export const siteContent = {
     meta: {
       title: "YM Creations | Premium Web Design & Development",
       description:
-        "Premium web design and development for businesses that want a stronger digital presence.",
+        "Premium web design and development for businesses that want a stronger online presence.",
     },
   },
 
@@ -135,21 +135,21 @@ export const siteContent = {
     },
     hero: {
       eyebrow: "Premium websites op maat",
-      title: "Wij bouwen websites waarmee jouw bedrijf direct opvalt.",
+      title: "Wij bouwen websites waarmee bedrijven opvallen.",
       description:
-        "YM Creations maakt moderne, interactieve en snelle websites voor bedrijven die online echt sterk voor de dag willen komen. Geen standaard oplossing, maar een website die indruk maakt en resultaat oplevert.",
+        "YM Creations bouwt moderne, snelle websites voor bedrijven die online sterker zichtbaar willen zijn.",
       primaryCta: "Bekijk ons werk",
       secondaryCta: "Neem contact op",
       cardEyebrow: "Doordacht webdesign",
       cardText:
-        "Sterke structuur, vloeiende animaties en een premium uitstraling voor moderne bedrijven en merken.",
+        "Sterke structuur, vloeiende animatie en een premium uitstraling voor moderne merken.",
       blueprintLabel: "Live ontwerp",
     },
     services: {
       eyebrow: "Diensten",
-      title: "Elke dienst maakt deel uit van één slim opgebouwde digitale ervaring.",
+      title: "Maatwerk websites voor echte bedrijfsdoelen.",
       description:
-        "Wij leveren geen losse onderdelen, maar bouwen websites en weboplossingen waarin structuur, performance, uitstraling en conversie samenkomen.",
+        "Wij ontwerpen en bouwen websites met een sterke structuur, goede performance en duidelijke communicatie.",
       labels: [
         "Bedrijfswebsites",
         "Portfolio websites",
@@ -169,68 +169,68 @@ export const siteContent = {
     },
     projects: {
       eyebrow: "Uitgelichte projecten",
-      title: "Van eerste schets tot een uitgewerkte digitale ervaring.",
+      title: "Van eerste idee tot complete website.",
       description:
-        "Een creatievere blik op hoe ideeën stap voor stap veranderen in premium websites met sterke structuur en uitstraling.",
+        "Een eenvoudige blik op hoe ideeën veranderen in heldere, moderne websites.",
       stages: ["Schets", "Structuur", "Interface", "Live"],
       itemTitle: "Uitgelicht projectconcept",
       itemText:
-        "Een conceptuele projectweergave die laat zien hoe ruwe ideeën veranderen in een verfijnde online presentatie.",
+        "Een projectconcept dat laat zien hoe ruwe ideeën veranderen in een sterke online presentatie.",
       conceptLabel: "Concept",
       progressLabel: "Progress",
       premiumBuildLabel: "Premium build",
       premiumBuildText:
-        "Clean structure, deliberate hierarchy, and a polished final presentation.",
+        "Schone structuur, duidelijke hiërarchie en een sterk eindresultaat.",
       refinedDirectionLabel: "Refined direction",
       sideTexts: [
-        "Het concept en de richting worden eerst zichtbaar.",
-        "De structuur wordt helderder en doordachter.",
-        "De interface krijgt meer verfijning, hiërarchie en ritme.",
-        "Het resultaat voelt gepolijst en klaar om een merk sterk te presenteren.",
+        "Het eerste idee begint met een simpele richting.",
+        "De structuur wordt helderder en doelgerichter.",
+        "De interface wordt strakker en verfijnder.",
+        "Het eindresultaat voelt afgewerkt en klaar om live te gaan.",
       ],
     },
     about: {
       eyebrow: "Over YM Creations",
-      title: "Wij combineren design, development en motion in één doordacht proces.",
+      title: "Design, development en motion in één helder proces.",
       description:
-        "YM Creations is een webstudio die maatwerk websites bouwt die vanaf de eerste scroll premium aanvoelen. Met een sterk proces, moderne tools en oog voor detail maken wij websites waarmee bedrijven online serieuzer en sterker overkomen.",
+        "YM Creations is een webstudio die maatwerk websites bouwt die vanaf de eerste scroll professioneel en sterk aanvoelen.",
       steps: [
         {
           number: "01",
           title: "Strategie",
-          text: "We bepalen wat de website moet uitstralen, voor wie hij bedoeld is en hoe het bedrijf online gepositioneerd moet worden.",
+          text: "We bepalen wat de website moet uitstralen, voor wie hij bedoeld is en hoe het bedrijf online moet overkomen.",
         },
         {
           number: "02",
           title: "Design",
-          text: "We vormen de visuele stijl, structuur en gebruikerservaring met focus op duidelijkheid en een premium uitstraling.",
+          text: "We vormen de visuele stijl, structuur en gebruikerservaring met focus op helderheid en kwaliteit.",
         },
         {
           number: "03",
           title: "Development",
-          text: "We bouwen de website met performance, responsiveness en interactie vanaf het begin als basis.",
+          text: "We bouwen de site met performance, responsiveness en vloeiende interactie vanaf het begin.",
         },
         {
           number: "04",
           title: "Verfijning",
-          text: "We verbeteren animatie, details, responsiviteit en algemene afwerking tot de ervaring volledig klopt.",
+          text: "We verbeteren details, animatie en afwerking tot de hele ervaring klopt.",
         },
       ],
     },
     contact: {
       eyebrow: "Start een project",
-      title: "Klaar voor een website waarmee jouw bedrijf echt opvalt?",
+      title: "Klaar voor een website waarmee jouw bedrijf opvalt?",
       description:
-        "Of je nu een premium bedrijfswebsite, webshop, landingspagina of een maatwerk weboplossing nodig hebt, we denken graag met je mee.",
+        "Een bedrijfswebsite, webshop, landingspagina of maatwerk oplossing nodig? We horen graag wat je zoekt.",
       primary: "Plan een gesprek",
       secondary: "Stuur een e-mail",
-      email: "hello@ymcreations.com",
+      email: "contact@ymcreations.com",
       phone: "+31 6 12345678",
       signal: "Open verbinding",
     },
     footer: {
       description:
-        "Premium webdesign en development voor bedrijven die online sterker willen overkomen.",
+        "Premium webdesign en development voor bedrijven die online sterker zichtbaar willen zijn.",
       company: "Bedrijf",
       companyLinks: ["Home", "Diensten", "Projecten", "Over", "Contact"],
       services: "Diensten",
@@ -247,7 +247,7 @@ export const siteContent = {
     meta: {
       title: "YM Creations | Premium Webdesign & Development",
       description:
-        "Premium webdesign en development voor bedrijven die online sterker willen overkomen.",
+        "Premium webdesign en development voor bedrijven die online sterker zichtbaar willen zijn.",
     },
   },
 } as const;

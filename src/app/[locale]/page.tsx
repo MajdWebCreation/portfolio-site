@@ -13,7 +13,12 @@ import { useParams } from "next/navigation";
 import { useRef, useState } from "react";
 import RevealSection from "@/components/reveal-section";
 import { getLocaleContent } from "@/lib/get-locale-content";
-import { isValidLocale, type Locale, type siteContent } from "@/lib/site-content";
+import {
+  isValidLocale,
+  type Locale,
+  type siteContent,
+} from "@/lib/site-content";
+import ContactForm from "@/components/contact-form";
 
 type SiteContent = (typeof siteContent)[Locale];
 type ServicesContent = SiteContent["services"];
@@ -325,7 +330,7 @@ export default function Home() {
       <ServicesSection content={content.services} />
       <ProjectsSection content={content.projects} />
       <AboutSection content={content.about} />
-      <ContactSection content={content.contact} footer={content.footer} />
+      <ContactSection locale={locale} content={content.contact} footer={content.footer} />
       <FooterSection content={content.footer} />
     </main>
   );
@@ -527,17 +532,17 @@ function ProjectsDrawIntro({ content }: { content: ProjectsContent }) {
   const headingReveal = useTransform(
     scrollYProgress,
     [0.1, 0.3],
-    ["inset(0 100% 0 0)", "inset(0 0% 0 0)"]
+    ["inset(0 100% 0 0)", "inset(0 0% 0 0)"],
   );
   const cardReveal = useTransform(
     scrollYProgress,
     [0.16, 0.62],
-    ["inset(0 100% 0 0 round 2rem)", "inset(0 0% 0 0 round 2rem)"]
+    ["inset(0 100% 0 0 round 2rem)", "inset(0 0% 0 0 round 2rem)"],
   );
   const sideReveal = useTransform(
     scrollYProgress,
     [0.24, 0.76],
-    ["inset(0 100% 0 0)", "inset(0 0% 0 0)"]
+    ["inset(0 100% 0 0)", "inset(0 0% 0 0)"],
   );
 
   const pencilX = useTransform(scrollYProgress, [0.08, 0.78], [-140, 540]);
@@ -546,13 +551,13 @@ function ProjectsDrawIntro({ content }: { content: ProjectsContent }) {
   const pencilOpacity = useTransform(
     scrollYProgress,
     [0, 0.08, 0.8, 0.9, 1],
-    [0, 1, 1, 0, 0]
+    [0, 1, 1, 0, 0],
   );
 
   const mobileCardReveal = useTransform(
     scrollYProgress,
     [0.14, 0.62],
-    ["inset(0 100% 0 0 round 1.5rem)", "inset(0 0% 0 0 round 1.5rem)"]
+    ["inset(0 100% 0 0 round 1.5rem)", "inset(0 0% 0 0 round 1.5rem)"],
   );
 
   const mobilePencilX = useTransform(scrollYProgress, [0.02, 0.62], [-40, 210]);
@@ -560,12 +565,12 @@ function ProjectsDrawIntro({ content }: { content: ProjectsContent }) {
   const mobilePencilRotate = useTransform(
     scrollYProgress,
     [0.02, 0.62],
-    [-14, 8]
+    [-14, 8],
   );
   const mobilePencilOpacity = useTransform(
     scrollYProgress,
     [0, 0.02, 0.62, 0.74, 1],
-    [0, 1, 1, 0, 0]
+    [0, 1, 1, 0, 0],
   );
 
   return (
@@ -632,7 +637,9 @@ function ProjectsDrawIntro({ content }: { content: ProjectsContent }) {
           <ProjectSketchLayer progress={drawProgress} />
 
           <motion.div
-            style={shouldReduceMotion ? undefined : { clipPath: mobileCardReveal }}
+            style={
+              shouldReduceMotion ? undefined : { clipPath: mobileCardReveal }
+            }
             className="absolute inset-0 p-4"
           >
             <FinalProjectPanelMobile content={content} />
@@ -952,60 +959,76 @@ function ProcessTimeline({ steps }: { steps: AboutContent["steps"] }) {
 }
 
 function ContactSection({
+  locale,
   content,
   footer,
 }: {
+  locale: Locale;
   content: ContactContent;
   footer: FooterContent;
 }) {
+  const formCopy =
+    locale === "nl"
+      ? {
+          eyebrow: "Contactformulier",
+          title: "Vertel kort wat je wilt laten bouwen.",
+          description:
+            "Vul het formulier in en we nemen zo snel mogelijk contact met je op over je website, webshop of maatwerkproject.",
+          nameLabel: "Naam",
+          emailLabel: "E-mail",
+          companyLabel: "Bedrijf",
+          messageLabel: "Bericht",
+          namePlaceholder: "Jouw naam",
+          emailPlaceholder: "jij@bedrijf.nl",
+          companyPlaceholder: "Bedrijfsnaam",
+          messagePlaceholder:
+            "Vertel kort wat je zoekt, wat voor bedrijf je hebt en wat je ongeveer wilt laten bouwen.",
+          submitLabel: "Verstuur aanvraag",
+          sendingLabel: "Versturen...",
+          successMessage: "Bericht verzonden. We nemen snel contact op.",
+          errorMessage:
+            "Er ging iets mis. Probeer het opnieuw of mail direct naar contact@ymcreations.com.",
+        }
+      : {
+          eyebrow: "Contact form",
+          title: "Tell us what you want to build.",
+          description:
+            "Fill in the form and we’ll get back to you as soon as possible about your website, store, or custom project.",
+          nameLabel: "Name",
+          emailLabel: "Email",
+          companyLabel: "Company",
+          messageLabel: "Message",
+          namePlaceholder: "Your name",
+          emailPlaceholder: "you@company.com",
+          companyPlaceholder: "Company name",
+          messagePlaceholder:
+            "Tell us what you need, what kind of business you have, and what you want to build.",
+          submitLabel: "Send inquiry",
+          sendingLabel: "Sending...",
+          successMessage: "Message sent. We’ll get back to you soon.",
+          errorMessage:
+            "Something went wrong. Try again or email contact@ymcreations.com directly.",
+        };
+
   return (
     <section
       id="contact"
-      className="relative z-20 mx-auto w-full max-w-7xl px-6 py-28 lg:px-10"
+      className="relative z-20 mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-10 lg:py-28"
     >
-      <RevealSection>
-        <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-white/[0.04] p-8 md:p-12">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.13),transparent_34%)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:42px_42px]" />
+      <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+        <RevealSection>
+          <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 backdrop-blur md:p-8">
+            <p className="mb-4 text-sm uppercase tracking-[0.3em] text-cyan-300/80">
+              {content.eyebrow}
+            </p>
+            <h2 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
+              {content.title}
+            </h2>
+            <p className="mt-6 max-w-2xl text-base leading-8 text-white/65">
+              {content.description}
+            </p>
 
-          <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-cyan-300/40 to-transparent" />
-          <div className="absolute bottom-0 left-1/2 top-0 w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-cyan-300/20 to-transparent" />
-
-          <motion.div
-            animate={{ scale: [0.96, 1.04, 0.96], opacity: [0.25, 0.55, 0.25] }}
-            transition={{ duration: 4.6, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/20"
-          />
-
-          <div className="relative z-10 grid gap-10 lg:grid-cols-[1fr_0.75fr] lg:items-end">
-            <div>
-              <p className="mb-4 text-sm uppercase tracking-[0.3em] text-cyan-300/80">
-                {content.eyebrow}
-              </p>
-              <h2 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
-                {content.title}
-              </h2>
-              <p className="mt-6 max-w-2xl text-base leading-8 text-white/65">
-                {content.description}
-              </p>
-
-              <div className="mt-8 flex flex-wrap gap-4">
-                <a
-                  href="#"
-                  className="rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:opacity-90"
-                >
-                  {content.primary}
-                </a>
-                <a
-                  href={`mailto:${content.email}`}
-                  className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
-                >
-                  {content.secondary}
-                </a>
-              </div>
-            </div>
-
-            <div className="rounded-[1.8rem] border border-white/10 bg-black/45 p-6 backdrop-blur">
+            <div className="mt-8 rounded-[1.5rem] border border-white/10 bg-black/35 p-5">
               <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/75">
                 {content.signal}
               </p>
@@ -1017,8 +1040,12 @@ function ContactSection({
               </div>
             </div>
           </div>
-        </div>
-      </RevealSection>
+        </RevealSection>
+
+        <RevealSection delay={0.08}>
+          <ContactForm copy={formCopy} />
+        </RevealSection>
+      </div>
     </section>
   );
 }
