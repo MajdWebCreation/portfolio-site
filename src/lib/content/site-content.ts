@@ -10,7 +10,7 @@ export const businessInfo = {
   name: "YM Creations",
   legalName: "YM Creations",
   email: "contact@ymcreations.com",
-  phone: "+31 6 12345678",
+  phone: "+31653400220",
   kvk: "96175354",
   websiteUrl: "https://ymcreations.com",
 } as const;
@@ -142,6 +142,8 @@ export const siteContent = {
       insights: "Insights",
       contact: "Contact",
       kvkLabel: "KVK",
+      rights:
+        "All website rights and brand content belong to YM Creations.",
     },
   },
   nl: {
@@ -223,6 +225,8 @@ export const siteContent = {
       insights: "Inzichten",
       contact: "Contact",
       kvkLabel: "KVK",
+      rights:
+        "Alle rechten van deze website en merkcontent behoren toe aan YM Creations.",
     },
   },
 } as const;

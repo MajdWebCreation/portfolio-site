@@ -16,6 +16,7 @@ type SiteFooterProps = {
 
 export default function SiteFooter({ locale, content }: SiteFooterProps) {
   const services = getServicesForLocale(locale);
+  const currentYear = new Date().getFullYear();
 
   return (
     <footer className="relative z-20 mt-16 overflow-hidden border-t border-white/10">
@@ -54,14 +55,24 @@ export default function SiteFooter({ locale, content }: SiteFooterProps) {
           <div>
             <BrandMark
               href={getLocalizedPath(locale, "home")}
+              variant="white"
               className="h-11 w-[132px]"
             />
-          <p className="mt-5 max-w-sm text-sm leading-7 text-white/60">
-            {content.description}
-          </p>
+            <p className="mt-5 max-w-sm text-sm leading-7 text-white/60">
+              {content.description}
+            </p>
             <div className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] uppercase tracking-[0.28em] text-white/42">
               <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_20px_rgba(113,227,255,0.7)]" />
               {businessInfo.name}
+            </div>
+            <div className="mt-6 max-w-sm space-y-2 text-xs leading-6 text-white/42">
+              <p>
+                © {currentYear} {businessInfo.legalName}. {content.rights}
+              </p>
+              <p>
+                {locale === "nl" ? "Website eigendom van" : "Website owned by"}{" "}
+                {businessInfo.legalName}.
+              </p>
             </div>
           </div>
 
