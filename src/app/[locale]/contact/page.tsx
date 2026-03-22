@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import ContactPanel from "@/components/contact-panel";
 import ContactIntentBlock from "@/components/contact-intent-block";
 import JsonLd from "@/components/json-ld";
 import RevealSection from "@/components/reveal-section";
-import SectionHeading from "@/components/section-heading";
 import SiteFooter from "@/components/site-footer";
 import SiteShell from "@/components/site-shell";
 import { getRouteAlternates } from "@/lib/content/routes";
@@ -72,14 +72,40 @@ export default async function ContactPage({
         ]}
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
-        <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <RevealSection>
-            <SectionHeading
-              as="h1"
-              eyebrow={content.contact.eyebrow}
-              title={content.contact.title}
-              description={content.contact.description}
+        <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+          <div className="absolute inset-0">
+            <Image
+              src="/images/visuals/ambient-texture-light-arc.png"
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover opacity-18"
             />
+          </div>
+          <RevealSection>
+            <div className="relative grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+              <div className="max-w-2xl">
+                <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
+                  {content.contact.eyebrow}
+                </p>
+                <h1 className="mt-5 text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+                  {content.contact.title}
+                </h1>
+                <p className="mt-6 text-base leading-8 text-white/64">
+                  {content.contact.description}
+                </p>
+              </div>
+              <div className="relative min-h-[280px] overflow-hidden rounded-[2.3rem] border border-white/10">
+                <Image
+                  src="/images/visuals/contact-signal-visual.png"
+                  alt="Contact signal visual"
+                  fill
+                  sizes="(min-width: 1024px) 48vw, 100vw"
+                  className="object-cover object-center"
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,7,12,0.2),rgba(4,7,12,0.76)_62%,rgba(4,7,12,0.96))]" />
+              </div>
+            </div>
           </RevealSection>
           <div className="mt-12">
             <ContactPanel

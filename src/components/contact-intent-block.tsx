@@ -47,17 +47,25 @@ export default function ContactIntentBlock({
   const content = copy[locale];
 
   return (
-    <section className="rounded-[2rem] border border-white/10 bg-black/35 p-6 md:p-8">
+    <section className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] p-6 md:p-8">
+      <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(113,227,255,0.12),transparent_70%)]" />
       <h2 className="max-w-3xl text-3xl font-semibold text-white">
         {content.title}
       </h2>
       <div className="mt-8 grid gap-4 md:grid-cols-3">
-        {content.blocks.map((block) => (
+        {content.blocks.map((block, index) => (
           <div
             key={block.title}
-            className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5"
+            className={`rounded-[1.6rem] border border-white/10 p-5 ${
+              index === 1
+                ? "bg-[#09131b]"
+                : "bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))]"
+            }`}
           >
-            <h3 className="text-lg font-medium text-white">{block.title}</h3>
+            <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/72">
+              {String(index + 1).padStart(2, "0")}
+            </p>
+            <h3 className="mt-4 text-lg font-medium text-white">{block.title}</h3>
             <p className="mt-3 text-sm leading-7 text-white/65">{block.text}</p>
           </div>
         ))}

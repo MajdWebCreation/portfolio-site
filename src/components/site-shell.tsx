@@ -1,7 +1,7 @@
 import Link from "next/link";
+import BrandMark from "@/components/brand-mark";
 import MobileNav from "@/components/mobile-nav";
 import {
-  businessInfo,
   type Locale,
   type SiteContent,
 } from "@/lib/content/site-content";
@@ -17,10 +17,11 @@ type SiteShellProps = {
 export function BlueprintBackground() {
   return (
     <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_28%),radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.08),transparent_22%),linear-gradient(to_bottom,rgba(255,255,255,0.02),transparent)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:80px_80px] opacity-30" />
-      <div className="absolute left-[-10%] top-[10%] h-[420px] w-[420px] rounded-full border border-cyan-300/10" />
-      <div className="absolute right-[-6%] top-[18%] h-[520px] w-[520px] rounded-full border border-white/5" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_22%),linear-gradient(to_bottom,rgba(255,255,255,0.015),transparent_22%)]" />
+      <div className="ym-grid absolute inset-0 opacity-[0.08]" />
+      <div className="animate-ym-drift absolute -left-32 top-10 h-[420px] w-[420px] rounded-full border border-cyan-300/8 bg-cyan-400/4 blur-3xl" />
+      <div className="animate-ym-float absolute right-[-8%] top-[22%] h-[480px] w-[480px] rounded-full border border-white/4" />
+      <div className="absolute inset-x-0 bottom-0 h-48 bg-[linear-gradient(180deg,transparent,rgba(2,4,6,0.85)_70%,rgba(2,4,6,1))]" />
     </div>
   );
 }
@@ -50,63 +51,78 @@ export default function SiteShell({
     <div className="relative min-h-screen overflow-hidden bg-black text-white">
       <BlueprintBackground />
 
-      <header className="relative z-30 border-b border-white/8 bg-black/55 backdrop-blur-md">
-        <nav className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-10">
-          <Link href={getLocalizedPath(locale, "home")} className="flex items-center gap-3">
-            <div className="h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.9)]" />
-            <span className="text-[11px] font-medium uppercase tracking-[0.25em] text-white/90 sm:text-sm">
-              {businessInfo.name}
-            </span>
-          </Link>
+      <header className="relative z-30">
+        <nav className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
+          <div className="relative flex w-full items-center justify-between rounded-[1.5rem] border border-white/10 bg-[rgba(6,10,14,0.8)] px-4 py-3 shadow-[0_18px_48px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:px-5 lg:px-6">
+            <div className="relative z-10 flex items-center gap-5">
+              <BrandMark
+                href={getLocalizedPath(locale, "home")}
+                priority
+                variant="white"
+                className="h-11 w-[144px]"
+              />
+              <span className="hidden text-[10px] uppercase tracking-[0.32em] text-white/34 xl:block">
+                Premium digital systems
+              </span>
+            </div>
 
-          <div className="hidden items-center gap-8 text-sm text-white/70 md:flex">
-            {navigation.map((item) => (
-              <Link key={item.href} href={item.href} className="transition hover:text-white">
-                {item.label}
-              </Link>
-            ))}
-          </div>
+            <div className="hidden items-center gap-7 text-sm text-white/72 md:flex">
+              {navigation.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="transition duration-300 hover:text-white"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
 
-          <div className="hidden items-center gap-3 md:flex">
-            <div className="rounded-full border border-white/10 bg-white/5 p-1">
+            <div className="relative z-10 hidden items-center gap-3 md:flex">
+              <div className="rounded-full border border-white/10 bg-black/25 p-1">
+                <Link
+                  href={locale === "en" ? currentPath : counterpartPath}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                    locale === "en"
+                      ? "bg-white text-black"
+                      : "text-white/65 hover:text-white"
+                  }`}
+                >
+                  EN
+                </Link>
+                <Link
+                  href={locale === "nl" ? currentPath : counterpartPath}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                    locale === "nl"
+                      ? "bg-white text-black"
+                      : "text-white/65 hover:text-white"
+                  }`}
+                >
+                  NL
+                </Link>
+              </div>
               <Link
-                href={locale === "en" ? currentPath : counterpartPath}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  locale === "en" ? "bg-white text-black" : "text-white/65 hover:text-white"
-                }`}
+                href={getLocalizedPath(locale, "contact")}
+                data-track-event="contact_cta_click"
+                data-track-category="navigation"
+                data-track-label={content.nav.cta}
+                data-track-location="desktop-header"
+                className="rounded-full border border-white/14 bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-white transition duration-300 hover:border-cyan-300/30 hover:bg-white/[0.09]"
               >
-                EN
-              </Link>
-              <Link
-                href={locale === "nl" ? currentPath : counterpartPath}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  locale === "nl" ? "bg-white text-black" : "text-white/65 hover:text-white"
-                }`}
-              >
-                NL
+                {content.nav.cta}
               </Link>
             </div>
-            <Link
-              href={getLocalizedPath(locale, "contact")}
-              data-track-event="contact_cta_click"
-              data-track-category="navigation"
-              data-track-label={content.nav.cta}
-              data-track-location="desktop-header"
-              className="rounded-full border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
-            >
-              {content.nav.cta}
-            </Link>
-          </div>
 
-          <MobileNav
-            currentPath={currentPath}
-            counterpartPath={counterpartPath}
-            currentLocaleLabel={content.localeLabel}
-            alternateLocaleLabel={alternateLocale.toUpperCase()}
-            contactHref={getLocalizedPath(locale, "contact")}
-            contactLabel={content.nav.cta}
-            navigation={navigation}
-          />
+            <MobileNav
+              currentPath={currentPath}
+              counterpartPath={counterpartPath}
+              currentLocaleLabel={content.localeLabel}
+              alternateLocaleLabel={alternateLocale.toUpperCase()}
+              contactHref={getLocalizedPath(locale, "contact")}
+              contactLabel={content.nav.cta}
+              navigation={navigation}
+            />
+          </div>
         </nav>
       </header>
 

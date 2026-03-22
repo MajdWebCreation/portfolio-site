@@ -20,16 +20,22 @@ export default function SeoCta({
   trackingContext = "service",
 }: SeoCtaProps) {
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 backdrop-blur md:p-8">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_36%)]" />
-      <div className="relative">
-        <h2 className="max-w-3xl text-3xl font-semibold text-white sm:text-4xl">
+    <section className="relative overflow-hidden rounded-[2.3rem] border border-white/10 bg-[#07111a] px-6 py-8 md:px-8 md:py-10">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.18),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(110,180,255,0.12),transparent_28%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.01))]" />
+      <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-cyan-200/74">
+            Next move
+          </p>
+          <h2 className="mt-4 max-w-3xl text-3xl font-semibold text-white sm:text-4xl">
           {title}
-        </h2>
-        <p className="mt-4 max-w-2xl text-base leading-8 text-white/65">
-          {text}
-        </p>
-        <div className="mt-8 flex flex-wrap gap-3">
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-8 text-white/65">
+            {text}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3 lg:justify-end">
           <Link
             href={primaryHref}
             data-track-event={
@@ -38,7 +44,7 @@ export default function SeoCta({
             data-track-category={trackingContext}
             data-track-label={primaryLabel}
             data-track-location="seo-cta-primary"
-            className="rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:opacity-90"
+            className="rounded-full border border-cyan-200/10 bg-white px-6 py-3 text-sm font-medium text-black shadow-[0_0_40px_rgba(255,255,255,0.12)] transition hover:opacity-90"
           >
             {primaryLabel}
           </Link>

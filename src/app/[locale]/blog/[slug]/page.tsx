@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ArticleRichText from "@/components/article-rich-text";
@@ -79,6 +80,12 @@ export default async function BlogArticlePage({
 
   const content = siteContent[locale];
   const pageUrl = getCanonicalUrl(article.path);
+  const articleHeaderImages = {
+    kosten: "/images/visuals/blog-editorial-curve-panel.png",
+    seo: "/images/visuals/blog-editorial-angular-panel.png",
+    webapplicaties: "/images/visuals/blog-editorial-perspective-panel.png",
+    performance: "/images/visuals/blog-editorial-diagonal-panel.png",
+  } as const;
 
   return (
     <>
@@ -99,39 +106,64 @@ export default async function BlogArticlePage({
         ]}
       />
       <SiteShell locale={locale} content={content} currentPath={article.path}>
-        <article className="mx-auto w-full max-w-5xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <header className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 backdrop-blur md:p-8">
-            <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.22em] text-cyan-300/72">
-              <span>{getBlogCategoryLabel(locale, article.category)}</span>
-              <span className="text-white/28">/</span>
-              <span>{article.readingTime}</span>
-              {article.publishedAt ? (
-                <>
+        <article className="relative mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+          <div className="absolute inset-0">
+            <Image
+              src="/images/visuals/ambient-texture-minimal-curve.png"
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover opacity-14"
+            />
+          </div>
+          <header className="relative overflow-hidden rounded-[2.6rem] border border-white/10 bg-[#07111a]">
+            <div className="grid lg:grid-cols-[1.02fr_0.98fr]">
+              <div className="relative z-10 p-6 md:p-8 lg:p-10">
+                <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.22em] text-cyan-300/72">
+                  <span>{getBlogCategoryLabel(locale, article.category)}</span>
                   <span className="text-white/28">/</span>
-                  <span>{getArticleDateLabel(locale, article.publishedAt)}</span>
-                </>
-              ) : null}
-              {article.author ? (
-                <>
-                  <span className="text-white/28">/</span>
-                  <span>{article.author}</span>
-                </>
-              ) : null}
+                  <span>{article.readingTime}</span>
+                  {article.publishedAt ? (
+                    <>
+                      <span className="text-white/28">/</span>
+                      <span>{getArticleDateLabel(locale, article.publishedAt)}</span>
+                    </>
+                  ) : null}
+                  {article.author ? (
+                    <>
+                      <span className="text-white/28">/</span>
+                      <span>{article.author}</span>
+                    </>
+                  ) : null}
+                </div>
+                <h1 className="mt-5 max-w-4xl text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+                  {article.title}
+                </h1>
+                <p className="mt-6 max-w-3xl text-base leading-8 text-white/68 sm:text-lg">
+                  {article.intro}
+                </p>
+              </div>
+
+              <div className="relative min-h-[300px] lg:min-h-full">
+                <Image
+                  src={articleHeaderImages[article.category]}
+                  alt=""
+                  fill
+                  priority
+                  sizes="(min-width: 1024px) 42vw, 100vw"
+                  className="object-cover object-center"
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,7,12,0.78),transparent_36%),linear-gradient(180deg,rgba(4,7,12,0.12),rgba(4,7,12,0.72)_72%,rgba(4,7,12,0.92))]" />
+              </div>
             </div>
-            <h1 className="mt-5 max-w-4xl text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
-              {article.title}
-            </h1>
-            <p className="mt-6 max-w-3xl text-base leading-8 text-white/68 sm:text-lg">
-              {article.intro}
-            </p>
           </header>
 
-          <div className="mt-10 rounded-[2rem] border border-white/10 bg-black/35 p-6 md:p-8">
+          <div className="relative mt-10 rounded-[2.4rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-6 md:p-8 lg:p-10">
             <ArticleRichText blocks={article.bodyBlocks} />
           </div>
 
           {article.relatedServices.length > 0 ? (
-            <section className="mt-10 rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 md:p-8">
+            <section className="mt-10 rounded-[2.2rem] border border-white/10 bg-white/[0.03] p-6 md:p-8">
               <h2 className="text-3xl font-semibold text-white">
                 {locale === "nl" ? "Gerelateerde links" : "Related links"}
               </h2>

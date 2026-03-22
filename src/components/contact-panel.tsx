@@ -1,3 +1,4 @@
+import Image from "next/image";
 import ContactForm from "@/components/contact-form";
 import {
   businessInfo,
@@ -60,32 +61,49 @@ export default function ContactPanel({
         };
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-      <section className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 backdrop-blur md:p-8">
-        <p className="mb-4 text-sm uppercase tracking-[0.3em] text-cyan-300/80">
-          {content.eyebrow}
-        </p>
-        <h2 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
-          {content.title}
-        </h2>
-        <p className="mt-6 max-w-2xl text-base leading-8 text-white/65">
-          {content.description}
-        </p>
-
-        <div className="mt-8 rounded-[1.5rem] border border-white/10 bg-black/35 p-5">
-          <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/75">
-            {content.signal}
+    <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
+      <section className="relative overflow-hidden rounded-[2.3rem] border border-white/10 bg-[#07111a] p-6 md:p-8">
+        <Image
+          src="/images/visuals/contact-signal-visual.png"
+          alt=""
+          fill
+          sizes="(min-width: 1024px) 36vw, 100vw"
+          className="object-cover object-center opacity-24"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,7,12,0.22),rgba(4,7,12,0.78)_55%,rgba(4,7,12,0.96))]" />
+        <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top,rgba(113,227,255,0.18),transparent_62%)]" />
+        <div className="relative">
+          <p className="mb-4 text-sm uppercase tracking-[0.3em] text-cyan-300/80">
+            {content.eyebrow}
           </p>
-          <div className="mt-5 space-y-4 text-sm text-white/72">
-            <p>{businessInfo.email}</p>
-            <p>{businessInfo.phone}</p>
-            <p>ymcreations.com</p>
-            <p>{footer.kvkLabel}: {businessInfo.kvk}</p>
+          <h2 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
+            {content.title}
+          </h2>
+          <p className="mt-6 max-w-2xl text-base leading-8 text-white/65">
+            {content.description}
+          </p>
+
+          <div className="mt-10">
+            <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/75">
+              {content.signal}
+            </p>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="border-b border-white/10 pb-4 text-sm text-white/72">
+                <p>{businessInfo.email}</p>
+                <p className="mt-3">{businessInfo.phone}</p>
+              </div>
+              <div className="border-b border-white/10 pb-4 text-sm text-white/72">
+                <p>ymcreations.com</p>
+                <p className="mt-3">
+                  {footer.kvkLabel}: {businessInfo.kvk}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <ContactForm copy={formCopy} />
+      <ContactForm copy={formCopy} className="min-h-full" />
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/json-ld";
+import AmbientMedia from "@/components/ambient-media";
 import RevealSection from "@/components/reveal-section";
-import SectionHeading from "@/components/section-heading";
 import ServiceCard from "@/components/service-card";
 import SiteFooter from "@/components/site-footer";
 import SiteShell from "@/components/site-shell";
@@ -72,40 +73,78 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
         })}
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
-        <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <RevealSection>
-            <SectionHeading
-              as="h1"
-              eyebrow={overview.eyebrow}
-              title={overview.title}
-              description={overview.intro}
+        <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+          <div className="absolute inset-0">
+            <Image
+              src="/images/visuals/ambient-texture-minimal-curve.png"
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover opacity-16"
             />
-          </RevealSection>
-
-          <div className="mt-10 grid gap-4 rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 md:grid-cols-3">
-            {overview.whyPoints.map((point) => (
-              <div key={point} className="rounded-[1.25rem] border border-white/10 bg-black/35 p-5">
-                <p className="text-sm leading-7 text-white/68">{point}</p>
+          </div>
+          <div className="relative grid gap-10 lg:grid-cols-[0.94fr_1.06fr] lg:items-end">
+            <RevealSection>
+              <div className="max-w-2xl">
+                <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
+                  {overview.eyebrow}
+                </p>
+                <h1 className="mt-5 text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+                  {overview.title}
+                </h1>
+                <p className="mt-6 text-base leading-8 text-white/64">
+                  {overview.intro}
+                </p>
               </div>
-            ))}
+            </RevealSection>
+            <RevealSection delay={0.08}>
+              <AmbientMedia
+                src="/images/visuals/services-system-visual.png"
+                alt="Services system overview"
+                className="min-h-[420px]"
+                imageClassName="object-cover object-center"
+              />
+            </RevealSection>
+          </div>
+
+          <div className="relative mt-12 grid gap-5 lg:grid-cols-[1.08fr_0.92fr]">
+            <RevealSection>
+              {services[0] ? <ServiceCard service={services[0]} /> : null}
+            </RevealSection>
+            <RevealSection delay={0.06}>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {overview.whyPoints.map((point, index) => (
+                  <div
+                    key={point}
+                    className={`rounded-[1.8rem] border border-white/10 p-5 ${
+                      index === 0
+                        ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]"
+                        : "bg-black/25"
+                    }`}
+                  >
+                    <p className="text-sm leading-7 text-white/68">{point}</p>
+                  </div>
+                ))}
+              </div>
+            </RevealSection>
           </div>
 
           <div className="mt-12 grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-            {services.map((service, index) => (
+            {services.slice(1).map((service, index) => (
               <RevealSection key={service.path} delay={index * 0.04}>
                 <ServiceCard service={service} />
               </RevealSection>
             ))}
           </div>
 
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
+          <div className="mt-14 grid gap-4 md:grid-cols-3">
             <Link
               href={getLocalizedPath(locale, "projects")}
               data-track-event="primary_cta_click"
               data-track-category="services-overview"
               data-track-label={locale === "nl" ? "Projecten" : "Projects"}
               data-track-location="services-overview-links"
-              className="rounded-[1.4rem] border border-white/10 bg-black/35 p-5 text-sm leading-7 text-white/68 transition hover:border-cyan-300/25 hover:bg-black/45"
+              className="rounded-[1.8rem] border border-white/10 bg-black/30 p-6 text-sm leading-7 text-white/68 transition hover:border-cyan-300/25 hover:bg-black/45"
             >
               {locale === "nl"
                 ? "Bekijk hoe projecten worden benaderd via het projectenoverzicht."
@@ -117,7 +156,7 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
               data-track-category="services-overview"
               data-track-label={locale === "nl" ? "Inzichten" : "Insights"}
               data-track-location="services-overview-links"
-              className="rounded-[1.4rem] border border-white/10 bg-black/35 p-5 text-sm leading-7 text-white/68 transition hover:border-cyan-300/25 hover:bg-black/45"
+              className="rounded-[1.8rem] border border-white/10 bg-black/30 p-6 text-sm leading-7 text-white/68 transition hover:border-cyan-300/25 hover:bg-black/45"
             >
               {locale === "nl"
                 ? "Lees inzichten over websites, performance en meertalige structuur."
@@ -129,7 +168,7 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
               data-track-category="services-overview"
               data-track-label={locale === "nl" ? "Contact" : "Contact"}
               data-track-location="services-overview-links"
-              className="rounded-[1.4rem] border border-white/10 bg-black/35 p-5 text-sm leading-7 text-white/68 transition hover:border-cyan-300/25 hover:bg-black/45"
+              className="rounded-[1.8rem] border border-white/10 bg-black/30 p-6 text-sm leading-7 text-white/68 transition hover:border-cyan-300/25 hover:bg-black/45"
             >
               {locale === "nl"
                 ? "Start een gesprek over de dienst die het beste past."

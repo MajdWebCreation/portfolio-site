@@ -38,7 +38,7 @@ export default function MobileNav({
         data-track-category="navigation"
         data-track-label={contactLabel}
         data-track-location="mobile-header"
-        className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
+        className="rounded-full border border-cyan-300/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.06))] px-4 py-2 text-sm font-medium text-white shadow-[0_0_30px_rgba(53,180,255,0.1)] transition hover:border-cyan-400/50"
       >
         {contactLabel}
       </Link>
@@ -46,7 +46,7 @@ export default function MobileNav({
         type="button"
         aria-label="Toggle menu"
         onClick={() => setMobileMenuOpen((prev) => !prev)}
-        className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/5"
+        className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/30"
       >
         <div className="flex flex-col gap-1.5">
           <span
@@ -75,20 +75,20 @@ export default function MobileNav({
           pointerEvents: mobileMenuOpen ? "auto" : "none",
         }}
         transition={{ duration: 0.22 }}
-        className="absolute inset-x-4 top-full mt-2 rounded-[1.75rem] border border-white/10 bg-black/90 p-4 backdrop-blur-md md:hidden"
+        className="ym-surface absolute inset-x-4 top-full mt-3 rounded-[1.75rem] p-4 md:hidden"
       >
-        <div className="mb-4 flex rounded-full border border-white/10 bg-white/5 p-1">
+        <div className="mb-4 flex rounded-full border border-white/10 bg-black/35 p-1">
           <Link
             href={currentPath}
             onClick={() => setMobileMenuOpen(false)}
-            className="flex-1 rounded-full px-3 py-2 text-center text-xs font-medium text-white/65 transition"
+            className="flex-1 rounded-full px-3 py-2 text-center text-xs font-medium text-white/65 transition hover:text-white"
           >
             {currentLocaleLabel}
           </Link>
           <Link
             href={counterpartPath}
             onClick={() => setMobileMenuOpen(false)}
-            className="flex-1 rounded-full px-3 py-2 text-center text-xs font-medium text-white/65 transition"
+            className="flex-1 rounded-full px-3 py-2 text-center text-xs font-medium text-white/65 transition hover:text-white"
           >
             {alternateLocaleLabel}
           </Link>
@@ -99,7 +99,7 @@ export default function MobileNav({
               key={item.href}
               href={item.href}
               onClick={() => setMobileMenuOpen(false)}
-              className="rounded-2xl px-4 py-3 text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
+              className="rounded-[1.3rem] px-4 py-3 text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
             >
               {item.label}
             </Link>

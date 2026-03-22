@@ -1,6 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import AmbientMedia from "@/components/ambient-media";
 import FaqBlock from "@/components/faq-block";
 import JsonLd from "@/components/json-ld";
 import ProcessBlock from "@/components/process-block";
@@ -105,8 +107,17 @@ export function ServiceDetailContent({
         ]}
       />
       <SiteShell locale={locale} content={content} currentPath={service.path}>
-        <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="grid gap-12 lg:grid-cols-[1fr_0.9fr]">
+        <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+          <div className="absolute inset-0">
+            <Image
+              src="/images/visuals/ambient-texture-light-arc.png"
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover opacity-16"
+            />
+          </div>
+          <div className="relative grid gap-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-end">
             <RevealSection>
               <p className="mb-4 text-sm uppercase tracking-[0.3em] text-cyan-300/80">
                 {content.nav.services}
@@ -142,22 +153,23 @@ export function ServiceDetailContent({
             </RevealSection>
 
             <RevealSection delay={0.08}>
-              <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 backdrop-blur">
-                <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
-                  <span className="text-xs uppercase tracking-[0.25em] text-white/40">
-                    {locale === "nl" ? "Service blueprint" : "Service blueprint"}
-                  </span>
-                  <span className="text-xs uppercase tracking-[0.22em] text-cyan-300/70">
-                    {service.icon}
-                  </span>
-                </div>
-                <div className="space-y-4">
-                  {service.deliverables.map((item) => (
+              <div className="grid gap-4">
+                <AmbientMedia
+                  src="/images/visuals/services-system-visual.png"
+                  alt="Service system visual"
+                  className="min-h-[360px]"
+                  imageClassName="object-cover object-center"
+                />
+                <div className="grid gap-4 md:grid-cols-2">
+                  {service.deliverables.slice(0, 4).map((item) => (
                     <div
                       key={item}
-                      className="rounded-[1.25rem] border border-white/10 bg-black/35 p-4"
+                      className="rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] p-5"
                     >
-                      <p className="text-sm leading-7 text-white/68">{item}</p>
+                      <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/72">
+                        {service.icon}
+                      </p>
+                      <p className="mt-4 text-sm leading-7 text-white/68">{item}</p>
                     </div>
                   ))}
                 </div>
@@ -166,8 +178,8 @@ export function ServiceDetailContent({
           </div>
         </section>
 
-        <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-6 sm:px-6 lg:grid-cols-2 lg:px-10">
-          <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 backdrop-blur md:p-8">
+        <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-10">
+          <section className="rounded-[2.2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.015))] p-6 md:p-8">
             <h2 className="text-3xl font-semibold text-white">
               {service.forWhoTitle}
             </h2>
@@ -186,7 +198,8 @@ export function ServiceDetailContent({
             </ul>
           </section>
 
-          <section className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 backdrop-blur md:p-8">
+          <section className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-[#071119] p-6 md:p-8">
+            <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(113,227,255,0.14),transparent_70%)]" />
             <h2 className="text-3xl font-semibold text-white">
               {service.useCasesTitle}
             </h2>
@@ -227,7 +240,16 @@ export function ServiceDetailContent({
         </section>
 
         <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-10">
-          <div className="rounded-[2rem] border border-white/10 bg-black/35 p-6 md:p-8">
+          <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+            <div className="rounded-[2.2rem] border border-white/10 bg-black/30 p-6 md:p-8">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-cyan-300/72">
+                Service compass
+              </p>
+              <p className="mt-5 text-base leading-8 text-white/65">
+                {service.intro}
+              </p>
+            </div>
+            <div className="rounded-[2.2rem] border border-white/10 bg-black/35 p-6 md:p-8">
             <h2 className="text-3xl font-semibold text-white">
               {locale === "nl" ? "Andere diensten" : "Other services"}
             </h2>
@@ -286,6 +308,7 @@ export function ServiceDetailContent({
                   ? "Neem contact op om te bespreken of deze dienst past bij je project."
                   : "Get in touch to discuss whether this service fits your project."}
               </Link>
+            </div>
             </div>
           </div>
         </section>

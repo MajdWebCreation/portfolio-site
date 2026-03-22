@@ -12,6 +12,21 @@ export const metadata: Metadata = {
     template: `%s | ${businessInfo.name}`,
   },
   description: "Premium web design and development.",
+  icons: {
+    icon: [
+      {
+        url: "/icon",
+        type: "image/png",
+      },
+    ],
+    shortcut: ["/icon"],
+    apple: [
+      {
+        url: "/apple-icon",
+        type: "image/png",
+      },
+    ],
+  },
 };
 
 export default async function RootLayout({

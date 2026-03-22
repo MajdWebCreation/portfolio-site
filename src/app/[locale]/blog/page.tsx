@@ -1,15 +1,15 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import EditorialArticleCard from "@/components/editorial-article-card";
 import JsonLd from "@/components/json-ld";
 import RevealSection from "@/components/reveal-section";
 import SeoCta from "@/components/seo-cta";
-import SectionHeading from "@/components/section-heading";
 import SiteFooter from "@/components/site-footer";
 import SiteShell from "@/components/site-shell";
 import {
   blogOverviewContent,
-  getBlogCategoryLabel,
   getPublishedArticles,
 } from "@/lib/content/blog";
 import { getRouteAlternates } from "@/lib/content/routes";
@@ -56,6 +56,12 @@ export default async function BlogPage({
   const overview = blogOverviewContent[locale];
   const articles = getPublishedArticles(locale);
   const path = locale === "nl" ? "/nl/blog" : "/en/blog";
+  const editorialImages = [
+    "/images/visuals/blog-editorial-curve-panel.png",
+    "/images/visuals/blog-editorial-angular-panel.png",
+    "/images/visuals/blog-editorial-diagonal-panel.png",
+    "/images/visuals/blog-editorial-perspective-panel.png",
+  ];
 
   return (
     <>
@@ -67,48 +73,73 @@ export default async function BlogPage({
         })}
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
-        <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <RevealSection>
-            <SectionHeading
-              as="h1"
-              eyebrow={overview.eyebrow}
-              title={overview.title}
-              description={overview.intro}
+        <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+          <div className="absolute inset-0">
+            <Image
+              src="/images/visuals/ambient-texture-minimal-curve.png"
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover opacity-14"
             />
-          </RevealSection>
+          </div>
+          <div className="relative grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-end">
+            <RevealSection>
+              <div className="max-w-2xl">
+                <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
+                  {overview.eyebrow}
+                </p>
+                <h1 className="mt-5 text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+                  {overview.title}
+                </h1>
+                <p className="mt-6 text-base leading-8 text-white/64">
+                  {overview.intro}
+                </p>
+              </div>
+            </RevealSection>
+            <RevealSection delay={0.08}>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {overview.pillars.slice(0, 4).map((pillar) => (
+                  <div
+                    key={pillar.title}
+                    className="border-b border-white/10 pb-5"
+                  >
+                    <p className="text-sm font-medium text-white">{pillar.title}</p>
+                    <p className="mt-3 text-sm leading-7 text-white/62">
+                      {pillar.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </RevealSection>
+          </div>
 
-          <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="relative mt-14 grid gap-5 md:grid-cols-2">
             {articles.length > 0
-              ? articles.map((article, index) => (
-                  <RevealSection key={article.path} delay={index * 0.04}>
-                    <article className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-6 transition hover:border-cyan-300/25 hover:bg-white/[0.05]">
-                      <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.22em] text-cyan-300/72">
-                        <span>{getBlogCategoryLabel(locale, article.category)}</span>
-                        <span className="text-white/28">/</span>
-                        <span>{article.readingTime}</span>
-                      </div>
-                      <h2 className="mt-4 text-2xl font-semibold text-white">
-                        {article.title}
-                      </h2>
-                      <p className="mt-4 text-sm leading-7 text-white/65">
-                        {article.metaDescription}
-                      </p>
-                      <Link
-                        href={article.path}
-                        data-track-event="article_cta_click"
-                        data-track-category="blog-overview"
-                        data-track-label={article.title}
-                        data-track-location="article-card"
-                        className="mt-6 inline-flex rounded-full border border-white/15 bg-black/35 px-5 py-2.5 text-sm font-medium text-white transition hover:border-cyan-400/40 hover:bg-black/45"
-                      >
-                        {locale === "nl" ? "Lees artikel" : "Read article"}
-                      </Link>
-                    </article>
+              ? articles.map((article) => (
+                  <RevealSection
+                    key={article.path}
+                    className={article.path === articles[0]?.path ? "md:col-span-2" : ""}
+                  >
+                    <EditorialArticleCard
+                      article={article}
+                      locale={locale}
+                      imageSrc={
+                        editorialImages[
+                          articles.findIndex((entry) => entry.path === article.path) %
+                            editorialImages.length
+                        ]
+                      }
+                      priority={article.path === articles[0]?.path}
+                      variant={
+                        article.path === articles[0]?.path ? "featured" : "default"
+                      }
+                    />
                   </RevealSection>
                 ))
               : overview.pillars.map((pillar, index) => (
                   <RevealSection key={pillar.title} delay={index * 0.04}>
-                    <article className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-6">
+                    <article className="rounded-[1.8rem] border border-white/10 bg-white/[0.03] p-6">
                       <h2 className="text-2xl font-semibold text-white">
                         {pillar.title}
                       </h2>
@@ -120,26 +151,28 @@ export default async function BlogPage({
                 ))}
           </div>
 
-          <div className="mt-12 rounded-[2rem] border border-white/10 bg-black/35 p-6 md:p-8">
-            <h2 className="text-3xl font-semibold text-white">
-              {overview.supportTitle}
-            </h2>
-            <p className="mt-4 max-w-3xl text-base leading-8 text-white/65">
-              {overview.supportText}
-            </p>
-            {articles.length === 0 && overview.emptyState ? (
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-white/52">
-                {overview.emptyState}
+          <div className="mt-12 grid gap-4 md:grid-cols-3">
+            <div className="md:col-span-2">
+              <h2 className="text-3xl font-semibold text-white">
+                {overview.supportTitle}
+              </h2>
+              <p className="mt-4 max-w-3xl text-base leading-8 text-white/65">
+                {overview.supportText}
               </p>
-            ) : null}
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              {articles.length === 0 && overview.emptyState ? (
+                <p className="mt-4 max-w-3xl text-sm leading-7 text-white/52">
+                  {overview.emptyState}
+                </p>
+              ) : null}
+            </div>
+            <div className="space-y-4">
               <Link
                 href={locale === "nl" ? "/nl/diensten" : "/en/services"}
                 data-track-event="primary_cta_click"
                 data-track-category="blog-overview"
                 data-track-label={locale === "nl" ? "Diensten" : "Services"}
                 data-track-location="blog-support-links"
-                className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-white/62 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
+                className="block border-b border-white/10 pb-4 text-sm leading-7 text-white/62 transition hover:text-white"
               >
                 {locale === "nl"
                   ? "Bekijk de diensten waar deze inzichten direct op aansluiten."
@@ -151,7 +184,7 @@ export default async function BlogPage({
                 data-track-category="blog-overview"
                 data-track-label={locale === "nl" ? "Projecten" : "Projects"}
                 data-track-location="blog-support-links"
-                className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-white/62 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
+                className="block border-b border-white/10 pb-4 text-sm leading-7 text-white/62 transition hover:text-white"
               >
                 {locale === "nl"
                   ? "Bekijk het projectenoverzicht voor de bredere werkcontext."
@@ -163,7 +196,7 @@ export default async function BlogPage({
                 data-track-category="blog-overview"
                 data-track-label={locale === "nl" ? "Contact" : "Contact"}
                 data-track-location="blog-support-links"
-                className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-white/62 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
+                className="block border-b border-white/10 pb-4 text-sm leading-7 text-white/62 transition hover:text-white"
               >
                 {locale === "nl"
                   ? "Neem contact op als je een website of webapplicatie wilt bespreken."

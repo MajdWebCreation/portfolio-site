@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/json-ld";
 import RevealSection from "@/components/reveal-section";
 import SeoCta from "@/components/seo-cta";
-import SectionHeading from "@/components/section-heading";
 import SiteFooter from "@/components/site-footer";
 import SiteShell from "@/components/site-shell";
 import { projectsOverviewContent } from "@/lib/content/projects";
@@ -67,19 +67,47 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
         })}
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
-        <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <RevealSection>
-            <SectionHeading
-              as="h1"
-              eyebrow={overview.eyebrow}
-              title={overview.title}
-              description={overview.intro}
+        <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+          <div className="absolute inset-0">
+            <Image
+              src="/images/visuals/ambient-texture-sweeping-streak.png"
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover opacity-16"
             />
-          </RevealSection>
-
-          <div className="mt-12 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          </div>
+          <div className="relative grid gap-10 lg:grid-cols-[0.94fr_1.06fr] lg:items-end">
             <RevealSection>
-              <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 backdrop-blur md:p-8">
+              <div className="max-w-2xl">
+                <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
+                  {overview.eyebrow}
+                </p>
+                <h1 className="mt-5 text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+                  {overview.title}
+                </h1>
+                <p className="mt-6 text-base leading-8 text-white/64">
+                  {overview.intro}
+                </p>
+              </div>
+            </RevealSection>
+            <RevealSection delay={0.08}>
+              <div className="relative min-h-[420px] overflow-hidden rounded-[2.4rem] border border-white/10">
+                <Image
+                  src="/images/visuals/projects-transformation-visual.png"
+                  alt="Projects transformation visual"
+                  fill
+                  sizes="(min-width: 1024px) 50vw, 100vw"
+                  className="object-cover object-center"
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,7,12,0.18),rgba(4,7,12,0.82)_65%,rgba(4,7,12,0.96))]" />
+              </div>
+            </RevealSection>
+          </div>
+
+          <div className="relative mt-12 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+            <RevealSection>
+              <div className="rounded-[2.2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] p-6 md:p-8">
                 <h2 className="text-3xl font-semibold text-white">
                   {overview.highlightsTitle}
                 </h2>
@@ -97,7 +125,7 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
             </RevealSection>
 
             <RevealSection delay={0.08}>
-              <div className="rounded-[2rem] border border-white/10 bg-black/35 p-6 md:p-8">
+              <div className="rounded-[2.2rem] border border-white/10 bg-black/35 p-6 md:p-8">
                 <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/75">
                   {content.projects.premiumBuildLabel}
                 </p>
