@@ -12,7 +12,7 @@ export const contentType = "image/png";
 async function getLogoDataUrl() {
   const logoPath = path.join(
     process.cwd(),
-    "public/images/branding/ym-logo-white.png",
+    "public/images/branding/ym-favicon-mark.png",
   );
   const file = await readFile(logoPath);
 
@@ -31,34 +31,18 @@ export default async function Icon() {
           width: "100%",
           alignItems: "center",
           justifyContent: "center",
-          background:
-            "radial-gradient(circle at top, rgba(98, 214, 255, 0.18), transparent 36%), linear-gradient(180deg, #071018 0%, #04080d 100%)",
+          background: "#05080d",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            height: 360,
-            width: 360,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 92,
-            border: "1px solid rgba(255,255,255,0.08)",
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015))",
-          }}
-        >
-          <img
-            src={logoSrc}
-            alt="YM Creations"
-            width="240"
-            height="98"
-            style={{ objectFit: "contain" }}
-          />
-        </div>
+        <img
+          src={logoSrc}
+          alt="YM Creations"
+          width="368"
+          height="368"
+          style={{ objectFit: "contain" }}
+        />
       </div>
     ),
     size,
   );
 }
-
