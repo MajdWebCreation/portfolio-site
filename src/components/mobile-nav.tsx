@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type NavigationItem = {
   href: string;
@@ -30,6 +30,19 @@ export default function MobileNav({
 }: MobileNavProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) {
+      document.body.style.overflow = "";
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
+
   return (
     <div className="flex items-center gap-2 md:hidden">
       <Link
@@ -39,6 +52,7 @@ export default function MobileNav({
         data-track-label={contactLabel}
         data-track-location="mobile-header"
         className="rounded-full border border-cyan-300/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.06))] px-4 py-2 text-sm font-medium text-white shadow-[0_0_30px_rgba(53,180,255,0.1)] transition hover:border-cyan-400/50"
+        onClick={() => setMobileMenuOpen(false)}
       >
         {contactLabel}
       </Link>
@@ -46,7 +60,7 @@ export default function MobileNav({
         type="button"
         aria-label="Toggle menu"
         onClick={() => setMobileMenuOpen((prev) => !prev)}
-        className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/30"
+        className="relative z-[60] flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/45"
       >
         <div className="flex flex-col gap-1.5">
           <span
@@ -71,24 +85,40 @@ export default function MobileNav({
         initial={false}
         animate={{
           opacity: mobileMenuOpen ? 1 : 0,
-          y: mobileMenuOpen ? 0 : -10,
+          pointerEvents: mobileMenuOpen ? "auto" : "none",
+        }}
+        transition={{ duration: 0.2 }}
+        className="fixed inset-0 z-40 md:hidden"
+      >
+        <div
+          className="absolute inset-0 bg-[rgba(2,4,6,0.78)] backdrop-blur-sm"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      </motion.div>
+
+      <motion.div
+        initial={false}
+        animate={{
+          opacity: mobileMenuOpen ? 1 : 0,
+          y: mobileMenuOpen ? 0 : -12,
+          scale: mobileMenuOpen ? 1 : 0.985,
           pointerEvents: mobileMenuOpen ? "auto" : "none",
         }}
         transition={{ duration: 0.22 }}
-        className="ym-surface absolute inset-x-4 top-full mt-3 rounded-[1.75rem] p-4 md:hidden"
+        className="fixed inset-x-4 top-[88px] z-50 max-h-[calc(100vh-104px)] overflow-y-auto rounded-[1.75rem] border border-white/12 bg-[rgba(5,8,12,0.96)] p-4 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl md:hidden"
       >
-        <div className="mb-4 flex rounded-full border border-white/10 bg-black/35 p-1">
+        <div className="mb-5 flex rounded-full border border-white/10 bg-black/50 p-1">
           <Link
             href={currentPath}
             onClick={() => setMobileMenuOpen(false)}
-            className="flex-1 rounded-full px-3 py-2 text-center text-xs font-medium text-white/65 transition hover:text-white"
+            className="flex-1 rounded-full bg-white px-3 py-2 text-center text-xs font-medium text-black transition"
           >
             {currentLocaleLabel}
           </Link>
           <Link
             href={counterpartPath}
             onClick={() => setMobileMenuOpen(false)}
-            className="flex-1 rounded-full px-3 py-2 text-center text-xs font-medium text-white/65 transition hover:text-white"
+            className="flex-1 rounded-full px-3 py-2 text-center text-xs font-medium text-white/78 transition hover:text-white"
           >
             {alternateLocaleLabel}
           </Link>
@@ -99,7 +129,7 @@ export default function MobileNav({
               key={item.href}
               href={item.href}
               onClick={() => setMobileMenuOpen(false)}
-              className="rounded-[1.3rem] px-4 py-3 text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
+              className="border-b border-white/8 px-4 py-4 text-base font-medium text-white/92 transition hover:text-white"
             >
               {item.label}
             </Link>
