@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { trackEvent } from "@/lib/analytics";
 
 type ContactFormCopy = {
   eyebrow: string;
@@ -85,6 +86,12 @@ export default function ContactForm({
 
       setStatus("success");
       setForm(initialState);
+      trackEvent({
+        name: "contact_form_submit_success",
+        category: "contact",
+        label: "contact-form",
+        location: "contact-form",
+      });
     } catch {
       setStatus("error");
     } finally {
@@ -101,7 +108,7 @@ export default function ContactForm({
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: false, amount: 0.2 }}
+      viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.7 }}
       className={`relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-md sm:p-6 ${className}`}
     >
@@ -201,6 +208,10 @@ export default function ContactForm({
             <button
               type="submit"
               disabled={!isValid || isSubmitting}
+              data-track-event="contact_cta_click"
+              data-track-category="contact"
+              data-track-label={copy.submitLabel}
+              data-track-location="contact-form-submit"
               className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? copy.sendingLabel : copy.submitLabel}

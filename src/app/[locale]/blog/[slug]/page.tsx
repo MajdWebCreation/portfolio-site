@@ -98,7 +98,7 @@ export default async function BlogArticlePage({
           }),
         ]}
       />
-      <SiteShell locale={locale} content={content}>
+      <SiteShell locale={locale} content={content} currentPath={article.path}>
         <article className="mx-auto w-full max-w-5xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
           <header className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 backdrop-blur md:p-8">
             <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.22em] text-cyan-300/72">
@@ -140,6 +140,10 @@ export default async function BlogArticlePage({
                   <Link
                     key={href}
                     href={href}
+                    data-track-event="article_cta_click"
+                    data-track-category="article"
+                    data-track-label={getRelatedLinkLabel(locale, href)}
+                    data-track-location="article-related-links"
                     className="rounded-full border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
                   >
                     {getRelatedLinkLabel(locale, href)}
@@ -163,6 +167,7 @@ export default async function BlogArticlePage({
                 article.ctaSecondaryLink ??
                 (locale === "nl" ? "/nl/blog" : "/en/blog")
               }
+              trackingContext="article"
             />
           </div>
         </article>

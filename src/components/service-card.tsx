@@ -17,6 +17,10 @@ export default function ServiceCard({ service }: ServiceCardProps) {
         <p className="mt-4 text-sm leading-7 text-white/65">{service.intro}</p>
         <Link
           href={service.path}
+          data-track-event="service_cta_click"
+          data-track-category="services"
+          data-track-label={service.navLabel}
+          data-track-location="service-card"
           className="mt-6 inline-flex items-center rounded-full border border-white/15 bg-black/40 px-5 py-2.5 text-sm font-medium text-white transition hover:border-cyan-400/40 hover:bg-black/55"
         >
           {service.navLabel}

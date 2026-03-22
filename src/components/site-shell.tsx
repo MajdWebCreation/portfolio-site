@@ -1,9 +1,5 @@
-"use client";
-
-import { motion } from "framer-motion";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import MobileNav from "@/components/mobile-nav";
 import {
   businessInfo,
   type Locale,
@@ -14,6 +10,7 @@ import { getCounterpartPath, getLocalizedPath } from "@/lib/content/routes";
 type SiteShellProps = {
   locale: Locale;
   content: SiteContent;
+  currentPath: string;
   children: React.ReactNode;
 };
 
@@ -22,17 +19,8 @@ export function BlueprintBackground() {
     <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_28%),radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.08),transparent_22%),linear-gradient(to_bottom,rgba(255,255,255,0.02),transparent)]" />
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:80px_80px] opacity-30" />
-
-      <motion.div
-        animate={{ y: [0, -20, 0] }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute left-[-10%] top-[10%] h-[420px] w-[420px] rounded-full border border-cyan-300/10"
-      />
-      <motion.div
-        animate={{ y: [0, 24, 0], x: [0, 12, 0] }}
-        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute right-[-6%] top-[18%] h-[520px] w-[520px] rounded-full border border-white/5"
-      />
+      <div className="absolute left-[-10%] top-[10%] h-[420px] w-[420px] rounded-full border border-cyan-300/10" />
+      <div className="absolute right-[-6%] top-[18%] h-[520px] w-[520px] rounded-full border border-white/5" />
     </div>
   );
 }
@@ -40,14 +28,12 @@ export function BlueprintBackground() {
 export default function SiteShell({
   locale,
   content,
+  currentPath,
   children,
 }: SiteShellProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const pathname = usePathname();
   const alternateLocale = locale === "en" ? "nl" : "en";
-  const currentLocalePath = pathname ?? getLocalizedPath(locale, "home");
   const counterpartPath = getCounterpartPath(
-    currentLocalePath,
+    currentPath,
     locale,
     alternateLocale,
   );
@@ -84,7 +70,7 @@ export default function SiteShell({
           <div className="hidden items-center gap-3 md:flex">
             <div className="rounded-full border border-white/10 bg-white/5 p-1">
               <Link
-                href={locale === "en" ? currentLocalePath : counterpartPath}
+                href={locale === "en" ? currentPath : counterpartPath}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                   locale === "en" ? "bg-white text-black" : "text-white/65 hover:text-white"
                 }`}
@@ -92,7 +78,7 @@ export default function SiteShell({
                 EN
               </Link>
               <Link
-                href={locale === "nl" ? currentLocalePath : counterpartPath}
+                href={locale === "nl" ? currentPath : counterpartPath}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                   locale === "nl" ? "bg-white text-black" : "text-white/65 hover:text-white"
                 }`}
@@ -102,85 +88,26 @@ export default function SiteShell({
             </div>
             <Link
               href={getLocalizedPath(locale, "contact")}
+              data-track-event="contact_cta_click"
+              data-track-category="navigation"
+              data-track-label={content.nav.cta}
+              data-track-location="desktop-header"
               className="rounded-full border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
             >
               {content.nav.cta}
             </Link>
           </div>
 
-          <div className="flex items-center gap-2 md:hidden">
-            <Link
-              href={getLocalizedPath(locale, "contact")}
-              className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
-            >
-              {content.nav.cta}
-            </Link>
-            <button
-              type="button"
-              aria-label="Toggle menu"
-              onClick={() => setMobileMenuOpen((prev) => !prev)}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/5"
-            >
-              <div className="flex flex-col gap-1.5">
-                <span
-                  className={`block h-px w-5 bg-white transition ${
-                    mobileMenuOpen ? "translate-y-[7px] rotate-45" : ""
-                  }`}
-                />
-                <span
-                  className={`block h-px w-5 bg-white transition ${
-                    mobileMenuOpen ? "opacity-0" : ""
-                  }`}
-                />
-                <span
-                  className={`block h-px w-5 bg-white transition ${
-                    mobileMenuOpen ? "-translate-y-[7px] -rotate-45" : ""
-                  }`}
-                />
-              </div>
-            </button>
-          </div>
+          <MobileNav
+            currentPath={currentPath}
+            counterpartPath={counterpartPath}
+            currentLocaleLabel={content.localeLabel}
+            alternateLocaleLabel={alternateLocale.toUpperCase()}
+            contactHref={getLocalizedPath(locale, "contact")}
+            contactLabel={content.nav.cta}
+            navigation={navigation}
+          />
         </nav>
-
-        <motion.div
-          initial={false}
-          animate={{
-            opacity: mobileMenuOpen ? 1 : 0,
-            y: mobileMenuOpen ? 0 : -10,
-            pointerEvents: mobileMenuOpen ? "auto" : "none",
-          }}
-          transition={{ duration: 0.22 }}
-          className="absolute inset-x-4 top-full mt-2 rounded-[1.75rem] border border-white/10 bg-black/90 p-4 backdrop-blur-md md:hidden"
-        >
-          <div className="mb-4 flex rounded-full border border-white/10 bg-white/5 p-1">
-            <Link
-              href={currentLocalePath}
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex-1 rounded-full px-3 py-2 text-center text-xs font-medium text-white/65 transition"
-            >
-              {content.localeLabel}
-            </Link>
-            <Link
-              href={counterpartPath}
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex-1 rounded-full px-3 py-2 text-center text-xs font-medium text-white/65 transition"
-            >
-              {alternateLocale.toUpperCase()}
-            </Link>
-          </div>
-          <div className="flex flex-col">
-            {navigation.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="rounded-2xl px-4 py-3 text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </motion.div>
       </header>
 
       <main className="relative z-20">{children}</main>

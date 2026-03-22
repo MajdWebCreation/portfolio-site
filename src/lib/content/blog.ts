@@ -149,7 +149,7 @@ export const articles: ArticleDefinition[] = [
           "Wat bepaalt de prijs van een maatwerk website in 2026? Een heldere uitleg over scope, design, development, content, integraties en wat echt invloed heeft op de investering.",
         category: "kosten",
         readingTime: "8 min",
-        publishedAt: "2026-03-22",
+        publishedAt: "2026-01-28",
         body: `Een van de meest gestelde vragen in dit vak is ook meteen een van de lastigste om eerlijk te beantwoorden: wat kost een maatwerk website?
 
 Het eerlijke antwoord is dat de prijs niet begint bij design, code of een willekeurig aantal pagina’s. De prijs begint bij de vraag wat de website voor je bedrijf moet doen. Moet hij vooral professioneel vertrouwen opbouwen? Moet hij leads genereren? Moet hij een complex aanbod helder maken? Of moet hij onderdeel worden van een groter digitaal systeem?
@@ -160,14 +160,7 @@ Juist daarom lopen offertes voor websites vaak zo ver uiteen. Twee bedrijven kun
 
 Veel bedrijven zoeken één directe oorzaak voor prijsverschillen. Ze denken bijvoorbeeld dat design het duur maakt, of juist development, of het aantal pagina’s. In de praktijk is het bijna altijd de combinatie van keuzes die de investering bepaalt.
 
-Een maatwerk website wordt duurder zodra meerdere lagen tegelijk belangrijk worden:
-
-- de positionering moet scherper worden
-- de structuur moet opnieuw worden opgebouwd
-- het design moet duidelijk onderscheidend voelen
-- de frontend moet vloeiend en verfijnd aanvoelen
-- de content moet beter geordend of herschreven worden
-- de site moet voorbereid zijn op SEO, groei of meertaligheid
+Een maatwerk website wordt duurder zodra meerdere lagen tegelijk belangrijk worden. Denk aan een traject waarin de positionering scherper moet worden, de structuur opnieuw moet worden opgebouwd, het design echt onderscheidend moet voelen en de frontend verfijnd genoeg moet zijn om premium over te komen. Daar komt vaak nog bij dat content opnieuw moet worden geordend of herschreven en dat de site voorbereid moet zijn op SEO, groei of meertaligheid.
 
 Een website die er alleen “netjes” uit moet zien, is iets anders dan een website die een bedrijf online sterker moet positioneren.
 
@@ -215,13 +208,7 @@ Een site die visueel prima oogt maar inhoudelijk vaag is, technisch rommelig aan
 
 ## Wanneer een maatwerk website logisch is
 
-Een maatwerk website is meestal logisch als één of meer van deze punten spelen:
-
-- je bedrijf is professioneler geworden dan je huidige site uitstraalt
-- je aanbod is te breed of te complex voor een standaardstructuur
-- je wilt niet ogen als een templatebedrijf in een concurrerende markt
-- je wilt een verfijnde merkuitstraling combineren met duidelijke commerciële logica
-- je wilt een fundament dat later kan doorgroeien naar extra pagina’s, SEO-structuur of maatwerk functionaliteit
+Een maatwerk website is meestal logisch wanneer je bedrijf professioneler is geworden dan je huidige site uitstraalt, wanneer je aanbod te breed of te complex is voor een standaardstructuur, of wanneer je simpelweg niet wilt ogen als een templatebedrijf in een concurrerende markt. Het geldt ook als je een verfijnde merkuitstraling wilt combineren met duidelijke commerciële logica, of als je een fundament nodig hebt dat later kan doorgroeien naar extra pagina’s, SEO-structuur of maatwerk functionaliteit.
 
 In die situaties gaat een website niet meer alleen over “online aanwezig zijn”, maar over positie innemen.
 
@@ -229,25 +216,13 @@ In die situaties gaat een website niet meer alleen over “online aanwezig zijn�
 
 Niet elk bedrijf heeft direct een uitgebreid traject nodig. Soms is een compacte, scherpe eerste versie slimmer dan een te grote site die alles tegelijk probeert te doen.
 
-Dat geldt vooral als:
-
-- het aanbod nog in beweging is
-- de positionering nog niet helemaal vaststaat
-- je eerst wilt testen welke boodschap het beste werkt
-- je later wilt uitbreiden vanuit een sterke basis
+Dat geldt vooral als het aanbod nog in beweging is, de positionering nog niet helemaal vaststaat, je eerst wilt testen welke boodschap het beste werkt of je later wilt uitbreiden vanuit een sterke basis.
 
 Een goede studio zal je niet automatisch het grootste pakket verkopen, maar eerder helpen bepalen wat nú de juiste scope is.
 
 ## Hoe je een offerte beter beoordeelt
 
-Als je offertes vergelijkt, kijk dan niet alleen naar totaalbedrag of aantal pagina’s. Let vooral op deze vragen:
-
-- is duidelijk wat er wel en niet binnen scope valt?
-- is er aandacht voor structuur en positionering?
-- wordt er nagedacht over contentflow en hiërarchie?
-- voelt het ontwerptraject generiek of bewust?
-- is performance en technische kwaliteit onderdeel van de aanpak?
-- is de site voorbereid op groei, SEO en uitbreiding?
+Als je offertes vergelijkt, kijk dan niet alleen naar totaalbedrag of aantal pagina’s. Belangrijker is of duidelijk is wat er wel en niet binnen scope valt, of er aandacht is voor structuur en positionering en of er bewust wordt nagedacht over contentflow en hiërarchie. Je merkt het ook aan de manier waarop het ontwerptraject wordt benaderd: voelt het generiek, of zit er echt richting in? En minstens zo belangrijk is of performance, technische kwaliteit en toekomstige groei onderdeel zijn van de aanpak.
 
 Een goede offerte voelt meestal niet als een los prijsdocument, maar als een heldere vertaling van het project.
 
@@ -287,7 +262,7 @@ Wil je eerst scherper krijgen of je project richting een [bedrijfswebsite](/nl/d
           "Een praktische checklist om een website launch-ready te maken: SEO, canonicals, sitemap, formulieren, performance, responsiveness en technische controles vóór livegang.",
         category: "seo",
         readingTime: "9 min",
-        publishedAt: "2026-03-22",
+        publishedAt: "2026-02-11",
         body: `Een website kan er visueel af uitzien en technisch toch nog niet klaar zijn om live te gaan.
 
 Dat gebeurt vaker dan veel teams denken. De homepage staat, de content is ingevuld, het formulier werkt op het eerste gezicht en iedereen wil door. Maar juist in de laatste fase ontstaan fouten die later impact hebben op vindbaarheid, vertrouwen of gebruikservaring.
@@ -300,23 +275,13 @@ Daarom is een launch-checklist geen formaliteit. Het is het verschil tussen “o
 
 Vóór je naar technische details kijkt, moet de basis kloppen. Niet elke pagina hoeft alles te doen, maar elke pagina moet wel een duidelijke rol hebben.
 
-Vraag per pagina:
-- wat moet deze pagina uitleggen?
-- op welke intentie sluit hij aan?
-- wat is de logische volgende stap voor de bezoeker?
-- is de CTA duidelijk genoeg?
-
-Een website met technisch nette SEO maar onduidelijke pagina-intentie voelt nog steeds rommelig.
+Vraag je per pagina af wat deze precies moet uitleggen, op welke intentie hij aansluit, wat de logische volgende stap voor de bezoeker is en of de CTA duidelijk genoeg is. Een website met technisch nette SEO maar onduidelijke pagina-intentie voelt nog steeds rommelig.
 
 ## 2. Check titles, meta descriptions en headings
 
 Dit klinkt voor de hand liggend, maar hier blijven vaak placeholderteksten of dubbele patronen hangen.
 
-Controleer:
-- heeft elke indexeerbare pagina een unieke title?
-- heeft elke pagina een eigen meta description?
-- staat er precies één duidelijke H1 per pagina?
-- sluiten title, H1 en paginadoel logisch op elkaar aan?
+Controleer daarom of elke indexeerbare pagina een unieke title heeft, of elke pagina een eigen meta description heeft en of er precies één duidelijke H1 staat. Title, H1 en paginadoel moeten logisch op elkaar aansluiten.
 
 Voor meertalige sites is dit extra belangrijk. Een Nederlandse pagina moet ook echt Nederlands geoptimaliseerd zijn, niet half vertaald of deels hergebruikt.
 
@@ -324,11 +289,7 @@ Voor meertalige sites is dit extra belangrijk. Een Nederlandse pagina moet ook e
 
 Een van de meest voorkomende fouten bij livegang is dat pagina’s technisch bestaan, maar zoekmachines gemengde signalen krijgen.
 
-Check daarom:
-- canonical wijst naar de juiste URL van dezelfde taalvariant
-- pagina’s die wél moeten ranken staan niet per ongeluk op noindex
-- concept-, test- of oude varianten zijn niet indexeerbaar
-- alleen echte, canonieke URL’s worden intern gelinkt
+Check daarom of de canonical naar de juiste URL van dezelfde taalvariant wijst, of pagina’s die wél moeten ranken niet per ongeluk op noindex staan en of concept-, test- of oude varianten niet indexeerbaar zijn. Controleer ook of intern alleen echte canonieke URL’s worden gelinkt.
 
 Zeker bij een redesign of nieuwe structuur wil je deze laag goed hebben voordat je live gaat.
 
@@ -336,11 +297,7 @@ Zeker bij een redesign of nieuwe structuur wil je deze laag goed hebben voordat 
 
 Bij een NL/EN-structuur moet elke pagina niet alleen zichzelf, maar ook zijn counterpart logisch kunnen aanwijzen.
 
-Controleer:
-- heeft de NL-pagina een correcte EN-counterpart?
-- heeft de EN-pagina de reciproque verwijzing terug?
-- worden gebruikers ook via de language switcher naar de juiste counterpart gestuurd?
-- wijzen canonicals niet per ongeluk naar de andere taal?
+Controleer of de NL-pagina een correcte EN-counterpart heeft, of de EN-pagina netjes terugverwijst en of gebruikers via de language switcher ook echt op de juiste counterpart uitkomen. Canonicals mogen daarbij nooit per ongeluk naar de andere taal wijzen.
 
 Meertaligheid faalt vaak niet door grote fouten, maar door kleine inconsistenties.
 
@@ -348,12 +305,7 @@ Meertaligheid faalt vaak niet door grote fouten, maar door kleine inconsistentie
 
 Voor livegang moet je niet alleen kijken of \`sitemap.xml\` bestaat, maar ook of de inhoud klopt.
 
-Check:
-- bevat de sitemap alleen canonieke, indexeerbare URL’s?
-- staan draft- of placeholderpagina’s er niet in?
-- ontbreekt geen belangrijke pagina?
-- verwijst \`robots.txt\` netjes naar de sitemap?
-- wordt niets geblokkeerd wat gewoon gecrawld moet kunnen worden?
+Check of de sitemap alleen canonieke, indexeerbare URL’s bevat, of draft- of placeholderpagina’s ontbreken en of er geen belangrijke pagina uitvalt. Kijk ook of \`robots.txt\` netjes naar de sitemap verwijst en of er niets wordt geblokkeerd dat gewoon gecrawld moet kunnen worden.
 
 Een sitemap lost geen kwaliteitstekort op, maar helpt wel bij discovery en structuur.
 
@@ -361,12 +313,7 @@ Een sitemap lost geen kwaliteitstekort op, maar helpt wel bij discovery en struc
 
 Een website kan inhoudelijk sterk zijn, maar als de contactflow hapert verlies je precies op het moment dat iemand actie wil nemen.
 
-Test:
-- werkt het formulier op desktop en mobiel?
-- komen aanvragen echt aan?
-- krijg je foutmeldingen waar nodig?
-- is de successtatus duidelijk?
-- zijn e-mailadressen en telefoonnummer overal consistent?
+Test daarom niet alleen of het formulier zichtbaar werkt, maar ook of aanvragen echt aankomen, of foutmeldingen verschijnen waar nodig en of de successtatus duidelijk is. Controleer meteen of e-mailadressen en telefoonnummers overal consistent zijn.
 
 Controleer ook of je bedrijfsgegevens overal hetzelfde zijn. Dat geldt voor zichtbare contactblokken, footer, mailsjablonen en structured data.
 
@@ -374,12 +321,7 @@ Controleer ook of je bedrijfsgegevens overal hetzelfde zijn. Dat geldt voor zich
 
 Veel teams testen mobiel alleen visueel: staat alles onder elkaar en breekt niets?
 
-Maar echte responsiveness gaat verder:
-- blijft hiërarchie duidelijk op kleinere schermen?
-- blijven CTA’s goed zichtbaar?
-- voelen spacing en leesritme nog steeds verzorgd?
-- is navigatie logisch?
-- blijven formulieren prettig invulbaar?
+Maar echte responsiveness gaat verder. Op kleinere schermen moet de hiërarchie duidelijk blijven, CTA’s moeten zichtbaar blijven, spacing en leesritme moeten verzorgd aanvoelen en navigatie en formulieren moeten prettig blijven werken.
 
 Een site kan technisch responsive zijn en toch onrustig of stroef voelen.
 
@@ -387,12 +329,7 @@ Een site kan technisch responsive zijn en toch onrustig of stroef voelen.
 
 Performance gaat niet alleen over een score, maar over gevoel in gebruik.
 
-Check daarom op echte pagina’s:
-- voelt de eerste weergave snel genoeg?
-- reageren knoppen en formulieren direct?
-- blijven animaties beheerst en ondersteunend?
-- blokkeert zware JavaScript interactie?
-- laden grote visuals verstandig in?
+Check daarom op echte pagina’s of de eerste weergave snel genoeg voelt, of knoppen en formulieren direct reageren, of animaties beheerst blijven en of zware JavaScript de interactie niet blokkeert. Grote visuals moeten verstandig laden, zeker op mobiel.
 
 Juist premium websites met motion en visuele lagen hebben hier extra discipline nodig. De ervaring mag verfijnd voelen, maar nooit log of vertraagd.
 
@@ -400,11 +337,7 @@ Juist premium websites met motion en visuele lagen hebben hier extra discipline 
 
 Structured data is waardevol, maar alleen als de inhoud ook zichtbaar en waarheidsgetrouw is.
 
-Controleer:
-- Organization/WebSite/WebPage/Service schema klopt met zichtbare informatie
-- geen fake reviews of ratings
-- geen LocalBusiness zonder zichtbaar en correct adres
-- service markup sluit aan op echte servicepagina’s
+Controleer daarom of Organization-, WebSite-, WebPage- en Service-schema klopt met de zichtbare informatie. Voeg geen fake reviews of ratings toe en gebruik geen LocalBusiness-markup zonder zichtbaar en correct adres. Service-markup moet bovendien aansluiten op echte servicepagina’s.
 
 Meer markup is niet automatisch beter. Correcte markup is beter.
 
@@ -412,43 +345,19 @@ Meer markup is niet automatisch beter. Correcte markup is beter.
 
 Voor sommige teams is livegang het eindpunt. In de praktijk is het juist het moment waarop meten begint.
 
-Zorg dat je minimaal klaar hebt staan:
-- analytics op de juiste omgeving
-- Search Console setup
-- sitemap submit
-- event tracking voor contactacties als dat relevant is
-- een plan om fouten en prestaties na livegang te monitoren
-
-Zonder meting blijft “het werkt volgens mij” te lang een gok.
+Zorg daarom dat analytics op de juiste omgeving staat, Search Console klaar is en de sitemap kan worden ingediend. Als contactacties belangrijk zijn, hoort event tracking daarbij. En zonder een plan om fouten en prestaties na livegang te monitoren blijft “het werkt volgens mij” te lang een gok.
 
 ## 11. Redirects en oude URL’s bij redesigns
 
 Bij een redesign of herstructurering is dit vaak een cruciale stap.
 
-Controleer:
-- oude belangrijke URL’s hebben een logische redirect
-- interne links wijzen al naar de nieuwe canonieke structuur
-- oude varianten laten geen 404-spoor achter waar dat vermijdbaar is
-- backlinks of oude indexed pagina’s lopen niet dood
+Controleer of oude belangrijke URL’s een logische redirect hebben, of interne links al naar de nieuwe canonieke structuur wijzen en of oude varianten geen onnodig 404-spoor achterlaten. Hetzelfde geldt voor backlinks of oude geïndexeerde pagina’s: die mogen niet zomaar doodlopen.
 
 Dit is vooral belangrijk wanneer een site verschuift van een compacte structuur naar echte service- en contentpagina’s.
 
 ## 12. De laatste praktische pre-live check
 
-Vlak voor livegang is deze korte lijst vaak het nuttigst:
-
-- titles en descriptions gecontroleerd
-- canonicals correct
-- hreflang correct als de site meertalig is
-- sitemap klopt
-- robots.txt klopt
-- formulieren getest
-- mobiel getest
-- performance globaal gecontroleerd
-- contactgegevens consistent
-- analytics/Search Console klaar
-- redirects gecontroleerd
-- geen conceptcontent of test-URL’s zichtbaar
+Vlak voor livegang is het vaak het nuttigst om nog één compacte ronde te doen: titles en descriptions controleren, canonicals en hreflang nalopen, sitemap en \`robots.txt\` verifiëren, formulieren en mobiel gedrag testen, performance globaal checken, contactgegevens vergelijken, analytics en Search Console klaarzetten en tot slot bevestigen dat er geen conceptcontent of test-URL’s zichtbaar zijn.
 
 ## Praktische conclusie
 
@@ -483,7 +392,7 @@ Wil je een site live zetten of een bestaande site kritisch nalopen op SEO, struc
           "Een helder stappenplan voor bedrijven die een webapplicatie willen laten maken: van idee, scope en MVP tot design, development, testen en livegang.",
         category: "webapplicaties",
         readingTime: "9 min",
-        publishedAt: "2026-03-22",
+        publishedAt: "2026-02-25",
         body: `Veel bedrijven weten vrij goed dát ze een webapplicatie nodig hebben, maar nog niet precies wat de eerste versie moet worden.
 
 Dat is logisch. Een idee voor een klantportaal, intern dashboard, boekingsflow of maatwerk tool begint meestal niet als een volledig productdocument. Het begint met frustratie in een proces, een terugkerende handmatige taak of een kans die met standaardsoftware niet goed opgelost wordt.
@@ -500,24 +409,13 @@ De meeste webapplicaties ontsporen vroeg omdat er te snel over features wordt ge
 
 Dat zijn geen slechte ideeën, maar het zijn nog geen goede startpunten. Een betere eerste vraag is: welk probleem moet deze applicatie concreet oplossen?
 
-Bijvoorbeeld:
-- kost een handmatig proces te veel tijd?
-- hebben klanten te weinig inzicht in voortgang of data?
-- werken teams in te veel losse tools?
-- ontbreekt er een centrale interface voor een specifieke workflow?
-
-Als dat helder wordt, kun je veel beter bepalen wat noodzakelijk is voor versie één.
+Misschien kost een handmatig proces te veel tijd, hebben klanten te weinig inzicht in voortgang of data, werken teams in te veel losse tools of ontbreekt er een centrale interface voor een specifieke workflow. Als dat helder wordt, kun je veel beter bepalen wat noodzakelijk is voor versie één.
 
 ## Stap 2: definieer de kernworkflow
 
 Een goede webapplicatie voelt meestal eenvoudig aan de voorkant, juist omdat de kernworkflow scherp is gekozen.
 
-Vraag daarom:
-- wie gebruikt de applicatie?
-- wat moeten zij in de praktijk doen?
-- wat is de belangrijkste handeling of route?
-- welke informatie is essentieel?
-- wat hoeft nog níet in de eerste versie?
+Vraag daarom wie de applicatie gebruikt, wat die gebruikers in de praktijk moeten doen, wat de belangrijkste handeling of route is, welke informatie essentieel is en wat nog níet in de eerste versie hoeft.
 
 Hier maak je vaak het verschil tussen een bruikbaar product en een overvolle eerste build.
 
@@ -527,11 +425,7 @@ Een applicatie hoeft niet meteen alles te kunnen. Hij moet eerst het belangrijks
 
 MVP wordt vaak verkeerd begrepen als “een kale versie”. In werkelijkheid moet een MVP vooral de kleinste versie zijn die logisch, bruikbaar en testbaar is.
 
-Een goede MVP:
-- lost één duidelijk probleem op
-- heeft een beperkte maar complete kernflow
-- is helder genoeg om echte feedback op te krijgen
-- laat ruimte voor uitbreiding zonder opnieuw te moeten beginnen
+Een goede MVP lost één duidelijk probleem op, heeft een beperkte maar complete kernflow, is helder genoeg om echte feedback op te krijgen en laat ruimte voor uitbreiding zonder opnieuw te moeten beginnen.
 
 Een slechte MVP is meestal een losse verzameling halve ideeën die nog niet als product aanvoelt.
 
@@ -539,12 +433,7 @@ Een slechte MVP is meestal een losse verzameling halve ideeën die nog niet als 
 
 Zodra de kern helder is, kun je nadenken over interface en schermstructuur.
 
-Dat betekent niet meteen visueel detailleren. Eerst wil je begrijpen:
-- welke schermen zijn nodig?
-- wat is de volgorde van gebruik?
-- welke rollen bestaan er?
-- welke informatie moet altijd zichtbaar zijn?
-- waar ontstaat frictie of verwarring?
+Dat betekent niet meteen visueel detailleren. Eerst wil je begrijpen welke schermen nodig zijn, wat de volgorde van gebruik is, welke rollen er bestaan, welke informatie altijd zichtbaar moet zijn en waar frictie of verwarring ontstaat.
 
 Bij maatwerk tools en portalen is dit een cruciale stap. Een mooie interface helpt weinig als de onderliggende logica niet klopt.
 
@@ -552,13 +441,7 @@ Bij maatwerk tools en portalen is dit een cruciale stap. Een mooie interface hel
 
 Bij een webapplicatie draait design minder om “marketinggevoel” en meer om helderheid, ritme en vertrouwen in gebruik.
 
-Goede applicatie-UX gaat over:
-- overzicht
-- voorspelbaarheid
-- duidelijke statusinformatie
-- logische interacties
-- rustige hiërarchie
-- snelheid in handelingen
+Goede applicatie-UX draait om overzicht, voorspelbaarheid, duidelijke statusinformatie, logische interacties, rustige hiërarchie en snelheid in handelingen.
 
 Dat betekent niet dat uitstraling onbelangrijk is. Zeker bij klantgerichte portalen of commerciële platforms telt uitstraling mee. Maar bruikbaarheid moet de richting blijven bepalen.
 
@@ -566,12 +449,7 @@ Dat betekent niet dat uitstraling onbelangrijk is. Zeker bij klantgerichte porta
 
 Niet elk idee vraagt direct om een zwaar platform. Soms is een compacte eerste build veel slimmer.
 
-De juiste technische aanpak hangt onder andere af van:
-- hoeveel logica erin zit
-- hoeveel verschillende rollen er zijn
-- of data realtime of gevoelig is
-- welke integraties nodig zijn
-- hoe snel het product later moet kunnen groeien
+De juiste technische aanpak hangt onder andere af van hoeveel logica erin zit, hoeveel verschillende rollen er zijn, of data realtime of gevoelig is, welke integraties nodig zijn en hoe snel het product later moet kunnen groeien.
 
 Hier is het belangrijk om niet te bouwen alsof versie één direct de eindversie is, maar ook niet zó kort te denken dat je later vastloopt.
 
@@ -579,13 +457,7 @@ Hier is het belangrijk om niet te bouwen alsof versie één direct de eindversie
 
 In sterke trajecten is development geen losse uitvoeringsfase, maar een gecontroleerde vertaling van scope, UX en technische logica.
 
-Dat betekent:
-- heldere prioriteiten
-- gefaseerde bouw
-- tussentijdse checks
-- aandacht voor responsiveness
-- aandacht voor performance in echte interactie
-- nette afwerking van states, foutmeldingen en formulieren
+Dat betekent heldere prioriteiten, gefaseerde bouw, tussentijdse checks en aandacht voor responsiveness en performance in echte interactie. Daar hoort ook nette afwerking bij van states, foutmeldingen en formulieren.
 
 Juist bij webapplicaties merk je kwaliteit vaak niet aan grote visuele elementen, maar aan de kleine momenten waarop iets soepel, logisch en betrouwbaar aanvoelt.
 
@@ -593,23 +465,13 @@ Juist bij webapplicaties merk je kwaliteit vaak niet aan grote visuele elementen
 
 Bij een bedrijfswebsite kun je soms met een relatief eenvoudige pre-live controle wegkomen. Bij een webapplicatie is testen fundamenteel.
 
-Denk aan:
-- werkt de belangrijkste flow zonder blokkades?
-- zijn rollen en rechten logisch?
-- zijn foutmeldingen begrijpelijk?
-- voelt mobiel gebruik acceptabel waar dat relevant is?
-- reageren interacties direct genoeg?
-- blijven schermen overzichtelijk onder echte data?
+Denk aan de vraag of de belangrijkste flow zonder blokkades werkt, of rollen en rechten logisch zijn, of foutmeldingen begrijpelijk blijven en of mobiel gebruik acceptabel voelt waar dat relevant is. Ook interacties moeten direct genoeg reageren en schermen moeten overzichtelijk blijven zodra er echte data in staan.
 
 Zeker als een applicatie processen ondersteunt, wil je verrassingen na livegang beperken.
 
 ## Stap 9: live is het begin van de volgende fase
 
-Een webapplicatie is zelden “af” na launch. De eerste livefase laat juist zien:
-- waar gebruikers vastlopen
-- welke features minder belangrijk zijn dan gedacht
-- welke onderdelen extra diepgang nodig hebben
-- waar performance of UX nog verfijnd kan worden
+Een webapplicatie is zelden “af” na launch. De eerste livefase laat juist zien waar gebruikers vastlopen, welke features minder belangrijk zijn dan gedacht, welke onderdelen extra diepgang nodig hebben en waar performance of UX nog verfijnd kan worden.
 
 Daarom werkt een gefaseerde benadering vaak beter dan een alles-of-niets traject.
 
@@ -617,21 +479,13 @@ Daarom werkt een gefaseerde benadering vaak beter dan een alles-of-niets traject
 
 Een van de duurste fouten is te vroeg te veel willen bouwen.
 
-Dat gebeurt vaak als bedrijven:
-- alle toekomstige ideeën nu al willen meenemen
-- elke interne wens als MVP-feature zien
-- design en logica tegelijk te breed maken
-- te weinig prioriteren
+Dat gebeurt vaak als bedrijven alle toekomstige ideeën nu al willen meenemen, elke interne wens als MVP-feature gaan zien, design en logica tegelijk te breed maken en te weinig prioriteren.
 
 Een sterk webapplicatietraject voelt niet als “zoveel mogelijk bouwen”, maar als “de juiste eerste versie scherp krijgen”.
 
 ## Wanneer een maatwerk webapplicatie logisch is
 
-Een maatwerk applicatie is meestal logisch als:
-- standaardsoftware je proces zichtbaar afremt
-- je workflow te specifiek is voor generieke tools
-- klantinzage, dashboards of portals een echte meerwaarde geven
-- je iets wilt bouwen dat onderdeel is van je commerciële of operationele model
+Een maatwerk applicatie is meestal logisch als standaardsoftware je proces zichtbaar afremt, je workflow te specifiek is voor generieke tools, klantinzage, dashboards of portals een echte meerwaarde geven of je iets wilt bouwen dat onderdeel is van je commerciële of operationele model.
 
 Dan verschuift het gesprek van “welke tool kunnen we gebruiken?” naar “welke digitale structuur hebben we eigenlijk nodig?”
 
@@ -670,15 +524,12 @@ Wil je een idee vertalen naar een eerste scope voor een [webapplicatie](/nl/dien
           "Wat is INP en waarom zegt het iets over hoe responsief een website echt voelt? Een praktische uitleg over interactie, frontend-frictie en wat sites stroef maakt.",
         category: "performance",
         readingTime: "8 min",
-        publishedAt: "2026-03-22",
+        publishedAt: "2026-03-10",
         body: `Veel websites zijn technisch responsive in de klassieke zin van het woord: ze schalen naar mobiel, breken niet op kleinere schermen en tonen overal dezelfde content.
 
 Toch voelt zo’n site in gebruik soms nog steeds traag of stroef.
 
-Je tikt op een knop en er gebeurt net te laat iets.
-Je opent een menu en het reageert niet direct.
-Een formulier voelt zwaarder dan het eruitziet.
-Een animatie is mooi, maar vertraagt precies het moment waarop iemand iets wil doen.
+Je tikt op een knop en er gebeurt net te laat iets. Je opent een menu en het reageert niet direct. Een formulier voelt zwaarder dan het eruitziet. Een animatie is mooi, maar vertraagt precies het moment waarop iemand iets wil doen.
 
 Daar komt INP in beeld.
 
@@ -700,12 +551,7 @@ Juist daarom is INP geen puur technisch getal. Het is een signaal voor hoe direc
 
 ## Een site voelt traag door meer dan alleen “snelheid”
 
-Veel teams praten over performance alsof het alleen om laadtijd gaat. In werkelijkheid zijn er meerdere soorten traagheid:
-
-- traagheid vóór de pagina zichtbaar is
-- traagheid tijdens scroll en animatie
-- traagheid op het moment van interactie
-- traagheid doordat de interface te veel tegelijk probeert te doen
+Veel teams praten over performance alsof het alleen om laadtijd gaat. In werkelijkheid zijn er meerdere soorten traagheid: traagheid vóór de pagina zichtbaar is, traagheid tijdens scroll en animatie, traagheid op het moment van interactie en traagheid doordat de interface te veel tegelijk probeert te doen.
 
 INP raakt vooral dat derde punt: hoe snel reageert de site als iemand echt iets doet?
 
@@ -715,12 +561,7 @@ INP raakt vooral dat derde punt: hoe snel reageert de site als iemand echt iets 
 
 Een pagina kan er visueel rustig uitzien en onder de motorkap toch veel te zwaar zijn. Zodra scripts veel werk tegelijk moeten doen, merk je dat vaak precies op interactiemomenten.
 
-Denk aan:
-- uitgebreide UI-logica
-- zware componenten
-- onnodige listeners
-- scripts die tegelijk op de main thread draaien
-- interacties die te veel afhankelijkheden triggeren
+Denk aan uitgebreide UI-logica, zware componenten, onnodige listeners, scripts die tegelijk op de main thread draaien of interacties die te veel afhankelijkheden triggeren.
 
 De gebruiker ziet de code niet, maar voelt wel de vertraging.
 
@@ -741,9 +582,7 @@ Niet elk element hoeft “slim” te zijn. Soms is eenvoud de snelste route naar
 
 ### 4. Formulieren en menu’s zonder direct gevoel
 
-Een site voelt vaak het snelst of traagst aan op twee plekken:
-- navigatie
-- formulieren
+Een site voelt vaak het snelst of traagst aan op twee plekken: navigatie en formulieren.
 
 Dat zijn de momenten waarop mensen bewust actie willen nemen. Elke hapering wordt daar sterker gevoeld dan in een statische contentsectie.
 
@@ -751,13 +590,7 @@ Dat zijn de momenten waarop mensen bewust actie willen nemen. Elke hapering word
 
 Veel mensen gebruiken “responsive” nog steeds vooral voor layout. Maar echte responsiviteit gaat ook over gedrag.
 
-Een echt responsieve site:
-- reageert direct op input
-- voelt voorspelbaar
-- dwingt geen onnodige wachttijd af
-- gebruikt motion beheerst
-- houdt interacties helder
-- blijft ook op mobiel licht genoeg in gebruik
+Een echt responsieve site reageert direct op input, voelt voorspelbaar, dwingt geen onnodige wachttijd af, gebruikt motion beheerst, houdt interacties helder en blijft ook op mobiel licht genoeg in gebruik.
 
 Dus ja: schermgrootte hoort erbij. Maar gedrag hoort er net zo goed bij.
 
@@ -767,11 +600,7 @@ Dus ja: schermgrootte hoort erbij. Maar gedrag hoort er net zo goed bij.
 
 Niet elke klik hoeft een mini-app te activeren. Kijk kritisch naar wat een interactie echt moet doen.
 
-Vraag:
-- kan dit simpeler?
-- moet dit direct op de hoofdthread gebeuren?
-- laden we hier te veel tegelijk?
-- zit er visuele vertraging tussen input en reactie?
+Vraag jezelf af of het simpeler kan, of iets direct op de hoofdthread moet gebeuren, of er te veel tegelijk wordt geladen en of er visuele vertraging zit tussen input en reactie.
 
 ### Gebruik motion als ondersteuning, niet als obstakel
 
@@ -783,25 +612,13 @@ Maar de interactie zelf moet centraal blijven. Zodra de site “wacht” op zijn
 
 ### Verminder onrust in componentarchitectuur
 
-Performanceproblemen ontstaan vaak niet uit één groot lek, maar uit veel kleine keuzes:
-- te veel wrappers
-- te veel her-renders
-- te veel gekoppelde states
-- te veel scripts die tegelijk belangrijk worden gevonden
+Performanceproblemen ontstaan vaak niet uit één groot lek, maar uit veel kleine keuzes: te veel wrappers, te veel her-renders, te veel gekoppelde states en te veel scripts die tegelijk belangrijk worden gevonden.
 
 Een scherpere componentstructuur maakt een site vaak niet alleen sneller, maar ook onderhoudbaarder.
 
 ### Test op echte gebruiksmomenten
 
-Niet alleen:
-- laadt de pagina?
-
-Maar vooral:
-- hoe voelt het menu?
-- hoe reageert een formulier?
-- hoe snel opent een overlay?
-- hoe soepel filtert of wisselt content?
-- voelt mobiel gebruik nog steeds direct genoeg?
+Kijk niet alleen of de pagina laadt, maar vooral hoe het menu voelt, hoe een formulier reageert, hoe snel een overlay opent, hoe soepel content filtert of wisselt en of mobiel gebruik nog steeds direct genoeg aanvoelt.
 
 Daar merk je of de site technisch netjes is of ook echt prettig in gebruik.
 
@@ -809,19 +626,13 @@ Daar merk je of de site technisch netjes is of ook echt prettig in gebruik.
 
 INP klinkt technisch, maar de oorzaak zit vaak op het snijvlak van design en development.
 
-Een drukke interface, onduidelijke interacties of te veel bewegende onderdelen maken development zwaarder.
-En een te technische build zonder gevoel voor UX maakt een interface sneller onrustig.
+Een drukke interface, onduidelijke interacties of te veel bewegende onderdelen maken development zwaarder. En een te technische build zonder gevoel voor UX maakt een interface sneller onrustig.
 
 Daarom levert performance meestal de beste resultaten op wanneer ontwerpkeuzes en technische keuzes samen bekeken worden.
 
 ## Wanneer je dit serieus moet nemen
 
-INP verdient extra aandacht als:
-- je site veel interactie heeft
-- je merk premium of high-end wil aanvoelen
-- je motion gebruikt als onderdeel van de beleving
-- je formulieren of menusystemen een belangrijke rol spelen
-- je redesign wel mooier is geworden, maar nog niet directer in gebruik
+INP verdient extra aandacht als je site veel interactie heeft, je merk premium of high-end wil aanvoelen, motion onderdeel is van de beleving, formulieren of menusystemen een belangrijke rol spelen of je redesign wel mooier is geworden maar nog niet directer in gebruik.
 
 In die situaties is “het laadt snel genoeg” vaak niet de juiste eindconclusie.
 

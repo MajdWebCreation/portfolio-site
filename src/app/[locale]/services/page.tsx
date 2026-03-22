@@ -71,7 +71,7 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
           url: getCanonicalUrl(path),
         })}
       />
-      <SiteShell locale={locale} content={content}>
+      <SiteShell locale={locale} content={content} currentPath={path}>
         <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
           <RevealSection>
             <SectionHeading
@@ -101,6 +101,10 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
           <div className="mt-12 grid gap-4 md:grid-cols-3">
             <Link
               href={getLocalizedPath(locale, "projects")}
+              data-track-event="primary_cta_click"
+              data-track-category="services-overview"
+              data-track-label={locale === "nl" ? "Projecten" : "Projects"}
+              data-track-location="services-overview-links"
               className="rounded-[1.4rem] border border-white/10 bg-black/35 p-5 text-sm leading-7 text-white/68 transition hover:border-cyan-300/25 hover:bg-black/45"
             >
               {locale === "nl"
@@ -109,6 +113,10 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
             </Link>
             <Link
               href={getLocalizedPath(locale, "blog")}
+              data-track-event="primary_cta_click"
+              data-track-category="services-overview"
+              data-track-label={locale === "nl" ? "Inzichten" : "Insights"}
+              data-track-location="services-overview-links"
               className="rounded-[1.4rem] border border-white/10 bg-black/35 p-5 text-sm leading-7 text-white/68 transition hover:border-cyan-300/25 hover:bg-black/45"
             >
               {locale === "nl"
@@ -117,6 +125,10 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
             </Link>
             <Link
               href={getLocalizedPath(locale, "contact")}
+              data-track-event="contact_cta_click"
+              data-track-category="services-overview"
+              data-track-label={locale === "nl" ? "Contact" : "Contact"}
+              data-track-location="services-overview-links"
               className="rounded-[1.4rem] border border-white/10 bg-black/35 p-5 text-sm leading-7 text-white/68 transition hover:border-cyan-300/25 hover:bg-black/45"
             >
               {locale === "nl"

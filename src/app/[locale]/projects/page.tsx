@@ -66,7 +66,7 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
           url: getCanonicalUrl(path),
         })}
       />
-      <SiteShell locale={locale} content={content}>
+      <SiteShell locale={locale} content={content} currentPath={path}>
         <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
           <RevealSection>
             <SectionHeading
@@ -123,6 +123,10 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
                 </div>
                 <Link
                   href={content.contact.pagePath}
+                  data-track-event="contact_cta_click"
+                  data-track-category="projects-overview"
+                  data-track-label={locale === "nl" ? "Bespreek een project" : "Discuss a project"}
+                  data-track-location="projects-panel"
                   className="mt-8 inline-flex rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
                 >
                   {locale === "nl" ? "Bespreek een project" : "Discuss a project"}
@@ -147,10 +151,15 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
             primaryHref={getLocalizedPath(locale, "services")}
             secondaryLabel={locale === "nl" ? "Naar inzichten" : "Go to insights"}
             secondaryHref={getLocalizedPath(locale, "blog")}
+            trackingContext="projects"
           />
           <div className="mt-4">
             <Link
               href={getLocalizedPath(locale, "contact")}
+              data-track-event="contact_cta_click"
+              data-track-category="projects-overview"
+              data-track-label={locale === "nl" ? "Neem contact op" : "Contact us"}
+              data-track-location="projects-cta"
               className="inline-flex rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
             >
               {locale === "nl" ? "Neem contact op" : "Contact us"}

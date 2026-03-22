@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getCaseStudyBySlug } from "@/lib/content/cases";
+import {
+  getCaseStudyBySlug,
+  getPublishedCaseStudyPaths,
+} from "@/lib/content/cases";
 import { buildMetadata } from "@/lib/seo";
 import { isValidLocale } from "@/lib/content/site-content";
 
 export const dynamicParams = false;
 
 export async function generateStaticParams() {
-  return [];
+  return getPublishedCaseStudyPaths("en").map((slug) => ({
+    locale: "en",
+    slug,
+  }));
 }
 
 export async function generateMetadata({
@@ -35,8 +41,8 @@ export async function generateMetadata({
   return buildMetadata({
     locale,
     pathname: `/en/projects/${slug}`,
-    title: caseStudy.title.en,
-    description: caseStudy.description.en,
+    title: caseStudy.title,
+    description: caseStudy.description,
   });
 }
 

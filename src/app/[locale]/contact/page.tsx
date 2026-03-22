@@ -71,7 +71,7 @@ export default async function ContactPage({
           organizationSchema(),
         ]}
       />
-      <SiteShell locale={locale} content={content}>
+      <SiteShell locale={locale} content={content} currentPath={path}>
         <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
           <RevealSection>
             <SectionHeading

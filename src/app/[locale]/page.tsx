@@ -66,7 +66,11 @@ export default async function HomePage({
         ]}
       />
 
-      <SiteShell locale={locale} content={content}>
+      <SiteShell
+        locale={locale}
+        content={content}
+        currentPath={getLocalizedPath(locale, "home")}
+      >
         <section className="mx-auto flex min-h-[calc(100vh-88px)] w-full max-w-7xl items-center px-4 pb-16 pt-10 sm:px-6 sm:pb-20 lg:px-10">
           <div className="grid w-full gap-12 lg:grid-cols-[1.12fr_0.88fr] lg:items-center">
             <div>
@@ -82,12 +86,20 @@ export default async function HomePage({
               <div className="mt-8 flex flex-wrap gap-3 sm:gap-4">
                 <Link
                   href={content.hero.servicePath}
+                  data-track-event="primary_cta_click"
+                  data-track-category="homepage"
+                  data-track-label={content.hero.primaryCta}
+                  data-track-location="hero-primary"
                   className="rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:opacity-90"
                 >
                   {content.hero.primaryCta}
                 </Link>
                 <Link
                   href={content.hero.contactPath}
+                  data-track-event="contact_cta_click"
+                  data-track-category="homepage"
+                  data-track-label={content.hero.secondaryCta}
+                  data-track-location="hero-secondary"
                   className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
                 >
                   {content.hero.secondaryCta}
@@ -114,6 +126,10 @@ export default async function HomePage({
                     <Link
                       key={service.path}
                       href={service.path}
+                      data-track-event="service_cta_click"
+                      data-track-category="homepage"
+                      data-track-label={service.navLabel}
+                      data-track-location="hero-service-grid"
                       className="rounded-[1.4rem] border border-white/10 bg-black/35 p-4 transition hover:border-cyan-300/25 hover:bg-black/45"
                     >
                       <p className="text-[10px] uppercase tracking-[0.22em] text-cyan-300/70">
@@ -160,6 +176,10 @@ export default async function HomePage({
           <div className="mt-10">
             <Link
               href={getLocalizedPath(locale, "services")}
+              data-track-event="primary_cta_click"
+              data-track-category="homepage"
+              data-track-label={content.homeServices.allServicesLabel}
+              data-track-location="services-section"
               className="inline-flex rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
             >
               {content.homeServices.allServicesLabel}
@@ -232,6 +252,10 @@ export default async function HomePage({
                       </p>
                       <Link
                         href={projects.overviewPath}
+                        data-track-event="primary_cta_click"
+                        data-track-category="homepage"
+                        data-track-label={projects.overviewLabel}
+                        data-track-location="projects-panel"
                         className="mt-5 inline-flex rounded-full border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
                       >
                         {projects.overviewLabel}

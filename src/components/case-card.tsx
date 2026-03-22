@@ -9,16 +9,22 @@ type CaseCardProps = {
 };
 
 export default function CaseCard({ caseStudy, locale, href }: CaseCardProps) {
+  const localizedCaseStudy = caseStudy.locale[locale];
+
+  if (!localizedCaseStudy) {
+    return null;
+  }
+
   return (
     <article className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-6">
       <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/80">
         CASE
       </p>
       <h2 className="mt-4 text-2xl font-semibold text-white">
-        {caseStudy.title[locale]}
+        {localizedCaseStudy.title}
       </h2>
       <p className="mt-4 text-sm leading-7 text-white/65">
-        {caseStudy.description[locale]}
+        {localizedCaseStudy.summary}
       </p>
       <Link
         href={href}

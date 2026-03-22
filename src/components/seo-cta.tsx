@@ -7,6 +7,7 @@ type SeoCtaProps = {
   primaryHref: string;
   secondaryLabel: string;
   secondaryHref: string;
+  trackingContext?: "service" | "article" | "projects" | "contact";
 };
 
 export default function SeoCta({
@@ -16,6 +17,7 @@ export default function SeoCta({
   primaryHref,
   secondaryLabel,
   secondaryHref,
+  trackingContext = "service",
 }: SeoCtaProps) {
   return (
     <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 backdrop-blur md:p-8">
@@ -30,12 +32,24 @@ export default function SeoCta({
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href={primaryHref}
+            data-track-event={
+              trackingContext === "article" ? "article_cta_click" : "primary_cta_click"
+            }
+            data-track-category={trackingContext}
+            data-track-label={primaryLabel}
+            data-track-location="seo-cta-primary"
             className="rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:opacity-90"
           >
             {primaryLabel}
           </Link>
           <Link
             href={secondaryHref}
+            data-track-event={
+              trackingContext === "article" ? "article_cta_click" : "primary_cta_click"
+            }
+            data-track-category={trackingContext}
+            data-track-label={secondaryLabel}
+            data-track-location="seo-cta-secondary"
             className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
           >
             {secondaryLabel}

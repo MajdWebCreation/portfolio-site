@@ -66,7 +66,7 @@ export default async function BlogPage({
           url: getCanonicalUrl(path),
         })}
       />
-      <SiteShell locale={locale} content={content}>
+      <SiteShell locale={locale} content={content} currentPath={path}>
         <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
           <RevealSection>
             <SectionHeading
@@ -95,6 +95,10 @@ export default async function BlogPage({
                       </p>
                       <Link
                         href={article.path}
+                        data-track-event="article_cta_click"
+                        data-track-category="blog-overview"
+                        data-track-label={article.title}
+                        data-track-location="article-card"
                         className="mt-6 inline-flex rounded-full border border-white/15 bg-black/35 px-5 py-2.5 text-sm font-medium text-white transition hover:border-cyan-400/40 hover:bg-black/45"
                       >
                         {locale === "nl" ? "Lees artikel" : "Read article"}
@@ -131,6 +135,10 @@ export default async function BlogPage({
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               <Link
                 href={locale === "nl" ? "/nl/diensten" : "/en/services"}
+                data-track-event="primary_cta_click"
+                data-track-category="blog-overview"
+                data-track-label={locale === "nl" ? "Diensten" : "Services"}
+                data-track-location="blog-support-links"
                 className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-white/62 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
               >
                 {locale === "nl"
@@ -139,6 +147,10 @@ export default async function BlogPage({
               </Link>
               <Link
                 href={locale === "nl" ? "/nl/projecten" : "/en/projects"}
+                data-track-event="primary_cta_click"
+                data-track-category="blog-overview"
+                data-track-label={locale === "nl" ? "Projecten" : "Projects"}
+                data-track-location="blog-support-links"
                 className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-white/62 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
               >
                 {locale === "nl"
@@ -147,6 +159,10 @@ export default async function BlogPage({
               </Link>
               <Link
                 href={locale === "nl" ? "/nl/contact" : "/en/contact"}
+                data-track-event="contact_cta_click"
+                data-track-category="blog-overview"
+                data-track-label={locale === "nl" ? "Contact" : "Contact"}
+                data-track-location="blog-support-links"
                 className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-white/62 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
               >
                 {locale === "nl"
@@ -173,6 +189,7 @@ export default async function BlogPage({
             primaryHref={locale === "nl" ? "/nl/diensten" : "/en/services"}
             secondaryLabel={locale === "nl" ? "Neem contact op" : "Contact us"}
             secondaryHref={locale === "nl" ? "/nl/contact" : "/en/contact"}
+            trackingContext="article"
           />
         </section>
 

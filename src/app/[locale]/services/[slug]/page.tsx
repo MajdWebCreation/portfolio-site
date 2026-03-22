@@ -104,7 +104,7 @@ export function ServiceDetailContent({
           }),
         ]}
       />
-      <SiteShell locale={locale} content={content}>
+      <SiteShell locale={locale} content={content} currentPath={service.path}>
         <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
           <div className="grid gap-12 lg:grid-cols-[1fr_0.9fr]">
             <RevealSection>
@@ -120,12 +120,20 @@ export function ServiceDetailContent({
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
                   href={service.contactPath}
+                  data-track-event="contact_cta_click"
+                  data-track-category="service-detail"
+                  data-track-label={locale === "nl" ? "Bespreek je project" : "Discuss your project"}
+                  data-track-location="service-hero"
                   className="rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:opacity-90"
                 >
                   {locale === "nl" ? "Bespreek je project" : "Discuss your project"}
                 </Link>
                 <Link
                   href={service.overviewPath}
+                  data-track-event="primary_cta_click"
+                  data-track-category="service-detail"
+                  data-track-label={locale === "nl" ? "Bekijk alle diensten" : "View all services"}
+                  data-track-location="service-hero"
                   className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
                 >
                   {locale === "nl" ? "Bekijk alle diensten" : "View all services"}
@@ -214,6 +222,7 @@ export function ServiceDetailContent({
             primaryHref={service.contactPath}
             secondaryLabel={locale === "nl" ? "Terug naar diensten" : "Back to services"}
             secondaryHref={service.overviewPath}
+            trackingContext="service"
           />
         </section>
 
@@ -227,6 +236,10 @@ export function ServiceDetailContent({
                 <Link
                   key={item.path}
                   href={item.path}
+                  data-track-event="service_cta_click"
+                  data-track-category="service-detail"
+                  data-track-label={item.navLabel}
+                  data-track-location="related-services"
                   className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
                 >
                   <p className="text-sm font-medium text-white">{item.navLabel}</p>
@@ -239,6 +252,10 @@ export function ServiceDetailContent({
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               <Link
                 href={locale === "nl" ? "/nl/projecten" : "/en/projects"}
+                data-track-event="primary_cta_click"
+                data-track-category="service-detail"
+                data-track-label={locale === "nl" ? "Projecten" : "Projects"}
+                data-track-location="service-related-links"
                 className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-white/62 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
               >
                 {locale === "nl"
@@ -247,6 +264,10 @@ export function ServiceDetailContent({
               </Link>
               <Link
                 href={locale === "nl" ? "/nl/blog" : "/en/blog"}
+                data-track-event="article_cta_click"
+                data-track-category="service-detail"
+                data-track-label={locale === "nl" ? "Inzichten" : "Insights"}
+                data-track-location="service-related-links"
                 className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-white/62 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
               >
                 {locale === "nl"
@@ -255,6 +276,10 @@ export function ServiceDetailContent({
               </Link>
               <Link
                 href={service.contactPath}
+                data-track-event="contact_cta_click"
+                data-track-category="service-detail"
+                data-track-label={locale === "nl" ? "Contact" : "Contact"}
+                data-track-location="service-related-links"
                 className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-white/62 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
               >
                 {locale === "nl"
