@@ -17,11 +17,15 @@ type SiteShellProps = {
 export function BlueprintBackground() {
   return (
     <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_22%),linear-gradient(to_bottom,rgba(255,255,255,0.015),transparent_22%)]" />
-      <div className="ym-grid absolute inset-0 opacity-[0.08]" />
-      <div className="animate-ym-drift absolute -left-32 top-10 h-[420px] w-[420px] rounded-full border border-cyan-300/8 bg-cyan-400/4 blur-3xl" />
-      <div className="animate-ym-float absolute right-[-8%] top-[22%] h-[480px] w-[480px] rounded-full border border-white/4" />
-      <div className="absolute inset-x-0 bottom-0 h-48 bg-[linear-gradient(180deg,transparent,rgba(2,4,6,0.85)_70%,rgba(2,4,6,1))]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,8,12,0.98),rgba(6,10,15,0.94)_40%,rgba(3,6,10,1))]" />
+      <div className="ym-bg-arc ym-bg-drift-slow absolute inset-[-6%] opacity-[0.8]" />
+      <div className="ym-bg-field ym-bg-float-fade absolute inset-x-[-10%] top-[-4%] h-[38rem] opacity-[0.8]" />
+      <div className="ym-bg-sweep ym-bg-orbit absolute inset-x-[-12%] top-[18%] h-[30rem] opacity-[0.6]" />
+      <div className="ym-bg-curve ym-bg-breathe absolute inset-x-[-8%] bottom-[-8%] h-[24rem] opacity-[0.75]" />
+      <div className="ym-grid absolute inset-0 opacity-[0.04]" />
+      <div className="absolute -left-24 top-10 h-[22rem] w-[22rem] rounded-full bg-cyan-300/[0.04] blur-3xl" />
+      <div className="ym-bg-float-fade absolute right-[-6%] top-[22%] h-[26rem] w-[26rem] rounded-full bg-blue-300/[0.045] blur-3xl" />
+      <div className="absolute inset-x-0 bottom-0 h-48 bg-[linear-gradient(180deg,transparent,rgba(2,4,7,0.86)_70%,rgba(2,4,7,1))]" />
     </div>
   );
 }

@@ -68,15 +68,7 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
         <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="absolute inset-0">
-            <Image
-              src="/images/visuals/ambient-texture-sweeping-streak.png"
-              alt=""
-              fill
-              sizes="100vw"
-              className="object-cover opacity-16"
-            />
-          </div>
+          <div className="ym-bg-sweep ym-bg-orbit absolute inset-x-[-10%] top-[10%] h-[24rem] opacity-[0.56]" />
           <div className="relative grid gap-10 lg:grid-cols-[0.94fr_1.06fr] lg:items-end">
             <RevealSection>
               <div className="max-w-2xl">

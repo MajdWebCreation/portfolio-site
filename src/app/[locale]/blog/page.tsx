@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import EditorialArticleCard from "@/components/editorial-article-card";
@@ -74,15 +73,7 @@ export default async function BlogPage({
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
         <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="absolute inset-0">
-            <Image
-              src="/images/visuals/ambient-texture-minimal-curve.png"
-              alt=""
-              fill
-              sizes="100vw"
-              className="object-cover opacity-14"
-            />
-          </div>
+          <div className="ym-bg-curve ym-bg-breathe absolute inset-x-[-6%] inset-y-0 opacity-[0.54]" />
           <div className="relative grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-end">
             <RevealSection>
               <div className="max-w-2xl">

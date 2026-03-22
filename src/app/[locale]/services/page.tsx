@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/json-ld";
 import AmbientMedia from "@/components/ambient-media";
@@ -74,15 +73,7 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
         <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="absolute inset-0">
-            <Image
-              src="/images/visuals/ambient-texture-minimal-curve.png"
-              alt=""
-              fill
-              sizes="100vw"
-              className="object-cover opacity-16"
-            />
-          </div>
+          <div className="ym-bg-curve ym-bg-breathe absolute inset-x-[-6%] inset-y-0 opacity-[0.56]" />
           <div className="relative grid gap-10 lg:grid-cols-[0.94fr_1.06fr] lg:items-end">
             <RevealSection>
               <div className="max-w-2xl">

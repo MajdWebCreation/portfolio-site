@@ -17,8 +17,9 @@
 html {
   scroll-behavior: smooth;
   background:
-    radial-gradient(circle at top, rgba(63, 175, 255, 0.08), transparent 24%),
-    linear-gradient(180deg, #020406 0%, #04070c 42%, #020406 100%);
+    radial-gradient(circle at 18% 0%, rgba(77, 191, 255, 0.1), transparent 24%),
+    radial-gradient(circle at 82% 12%, rgba(88, 145, 255, 0.08), transparent 22%),
+    linear-gradient(180deg, #020406 0%, #060b12 42%, #020406 100%);
 }
 
 body {
@@ -57,6 +58,52 @@ h6 {
     linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
   background-size: 72px 72px;
+}
+
+.ym-bg-arc {
+  background:
+    radial-gradient(circle at 18% 24%, rgba(103, 224, 255, 0.11), transparent 0 34%),
+    radial-gradient(circle at 74% 18%, rgba(92, 144, 255, 0.08), transparent 0 30%),
+    radial-gradient(circle at 50% 100%, rgba(89, 214, 255, 0.05), transparent 0 38%);
+  filter: blur(14px);
+}
+
+.ym-bg-field {
+  background:
+    radial-gradient(circle at 24% 30%, rgba(108, 230, 255, 0.12), transparent 0 24%),
+    radial-gradient(circle at 70% 60%, rgba(87, 143, 255, 0.08), transparent 0 22%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent 40%);
+  filter: blur(28px);
+}
+
+.ym-bg-sweep {
+  background:
+    linear-gradient(120deg, transparent 0%, rgba(104, 210, 255, 0.06) 22%, transparent 42%),
+    linear-gradient(160deg, transparent 22%, rgba(91, 138, 255, 0.05) 44%, transparent 68%);
+  filter: blur(18px);
+}
+
+.ym-bg-curve {
+  background:
+    radial-gradient(120% 90% at 50% 100%, rgba(98, 218, 255, 0.08), transparent 44%),
+    radial-gradient(90% 60% at 10% 100%, rgba(88, 145, 255, 0.06), transparent 46%);
+  filter: blur(18px);
+}
+
+.ym-bg-drift-slow {
+  animation: ym-bg-drift-slow 22s ease-in-out infinite;
+}
+
+.ym-bg-float-fade {
+  animation: ym-bg-float-fade 18s ease-in-out infinite;
+}
+
+.ym-bg-orbit {
+  animation: ym-bg-orbit 26s ease-in-out infinite;
+}
+
+.ym-bg-breathe {
+  animation: ym-bg-breathe 14s ease-in-out infinite;
 }
 
 .ym-surface {
@@ -169,6 +216,52 @@ h6 {
   }
 }
 
+@keyframes ym-bg-drift-slow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.88;
+  }
+  50% {
+    transform: translate3d(1.2%, -1%, 0) scale(1.03);
+    opacity: 1;
+  }
+}
+
+@keyframes ym-bg-float-fade {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.78;
+  }
+  50% {
+    transform: translate3d(-1%, 1.1%, 0) scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes ym-bg-orbit {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(1.8%, -0.8%, 0) scale(1.02);
+  }
+}
+
+@keyframes ym-bg-breathe {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.84;
+  }
+  50% {
+    transform: translate3d(0, -1%, 0) scale(1.03);
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -176,7 +269,11 @@ h6 {
 
   .animate-ym-float,
   .animate-ym-drift,
-  .animate-ym-pulse {
+  .animate-ym-pulse,
+  .ym-bg-drift-slow,
+  .ym-bg-float-fade,
+  .ym-bg-orbit,
+  .ym-bg-breathe {
     animation: none !important;
   }
 }

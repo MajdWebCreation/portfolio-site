@@ -73,15 +73,7 @@ export default async function ContactPage({
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
         <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="absolute inset-0">
-            <Image
-              src="/images/visuals/ambient-texture-light-arc.png"
-              alt=""
-              fill
-              sizes="100vw"
-              className="object-cover opacity-18"
-            />
-          </div>
+          <div className="ym-bg-arc ym-bg-float-fade absolute inset-[-6%] opacity-[0.62]" />
           <RevealSection>
             <div className="relative grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
               <div className="max-w-2xl">

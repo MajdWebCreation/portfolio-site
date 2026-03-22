@@ -63,7 +63,13 @@ function ProcessStepItem({
         }
         className="relative overflow-hidden rounded-[1.9rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.008))] p-6 md:p-7"
       >
-        <div className="absolute inset-y-0 right-0 w-28 bg-[radial-gradient(circle_at_center,rgba(113,227,255,var(--glow-opacity)),transparent_70%)]" />
+        <div
+          className="absolute right-[-4.5rem] top-1/2 h-44 w-44 -translate-y-1/2 rounded-full blur-3xl"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(113,227,255,var(--glow-opacity)) 0%, rgba(113,227,255,calc(var(--glow-opacity) * 0.48)) 34%, rgba(113,227,255,0) 74%)",
+          }}
+        />
         <h3 className="text-2xl font-medium text-white">{step.title}</h3>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-white/65">
           {step.text}

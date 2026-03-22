@@ -107,15 +107,7 @@ export default async function BlogArticlePage({
       />
       <SiteShell locale={locale} content={content} currentPath={article.path}>
         <article className="relative mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="absolute inset-0">
-            <Image
-              src="/images/visuals/ambient-texture-minimal-curve.png"
-              alt=""
-              fill
-              sizes="100vw"
-              className="object-cover opacity-14"
-            />
-          </div>
+          <div className="ym-bg-curve ym-bg-breathe absolute inset-x-[-8%] inset-y-0 opacity-[0.52]" />
           <header className="relative overflow-hidden rounded-[2.6rem] border border-white/10 bg-[#07111a]">
             <div className="grid lg:grid-cols-[1.02fr_0.98fr]">
               <div className="relative z-10 p-6 md:p-8 lg:p-10">

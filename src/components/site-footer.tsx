@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import BrandMark from "@/components/brand-mark";
 import { getLocalizedPath } from "@/lib/content/routes";
 import {
@@ -20,15 +19,7 @@ export default function SiteFooter({ locale, content }: SiteFooterProps) {
 
   return (
     <footer className="relative z-20 mt-16 overflow-hidden border-t border-white/10">
-      <div className="absolute inset-0">
-        <Image
-          src="/images/visuals/ambient-texture-light-arc.png"
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover opacity-12"
-        />
-      </div>
+      <div className="ym-bg-arc ym-bg-float-fade absolute inset-[-6%] opacity-[0.5]" />
       <div className="mx-auto max-w-7xl px-6 pb-14 pt-16 lg:px-10">
         <div className="relative mb-14 overflow-hidden rounded-[2.4rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.01))] px-6 py-10 sm:px-8 lg:px-10">
           <div className="absolute right-[-4%] top-[-12%] h-56 w-56 opacity-[0.06]">

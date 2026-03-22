@@ -79,24 +79,10 @@ export default async function HomePage({
             <ParallaxLayer className="absolute inset-0" yRange={[-18, 18]}>
               <div className="absolute left-0 top-12 h-[22rem] w-[22rem] rounded-full bg-cyan-300/6 blur-3xl" />
               <div className="absolute right-0 top-0 h-[20rem] w-[20rem] rounded-full bg-blue-300/6 blur-3xl" />
-              <Image
-                src="/images/visuals/ambient-texture-grid-haze.png"
-                alt=""
-                fill
-                priority
-                sizes="100vw"
-                className="object-cover opacity-12"
-              />
+              <div className="ym-bg-field ym-bg-drift-slow absolute inset-[-4%] opacity-[0.72]" />
             </ParallaxLayer>
             <ParallaxLayer className="absolute inset-0" yRange={[12, -12]}>
-              <Image
-                src="/images/visuals/ambient-texture-light-arc.png"
-                alt=""
-                fill
-                priority
-                sizes="100vw"
-                className="object-cover opacity-14"
-              />
+              <div className="ym-bg-arc ym-bg-float-fade absolute inset-[-6%] opacity-[0.76]" />
             </ParallaxLayer>
           </div>
 
@@ -197,13 +183,7 @@ export default async function HomePage({
         <section className="relative mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:px-10">
           <div className="absolute inset-x-0 top-0 h-full">
             <ParallaxLayer className="absolute inset-0" yRange={[10, -10]}>
-              <Image
-                src="/images/visuals/ambient-texture-minimal-curve.png"
-                alt=""
-                fill
-                sizes="100vw"
-                className="object-cover opacity-10"
-              />
+              <div className="ym-bg-curve ym-bg-breathe absolute inset-x-[-8%] bottom-[-8%] top-[8%] opacity-[0.66]" />
             </ParallaxLayer>
           </div>
           <div className="relative grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
@@ -336,13 +316,7 @@ export default async function HomePage({
         <section className="relative mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:px-10">
           <div className="absolute inset-0">
             <ParallaxLayer className="absolute inset-0" yRange={[-14, 14]}>
-              <Image
-                src="/images/visuals/ambient-texture-sweeping-streak.png"
-                alt=""
-                fill
-                sizes="100vw"
-                className="object-cover opacity-11"
-              />
+              <div className="ym-bg-sweep ym-bg-orbit absolute inset-x-[-10%] top-[10%] h-[28rem] opacity-[0.58]" />
             </ParallaxLayer>
           </div>
           <div className="relative grid gap-10 lg:grid-cols-[0.84fr_1.16fr] lg:items-center">
@@ -425,13 +399,7 @@ export default async function HomePage({
         >
           <div className="absolute inset-x-0 top-0 h-full">
             <ParallaxLayer className="absolute inset-0" yRange={[-10, 10]}>
-              <Image
-                src="/images/visuals/ambient-texture-grid-haze.png"
-                alt=""
-                fill
-                sizes="100vw"
-                className="object-cover opacity-10"
-              />
+              <div className="ym-bg-field ym-bg-drift-slow absolute inset-[-4%] opacity-[0.48]" />
             </ParallaxLayer>
           </div>
           <div className="relative grid gap-14 lg:grid-cols-[0.8fr_1.2fr]">
@@ -460,13 +428,7 @@ export default async function HomePage({
         <section className="relative mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:px-10">
           <div className="absolute inset-0">
             <ParallaxLayer className="absolute inset-0" yRange={[-10, 12]}>
-              <Image
-                src="/images/visuals/ambient-texture-light-arc.png"
-                alt=""
-                fill
-                sizes="100vw"
-                className="object-cover opacity-10"
-              />
+              <div className="ym-bg-arc ym-bg-float-fade absolute inset-[-6%] opacity-[0.56]" />
             </ParallaxLayer>
           </div>
           <div className="relative">

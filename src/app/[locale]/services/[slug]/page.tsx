@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import AmbientMedia from "@/components/ambient-media";
@@ -108,15 +107,7 @@ export function ServiceDetailContent({
       />
       <SiteShell locale={locale} content={content} currentPath={service.path}>
         <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="absolute inset-0">
-            <Image
-              src="/images/visuals/ambient-texture-light-arc.png"
-              alt=""
-              fill
-              sizes="100vw"
-              className="object-cover opacity-16"
-            />
-          </div>
+          <div className="ym-bg-arc ym-bg-float-fade absolute inset-[-6%] opacity-[0.58]" />
           <div className="relative grid gap-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-end">
             <RevealSection>
               <p className="mb-4 text-sm uppercase tracking-[0.3em] text-cyan-300/80">
