@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { isValidLocale, locales } from "@/lib/site-content";
+import { isValidLocale, locales } from "@/lib/content/site-content";
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));

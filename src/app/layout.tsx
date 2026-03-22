@@ -1,35 +1,28 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
+import { businessInfo } from "@/lib/content/site-content";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  metadataBase: new URL("https://ymcreations.com"),
-  title: "YM Creations",
+  metadataBase: new URL(businessInfo.websiteUrl),
+  title: {
+    default: businessInfo.name,
+    template: `%s | ${businessInfo.name}`,
+  },
   description: "Premium web design and development.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headerStore = await headers();
+  const locale = headerStore.get("x-ym-locale") === "nl" ? "nl" : "en";
+
   return (
-    <html suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+    <html lang={locale} suppressHydrationWarning>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
