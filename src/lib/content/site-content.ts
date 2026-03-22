@@ -75,9 +75,9 @@ export const siteContent = {
     },
     hero: {
       eyebrow: "Premium web design, development, and technical polish",
-      title: "Custom websites and web applications for businesses that want a stronger digital presence.",
+      title: "Premium websites and web applications.",
       description:
-        "YM Creations is a premium web design and development studio building refined websites, landing pages, ecommerce experiences, and custom web tools for modern brands and growing businesses.",
+        "YM Creations designs and builds refined websites, landing pages, ecommerce experiences, and custom web tools for modern brands.",
       primaryCta: "Explore services",
       secondaryCta: "Contact us",
       cardEyebrow: "Experience-driven build system",
@@ -156,9 +156,9 @@ export const siteContent = {
     },
     hero: {
       eyebrow: "Premium webdesign, development en technische afwerking",
-      title: "Maatwerk websites en webapplicaties voor bedrijven die online sterker willen staan.",
+      title: "Premium websites en webapplicaties.",
       description:
-        "YM Creations is een premium webdesign en development studio voor verfijnde websites, landingspagina’s, webshops en maatwerk webtools voor moderne merken en groeiende bedrijven.",
+        "YM Creations ontwerpt en bouwt verfijnde websites, landingspagina’s, webshops en maatwerk webtools voor moderne merken.",
       primaryCta: "Bekijk diensten",
       secondaryCta: "Neem contact op",
       cardEyebrow: "Doordacht bouwsysteem",
