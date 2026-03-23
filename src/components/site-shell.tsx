@@ -45,6 +45,7 @@ export default function SiteShell({
 
   const navigation = [
     { href: getLocalizedPath(locale, "services"), label: content.nav.services },
+    { href: getLocalizedPath(locale, "pricing"), label: content.nav.pricing },
     { href: getLocalizedPath(locale, "projects"), label: content.nav.projects },
     { href: getLocalizedPath(locale, "blog"), label: content.nav.blog },
     { href: `${getLocalizedPath(locale, "home")}#process`, label: content.nav.about },

@@ -67,6 +67,7 @@ export const siteContent = {
     localeLabel: "EN",
     nav: {
       services: "Services",
+      pricing: "Pricing",
       projects: "Projects",
       blog: "Insights",
       about: "Process",
@@ -181,6 +182,7 @@ export const siteContent = {
         "Premium web design and development for businesses that want a stronger online presence.",
       company: "Company",
       services: "Services",
+      pricing: "Pricing",
       insights: "Insights",
       contact: "Contact",
       kvkLabel: "KVK",
@@ -192,6 +194,7 @@ export const siteContent = {
     localeLabel: "NL",
     nav: {
       services: "Diensten",
+      pricing: "Tarieven",
       projects: "Projecten",
       blog: "Inzichten",
       about: "Proces",
@@ -306,6 +309,7 @@ export const siteContent = {
         "Premium webdesign en development voor bedrijven die online sterker zichtbaar willen zijn.",
       company: "Bedrijf",
       services: "Diensten",
+      pricing: "Tarieven",
       insights: "Inzichten",
       contact: "Contact",
       kvkLabel: "KVK",

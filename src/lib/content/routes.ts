@@ -3,6 +3,7 @@ import { type Locale } from "@/lib/content/site-content";
 export type StaticRouteKey =
   | "home"
   | "services"
+  | "pricing"
   | "projects"
   | "contact"
   | "blog";
@@ -15,6 +16,10 @@ const localizedStaticRoutes: Record<StaticRouteKey, Record<Locale, string>> = {
   services: {
     en: "/en/services",
     nl: "/nl/diensten",
+  },
+  pricing: {
+    en: "/en/pricing",
+    nl: "/nl/tarieven",
   },
   projects: {
     en: "/en/projects",

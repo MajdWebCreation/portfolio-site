@@ -54,6 +54,11 @@ export default function SiteFooter({ locale, content }: SiteFooterProps) {
                 </Link>
               </li>
               <li>
+                <Link href={getLocalizedPath(locale, "pricing")}>
+                  {content.pricing}
+                </Link>
+              </li>
+              <li>
                 <Link href={getLocalizedPath(locale, "projects")}>
                   {locale === "nl" ? "Projecten" : "Projects"}
                 </Link>
