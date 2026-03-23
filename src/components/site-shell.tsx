@@ -59,13 +59,13 @@ export default function SiteShell({
 
       <header className="relative z-30">
         <nav className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
-          <div className="relative flex w-full items-center justify-between rounded-[1.5rem] border border-white/10 bg-[rgba(6,10,14,0.8)] px-4 py-3 shadow-[0_18px_48px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:px-5 lg:px-6">
-            <div className="relative z-10 flex items-center gap-5">
+          <div className="relative flex w-full items-center justify-between gap-3 rounded-[1.5rem] border border-white/10 bg-[rgba(6,10,14,0.8)] px-3 py-3 shadow-[0_18px_48px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:px-5 lg:px-6">
+            <div className="relative z-10 flex min-w-0 items-center gap-4 sm:gap-5">
               <BrandMark
                 href={getLocalizedPath(locale, "home")}
                 priority
                 variant="white"
-                className="h-11 w-[144px]"
+                className="h-10 w-[128px] sm:h-11 sm:w-[144px]"
               />
               <span className="hidden text-[10px] uppercase tracking-[0.32em] text-white/34 xl:block">
                 Premium digital systems

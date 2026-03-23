@@ -76,7 +76,7 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
 
           <div className="relative grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
             <RevealSection>
-              <div className="max-w-2xl">
+              <div className="mx-auto max-w-[22rem] text-center sm:max-w-[32rem] lg:mx-0 lg:max-w-2xl lg:text-left">
                 <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
                   {overview.eyebrow}
                 </p>
@@ -90,7 +90,7 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
             </RevealSection>
 
             <RevealSection delay={0.08}>
-              <div className="rounded-[2.25rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.015))] p-6 md:p-7">
+              <div className="mx-auto max-w-[42rem] rounded-[2.25rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.015))] p-6 text-center md:p-7 lg:mx-0 lg:text-left">
                 <p className="text-[10px] uppercase tracking-[0.3em] text-cyan-300/76">
                   {overview.whyTitle}
                 </p>
@@ -98,12 +98,12 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
                 <div className="mt-6 space-y-5">
                   {overview.whyPoints.map((point) => (
                     <div key={point} className="border-b border-white/8 pb-5 last:border-b-0 last:pb-0">
-                      <p className="max-w-md text-sm leading-7 text-white/58">{point}</p>
+                      <p className="mx-auto max-w-md text-sm leading-7 text-white/58 lg:mx-0">{point}</p>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3">
+                <div className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 lg:justify-start">
                   <Link
                     href={getLocalizedPath(locale, "projects")}
                     data-track-event="primary_cta_click"
@@ -131,7 +131,7 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
             </RevealSection>
           </div>
 
-          <div className="mt-14 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="mx-auto mt-14 max-w-[26rem] grid gap-6 sm:max-w-[42rem] xl:max-w-none xl:grid-cols-[1.15fr_0.85fr]">
             <RevealSection>
               {services[0] ? <ServiceCard service={services[0]} featured /> : null}
             </RevealSection>
@@ -167,7 +167,7 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
             </RevealSection>
           </div>
 
-          <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mx-auto mt-8 max-w-[26rem] grid gap-5 sm:max-w-[42rem] md:grid-cols-2 xl:max-w-none xl:grid-cols-3">
             {services.slice(3).map((service, index) => (
               <RevealSection key={service.path} delay={index * 0.04}>
                 <ServiceCard service={service} />
@@ -176,7 +176,7 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
           </div>
 
           <div className="mt-12 border-t border-white/10 pt-8">
-            <div className="flex flex-wrap gap-x-6 gap-y-3">
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 lg:justify-start">
               <Link
                 href={getLocalizedPath(locale, "blog")}
                 data-track-event="primary_cta_click"

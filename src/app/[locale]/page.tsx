@@ -86,8 +86,8 @@ export default async function HomePage({
 
           <div className="grid items-center gap-10 lg:min-h-[82vh] lg:grid-cols-[0.84fr_1.16fr]">
             <RevealSection className="relative z-10">
-              <div className="max-w-2xl">
-                <div className="mb-8 flex items-center gap-4">
+              <div className="mx-auto flex max-w-[22rem] flex-col items-center text-center sm:max-w-[32rem] lg:mx-0 lg:block lg:max-w-2xl lg:text-left">
+                <div className="mb-8 flex items-center justify-center gap-4 lg:justify-start">
                   <div className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] uppercase tracking-[0.32em] text-cyan-200/78">
                     {content.hero.eyebrow}
                   </div>
@@ -102,7 +102,7 @@ export default async function HomePage({
                   {content.hero.description}
                 </p>
 
-                <div className="mt-10 flex flex-wrap gap-4">
+                <div className="mt-10 flex flex-wrap justify-center gap-4 lg:justify-start">
                   <Link
                     href={content.hero.servicePath}
                     data-track-event="primary_cta_click"
@@ -125,7 +125,7 @@ export default async function HomePage({
                   </Link>
                 </div>
 
-                <div className="mt-12 flex items-center gap-4 border-t border-white/10 pt-6">
+                <div className="mt-12 flex w-full items-center justify-center gap-4 border-t border-white/10 pt-6 text-left lg:justify-start">
                   <BrandMark className="h-8 w-[104px] opacity-[0.18]" />
                   <p className="max-w-md text-sm leading-7 text-white/48">
                     {content.hero.cardText}
@@ -134,7 +134,7 @@ export default async function HomePage({
               </div>
             </RevealSection>
 
-            <RevealSection delay={0.08} className="relative">
+            <RevealSection delay={0.08} className="relative mx-auto w-full max-w-[26rem] lg:mx-0 lg:max-w-none">
               <ParallaxLayer className="absolute inset-x-[12%] bottom-[-6%]" yRange={[-12, 12]}>
                 <div className="h-36 rounded-full bg-cyan-300/10 blur-3xl" />
               </ParallaxLayer>
@@ -154,7 +154,7 @@ export default async function HomePage({
                 {content.hero.blueprintLabel}
               </div>
               <div className="absolute bottom-6 left-6 right-6">
-                <div className="max-w-sm border-t border-white/12 pt-4 text-sm leading-7 text-white/66">
+                <div className="mx-auto max-w-sm border-t border-white/12 pt-4 text-center text-sm leading-7 text-white/66 lg:mx-0 lg:text-left">
                   A premium digital system built around clarity, interface rhythm, and sharp implementation.
                 </div>
               </div>
@@ -171,7 +171,7 @@ export default async function HomePage({
 
           <div className="relative grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
             <RevealSection>
-              <div className="max-w-xl">
+              <div className="mx-auto max-w-[22rem] text-center sm:max-w-[30rem] lg:mx-0 lg:max-w-xl lg:text-left">
                 <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
                   {content.homeServices.eyebrow}
                 </p>
@@ -195,16 +195,18 @@ export default async function HomePage({
             </RevealSection>
 
             <RevealSection delay={0.08}>
-              <AmbientMedia
-                src="/images/visuals/services-system-visual.png"
-                alt="Services system overview"
-                className="min-h-[320px] rounded-[2.3rem]"
-                imageClassName="object-cover object-center"
-              />
+              <div className="mx-auto w-full max-w-[42rem] lg:mx-0">
+                <AmbientMedia
+                  src="/images/visuals/services-system-visual.png"
+                  alt="Services system overview"
+                  className="min-h-[320px] rounded-[2.3rem]"
+                  imageClassName="object-cover object-center"
+                />
+              </div>
             </RevealSection>
           </div>
 
-          <div className="relative mt-12 grid gap-4 md:grid-cols-3">
+          <div className="relative mx-auto mt-12 max-w-[26rem] grid gap-4 md:max-w-none md:grid-cols-3">
             {services.slice(0, 3).map((service, index) => (
               <RevealSection key={service.path} delay={index * 0.05}>
                 <Link
@@ -233,7 +235,7 @@ export default async function HomePage({
             ))}
           </div>
 
-          <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3">
+          <div className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 lg:justify-start">
             {services.slice(3).map((service) => (
               <Link
                 key={service.path}
@@ -266,7 +268,7 @@ export default async function HomePage({
           </div>
           <div className="relative grid gap-14 lg:grid-cols-[0.8fr_1.2fr]">
             <RevealSection>
-              <div className="max-w-xl">
+              <div className="mx-auto max-w-[22rem] text-center sm:max-w-[30rem] lg:mx-0 lg:max-w-xl lg:text-left">
                 <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
                   {content.about.eyebrow}
                 </p>
@@ -279,10 +281,12 @@ export default async function HomePage({
               </div>
             </RevealSection>
             <RevealSection delay={0.08}>
-              <ProcessBlock
-                title={locale === "nl" ? "Hoe het traject meestal verloopt" : "How the process usually works"}
-                steps={processSteps[locale]}
-              />
+              <div className="mx-auto w-full max-w-[42rem] lg:mx-0 lg:max-w-none">
+                <ProcessBlock
+                  title={locale === "nl" ? "Hoe het traject meestal verloopt" : "How the process usually works"}
+                  steps={processSteps[locale]}
+                />
+              </div>
             </RevealSection>
           </div>
         </section>
@@ -293,7 +297,7 @@ export default async function HomePage({
               <div className="ym-bg-arc ym-bg-float-fade absolute inset-[-6%] opacity-[0.42]" />
             </ParallaxLayer>
           </div>
-          <div className="relative">
+          <div className="relative mx-auto max-w-[42rem] lg:max-w-none">
             <ContactPanel
               locale={locale}
               content={content.contact}

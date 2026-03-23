@@ -79,7 +79,7 @@ export default async function ContactPage({
 
           <RevealSection>
             <div className="relative grid gap-10 border-b border-white/10 pb-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
-              <div className="max-w-2xl">
+              <div className="mx-auto max-w-[22rem] text-center sm:max-w-[32rem] lg:mx-0 lg:max-w-2xl lg:text-left">
                 <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
                   {content.contact.eyebrow}
                 </p>
@@ -91,7 +91,7 @@ export default async function ContactPage({
                 </p>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="mx-auto grid w-full max-w-[26rem] gap-4 sm:max-w-[42rem] sm:grid-cols-3 lg:mx-0 lg:max-w-none">
                 <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
                   <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/72">
                     Email
@@ -120,7 +120,7 @@ export default async function ContactPage({
             </div>
           </RevealSection>
 
-          <div className="mt-12">
+          <div className="mx-auto mt-12 max-w-[42rem] lg:max-w-none">
             <ContactPanel
               locale={locale}
               content={content.contact}

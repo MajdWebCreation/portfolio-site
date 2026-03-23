@@ -44,14 +44,14 @@ export default function MobileNav({
   }, [mobileMenuOpen]);
 
   return (
-    <div className="flex items-center gap-2 md:hidden">
+    <div className="flex shrink-0 items-center gap-2 md:hidden">
       <Link
         href={contactHref}
         data-track-event="contact_cta_click"
         data-track-category="navigation"
         data-track-label={contactLabel}
         data-track-location="mobile-header"
-        className="inline-flex h-14 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-cyan-300/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.06))] px-5 text-[15px] font-medium text-white shadow-[0_0_30px_rgba(53,180,255,0.1)] transition hover:border-cyan-400/50"
+        className="inline-flex h-12 max-w-[9.75rem] min-w-0 shrink items-center justify-center whitespace-nowrap rounded-full border border-cyan-300/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.06))] px-4 text-[13px] font-medium leading-none text-white shadow-[0_0_30px_rgba(53,180,255,0.1)] transition hover:border-cyan-400/50 sm:h-14 sm:max-w-none sm:px-5 sm:text-[15px]"
         onClick={() => setMobileMenuOpen(false)}
       >
         {contactLabel}
@@ -61,7 +61,7 @@ export default function MobileNav({
         type="button"
         aria-label="Toggle menu"
         onClick={() => setMobileMenuOpen((prev) => !prev)}
-        className="relative z-[60] flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/15 bg-black/45"
+        className="relative z-[60] flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/15 bg-black/45 sm:h-14 sm:w-14"
       >
         <div className="flex flex-col gap-1.5">
           <span
@@ -106,7 +106,7 @@ export default function MobileNav({
           pointerEvents: mobileMenuOpen ? "auto" : "none",
         }}
         transition={{ duration: 0.22 }}
-        className="fixed inset-x-4 top-[88px] z-50 max-h-[calc(100vh-104px)] overflow-y-auto rounded-[1.75rem] border border-white/12 bg-[rgba(5,8,12,0.96)] p-4 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl md:hidden"
+        className="fixed inset-x-4 top-[84px] z-50 max-h-[calc(100vh-100px)] overflow-y-auto rounded-[1.75rem] border border-white/12 bg-[rgba(5,8,12,0.96)] p-4 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl md:hidden sm:top-[88px] sm:max-h-[calc(100vh-104px)]"
       >
         <div className="mb-5 flex rounded-full border border-white/10 bg-black/50 p-1">
           <Link

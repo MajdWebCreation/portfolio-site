@@ -78,7 +78,7 @@ export default async function BlogPage({
 
           <div className="relative grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-end">
             <RevealSection>
-              <div className="max-w-2xl">
+              <div className="mx-auto max-w-[22rem] text-center sm:max-w-[32rem] lg:mx-0 lg:max-w-2xl lg:text-left">
                 <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
                   {overview.eyebrow}
                 </p>
@@ -92,7 +92,7 @@ export default async function BlogPage({
             </RevealSection>
 
             <RevealSection delay={0.08}>
-              <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-6 md:p-7">
+              <div className="mx-auto max-w-[42rem] rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-6 text-center md:p-7 lg:mx-0 lg:text-left">
                 <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/74">
                   {overview.pillarsTitle}
                 </p>
@@ -101,7 +101,7 @@ export default async function BlogPage({
                   {overview.pillars.slice(0, 2).map((pillar) => (
                     <div key={pillar.title} className="border-b border-white/8 pb-5 last:border-b-0 last:pb-0">
                       <p className="text-sm font-medium text-white">{pillar.title}</p>
-                      <p className="mt-3 max-w-md text-sm leading-7 text-white/56">
+                      <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-white/56 lg:mx-0">
                         {pillar.description}
                       </p>
                     </div>
@@ -112,7 +112,7 @@ export default async function BlogPage({
           </div>
 
           {featuredArticle ? (
-            <div className="relative mt-14">
+            <div className="relative mx-auto mt-14 max-w-[42rem] lg:max-w-none">
               <RevealSection>
                 <EditorialArticleCard
                   article={featuredArticle}
@@ -126,7 +126,7 @@ export default async function BlogPage({
           ) : null}
 
           {remainingArticles.length > 0 ? (
-            <div className="relative mt-6 grid gap-5 md:grid-cols-2">
+            <div className="relative mx-auto mt-6 max-w-[26rem] grid gap-5 sm:max-w-[42rem] md:max-w-none md:grid-cols-2">
               {remainingArticles.map((article, index) => (
                 <RevealSection key={article.path} delay={index * 0.04}>
                   <EditorialArticleCard
@@ -141,7 +141,7 @@ export default async function BlogPage({
               ))}
             </div>
           ) : articles.length === 0 ? (
-            <div className="relative mt-14 grid gap-5 md:grid-cols-2">
+            <div className="relative mx-auto mt-14 max-w-[26rem] grid gap-5 sm:max-w-[42rem] md:max-w-none md:grid-cols-2">
               {overview.pillars.slice(0, 4).map((pillar, index) => (
                 <RevealSection key={pillar.title} delay={index * 0.04}>
                   <article className="rounded-[1.8rem] border border-white/10 bg-white/[0.03] p-6">
@@ -159,7 +159,7 @@ export default async function BlogPage({
 
           <div className="mt-16 border-t border-white/10 pt-10">
             <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
-              <div className="max-w-3xl">
+              <div className="mx-auto max-w-[22rem] text-center sm:max-w-[34rem] lg:mx-0 lg:max-w-3xl lg:text-left">
                 <h2 className="text-3xl font-semibold text-white">
                   {overview.supportTitle}
                 </h2>
@@ -173,7 +173,7 @@ export default async function BlogPage({
                 ) : null}
               </div>
 
-              <div className="flex flex-wrap gap-x-6 gap-y-3 lg:justify-end">
+              <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 lg:justify-end">
                 <Link
                   href={locale === "nl" ? "/nl/diensten" : "/en/services"}
                   data-track-event="primary_cta_click"

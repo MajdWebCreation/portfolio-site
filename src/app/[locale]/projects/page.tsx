@@ -78,7 +78,7 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
                 <h1 className="mt-5 text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
                   {overview.title}
                 </h1>
-                <p className="mt-6 mx-auto max-w-[22rem] text-base leading-8 text-white/62 sm:max-w-[30rem] lg:mx-0 lg:max-w-xl">
+                <p className="mx-auto mt-6 max-w-[22rem] text-base leading-8 text-white/62 sm:max-w-[30rem] lg:mx-0 lg:max-w-xl">
                   {overview.intro}
                 </p>
               </div>
@@ -149,7 +149,7 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
                 <p className="text-center text-[10px] uppercase tracking-[0.28em] text-cyan-300/76 lg:text-left">
                   {content.projects.premiumBuildLabel}
                 </p>
-                <p className="mt-5 max-w-2xl text-center text-base leading-8 text-white/62 lg:text-left">
+                <p className="mx-auto mt-5 max-w-2xl text-center text-base leading-8 text-white/62 lg:mx-0 lg:text-left">
                   {content.projects.premiumBuildText}
                 </p>
 
