@@ -9,6 +9,7 @@ import RevealSection from "@/components/reveal-section";
 import SeoCta from "@/components/seo-cta";
 import SiteFooter from "@/components/site-footer";
 import SiteShell from "@/components/site-shell";
+import { getLocalizedPath } from "@/lib/content/routes";
 import {
   getServiceAlternates,
   getServiceBySlug,
@@ -88,6 +89,20 @@ export function ServiceDetailContent({
   const siblingServices = getServicesForLocale(locale).filter(
     (item) => item.key !== service.key,
   );
+  const supportsPlannerCta =
+    service.key === "business-websites" ||
+    service.key === "web-app-development" ||
+    service.key === "ecommerce-development";
+  const secondaryCtaLabel = supportsPlannerCta
+    ? locale === "nl"
+      ? "Gebruik de Project Planner"
+      : "Use the Project Planner"
+    : locale === "nl"
+      ? "Terug naar diensten"
+      : "Back to services";
+  const secondaryCtaHref = supportsPlannerCta
+    ? getLocalizedPath(locale, "projectPlanner")
+    : service.overviewPath;
 
   return (
     <>
@@ -221,11 +236,17 @@ export function ServiceDetailContent({
         <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-10">
           <SeoCta
             title={service.ctaTitle}
-            text={service.ctaText}
+            text={
+              supportsPlannerCta
+                ? locale === "nl"
+                  ? `${service.ctaText} Twijfel je nog over het juiste niveau of de juiste scope, dan helpt de Project Planner om dat eerst helder te krijgen.`
+                  : `${service.ctaText} If you are still unsure about the right level or scope, the Project Planner helps clarify that first.`
+                : service.ctaText
+            }
             primaryLabel={locale === "nl" ? "Neem contact op" : "Contact us"}
             primaryHref={service.contactPath}
-            secondaryLabel={locale === "nl" ? "Terug naar diensten" : "Back to services"}
-            secondaryHref={service.overviewPath}
+            secondaryLabel={secondaryCtaLabel}
+            secondaryHref={secondaryCtaHref}
             trackingContext="service"
           />
         </section>

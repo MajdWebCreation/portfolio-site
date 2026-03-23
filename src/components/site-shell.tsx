@@ -53,6 +53,15 @@ export default function SiteShell({
   ];
 
   const mobileCtaLabel = locale === "nl" ? "Start project" : "Start project";
+  const persistentCtaHref =
+    currentPath.includes("/pricing") ||
+    currentPath.includes("/tarieven") ||
+    currentPath.includes("/services") ||
+    currentPath.includes("/diensten") ||
+    currentPath.includes("/projects") ||
+    currentPath.includes("/projecten")
+      ? getLocalizedPath(locale, "projectPlanner")
+      : getLocalizedPath(locale, "contact");
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-[var(--background)] text-white">
@@ -137,7 +146,7 @@ export default function SiteShell({
       <PersistentCta
         locale={locale}
         currentPath={currentPath}
-        href={getLocalizedPath(locale, "contact")}
+        href={persistentCtaHref}
       />
     </div>
   );

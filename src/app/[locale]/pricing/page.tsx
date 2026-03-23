@@ -60,11 +60,6 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
   const packageRailLabel =
     locale === "nl" ? "Projectladder" : "Project ladder";
   const fitLabel = locale === "nl" ? "Kern van het pakket" : "Core scope";
-  const upgradeLabel =
-    locale === "nl" ? "Doorschuiven wanneer nodig" : "Move up when needed";
-  const higherTierFeatureLabel =
-    locale === "nl" ? "Hoort in hoger traject" : "Belongs in a higher tier";
-  const subtleLinkLabel = locale === "nl" ? "Relevante dienst" : "Relevant service";
 
   return (
     <>
@@ -146,6 +141,26 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                     </p>
                   </div>
                 </div>
+
+                <div className="mt-7 border-t border-white/10 pt-4">
+                  <Link
+                    href={getLocalizedPath(locale, "projectPlanner")}
+                    data-track-event="primary_cta_click"
+                    data-track-category="pricing"
+                    data-track-label={
+                      locale === "nl"
+                        ? "Gebruik de Project Planner"
+                        : "Use the Project Planner"
+                    }
+                    data-track-location="pricing-intro-planner"
+                    className="inline-flex items-center gap-2 text-sm text-white/58 transition hover:text-white"
+                  >
+                    {locale === "nl"
+                      ? "Twijfel je over het juiste pakket? Gebruik de Project Planner"
+                      : "Not sure which package fits? Use the Project Planner"}
+                    <span className="text-cyan-200/72">→</span>
+                  </Link>
+                </div>
               </div>
             </RevealSection>
           </div>
@@ -219,7 +234,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                       </div>
                     </div>
 
-                    <div className="mt-7 grid gap-8 xl:grid-cols-[1.05fr_0.95fr_0.9fr]">
+                    <div className="mt-7 grid gap-8 xl:grid-cols-[1.04fr_0.96fr]">
                       <div className="border-t border-white/10 pt-5">
                         <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/76">
                           {locale === "nl" ? "Inbegrepen" : "Included"}
@@ -262,58 +277,10 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                           ))}
                         </div>
                       </div>
-
-                      <div className="border-l border-cyan-300/20 pl-5 xl:pl-6">
-                        <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/78">
-                          {upgradeLabel}
-                        </p>
-                        <p className="mt-4 text-sm leading-7 text-white/64">
-                          {pkg.upgradeMessage}
-                        </p>
-
-                        {pkg.unavailable?.length ? (
-                          <>
-                            <p className="mt-6 text-[10px] uppercase tracking-[0.26em] text-white/42">
-                              {higherTierFeatureLabel}
-                            </p>
-                            <ul className="mt-4 space-y-3">
-                              {pkg.unavailable.map((item) => (
-                                <li
-                                  key={item}
-                                  className="border-b border-white/8 pb-3 text-sm leading-7 text-white/56 last:border-b-0 last:pb-0"
-                                >
-                                  {item}
-                                </li>
-                              ))}
-                            </ul>
-                          </>
-                        ) : null}
-
-                        {pkg.relatedServiceHref && pkg.relatedServiceLabel ? (
-                          <div className="mt-6 border-t border-white/8 pt-4">
-                            <p className="text-[10px] uppercase tracking-[0.26em] text-white/34">
-                              {subtleLinkLabel}
-                            </p>
-                            <Link
-                              href={pkg.relatedServiceHref}
-                              data-track-event="primary_cta_click"
-                              data-track-category="pricing"
-                              data-track-label={pkg.relatedServiceLabel}
-                              data-track-location={`pricing-card-${pkg.key}`}
-                              className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-white/76 transition hover:text-white"
-                            >
-                              {pkg.relatedServiceLabel}
-                              <span className="text-cyan-200 transition group-hover:translate-x-1">
-                                →
-                              </span>
-                            </Link>
-                          </div>
-                        ) : null}
-                      </div>
                     </div>
 
                     {pkg.dependencyNotes?.length || pkg.examples?.length ? (
-                      <div className="mt-8 grid gap-6 border-t border-white/10 pt-6 lg:grid-cols-2">
+                      <div className="mt-9 grid gap-6 border-t border-white/10 pt-6 lg:grid-cols-2">
                         {pkg.dependencyNotes?.length ? (
                           <div>
                             <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/78">
@@ -463,7 +430,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
             title={pricing.cta.title}
             text={pricing.cta.text}
             primaryLabel={pricing.cta.primaryLabel}
-            primaryHref={getLocalizedPath(locale, "contact")}
+            primaryHref={getLocalizedPath(locale, "projectPlanner")}
             secondaryLabel={pricing.cta.secondaryLabel}
             secondaryHref={getLocalizedPath(locale, "services")}
             trackingContext="service"

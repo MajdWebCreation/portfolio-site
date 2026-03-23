@@ -1,5 +1,3 @@
-import { getLocalizedPath } from "@/lib/content/routes";
-import { serviceDefinitions, type ServiceKey } from "@/lib/content/services";
 import { type Locale } from "@/lib/content/site-content";
 
 export type PricingPackageKey =
@@ -26,12 +24,8 @@ export type PricingPackage = {
   positioning: string;
   included: string[];
   addOns: PricingAddOn[];
-  unavailable?: string[];
-  upgradeMessage: string;
   dependencyNotes?: string[];
   examples?: PricingExample[];
-  relatedServiceLabel?: string;
-  relatedServiceHref?: string;
 };
 
 export type PricingPageContent = {
@@ -83,13 +77,6 @@ export type PricingPageContent = {
   packages: PricingPackage[];
 };
 
-function getServicePath(locale: Locale, serviceKey: ServiceKey) {
-  const service = serviceDefinitions[serviceKey].locale[locale];
-  const base = getLocalizedPath(locale, "services");
-
-  return `${base}/${service.slug}`;
-}
-
 const pricingContent: Record<Locale, Omit<PricingPageContent, "packages">> = {
   en: {
     metaTitle: "Pricing",
@@ -140,7 +127,7 @@ const pricingContent: Record<Locale, Omit<PricingPageContent, "packages">> = {
           allowed: [
             "Extra pages, SEO boost, motion, multilingual setup",
           ],
-          upgradeLabel: "Move up when needed",
+          upgradeLabel: "Separate trajectory",
           upgrade:
             "Booking, payments, admin logic, user accounts, or heavy integrations belong in Smart Website or Custom Platform work.",
         },
@@ -150,7 +137,7 @@ const pricingContent: Record<Locale, Omit<PricingPageContent, "packages">> = {
           allowed: [
             "SEO growth, admin-lite, stronger email flows, light API integration",
           ],
-          upgradeLabel: "Move up when needed",
+          upgradeLabel: "Separate trajectory",
           upgrade:
             "Booking flows, status management, dashboards, or pricing logic should move into Smart Website scope.",
         },
@@ -160,7 +147,7 @@ const pricingContent: Record<Locale, Omit<PricingPageContent, "packages">> = {
           allowed: [
             "Booking, payments, maps, CRM, reminders, expanded admin",
           ],
-          upgradeLabel: "Move up when needed",
+          upgradeLabel: "Separate trajectory",
           upgrade:
             "If the project needs multiple user roles, client dashboards, portal behavior, or broader platform logic, it should move into Custom Platform.",
         },
@@ -235,7 +222,7 @@ const pricingContent: Record<Locale, Omit<PricingPageContent, "packages">> = {
           allowed: [
             "Extra pagina's, SEO-boost, motion, meertalige setup",
           ],
-          upgradeLabel: "Opschalen wanneer nodig",
+          upgradeLabel: "Apart traject",
           upgrade:
             "Booking, betalingen, admin-logica, gebruikersaccounts of zware integraties horen thuis onder Smart Website of Maatwerk Platform.",
         },
@@ -245,7 +232,7 @@ const pricingContent: Record<Locale, Omit<PricingPageContent, "packages">> = {
           allowed: [
             "SEO-groei, admin-lite, sterkere e-mailflows, lichte API-integratie",
           ],
-          upgradeLabel: "Opschalen wanneer nodig",
+          upgradeLabel: "Apart traject",
           upgrade:
             "Booking flows, statusbeheer, dashboards of prijslogica horen thuis binnen Smart Website-scope.",
         },
@@ -255,7 +242,7 @@ const pricingContent: Record<Locale, Omit<PricingPageContent, "packages">> = {
           allowed: [
             "Booking, betalingen, maps, CRM, reminders, uitgebreidere admin",
           ],
-          upgradeLabel: "Opschalen wanneer nodig",
+          upgradeLabel: "Apart traject",
           upgrade:
             "Zijn meerdere gebruikersrollen, klantdashboards, portaalgedrag of bredere platformlogica nodig, dan hoort het project onder Maatwerk Platform.",
         },
@@ -310,17 +297,6 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 { label: "Extra motion / premium animatie", price: "+ €175" },
                 { label: "Meertalige setup", price: "+ €200" },
               ],
-              unavailable: [
-                "Booking- of reserveringssysteem",
-                "Admin panels",
-                "Login of accounts",
-                "Betalingen",
-                "Geavanceerde API-logica",
-              ],
-              upgradeMessage:
-                "Booking, admin panels, login/accounts, payments en geavanceerde API-logica horen thuis in hogere trajecten.",
-              relatedServiceLabel: "Meer over bedrijfswebsites",
-              relatedServiceHref: getServicePath(locale, "business-websites"),
             },
             {
               key: "business",
@@ -344,10 +320,6 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 { label: "Lichte API-integratie", price: "+ €550" },
                 { label: "Extra pagina", price: "+ €75" },
               ],
-              upgradeMessage:
-                "Zijn booking flows, dashboards, statusbeheer of prijslogica nodig, dan schuift dit traject door naar Smart Website.",
-              relatedServiceLabel: "Meer over bedrijfswebsites",
-              relatedServiceHref: getServicePath(locale, "business-websites"),
             },
             {
               key: "smart",
@@ -387,10 +359,6 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                   price: "€4.750 - €6.500",
                 },
               ],
-              upgradeMessage:
-                "Zijn meerdere gebruikersrollen, dashboards of bredere platformlogica nodig, dan hoort het project onder Maatwerk Platform.",
-              relatedServiceLabel: "Meer over webapplicaties",
-              relatedServiceHref: getServicePath(locale, "web-app-development"),
             },
             {
               key: "webshop",
@@ -419,10 +387,6 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                   price: "+ €450",
                 },
               ],
-              upgradeMessage:
-                "Als de webshop doorloopt in accounts, dashboards, rechten of bredere workflow-logica, schuift het project door naar Maatwerk Platform.",
-              relatedServiceLabel: "Meer over webshops",
-              relatedServiceHref: getServicePath(locale, "ecommerce-development"),
             },
             {
               key: "platform",
@@ -452,10 +416,6 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 "Echte workflow-gedreven adminsystemen vallen meestal in deze categorie.",
                 "Native app development verschijnt hier nooit als simpele add-on voor lagere pakketten.",
               ],
-              upgradeMessage:
-                "Dit is het niveau voor portals, SaaS-achtige logica, permissions en maatwerk productgedrag.",
-              relatedServiceLabel: "Meer over webapplicaties",
-              relatedServiceHref: getServicePath(locale, "web-app-development"),
             },
           ]
         : [
@@ -480,17 +440,6 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 { label: "Extra motion / premium animation", price: "+ €175" },
                 { label: "Multilingual setup", price: "+ €200" },
               ],
-              unavailable: [
-                "Booking or reservation system",
-                "Admin panels",
-                "Login or accounts",
-                "Payments",
-                "Advanced API logic",
-              ],
-              upgradeMessage:
-                "Booking, admin panels, login/accounts, payments, and advanced API logic belong in higher-tier projects.",
-              relatedServiceLabel: "More on business websites",
-              relatedServiceHref: getServicePath(locale, "business-websites"),
             },
             {
               key: "business",
@@ -514,10 +463,6 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 { label: "Light API integration", price: "+ €550" },
                 { label: "Extra page", price: "+ €75" },
               ],
-              upgradeMessage:
-                "If booking flows, dashboards, status handling, or pricing logic are needed, move this into Smart Website scope.",
-              relatedServiceLabel: "More on business websites",
-              relatedServiceHref: getServicePath(locale, "business-websites"),
             },
             {
               key: "smart",
@@ -557,10 +502,6 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                   price: "€4,750 - €6,500",
                 },
               ],
-              upgradeMessage:
-                "If the project needs multiple user roles, dashboards, or broader platform logic, it should move into Custom Platform.",
-              relatedServiceLabel: "More on web applications",
-              relatedServiceHref: getServicePath(locale, "web-app-development"),
             },
             {
               key: "webshop",
@@ -589,10 +530,6 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                   price: "+ €450",
                 },
               ],
-              upgradeMessage:
-                "If the webshop expands into accounts, dashboards, permissions, or broader workflow logic, the project should move into Custom Platform.",
-              relatedServiceLabel: "More on ecommerce",
-              relatedServiceHref: getServicePath(locale, "ecommerce-development"),
             },
             {
               key: "platform",
@@ -622,10 +559,6 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 "Real workflow-based admin systems usually belong here.",
                 "Native app development should never appear as a simple lower-tier add-on.",
               ],
-              upgradeMessage:
-                "This is the level for portals, SaaS-style logic, permissions, and custom product behavior.",
-              relatedServiceLabel: "More on web applications",
-              relatedServiceHref: getServicePath(locale, "web-app-development"),
             },
           ],
   };

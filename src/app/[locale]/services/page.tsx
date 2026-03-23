@@ -234,16 +234,20 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
               </Link>
 
               <Link
-                href={getLocalizedPath(locale, "contact")}
-                data-track-event="contact_cta_click"
+                href={getLocalizedPath(locale, "projectPlanner")}
+                data-track-event="primary_cta_click"
                 data-track-category="services-overview"
-                data-track-label={locale === "nl" ? "Contact" : "Contact"}
+                data-track-label={
+                  locale === "nl"
+                    ? "Gebruik de Project Planner"
+                    : "Use the Project Planner"
+                }
                 data-track-location="services-bottom-links"
                 className="text-sm text-white/48 transition hover:text-white"
               >
                 {locale === "nl"
-                  ? "Start een gesprek over de juiste richting"
-                  : "Start a conversation about the right direction"}{" "}
+                  ? "Hulp nodig bij het kiezen? Gebruik de Project Planner"
+                  : "Need help choosing? Use the Project Planner"}{" "}
                 <span className="text-cyan-200/65">→</span>
               </Link>
             </div>

@@ -4,6 +4,7 @@ export type StaticRouteKey =
   | "home"
   | "services"
   | "pricing"
+  | "projectPlanner"
   | "projects"
   | "contact"
   | "blog";
@@ -20,6 +21,10 @@ const localizedStaticRoutes: Record<StaticRouteKey, Record<Locale, string>> = {
   pricing: {
     en: "/en/pricing",
     nl: "/nl/tarieven",
+  },
+  projectPlanner: {
+    en: "/en/project-planner",
+    nl: "/nl/projectplanner",
   },
   projects: {
     en: "/en/projects",

@@ -61,6 +61,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
       },
     },
     {
+      url: `${businessInfo.websiteUrl}${getLocalizedPath("en", "projectPlanner")}`,
+      alternates: {
+        languages: {
+          en: `${businessInfo.websiteUrl}${getLocalizedPath("en", "projectPlanner")}`,
+          nl: `${businessInfo.websiteUrl}${getLocalizedPath("nl", "projectPlanner")}`,
+        },
+      },
+    },
+    {
+      url: `${businessInfo.websiteUrl}${getLocalizedPath("nl", "projectPlanner")}`,
+      alternates: {
+        languages: {
+          en: `${businessInfo.websiteUrl}${getLocalizedPath("en", "projectPlanner")}`,
+          nl: `${businessInfo.websiteUrl}${getLocalizedPath("nl", "projectPlanner")}`,
+        },
+      },
+    },
+    {
       url: `${businessInfo.websiteUrl}${getLocalizedPath("en", "projects")}`,
       alternates: {
         languages: {

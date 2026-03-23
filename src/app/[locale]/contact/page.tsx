@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import ContactPanel from "@/components/contact-panel";
 import JsonLd from "@/components/json-ld";
 import RevealSection from "@/components/reveal-section";
 import SiteFooter from "@/components/site-footer";
 import SiteShell from "@/components/site-shell";
-import { getRouteAlternates } from "@/lib/content/routes";
+import { getLocalizedPath, getRouteAlternates } from "@/lib/content/routes";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
 import { organizationSchema, webPageSchema } from "@/lib/schema";
 import {
@@ -115,6 +116,46 @@ export default async function ContactPage({
                   <p className="mt-4 text-sm leading-7 text-white/72">
                     {businessInfo.kvk}
                   </p>
+                </div>
+              </div>
+            </div>
+          </RevealSection>
+
+          <RevealSection delay={0.05}>
+            <div className="mt-10 border-t border-white/10 pt-8">
+              <div className="grid gap-6 lg:grid-cols-[0.88fr_1.12fr] lg:items-end">
+                <div className="max-w-2xl">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/74">
+                    {locale === "nl" ? "Guided optie" : "Guided option"}
+                  </p>
+                  <h2 className="mt-4 text-3xl font-semibold text-white">
+                    {locale === "nl"
+                      ? "Twijfel je over het juiste niveau?"
+                      : "Not sure which level fits?"}
+                  </h2>
+                  <p className="mt-4 text-sm leading-7 text-white/58">
+                    {locale === "nl"
+                      ? "Gebruik de Project Planner als je eerst gestructureerd je scope wilt bepalen. De normale contactroute blijft er gewoon naast bestaan."
+                      : "Use the Project Planner if you want to scope the project first in a more structured way. The normal contact route stays available alongside it."}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-x-6 gap-y-3 lg:justify-end">
+                  <Link
+                    href={getLocalizedPath(locale, "projectPlanner")}
+                    className="rounded-full border border-white/12 bg-white px-6 py-3 text-sm font-medium text-black transition hover:opacity-90"
+                  >
+                    {locale === "nl"
+                      ? "Gebruik de Project Planner"
+                      : "Use the Project Planner"}
+                  </Link>
+                  <Link
+                    href={getLocalizedPath(locale, "pricing")}
+                    className="inline-flex items-center text-sm font-medium text-white/76 transition hover:text-white"
+                  >
+                    {locale === "nl" ? "Bekijk tarieven" : "View pricing"}
+                    <span className="ml-2 text-cyan-200/72">→</span>
+                  </Link>
                 </div>
               </div>
             </div>
