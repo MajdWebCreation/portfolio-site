@@ -1,0 +1,153 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 700 260"
+  fill="none"
+  role="img"
+  aria-label="Premium glowing pencil"
+>
+  <defs>
+    <linearGradient id="trailOuter" x1="24" y1="130" x2="490" y2="130" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2FC2FF" stop-opacity="0.34"/>
+      <stop offset="0.45" stop-color="#1F7DB8" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#091C28" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="trailInner" x1="42" y1="130" x2="458" y2="130" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#69D4FF" stop-opacity="0.16"/>
+      <stop offset="0.55" stop-color="#2E8CC7" stop-opacity="0.09"/>
+      <stop offset="1" stop-color="#091C28" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="bodyFill" x1="118" y1="130" x2="505" y2="130" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#234C63"/>
+      <stop offset="0.42" stop-color="#173547"/>
+      <stop offset="1" stop-color="#0C2232"/>
+    </linearGradient>
+
+    <linearGradient id="bodyTopFacet" x1="118" y1="94" x2="505" y2="94" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#355E76"/>
+      <stop offset="1" stop-color="#143344"/>
+    </linearGradient>
+
+    <linearGradient id="bodyBottomFacet" x1="118" y1="166" x2="505" y2="166" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#163142"/>
+      <stop offset="1" stop-color="#091A27"/>
+    </linearGradient>
+
+    <linearGradient id="bodyStroke" x1="110" y1="130" x2="505" y2="130" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5FD0FF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#5FD0FF" stop-opacity="0.03"/>
+    </linearGradient>
+
+    <linearGradient id="eraserFill" x1="54" y1="130" x2="92" y2="130" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8E8C95"/>
+      <stop offset="1" stop-color="#777680"/>
+    </linearGradient>
+
+    <linearGradient id="ferruleFill" x1="92" y1="92" x2="118" y2="168" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EDF3F8"/>
+      <stop offset="0.55" stop-color="#D5DEE7"/>
+      <stop offset="1" stop-color="#BFC9D3"/>
+    </linearGradient>
+
+    <linearGradient id="woodFill" x1="505" y1="130" x2="578" y2="130" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E7C09B"/>
+      <stop offset="0.55" stop-color="#D9A678"/>
+      <stop offset="1" stop-color="#BD835B"/>
+    </linearGradient>
+
+    <linearGradient id="woodLight" x1="505" y1="102" x2="565" y2="130" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F3D4B8"/>
+      <stop offset="1" stop-color="#D8A576"/>
+    </linearGradient>
+
+    <linearGradient id="graphiteFill" x1="566" y1="130" x2="640" y2="130" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#12384E"/>
+      <stop offset="0.55" stop-color="#0B2535"/>
+      <stop offset="1" stop-color="#061A26"/>
+    </linearGradient>
+
+    <radialGradient id="backGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(62 130) rotate(90) scale(54)">
+      <stop offset="0" stop-color="#53CCFF" stop-opacity="0.55"/>
+      <stop offset="0.45" stop-color="#2D9CE0" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#2D9CE0" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="tipGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(607 130) rotate(90) scale(38 34)">
+      <stop offset="0" stop-color="#2DBDFF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#2DBDFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="blurLg" x="-40%" y="-80%" width="180%" height="260%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+
+    <filter id="blurSm" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+  </defs>
+
+  <!-- soft trail -->
+  <g>
+    <rect x="26" y="74" width="442" height="112" rx="56" fill="url(#trailOuter)" filter="url(#blurLg)"/>
+    <rect x="42" y="88" width="410" height="84" rx="42" fill="url(#trailInner)" filter="url(#blurLg)"/>
+    <circle cx="62" cy="130" r="50" fill="url(#backGlow)" filter="url(#blurSm)"/>
+  </g>
+
+  <!-- eraser -->
+  <g>
+    <rect x="54" y="96" width="38" height="68" rx="18" fill="url(#eraserFill)"/>
+    <path
+      d="M58 108C58 101.5 63.2 96.2 69.7 96.2H77.5C71.1 96.2 66 101.5 66 108V152C66 158.5 71.1 163.8 77.5 163.8H69.7C63.2 163.8 58 158.5 58 152V108Z"
+      fill="#A7A6AE"
+      opacity="0.28"
+    />
+    <path
+      d="M70 102H80.5C84.4 102 87 104.4 87 107.1C87 108.3 86.1 109.1 84.9 109.1C84 109.1 83.3 108.6 83 107.8C82.4 106.4 81.3 105.6 78.9 105.6H70.8C69.7 105.6 68.9 104.8 68.9 103.8C68.9 102.8 69.6 102 70 102Z"
+      fill="#D4D3D8"
+      opacity="0.22"
+    />
+  </g>
+
+  <!-- ferrule -->
+  <g>
+    <rect x="92" y="96" width="26" height="68" rx="4" fill="url(#ferruleFill)"/>
+    <rect x="96" y="102" width="18" height="3.6" rx="1.8" fill="#E4ECF4" opacity="0.9"/>
+    <rect x="96" y="112" width="18" height="3.2" rx="1.6" fill="#9AA5B0" opacity="0.95"/>
+    <rect x="96" y="122" width="18" height="3.2" rx="1.6" fill="#D7E0E9" opacity="0.82"/>
+    <rect x="96" y="132" width="18" height="3.2" rx="1.6" fill="#8E98A3" opacity="0.95"/>
+    <rect x="96" y="142" width="18" height="3.2" rx="1.6" fill="#D1DAE3" opacity="0.8"/>
+    <rect x="96" y="152" width="18" height="3.2" rx="1.6" fill="#87919B" opacity="0.95"/>
+    <path d="M92 96H97.2V164H92V96Z" fill="#F0F5FA" opacity="0.28"/>
+    <path d="M112.7 96H118V164H112.7V96Z" fill="#6E7883" opacity="0.28"/>
+  </g>
+
+  <!-- body -->
+  <g>
+    <rect x="118" y="96" width="387" height="68" fill="url(#bodyFill)"/>
+    <path d="M118 96H505L494 108H129L118 96Z" fill="url(#bodyTopFacet)"/>
+    <path d="M129 152H494L505 164H118L129 152Z" fill="url(#bodyBottomFacet)"/>
+    <path d="M492 96H505V164H492L498 130L492 96Z" fill="#0A1F2C"/>
+    <rect x="118.5" y="96.5" width="386" height="67" stroke="url(#bodyStroke)"/>
+
+    <rect x="144" y="110" width="220" height="4.2" rx="2.1" fill="#DAEAF7" opacity="0.18"/>
+    <rect x="150" y="146" width="238" height="3.6" rx="1.8" fill="#AFCBE0" opacity="0.08"/>
+  </g>
+
+  <!-- wood -->
+  <g>
+    <path d="M505 96L566 116L566 144L505 164L523 130L505 96Z" fill="url(#woodFill)"/>
+    <path d="M505 96L548 111L523 130L505 96Z" fill="url(#woodLight)"/>
+    <path d="M523 130L548 149L505 164L523 130Z" fill="#C98E64"/>
+    <path d="M548 111L566 116L578 130L566 144L548 149L523 130L548 111Z" fill="#D9A173"/>
+    <path d="M533 130L553 118L559 130L553 142L533 130Z" fill="#F0CCAE" opacity="0.32"/>
+  </g>
+
+  <!-- graphite tip -->
+  <g>
+    <ellipse cx="606" cy="130" rx="34" ry="34" fill="url(#tipGlow)" filter="url(#blurSm)"/>
+    <path d="M566 116L640 130L566 144L578 130L566 116Z" fill="url(#graphiteFill)"/>
+    <path d="M584 121L640 130L584 139L594 130L584 121Z" fill="#0F3042" opacity="0.65"/>
+    <path d="M566 116L584 121L578 130L566 144L566 116Z" fill="#18475F" opacity="0.3"/>
+  </g>
+</svg>

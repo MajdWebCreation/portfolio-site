@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import ContactPanel from "@/components/contact-panel";
-import ContactIntentBlock from "@/components/contact-intent-block";
 import JsonLd from "@/components/json-ld";
 import RevealSection from "@/components/reveal-section";
 import SiteFooter from "@/components/site-footer";
@@ -10,7 +8,11 @@ import SiteShell from "@/components/site-shell";
 import { getRouteAlternates } from "@/lib/content/routes";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
 import { organizationSchema, webPageSchema } from "@/lib/schema";
-import { isValidLocale, siteContent } from "@/lib/content/site-content";
+import {
+  businessInfo,
+  isValidLocale,
+  siteContent,
+} from "@/lib/content/site-content";
 
 const contactPageMeta = {
   en: {
@@ -73,9 +75,10 @@ export default async function ContactPage({
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
         <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="ym-bg-arc ym-bg-float-fade absolute inset-[-6%] opacity-[0.62]" />
+          <div className="ym-bg-arc ym-bg-float-fade absolute inset-[-6%] opacity-[0.38]" />
+
           <RevealSection>
-            <div className="relative grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+            <div className="relative grid gap-10 border-b border-white/10 pb-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
               <div className="max-w-2xl">
                 <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
                   {content.contact.eyebrow}
@@ -83,22 +86,40 @@ export default async function ContactPage({
                 <h1 className="mt-5 text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
                   {content.contact.title}
                 </h1>
-                <p className="mt-6 text-base leading-8 text-white/64">
+                <p className="mt-6 max-w-xl text-base leading-8 text-white/62">
                   {content.contact.description}
                 </p>
               </div>
-              <div className="relative min-h-[280px] overflow-hidden rounded-[2.3rem] border border-white/10">
-                <Image
-                  src="/images/visuals/contact-signal-visual.png"
-                  alt="Contact signal visual"
-                  fill
-                  sizes="(min-width: 1024px) 48vw, 100vw"
-                  className="object-cover object-center"
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,7,12,0.2),rgba(4,7,12,0.76)_62%,rgba(4,7,12,0.96))]" />
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/72">
+                    Email
+                  </p>
+                  <p className="mt-4 text-sm leading-7 text-white/72">
+                    {businessInfo.email}
+                  </p>
+                </div>
+                <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/72">
+                    {locale === "nl" ? "Telefoon" : "Phone"}
+                  </p>
+                  <p className="mt-4 text-sm leading-7 text-white/72">
+                    {businessInfo.phone}
+                  </p>
+                </div>
+                <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/72">
+                    {content.footer.kvkLabel}
+                  </p>
+                  <p className="mt-4 text-sm leading-7 text-white/72">
+                    {businessInfo.kvk}
+                  </p>
+                </div>
               </div>
             </div>
           </RevealSection>
+
           <div className="mt-12">
             <ContactPanel
               locale={locale}
@@ -106,10 +127,8 @@ export default async function ContactPage({
               footer={content.footer}
             />
           </div>
-          <div className="mt-10">
-            <ContactIntentBlock locale={locale} />
-          </div>
         </section>
+
         <SiteFooter locale={locale} content={content.footer} />
       </SiteShell>
     </>

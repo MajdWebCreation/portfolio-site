@@ -52,7 +52,7 @@ export default function SiteShell({
   ];
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-black text-white">
+    <div className="relative min-h-screen bg-black text-white">
       <BlueprintBackground />
 
       <header className="relative z-30">

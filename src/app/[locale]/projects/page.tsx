@@ -4,7 +4,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/json-ld";
 import RevealSection from "@/components/reveal-section";
-import SeoCta from "@/components/seo-cta";
 import SiteFooter from "@/components/site-footer";
 import SiteShell from "@/components/site-shell";
 import { projectsOverviewContent } from "@/lib/content/projects";
@@ -68,8 +67,9 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
         <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="ym-bg-sweep ym-bg-orbit absolute inset-x-[-10%] top-[10%] h-[24rem] opacity-[0.56]" />
-          <div className="relative grid gap-10 lg:grid-cols-[0.94fr_1.06fr] lg:items-end">
+          <div className="ym-bg-sweep ym-bg-orbit absolute inset-x-[-10%] top-[10%] h-[24rem] opacity-[0.46]" />
+
+          <div className="relative grid gap-10 lg:grid-cols-[0.96fr_1.04fr] lg:items-end">
             <RevealSection>
               <div className="max-w-2xl">
                 <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
@@ -78,13 +78,14 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
                 <h1 className="mt-5 text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
                   {overview.title}
                 </h1>
-                <p className="mt-6 text-base leading-8 text-white/64">
+                <p className="mt-6 max-w-xl text-base leading-8 text-white/62">
                   {overview.intro}
                 </p>
               </div>
             </RevealSection>
+
             <RevealSection delay={0.08}>
-              <div className="relative min-h-[420px] overflow-hidden rounded-[2.4rem] border border-white/10">
+              <div className="relative min-h-[420px] overflow-hidden rounded-[2.5rem] border border-white/10">
                 <Image
                   src="/images/visuals/projects-transformation-visual.png"
                   alt="Projects transformation visual"
@@ -97,95 +98,109 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
             </RevealSection>
           </div>
 
-          <div className="relative mt-12 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="relative mt-14 grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
             <RevealSection>
-              <div className="rounded-[2.2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] p-6 md:p-8">
-                <h2 className="text-3xl font-semibold text-white">
+              <div className="max-w-xl">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/76">
                   {overview.highlightsTitle}
-                </h2>
-                <ul className="mt-6 space-y-4">
+                </p>
+
+                <div className="mt-6 space-y-5">
                   {overview.highlights.map((highlight) => (
-                    <li
-                      key={highlight}
-                      className="rounded-[1.25rem] border border-white/10 bg-black/35 px-4 py-4 text-sm leading-7 text-white/68"
-                    >
-                      {highlight}
-                    </li>
+                    <div key={highlight} className="border-b border-white/8 pb-5 last:border-b-0 last:pb-0">
+                      <p className="text-base leading-8 text-white/64">{highlight}</p>
+                    </div>
                   ))}
-                </ul>
+                </div>
+
+                <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3">
+                  <Link
+                    href={content.contact.pagePath}
+                    data-track-event="contact_cta_click"
+                    data-track-category="projects-overview"
+                    data-track-label={locale === "nl" ? "Bespreek een project" : "Discuss a project"}
+                    data-track-location="projects-links"
+                    className="text-sm text-white/54 transition hover:text-white"
+                  >
+                    {locale === "nl" ? "Bespreek een project" : "Discuss a project"}{" "}
+                    <span className="text-cyan-200/65">→</span>
+                  </Link>
+                  <Link
+                    href={getLocalizedPath(locale, "services")}
+                    data-track-event="primary_cta_click"
+                    data-track-category="projects-overview"
+                    data-track-label={locale === "nl" ? "Diensten" : "Services"}
+                    data-track-location="projects-links"
+                    className="text-sm text-white/54 transition hover:text-white"
+                  >
+                    {locale === "nl" ? "Bekijk diensten" : "View services"}{" "}
+                    <span className="text-cyan-200/65">→</span>
+                  </Link>
+                </div>
               </div>
             </RevealSection>
 
             <RevealSection delay={0.08}>
-              <div className="rounded-[2.2rem] border border-white/10 bg-black/35 p-6 md:p-8">
-                <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/75">
+              <div className="rounded-[2.3rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-6 md:p-8">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/76">
                   {content.projects.premiumBuildLabel}
                 </p>
-                <p className="mt-4 text-base leading-8 text-white/65">
+                <p className="mt-5 max-w-2xl text-base leading-8 text-white/62">
                   {content.projects.premiumBuildText}
                 </p>
-                <div className="mt-8 space-y-4">
+
+                <div className="mt-8 grid gap-5 md:grid-cols-2">
                   {content.projects.stages.map((stage, index) => (
-                    <div key={stage} className="flex items-start gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-cyan-400/25 bg-cyan-400/8 text-sm text-cyan-200">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <p className="text-sm uppercase tracking-[0.22em] text-cyan-300/75">
-                          {stage}
-                        </p>
-                        <p className="mt-2 text-sm leading-7 text-white/62">
-                          {content.projects.sideTexts[index]}
-                        </p>
-                      </div>
+                    <div
+                      key={stage}
+                      className="rounded-[1.5rem] border border-white/10 bg-black/20 p-5"
+                    >
+                      <p className="text-[10px] uppercase tracking-[0.26em] text-cyan-300/74">
+                        {String(index + 1).padStart(2, "0")} / {stage}
+                      </p>
+                      <p className="mt-4 text-sm leading-7 text-white/58">
+                        {content.projects.sideTexts[index]}
+                      </p>
                     </div>
                   ))}
                 </div>
-                <Link
-                  href={content.contact.pagePath}
-                  data-track-event="contact_cta_click"
-                  data-track-category="projects-overview"
-                  data-track-label={locale === "nl" ? "Bespreek een project" : "Discuss a project"}
-                  data-track-location="projects-panel"
-                  className="mt-8 inline-flex rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
-                >
-                  {locale === "nl" ? "Bespreek een project" : "Discuss a project"}
-                </Link>
               </div>
             </RevealSection>
           </div>
-        </section>
-        <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-10">
-          <SeoCta
-            title={
-              locale === "nl"
-                ? "Meer context rond het werk?"
-                : "Need more context around the work?"
-            }
-            text={
-              locale === "nl"
-                ? "Bekijk de diensten, lees de inzichten-sectie of neem direct contact op om een projectrichting te bespreken."
-                : "Explore the services, read the insights section, or get in touch directly to discuss a project direction."
-            }
-            primaryLabel={locale === "nl" ? "Bekijk diensten" : "View services"}
-            primaryHref={getLocalizedPath(locale, "services")}
-            secondaryLabel={locale === "nl" ? "Naar inzichten" : "Go to insights"}
-            secondaryHref={getLocalizedPath(locale, "blog")}
-            trackingContext="projects"
-          />
-          <div className="mt-4">
-            <Link
-              href={getLocalizedPath(locale, "contact")}
-              data-track-event="contact_cta_click"
-              data-track-category="projects-overview"
-              data-track-label={locale === "nl" ? "Neem contact op" : "Contact us"}
-              data-track-location="projects-cta"
-              className="inline-flex rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
-            >
-              {locale === "nl" ? "Neem contact op" : "Contact us"}
-            </Link>
+
+          <div className="mt-14 border-t border-white/10 pt-8">
+            <div className="flex flex-wrap gap-x-6 gap-y-3">
+              <Link
+                href={getLocalizedPath(locale, "blog")}
+                data-track-event="primary_cta_click"
+                data-track-category="projects-overview"
+                data-track-label={locale === "nl" ? "Inzichten" : "Insights"}
+                data-track-location="projects-bottom-links"
+                className="text-sm text-white/48 transition hover:text-white"
+              >
+                {locale === "nl"
+                  ? "Lees meer over aanpak en uitvoering"
+                  : "Read more about approach and execution"}{" "}
+                <span className="text-cyan-200/65">→</span>
+              </Link>
+
+              <Link
+                href={getLocalizedPath(locale, "contact")}
+                data-track-event="contact_cta_click"
+                data-track-category="projects-overview"
+                data-track-label={locale === "nl" ? "Contact" : "Contact"}
+                data-track-location="projects-bottom-links"
+                className="text-sm text-white/48 transition hover:text-white"
+              >
+                {locale === "nl"
+                  ? "Neem contact op voor projectcontext"
+                  : "Get in touch for project context"}{" "}
+                <span className="text-cyan-200/65">→</span>
+              </Link>
+            </div>
           </div>
         </section>
+
         <SiteFooter locale={locale} content={content.footer} />
       </SiteShell>
     </>

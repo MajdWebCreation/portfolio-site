@@ -21,41 +21,16 @@ export default function SiteFooter({ locale, content }: SiteFooterProps) {
     <footer className="relative z-20 mt-16 overflow-hidden border-t border-white/10">
       <div className="ym-bg-arc ym-bg-float-fade absolute inset-[-6%] opacity-[0.5]" />
       <div className="mx-auto max-w-7xl px-6 pb-14 pt-16 lg:px-10">
-        <div className="relative mb-14 overflow-hidden rounded-[2.4rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.01))] px-6 py-10 sm:px-8 lg:px-10">
-          <div className="absolute right-[-4%] top-[-12%] h-56 w-56 opacity-[0.06]">
-            <BrandMark className="h-full w-full" />
-          </div>
-          <div className="grid gap-10 lg:grid-cols-[1.18fr_0.82fr] lg:items-end">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.34em] text-cyan-200/72">
-                {locale === "nl" ? "Closing frame" : "Closing frame"}
-              </p>
-              <h2 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight text-white sm:text-4xl">
-                {locale === "nl"
-                  ? "Heldere systemen, verfijnde interfaces en een digitale presence die bewust aanvoelt."
-                  : "Clear systems, refined interfaces, and a digital presence that feels deliberate."}
-              </h2>
-            </div>
-            <div className="text-sm leading-7 text-white/62">
-              {content.description}
-            </div>
-          </div>
-        </div>
-
         <div className="grid gap-10 lg:grid-cols-[1.1fr_0.8fr_0.8fr_0.9fr]">
           <div>
             <BrandMark
               href={getLocalizedPath(locale, "home")}
               variant="white"
-              className="h-11 w-[132px]"
+              className="h-16 w-[190px]"
             />
             <p className="mt-5 max-w-sm text-sm leading-7 text-white/60">
               {content.description}
             </p>
-            <div className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] uppercase tracking-[0.28em] text-white/42">
-              <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_20px_rgba(113,227,255,0.7)]" />
-              {businessInfo.name}
-            </div>
             <div className="mt-6 max-w-sm space-y-2 text-xs leading-6 text-white/42">
               <p>
                 © {currentYear} {businessInfo.legalName}. {content.rights}

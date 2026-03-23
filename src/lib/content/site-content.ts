@@ -94,6 +94,48 @@ export const siteContent = {
         "From business websites to custom web tools, every project is shaped around clear communication, strong UX, and technical refinement.",
       allServicesLabel: "View all services",
     },
+    prototypeStory: {
+      eyebrow: "Prototype story",
+      title:
+        "An idea starts quiet, becomes structure, and resolves into a sharper interface.",
+      description:
+        "This section slows the homepage down on purpose. Instead of showing everything at once, it reveals how a digital direction takes shape.",
+      boardLabel: "Prototype",
+      helperLabel: "Scroll to guide the reveal",
+      ctaLabel: "Open project thinking",
+      finalEyebrow: "Refined result",
+      finalTitle:
+        "A calmer interface with stronger hierarchy and clearer intent.",
+      finalText:
+        "Once the structure, rhythm, and messaging align, the final frame settles into a cleaner premium presentation.",
+      interfaceChips: [
+        "Wireframe rhythm",
+        "Measured motion",
+        "Sharper CTA",
+      ],
+      stages: [
+        {
+          label: "01 / Idea",
+          title: "A quiet starting point",
+          text: "The first frame stays intentionally sparse so the direction can emerge with more control.",
+        },
+        {
+          label: "02 / Prototype",
+          title: "Structure gets sketched in",
+          text: "Wireframe blocks and page zones appear before the interface becomes fully articulated.",
+        },
+        {
+          label: "03 / Interface",
+          title: "The system gains rhythm",
+          text: "Spacing, UI components, and messaging start to feel deliberate instead of temporary.",
+        },
+        {
+          label: "04 / Refine",
+          title: "The final state settles",
+          text: "The result feels calmer, clearer, and more premium than dumping everything in at once.",
+        },
+      ],
+    },
     projects: {
       eyebrow: "Projects",
       title: "From first concept to launch-ready execution.",
@@ -176,6 +218,48 @@ export const siteContent = {
       description:
         "Van bedrijfswebsites tot maatwerk webtools: ieder project draait om heldere communicatie, sterke UX en technische verfijning.",
       allServicesLabel: "Bekijk alle diensten",
+    },
+    prototypeStory: {
+      eyebrow: "Prototype story",
+      title:
+        "Een idee begint rustig, krijgt structuur en landt uiteindelijk als een scherpere interface.",
+      description:
+        "Deze sectie vertraagt de homepage bewust. In plaats van alles tegelijk te tonen, laat ze zien hoe een digitale richting stap voor stap vorm krijgt.",
+      boardLabel: "Prototype",
+      helperLabel: "Scroll om de reveal te sturen",
+      ctaLabel: "Bekijk projectdenken",
+      finalEyebrow: "Verfijnd resultaat",
+      finalTitle:
+        "Een rustigere interface met sterkere hiërarchie en duidelijkere intentie.",
+      finalText:
+        "Zodra structuur, ritme en messaging samenvallen, zakt het eindbeeld in een schonere premium presentatie.",
+      interfaceChips: [
+        "Wireframe-ritme",
+        "Beheerde motion",
+        "Scherpere CTA",
+      ],
+      stages: [
+        {
+          label: "01 / Idee",
+          title: "Een rustige start",
+          text: "Het eerste frame blijft bewust spaarzaam zodat de richting gecontroleerd kan ontstaan.",
+        },
+        {
+          label: "02 / Prototype",
+          title: "De structuur wordt geschetst",
+          text: "Wireframeblokken en paginazones verschijnen voordat de interface volledig wordt uitgewerkt.",
+        },
+        {
+          label: "03 / Interface",
+          title: "Het systeem krijgt ritme",
+          text: "Spacing, UI-componenten en messaging gaan bewuster en minder tijdelijk aanvoelen.",
+        },
+        {
+          label: "04 / Verfijnen",
+          title: "De eindstaat landt",
+          text: "Het resultaat voelt rustiger, helderder en premiumer dan alles ineens op het scherm zetten.",
+        },
+      ],
     },
     projects: {
       eyebrow: "Projecten",
