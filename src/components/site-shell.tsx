@@ -54,7 +54,7 @@ export default function SiteShell({
   const mobileCtaLabel = locale === "nl" ? "Start project" : "Start project";
 
   return (
-    <div className="relative min-h-screen bg-black text-white">
+    <div className="relative min-h-screen overflow-x-clip bg-black text-white">
       <BlueprintBackground />
 
       <header className="relative z-30">
