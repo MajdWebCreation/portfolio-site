@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { trackEvent } from "@/lib/analytics";
 import {
@@ -185,6 +185,7 @@ function getPriorityLabel(locale: Locale, value: PlannerPriority) {
 
 export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
   const content = getPlannerPageContent(locale);
+  const formTopRef = useRef<HTMLDivElement | null>(null);
   const [step, setStep] = useState(0);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -243,6 +244,18 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (status !== "idle") setStatus("idle");
     if (formError) setFormError("");
+  }
+
+  function scrollToPlannerTop() {
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia("(max-width: 767px)").matches) return;
+
+    window.requestAnimationFrame(() => {
+      formTopRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
   }
 
   function clearError(key: PlannerErrorKey) {
@@ -389,7 +402,13 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
 
     setStatus("idle");
     setFormError("");
-    setStep((prev) => Math.min(prev + 1, 3));
+    setStep((prev) => {
+      const nextStep = Math.min(prev + 1, 3);
+      if (nextStep !== prev) {
+        scrollToPlannerTop();
+      }
+      return nextStep;
+    });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -523,6 +542,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
   return (
     <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-start">
       <motion.form
+        ref={formTopRef}
         onSubmit={handleSubmit}
         initial={{ opacity: 0, y: 16 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -1009,7 +1029,13 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
               onClick={() => {
                 setStatus("idle");
                 setFormError("");
-                setStep((prev) => Math.max(prev - 1, 0));
+                setStep((prev) => {
+                  const nextStep = Math.max(prev - 1, 0);
+                  if (nextStep !== prev) {
+                    scrollToPlannerTop();
+                  }
+                  return nextStep;
+                });
               }}
               disabled={step === 0}
               className="rounded-full border border-white/12 px-5 py-3 text-sm text-white/74 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
