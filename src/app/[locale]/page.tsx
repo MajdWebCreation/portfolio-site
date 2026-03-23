@@ -125,7 +125,7 @@ export default async function HomePage({
                   </Link>
                 </div>
 
-                <div className="mt-12 flex w-full items-center justify-center gap-4 border-t border-white/10 pt-6 text-left lg:justify-start">
+                <div className="mt-12 flex w-full flex-col items-center justify-center gap-4 border-t border-white/10 pt-6 text-center lg:flex-row lg:justify-start lg:text-left">
                   <BrandMark className="h-8 w-[104px] opacity-[0.18]" />
                   <p className="max-w-md text-sm leading-7 text-white/48">
                     {content.hero.cardText}

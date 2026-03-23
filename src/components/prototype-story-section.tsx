@@ -446,6 +446,7 @@ function MobilePrototypeStory({
   content,
   overviewHref,
 }: PrototypeStorySectionProps) {
+  const isEnglishMobileStory = content.ctaLabel === "Open project thinking";
   const sectionRef = useRef<HTMLDivElement | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
   const pathRef = useRef<SVGPathElement | null>(null);
@@ -607,10 +608,16 @@ function MobilePrototypeStory({
 
           <motion.div
             style={zoneFour}
-            className="absolute inset-x-4 bottom-[4%] rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(35,72,97,0.62),rgba(8,14,22,0.96))] p-5"
+            className={`absolute inset-x-4 bottom-[4%] rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(35,72,97,0.62),rgba(8,14,22,0.96))] p-5 ${
+              isEnglishMobileStory ? "pr-16" : ""
+            }`}
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(113,227,255,0.18),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))]" />
-            <div className="relative">
+            <div
+              className={`relative ${
+                isEnglishMobileStory ? "max-w-[14rem]" : "max-w-[16rem]"
+              }`}
+            >
               <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-200/78">
                 {content.finalEyebrow}
               </p>
