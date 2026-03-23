@@ -185,7 +185,7 @@ function getPriorityLabel(locale: Locale, value: PlannerPriority) {
 
 export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
   const content = getPlannerPageContent(locale);
-  const formTopRef = useRef<HTMLDivElement | null>(null);
+  const formTopRef = useRef<HTMLFormElement | null>(null);
   const [step, setStep] = useState(0);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
