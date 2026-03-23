@@ -99,14 +99,14 @@ const pricingContent: Record<Locale, Omit<PricingPageContent, "packages">> = {
       eyebrow: "Pricing",
       title: "Different digital products ask for different build depth.",
       description:
-        "A starter site, a business website, a booking flow, a webshop, and a custom platform do not carry the same technical scope. YM Creations works with clear base packages and logical upgrades so the investment matches what actually needs to be built.",
+        "A starter site, a business website, a booking flow, a webshop, and a custom platform do not carry the same technical scope. YM Creations works with clear base packages and logical upgrades so the investment stays accessible, but still matches what actually needs to be built.",
       primaryLabel: "Discuss your project",
       secondaryLabel: "View packages",
     },
     intro: {
       title: "Premium, but still grounded in logic.",
       text:
-        "The goal is not to sell \"just a website\". The goal is to shape the right digital product for the stage your business is in. Smaller websites stay accessible. More technical systems move into higher tiers where booking logic, payments, admin, dashboards, and integrations can be handled properly.",
+        "The goal is not to sell \"just a website\". The goal is to shape the right digital product for the stage your business is in. Smaller websites stay deliberately accessible. More technical systems move into higher tiers where booking logic, payments, admin, dashboards, and integrations can be handled properly.",
     },
     cards: {
       eyebrow: "Base packages",
@@ -194,14 +194,14 @@ const pricingContent: Record<Locale, Omit<PricingPageContent, "packages">> = {
       eyebrow: "Tarieven",
       title: "Verschillende digitale producten vragen om verschillende bouwdiepte.",
       description:
-        "Een startersite, een bedrijfswebsite, een booking flow, een webshop en een maatwerk platform hebben niet dezelfde technische scope. YM Creations werkt daarom met heldere basispakketten en logische upgrades, zodat de investering past bij wat echt gebouwd moet worden.",
+        "Een startersite, een bedrijfswebsite, een booking flow, een webshop en een maatwerk platform hebben niet dezelfde technische scope. YM Creations werkt daarom met heldere basispakketten en logische upgrades, zodat de investering toegankelijk blijft maar wel past bij wat echt gebouwd moet worden.",
       primaryLabel: "Bespreek je project",
       secondaryLabel: "Bekijk pakketten",
     },
     intro: {
       title: "Premium, maar wel logisch opgebouwd.",
       text:
-        "Het doel is niet om \"gewoon een website\" te verkopen. Het doel is om het juiste digitale product te bouwen voor de fase waarin een bedrijf zit. Kleinere websites blijven toegankelijk. Meer technische systemen schuiven door naar hogere trajecten waarin booking-logica, betalingen, admin, dashboards en integraties goed kunnen worden uitgewerkt.",
+        "Het doel is niet om \"gewoon een website\" te verkopen. Het doel is om het juiste digitale product te bouwen voor de fase waarin een bedrijf zit. Kleinere websites blijven bewust toegankelijk. Meer technische systemen schuiven door naar hogere trajecten waarin booking-logica, betalingen, admin, dashboards en integraties goed kunnen worden uitgewerkt.",
     },
     cards: {
       eyebrow: "Basispakketten",
@@ -292,45 +292,45 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
             {
               key: "starter",
               title: "Starter Website",
-              price: "vanaf €795",
+              price: "vanaf €695",
               positioning:
-                "Voor een nette, stijlvolle online presentatie zonder technische complexiteit.",
+                "Voor een stijlvolle online aanwezigheid zonder complexe functionaliteit.",
               included: [
                 "1-5 pagina's",
                 "Maatwerk uitstraling",
-                "Responsive build",
+                "Responsive design",
                 "Contactformulier",
                 "E-mailnotificatie",
                 "SEO-basis",
-                "Lichte storytelling en visuele afwerking",
+                "Lichte premium styling",
               ],
               addOns: [
-                { label: "Extra pagina", price: "+ €125" },
-                { label: "SEO-boost", price: "+ €450" },
-                { label: "Extra motion / premium animaties", price: "+ €300" },
-                { label: "Meertalige setup", price: "+ €650" },
+                { label: "Extra pagina", price: "+ €75" },
+                { label: "SEO-boost", price: "+ €250" },
+                { label: "Extra motion / premium animatie", price: "+ €175" },
+                { label: "Meertalige setup", price: "+ €200" },
               ],
               unavailable: [
                 "Booking- of reserveringssysteem",
-                "Admin panel",
+                "Admin panels",
                 "Login of accounts",
                 "Betalingen",
-                "Geavanceerde API-integraties",
+                "Geavanceerde API-logica",
               ],
               upgradeMessage:
-                "Deze functionaliteit hoort thuis onder Smart Website of Maatwerk Platform.",
+                "Booking, admin panels, login/accounts, payments en geavanceerde API-logica horen thuis in hogere trajecten.",
               relatedServiceLabel: "Meer over bedrijfswebsites",
               relatedServiceHref: getServicePath(locale, "business-websites"),
             },
             {
               key: "business",
               title: "Business Website",
-              price: "vanaf €2.250",
+              price: "vanaf €1.750",
               positioning:
-                "Voor bedrijven die sterker willen presenteren, meer pagina's nodig hebben en serieuzer online willen verkopen.",
+                "Voor bedrijven die meer structuur, meer pagina's en een sterkere digitale aanwezigheid nodig hebben.",
               included: [
                 "6-12 pagina's",
-                "Sterkere paginastructuur en contentblokken",
+                "Sterkere contentstructuur",
                 "Maatwerk design",
                 "Formulieren",
                 "Sterkere SEO-basis",
@@ -338,23 +338,23 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 "Contentbeheer-light",
               ],
               addOns: [
-                { label: "SEO Growth", price: "+ €650" },
-                { label: "Geavanceerdere e-mailflow", price: "+ €350" },
-                { label: "Admin-lite / content management", price: "+ €750" },
-                { label: "Lichte API-integratie", price: "+ €950" },
-                { label: "Extra pagina", price: "+ €150 per pagina" },
+                { label: "SEO Growth", price: "+ €350" },
+                { label: "Geavanceerdere e-mailflow", price: "+ €200" },
+                { label: "Admin-lite / content management", price: "+ €450" },
+                { label: "Lichte API-integratie", price: "+ €550" },
+                { label: "Extra pagina", price: "+ €75" },
               ],
               upgradeMessage:
-                "Zijn booking flows, dashboards, statusbeheer of prijslogica nodig, dan schuift het project door naar Smart Website.",
+                "Zijn booking flows, dashboards, statusbeheer of prijslogica nodig, dan schuift dit traject door naar Smart Website.",
               relatedServiceLabel: "Meer over bedrijfswebsites",
               relatedServiceHref: getServicePath(locale, "business-websites"),
             },
             {
               key: "smart",
               title: "Smart Website / Booking",
-              price: "vanaf €4.500",
+              price: "vanaf €3.250",
               positioning:
-                "Voor bedrijven die meer nodig hebben dan informatie: aanvragen, reserveringen, bevestigingen en slim beheer.",
+                "Voor bedrijven die aanvragen, reserveringen, bevestigingen en licht beheer nodig hebben.",
               included: [
                 "Sterke business website-basis",
                 "Booking- of aanvraagflow",
@@ -364,14 +364,14 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 "Conversiegerichte structuur",
               ],
               addOns: [
-                { label: "Payment integratie", price: "+ €1.250" },
+                { label: "Payment integratie", price: "+ €650" },
                 {
                   label: "Google Maps / Routes / prijs per km",
-                  price: "+ €2.250",
+                  price: "+ €1.250",
                 },
-                { label: "CRM- of kalenderintegratie", price: "+ €1.250" },
-                { label: "Uitgebreider admin panel", price: "+ €1.750" },
-                { label: "Reminder e-mails / automatisering", price: "+ €650" },
+                { label: "CRM- of kalenderintegratie", price: "+ €650" },
+                { label: "Uitgebreider admin panel", price: "+ €950" },
+                { label: "Reminder e-mails / automatisering", price: "+ €250" },
               ],
               dependencyNotes: [
                 "Betalingen zijn alleen logisch binnen booking sites of webshops.",
@@ -379,12 +379,12 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 "Geavanceerde adminrollen horen alleen bij projecten waar admin al onderdeel van de scope is.",
               ],
               examples: [
-                { label: "Taxi website basic", price: "vanaf €2.250" },
-                { label: "Taxi website met booking flow", price: "vanaf €4.500" },
+                { label: "Taxi website basic", price: "vanaf €1.750" },
+                { label: "Taxi website met booking flow", price: "vanaf €3.250" },
                 {
                   label:
                     "Taxi website met Maps, routes, km-pricing, bevestigingen en admin",
-                  price: "€6.750 - €8.500",
+                  price: "€4.750 - €6.500",
                 },
               ],
               upgradeMessage:
@@ -395,28 +395,28 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
             {
               key: "webshop",
               title: "Webshop",
-              price: "vanaf €3.250",
+              price: "vanaf €2.495",
               positioning:
-                "Voor bedrijven die professioneel online willen verkopen.",
+                "Voor bedrijven die professioneel online willen verkopen zonder de setup onnodig zwaar te maken.",
               included: [
                 "Productpagina's",
                 "Winkelwagen",
                 "Checkout",
                 "Ordermails",
                 "Basisbeheer",
-                "Mobiel geoptimaliseerde build",
+                "Mobiel geoptimaliseerd design",
               ],
               addOns: [
-                { label: "Subscriptions / memberships", price: "+ €1.500" },
-                { label: "Geavanceerde filters / search", price: "+ €850" },
+                { label: "Subscriptions / memberships", price: "+ €900" },
+                { label: "Geavanceerde filters / search", price: "+ €450" },
                 {
                   label: "CRM / ERP / boekhoudintegratie",
-                  price: "+ €1.250",
+                  price: "+ €750",
                 },
-                { label: "Meertalige setup", price: "+ €850" },
+                { label: "Meertalige setup", price: "+ €200" },
                 {
                   label: "Geavanceerde SEO voor categorieën / producten",
-                  price: "+ €750",
+                  price: "+ €450",
                 },
               ],
               upgradeMessage:
@@ -427,9 +427,9 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
             {
               key: "platform",
               title: "Maatwerk Platform / Portaal / SaaS",
-              price: "vanaf €8.500",
+              price: "vanaf €6.500",
               positioning:
-                "Voor serieuze digitale maatwerkproducten en workflowsystemen.",
+                "Voor maatwerk workflowsystemen, portals, dashboards en SaaS-gerichte producten.",
               included: [
                 "Discovery",
                 "Login",
@@ -440,12 +440,12 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 "Maatwerk flows",
               ],
               addOns: [
-                { label: "Extra gebruikersrollen", price: "+ €1.500" },
-                { label: "Complexe API-integratie", price: "+ €2.500+" },
-                { label: "Reporting / analytics", price: "+ €1.250" },
-                { label: "Notificatiesysteem", price: "+ €750" },
-                { label: "Mobile app extension", price: "vanaf + €5.000" },
-                { label: "Volledig app-traject", price: "vanaf €12.500" },
+                { label: "Extra gebruikersrollen", price: "+ €750" },
+                { label: "Complexe API-integratie", price: "+ €1.500+" },
+                { label: "Reporting / analytics", price: "+ €750" },
+                { label: "Notificatiesysteem", price: "+ €350" },
+                { label: "Mobile app extension", price: "vanaf + €3.500" },
+                { label: "Volledig app-traject", price: "vanaf €8.500" },
               ],
               dependencyNotes: [
                 "Login, rollen en dashboards horen altijd in dit pakket.",
@@ -462,45 +462,45 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
             {
               key: "starter",
               title: "Starter Website",
-              price: "from €795",
+              price: "from €695",
               positioning:
-                "For a neat, stylish online presence without technical complexity.",
+                "For a stylish online presence without complex functionality.",
               included: [
                 "1-5 pages",
                 "Custom visual direction",
-                "Responsive build",
+                "Responsive design",
                 "Contact form",
                 "Email notification",
                 "SEO foundation",
-                "Light storytelling and visual polish",
+                "Light premium styling",
               ],
               addOns: [
-                { label: "Extra page", price: "+ €125" },
-                { label: "SEO boost", price: "+ €450" },
-                { label: "Extra motion / premium animations", price: "+ €300" },
-                { label: "Multilingual setup", price: "+ €650" },
+                { label: "Extra page", price: "+ €75" },
+                { label: "SEO boost", price: "+ €250" },
+                { label: "Extra motion / premium animation", price: "+ €175" },
+                { label: "Multilingual setup", price: "+ €200" },
               ],
               unavailable: [
                 "Booking or reservation system",
-                "Admin panel",
+                "Admin panels",
                 "Login or accounts",
                 "Payments",
-                "Advanced API integrations",
+                "Advanced API logic",
               ],
               upgradeMessage:
-                "That functionality belongs under Smart Website or Custom Platform.",
+                "Booking, admin panels, login/accounts, payments, and advanced API logic belong in higher-tier projects.",
               relatedServiceLabel: "More on business websites",
               relatedServiceHref: getServicePath(locale, "business-websites"),
             },
             {
               key: "business",
               title: "Business Website",
-              price: "from €2,250",
+              price: "from €1,750",
               positioning:
-                "For companies that need more pages, stronger structure, and a more serious digital presence.",
+                "For businesses that need more structure, more pages, and a stronger digital presence.",
               included: [
                 "6-12 pages",
-                "Stronger page structure and content blocks",
+                "Stronger content structure",
                 "Custom design",
                 "Forms",
                 "Stronger SEO foundation",
@@ -508,23 +508,23 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 "Light content management",
               ],
               addOns: [
-                { label: "SEO Growth", price: "+ €650" },
-                { label: "Advanced email flow", price: "+ €350" },
-                { label: "Admin-lite / content management", price: "+ €750" },
-                { label: "Light API integration", price: "+ €950" },
-                { label: "Extra pages", price: "+ €150 per page" },
+                { label: "SEO Growth", price: "+ €350" },
+                { label: "Advanced email flow", price: "+ €200" },
+                { label: "Admin-lite / content management", price: "+ €450" },
+                { label: "Light API integration", price: "+ €550" },
+                { label: "Extra page", price: "+ €75" },
               ],
               upgradeMessage:
-                "If the project needs booking flows, dashboards, status management, or pricing logic, it should move into Smart Website scope.",
+                "If booking flows, dashboards, status handling, or pricing logic are needed, move this into Smart Website scope.",
               relatedServiceLabel: "More on business websites",
               relatedServiceHref: getServicePath(locale, "business-websites"),
             },
             {
               key: "smart",
               title: "Smart Website / Booking",
-              price: "from €4,500",
+              price: "from €3,250",
               positioning:
-                "For businesses that need more than information: requests, reservations, confirmations, and smart management.",
+                "For businesses that need requests, reservations, confirmations, and light management.",
               included: [
                 "Strong business website foundation",
                 "Booking or request flow",
@@ -534,14 +534,14 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 "Conversion-focused structure",
               ],
               addOns: [
-                { label: "Payment integration", price: "+ €1,250" },
+                { label: "Payment integration", price: "+ €650" },
                 {
                   label: "Google Maps / Routes / price per km",
-                  price: "+ €2,250",
+                  price: "+ €1,250",
                 },
-                { label: "CRM or calendar integration", price: "+ €1,250" },
-                { label: "Expanded admin panel", price: "+ €1,750" },
-                { label: "Reminder emails / automation", price: "+ €650" },
+                { label: "CRM or calendar integration", price: "+ €650" },
+                { label: "Expanded admin panel", price: "+ €950" },
+                { label: "Reminder emails / automation", price: "+ €250" },
               ],
               dependencyNotes: [
                 "Payments are only a logical fit for booking sites or webshops.",
@@ -549,12 +549,12 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 "Advanced admin roles only make sense if admin is already part of the scope.",
               ],
               examples: [
-                { label: "Taxi website basic", price: "from €2,250" },
-                { label: "Taxi website with booking flow", price: "from €4,500" },
+                { label: "Taxi website basic", price: "from €1,750" },
+                { label: "Taxi website with booking flow", price: "from €3,250" },
                 {
                   label:
                     "Taxi website with Maps, routes, km pricing, confirmations, and admin",
-                  price: "€6,750 - €8,500",
+                  price: "€4,750 - €6,500",
                 },
               ],
               upgradeMessage:
@@ -565,28 +565,28 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
             {
               key: "webshop",
               title: "Webshop",
-              price: "from €3,250",
+              price: "from €2,495",
               positioning:
-                "For businesses that want to sell online professionally.",
+                "For businesses that want to sell online professionally without overcomplicating the setup.",
               included: [
                 "Product pages",
                 "Cart",
                 "Checkout",
                 "Order emails",
                 "Basic management",
-                "Mobile-optimized build",
+                "Mobile-optimized design",
               ],
               addOns: [
-                { label: "Subscriptions / memberships", price: "+ €1,500" },
-                { label: "Advanced filters / search", price: "+ €850" },
+                { label: "Subscriptions / memberships", price: "+ €900" },
+                { label: "Advanced filters / search", price: "+ €450" },
                 {
                   label: "CRM / ERP / accounting integration",
-                  price: "+ €1,250",
+                  price: "+ €750",
                 },
-                { label: "Multilingual setup", price: "+ €850" },
+                { label: "Multilingual setup", price: "+ €200" },
                 {
                   label: "Advanced SEO for categories / products",
-                  price: "+ €750",
+                  price: "+ €450",
                 },
               ],
               upgradeMessage:
@@ -597,9 +597,9 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
             {
               key: "platform",
               title: "Custom Platform / Portal / SaaS",
-              price: "from €8,500",
+              price: "from €6,500",
               positioning:
-                "For serious custom digital products and workflow systems.",
+                "For custom workflow systems, portals, dashboards, and SaaS-oriented products.",
               included: [
                 "Discovery",
                 "Login",
@@ -610,12 +610,12 @@ export function getPricingPageContent(locale: Locale): PricingPageContent {
                 "Custom flows",
               ],
               addOns: [
-                { label: "Extra user roles", price: "+ €1,500" },
-                { label: "Complex API integration", price: "+ €2,500+" },
-                { label: "Reporting / analytics", price: "+ €1,250" },
-                { label: "Notification system", price: "+ €750" },
-                { label: "Mobile app extension", price: "from + €5,000" },
-                { label: "Full app trajectory", price: "from €12,500" },
+                { label: "Extra user roles", price: "+ €750" },
+                { label: "Complex API integration", price: "+ €1,500+" },
+                { label: "Reporting / analytics", price: "+ €750" },
+                { label: "Notification system", price: "+ €350" },
+                { label: "Mobile app extension", price: "from + €3,500" },
+                { label: "Full app trajectory", price: "from €8,500" },
               ],
               dependencyNotes: [
                 "Login, roles, and dashboards always belong in this package.",

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import BrandMark from "@/components/brand-mark";
 import MobileNav from "@/components/mobile-nav";
+import PersistentCta from "@/components/persistent-cta";
 import {
   type Locale,
   type SiteContent,
@@ -48,7 +49,6 @@ export default function SiteShell({
     { href: getLocalizedPath(locale, "pricing"), label: content.nav.pricing },
     { href: getLocalizedPath(locale, "projects"), label: content.nav.projects },
     { href: getLocalizedPath(locale, "blog"), label: content.nav.blog },
-    { href: `${getLocalizedPath(locale, "home")}#process`, label: content.nav.about },
     { href: getLocalizedPath(locale, "contact"), label: content.nav.contact },
   ];
 
@@ -134,6 +134,11 @@ export default function SiteShell({
       </header>
 
       <main className="relative z-20">{children}</main>
+      <PersistentCta
+        locale={locale}
+        currentPath={currentPath}
+        href={getLocalizedPath(locale, "contact")}
+      />
     </div>
   );
 }

@@ -116,7 +116,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
             </RevealSection>
 
             <RevealSection delay={0.08}>
-              <div className="mx-auto max-w-[42rem] rounded-[2.3rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.018))] p-6 md:p-8 lg:mx-0">
+              <div className="mx-auto max-w-[42rem] border-t border-white/10 pt-6 md:pt-8 lg:mx-0">
                 <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/74">
                   {pricing.intro.title}
                 </p>
@@ -125,7 +125,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                 </p>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-[1.6rem] border border-white/10 bg-black/25 p-5">
+                  <div className="border-t border-white/10 pt-4">
                     <p className="text-[10px] uppercase tracking-[0.26em] text-cyan-300/72">
                       {locale === "nl" ? "Lichter traject" : "Lighter scope"}
                     </p>
@@ -135,7 +135,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                         : "Compact websites and clear business presentations stay intentionally simpler in scope."}
                     </p>
                   </div>
-                  <div className="rounded-[1.6rem] border border-white/10 bg-black/25 p-5">
+                  <div className="border-t border-white/10 pt-4">
                     <p className="text-[10px] uppercase tracking-[0.26em] text-cyan-300/72">
                       {locale === "nl" ? "Zwaarder traject" : "Deeper scope"}
                     </p>
@@ -171,11 +171,11 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
 
           <RevealSection delay={0.04}>
             <div className="mt-10 overflow-x-auto pb-2">
-              <div className="flex min-w-max gap-3">
+              <div className="flex min-w-max border-y border-white/10">
                 {pricing.packages.map((pkg, index) => (
                   <div
                     key={`${pkg.key}-rail`}
-                    className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] px-4 py-4 backdrop-blur md:min-w-[220px]"
+                    className="border-r border-white/10 px-4 py-4 last:border-r-0 md:min-w-[220px]"
                   >
                     <p className="text-[10px] uppercase tracking-[0.26em] text-cyan-300/72">
                       {packageRailLabel} {String(index + 1).padStart(2, "0")}
@@ -219,8 +219,8 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                       </div>
                     </div>
 
-                    <div className="mt-7 grid gap-5 xl:grid-cols-[1.05fr_0.95fr_0.9fr]">
-                      <div className="rounded-[1.8rem] border border-white/10 bg-black/18 p-5 md:p-6">
+                    <div className="mt-7 grid gap-8 xl:grid-cols-[1.05fr_0.95fr_0.9fr]">
+                      <div className="border-t border-white/10 pt-5">
                         <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/76">
                           {locale === "nl" ? "Inbegrepen" : "Included"}
                         </p>
@@ -229,7 +229,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                           {pkg.included.map((item) => (
                             <li
                               key={item}
-                              className="rounded-[1.15rem] border border-white/8 bg-white/[0.03] px-4 py-3 text-sm leading-7 text-white/68"
+                              className="border-b border-white/8 pb-3 text-sm leading-7 text-white/68 last:border-b-0 last:pb-0"
                             >
                               {item}
                             </li>
@@ -237,7 +237,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                         </ul>
                       </div>
 
-                      <div className="rounded-[1.8rem] border border-white/10 bg-black/18 p-5 md:p-6">
+                      <div className="border-t border-white/10 pt-5">
                         <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/76">
                           {locale === "nl" ? "Logische add-ons" : "Logical add-ons"}
                         </p>
@@ -263,7 +263,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                         </div>
                       </div>
 
-                      <div className="rounded-[1.8rem] border border-cyan-300/16 bg-[rgba(8,16,24,0.72)] p-5 md:p-6">
+                      <div className="border-l border-cyan-300/20 pl-5 xl:pl-6">
                         <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/78">
                           {upgradeLabel}
                         </p>
@@ -280,7 +280,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                               {pkg.unavailable.map((item) => (
                                 <li
                                   key={item}
-                                  className="rounded-[1.1rem] border border-white/8 bg-black/25 px-4 py-3 text-sm leading-7 text-white/56"
+                                  className="border-b border-white/8 pb-3 text-sm leading-7 text-white/56 last:border-b-0 last:pb-0"
                                 >
                                   {item}
                                 </li>
@@ -313,9 +313,9 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                     </div>
 
                     {pkg.dependencyNotes?.length || pkg.examples?.length ? (
-                      <div className="mt-5 grid gap-5 lg:grid-cols-2">
+                      <div className="mt-8 grid gap-6 border-t border-white/10 pt-6 lg:grid-cols-2">
                         {pkg.dependencyNotes?.length ? (
-                          <div className="rounded-[1.8rem] border border-cyan-300/16 bg-[rgba(10,20,28,0.66)] p-5 md:p-6">
+                          <div>
                             <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/78">
                               {locale === "nl" ? "Afhankelijkheden" : "Dependencies"}
                             </p>
@@ -333,7 +333,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                         ) : null}
 
                         {pkg.examples?.length ? (
-                          <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.015))] p-5 md:p-6">
+                          <div>
                             <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/78">
                               {locale === "nl" ? "Compact voorbeeld" : "Compact example"}
                             </p>
@@ -366,7 +366,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
         <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:px-10 lg:py-16">
           <div className="grid gap-6 lg:grid-cols-2">
             <RevealSection>
-              <div className="rounded-[2.05rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.018))] p-6 md:p-8">
+              <div className="border-t border-white/10 pt-6 md:pt-8">
                 <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/76">
                   {locale === "nl" ? "Context" : "Context"}
                 </p>
@@ -380,7 +380,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
             </RevealSection>
 
             <RevealSection delay={0.06}>
-              <div className="rounded-[2.05rem] border border-white/10 bg-black/25 p-6 md:p-8">
+              <div className="border-t border-white/10 pt-6 md:pt-8">
                 <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/76">
                   {locale === "nl" ? "Werkwijze" : "Approach"}
                 </p>
@@ -394,7 +394,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                   {pricing.howItWorks.steps.map((step, index) => (
                     <div
                       key={step}
-                      className="rounded-[1.2rem] border border-white/10 bg-white/[0.03] px-4 py-4"
+                      className="border-b border-white/8 pb-4 last:border-b-0 last:pb-0"
                     >
                       <p className="text-[10px] uppercase tracking-[0.26em] text-cyan-300/74">
                         {String(index + 1).padStart(2, "0")}
@@ -412,7 +412,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
 
         <section className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:px-10 lg:py-16">
           <RevealSection>
-            <div className="rounded-[2.2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.016))] p-6 md:p-8 lg:p-9">
+            <div className="border-t border-white/10 pt-6 md:pt-8 lg:pt-9">
               <div className="max-w-3xl">
                 <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/76">
                   {locale === "nl" ? "Structuur" : "Structure"}
@@ -429,7 +429,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                 {pricing.packageRules.items.map((item) => (
                   <article
                     key={item.title}
-                    className="rounded-[1.8rem] border border-white/10 bg-black/24 p-5 md:p-6"
+                    className="border-t border-white/10 pt-5 md:pt-6"
                   >
                     <h3 className="text-2xl font-medium text-white">{item.title}</h3>
                     <p className="mt-5 text-[10px] uppercase tracking-[0.26em] text-cyan-300/74">
@@ -439,7 +439,7 @@ export function PricingPageContent({ locale }: { locale: Locale }) {
                       {item.allowed.map((allowedItem) => (
                         <li
                           key={allowedItem}
-                          className="rounded-[1.1rem] border border-white/8 bg-white/[0.03] px-4 py-3 text-sm leading-7 text-white/64"
+                          className="border-b border-white/8 pb-3 text-sm leading-7 text-white/64 last:border-b-0 last:pb-0"
                         >
                           {allowedItem}
                         </li>
