@@ -71,49 +71,53 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
 
           <div className="relative grid gap-10 lg:grid-cols-[0.96fr_1.04fr] lg:items-end">
             <RevealSection>
-              <div className="max-w-2xl">
+              <div className="mx-auto max-w-[22rem] text-center sm:max-w-[30rem] lg:mx-0 lg:max-w-2xl lg:text-left">
                 <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
                   {overview.eyebrow}
                 </p>
                 <h1 className="mt-5 text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
                   {overview.title}
                 </h1>
-                <p className="mt-6 max-w-xl text-base leading-8 text-white/62">
+                <p className="mt-6 mx-auto max-w-[22rem] text-base leading-8 text-white/62 sm:max-w-[30rem] lg:mx-0 lg:max-w-xl">
                   {overview.intro}
                 </p>
               </div>
             </RevealSection>
 
             <RevealSection delay={0.08}>
-              <div className="relative min-h-[420px] overflow-hidden rounded-[2.5rem] border border-white/10">
-                <Image
-                  src="/images/visuals/projects-transformation-visual.png"
-                  alt="Projects transformation visual"
-                  fill
-                  sizes="(min-width: 1024px) 50vw, 100vw"
-                  className="object-cover object-center"
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,7,12,0.18),rgba(4,7,12,0.82)_65%,rgba(4,7,12,0.96))]" />
+              <div className="mx-auto w-full max-w-[42rem] lg:mx-0">
+                <div className="relative min-h-[420px] overflow-hidden rounded-[2.5rem] border border-white/10">
+                  <Image
+                    src="/images/visuals/projects-transformation-visual.png"
+                    alt="Projects transformation visual"
+                    fill
+                    sizes="(min-width: 1024px) 50vw, 100vw"
+                    className="object-cover object-center"
+                  />
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,7,12,0.18),rgba(4,7,12,0.82)_65%,rgba(4,7,12,0.96))]" />
+                </div>
               </div>
             </RevealSection>
           </div>
 
           <div className="relative mt-14 grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
             <RevealSection>
-              <div className="max-w-xl">
-                <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/76">
+              <div className="mx-auto max-w-[42rem] lg:mx-0 lg:max-w-xl">
+                <p className="text-center text-[10px] uppercase tracking-[0.28em] text-cyan-300/76 lg:text-left">
                   {overview.highlightsTitle}
                 </p>
 
                 <div className="mt-6 space-y-5">
                   {overview.highlights.map((highlight) => (
                     <div key={highlight} className="border-b border-white/8 pb-5 last:border-b-0 last:pb-0">
-                      <p className="text-base leading-8 text-white/64">{highlight}</p>
+                      <p className="text-center text-base leading-8 text-white/64 lg:text-left">
+                        {highlight}
+                      </p>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3">
+                <div className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 lg:justify-start">
                   <Link
                     href={content.contact.pagePath}
                     data-track-event="contact_cta_click"
@@ -141,11 +145,11 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
             </RevealSection>
 
             <RevealSection delay={0.08}>
-              <div className="rounded-[2.3rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-6 md:p-8">
-                <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/76">
+              <div className="mx-auto max-w-[42rem] rounded-[2.3rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-6 md:p-8 lg:mx-0">
+                <p className="text-center text-[10px] uppercase tracking-[0.28em] text-cyan-300/76 lg:text-left">
                   {content.projects.premiumBuildLabel}
                 </p>
-                <p className="mt-5 max-w-2xl text-base leading-8 text-white/62">
+                <p className="mt-5 max-w-2xl text-center text-base leading-8 text-white/62 lg:text-left">
                   {content.projects.premiumBuildText}
                 </p>
 
@@ -169,7 +173,7 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
           </div>
 
           <div className="mt-14 border-t border-white/10 pt-8">
-            <div className="flex flex-wrap gap-x-6 gap-y-3">
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 lg:justify-start">
               <Link
                 href={getLocalizedPath(locale, "blog")}
                 data-track-event="primary_cta_click"

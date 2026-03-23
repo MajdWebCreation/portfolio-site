@@ -51,6 +51,8 @@ export default function SiteShell({
     { href: getLocalizedPath(locale, "contact"), label: content.nav.contact },
   ];
 
+  const mobileCtaLabel = locale === "nl" ? "Start project" : "Start project";
+
   return (
     <div className="relative min-h-screen bg-black text-white">
       <BlueprintBackground />
@@ -123,7 +125,7 @@ export default function SiteShell({
               currentLocaleLabel={content.localeLabel}
               alternateLocaleLabel={alternateLocale.toUpperCase()}
               contactHref={getLocalizedPath(locale, "contact")}
-              contactLabel={content.nav.cta}
+              contactLabel={mobileCtaLabel}
               navigation={navigation}
             />
           </div>
