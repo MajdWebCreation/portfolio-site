@@ -20,7 +20,7 @@ export default function SeoCta({
   trackingContext = "service",
 }: SeoCtaProps) {
   return (
-    <section className="relative border-t border-white/10 pt-10">
+    <section className="relative border-t border-white/14 pt-10">
       <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="max-w-3xl">
           <p className="text-[11px] uppercase tracking-[0.3em] text-cyan-200/72">
@@ -29,7 +29,7 @@ export default function SeoCta({
           <h2 className="mt-4 text-3xl font-semibold leading-tight text-white sm:text-4xl">
             {title}
           </h2>
-          <p className="mt-4 max-w-2xl text-base leading-8 text-white/58">
+          <p className="mt-4 max-w-2xl text-base leading-8 text-white/76">
             {text}
           </p>
         </div>
@@ -56,7 +56,7 @@ export default function SeoCta({
             data-track-category={trackingContext}
             data-track-label={secondaryLabel}
             data-track-location="seo-cta-secondary"
-            className="inline-flex items-center text-sm font-medium text-white/58 transition hover:text-white"
+            className="inline-flex items-center text-sm font-medium text-white/78 transition hover:text-white"
           >
             {secondaryLabel}
             <span className="ml-2 text-cyan-200/72">→</span>

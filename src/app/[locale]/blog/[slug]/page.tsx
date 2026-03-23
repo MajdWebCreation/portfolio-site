@@ -81,10 +81,10 @@ export default async function BlogArticlePage({
   const content = siteContent[locale];
   const pageUrl = getCanonicalUrl(article.path);
   const articleHeaderImages = {
-    kosten: "/images/visuals/blog-editorial-curve-panel.png",
-    seo: "/images/visuals/blog-editorial-angular-panel.png",
-    webapplicaties: "/images/visuals/blog-editorial-perspective-panel.png",
-    performance: "/images/visuals/blog-editorial-diagonal-panel.png",
+    kosten: "/images/visuals/blog-editorial-ui-01.png",
+    seo: "/images/visuals/blog-editorial-ui-02.png",
+    webapplicaties: "/images/visuals/blog-editorial-ui-04.png",
+    performance: "/images/visuals/blog-editorial-ui-03.png",
   } as const;
 
   return (

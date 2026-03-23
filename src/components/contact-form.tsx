@@ -102,9 +102,9 @@ export default function ContactForm({
   }
 
   const inputBase =
-    "w-full rounded-[1.15rem] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/28 focus:border-cyan-400/40 focus:bg-white/[0.05]";
+    "w-full rounded-[1.15rem] border border-white/14 bg-white/[0.08] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/40 focus:border-cyan-400/50 focus:bg-white/[0.1]";
   const labelBase =
-    "mb-2 block text-[11px] uppercase tracking-[0.24em] text-white/42";
+    "mb-2 block text-[11px] uppercase tracking-[0.24em] text-white/56";
 
   return (
     <motion.div
@@ -112,9 +112,9 @@ export default function ContactForm({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.7 }}
-      className={`relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-5 backdrop-blur-md sm:p-6 ${className}`}
+      className={`relative overflow-hidden rounded-[2rem] border border-white/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.075),rgba(255,255,255,0.028))] p-5 backdrop-blur-md sm:p-6 ${className}`}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.1),transparent_34%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.16),transparent_34%)]" />
 
       <div className="relative z-10">
         {!hideIntro ? (
@@ -125,7 +125,7 @@ export default function ContactForm({
             <h3 className="max-w-xl text-2xl font-semibold text-white sm:text-3xl">
               {copy.title}
             </h3>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-white/62">
+            <p className="mt-4 max-w-xl text-sm leading-7 text-white/76">
               {copy.description}
             </p>
           </>
@@ -222,7 +222,7 @@ export default function ContactForm({
               {isSubmitting ? copy.sendingLabel : copy.submitLabel}
             </button>
 
-            <div className="min-h-[24px] text-sm">
+            <div className="min-h-[24px] text-sm text-white/72">
               {status === "success" && (
                 <span className="text-cyan-300/85">{copy.successMessage}</span>
               )}

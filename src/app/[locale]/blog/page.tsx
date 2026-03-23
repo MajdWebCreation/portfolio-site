@@ -57,10 +57,10 @@ export default async function BlogPage({
   const remainingArticles = articles.slice(1);
   const path = locale === "nl" ? "/nl/blog" : "/en/blog";
   const editorialImages = [
-    "/images/visuals/blog-editorial-curve-panel.png",
-    "/images/visuals/blog-editorial-angular-panel.png",
-    "/images/visuals/blog-editorial-diagonal-panel.png",
-    "/images/visuals/blog-editorial-perspective-panel.png",
+    "/images/visuals/blog-editorial-ui-01.png",
+    "/images/visuals/blog-editorial-ui-02.png",
+    "/images/visuals/blog-editorial-ui-03.png",
+    "/images/visuals/blog-editorial-ui-04.png",
   ];
 
   return (

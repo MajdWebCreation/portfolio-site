@@ -88,8 +88,8 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
               <div className="mx-auto w-full max-w-[42rem] lg:mx-0">
                 <div className="relative min-h-[420px] overflow-hidden rounded-[2.5rem] border border-white/10">
                   <Image
-                    src="/images/visuals/projects-transformation-visual.png"
-                    alt="Projects transformation visual"
+                    src="/images/visuals/projects-ui-showcase.png"
+                    alt="Interface showcase representing project execution and refinement"
                     fill
                     sizes="(min-width: 1024px) 50vw, 100vw"
                     className="object-cover object-center"

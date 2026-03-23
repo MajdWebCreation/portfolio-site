@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #020406;
-  --background-elevated: #071017;
+  --background: #0b1723;
+  --background-elevated: #12202d;
   --foreground: #f4f8fb;
-  --muted-foreground: rgba(231, 241, 248, 0.72);
-  --line: rgba(169, 215, 244, 0.14);
-  --cyan-soft: rgba(113, 227, 255, 0.12);
+  --muted-foreground: rgba(231, 241, 248, 0.82);
+  --line: rgba(169, 215, 244, 0.22);
+  --cyan-soft: rgba(113, 227, 255, 0.18);
   --cyan-strong: #71e3ff;
   --surface-glow:
-    radial-gradient(circle at 20% 15%, rgba(66, 214, 255, 0.15), transparent 30%),
-    radial-gradient(circle at 80% 10%, rgba(153, 214, 255, 0.08), transparent 26%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0));
+    radial-gradient(circle at 20% 15%, rgba(66, 214, 255, 0.2), transparent 30%),
+    radial-gradient(circle at 80% 10%, rgba(153, 214, 255, 0.13), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015));
 }
 
 html {
@@ -19,15 +19,17 @@ html {
   max-width: 100%;
   overflow-x: clip;
   background:
-    radial-gradient(circle at 18% 0%, rgba(77, 191, 255, 0.1), transparent 24%),
-    radial-gradient(circle at 82% 12%, rgba(88, 145, 255, 0.08), transparent 22%),
-    linear-gradient(180deg, #020406 0%, #060b12 42%, #020406 100%);
+    radial-gradient(circle at 18% 0%, rgba(77, 191, 255, 0.16), transparent 28%),
+    radial-gradient(circle at 82% 12%, rgba(88, 145, 255, 0.14), transparent 26%),
+    linear-gradient(180deg, #0d1b28 0%, #10202e 42%, #0b1723 100%);
 }
 
 body {
   max-width: 100%;
   overflow-x: clip;
-  background: var(--background);
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.03), transparent 32%),
+    var(--background);
   color: var(--foreground);
   font-family:
     "Avenir Next", "Inter Display", "Segoe UI", ui-sans-serif, system-ui,
@@ -66,39 +68,39 @@ h6 {
 
 .ym-grid {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
   background-size: 72px 72px;
 }
 
 .ym-bg-arc {
   background:
-    radial-gradient(circle at 18% 24%, rgba(103, 224, 255, 0.11), transparent 0 34%),
-    radial-gradient(circle at 74% 18%, rgba(92, 144, 255, 0.08), transparent 0 30%),
-    radial-gradient(circle at 50% 100%, rgba(89, 214, 255, 0.05), transparent 0 38%);
-  filter: blur(14px);
+    radial-gradient(circle at 18% 24%, rgba(103, 224, 255, 0.14), transparent 0 34%),
+    radial-gradient(circle at 74% 18%, rgba(92, 144, 255, 0.11), transparent 0 30%),
+    radial-gradient(circle at 50% 100%, rgba(89, 214, 255, 0.08), transparent 0 38%);
+  filter: blur(16px);
 }
 
 .ym-bg-field {
   background:
-    radial-gradient(circle at 24% 30%, rgba(108, 230, 255, 0.12), transparent 0 24%),
-    radial-gradient(circle at 70% 60%, rgba(87, 143, 255, 0.08), transparent 0 22%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent 40%);
-  filter: blur(28px);
+    radial-gradient(circle at 24% 30%, rgba(108, 230, 255, 0.14), transparent 0 24%),
+    radial-gradient(circle at 70% 60%, rgba(87, 143, 255, 0.1), transparent 0 22%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 42%);
+  filter: blur(30px);
 }
 
 .ym-bg-sweep {
   background:
-    linear-gradient(120deg, transparent 0%, rgba(104, 210, 255, 0.06) 22%, transparent 42%),
-    linear-gradient(160deg, transparent 22%, rgba(91, 138, 255, 0.05) 44%, transparent 68%);
-  filter: blur(18px);
+    linear-gradient(120deg, transparent 0%, rgba(104, 210, 255, 0.08) 22%, transparent 42%),
+    linear-gradient(160deg, transparent 22%, rgba(91, 138, 255, 0.07) 44%, transparent 68%);
+  filter: blur(20px);
 }
 
 .ym-bg-curve {
   background:
-    radial-gradient(120% 90% at 50% 100%, rgba(98, 218, 255, 0.08), transparent 44%),
-    radial-gradient(90% 60% at 10% 100%, rgba(88, 145, 255, 0.06), transparent 46%);
-  filter: blur(18px);
+    radial-gradient(120% 90% at 50% 100%, rgba(98, 218, 255, 0.11), transparent 44%),
+    radial-gradient(90% 60% at 10% 100%, rgba(88, 145, 255, 0.08), transparent 46%);
+  filter: blur(20px);
 }
 
 .ym-bg-drift-slow {
@@ -119,13 +121,13 @@ h6 {
 
 .ym-surface {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
-    rgba(6, 12, 18, 0.72);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.035)),
+    rgba(16, 27, 39, 0.86);
   border: 1px solid var(--line);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 30px 80px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(18px);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 26px 70px rgba(2, 6, 10, 0.2);
+  backdrop-filter: blur(20px);
 }
 
 .ym-panel-glow {
@@ -144,9 +146,9 @@ h6 {
   padding: 1px;
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.16),
-    rgba(113, 227, 255, 0.12),
-    rgba(255, 255, 255, 0.03)
+    rgba(255, 255, 255, 0.24),
+    rgba(113, 227, 255, 0.17),
+    rgba(255, 255, 255, 0.06)
   );
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,

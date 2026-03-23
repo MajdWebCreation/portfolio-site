@@ -17,18 +17,14 @@ export default function BrandMark({
   variant = "transparent",
 }: BrandMarkProps) {
   const logo = (
-    <div className={`relative h-10 w-[120px] ${className}`}>
+    <div className={`relative block h-11 w-[184px] shrink-0 ${className}`}>
       <Image
-        src={
-          variant === "white"
-            ? "/images/branding/ym-logo-white.png"
-            : "/images/branding/ym-logo-transparent.png"
-        }
+        src="/images/branding/logo.svg"
         alt={label}
         fill
         priority={priority}
         className="object-contain"
-        sizes="120px"
+        sizes="(min-width: 1024px) 230px, (min-width: 640px) 220px, 200px"
       />
     </div>
   );

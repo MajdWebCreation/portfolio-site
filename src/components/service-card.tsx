@@ -12,13 +12,13 @@ export default function ServiceCard({
 }: ServiceCardProps) {
   return (
     <article
-      className={`group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.015))] transition duration-500 hover:border-cyan-300/28 ${
+      className={`group relative overflow-hidden rounded-[2rem] border border-white/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.085),rgba(255,255,255,0.035))] transition duration-500 hover:border-cyan-300/32 ${
         featured ? "min-h-[360px] p-7 md:p-8" : "min-h-[300px] p-6"
       }`}
     >
       <div className={`absolute inset-0 bg-gradient-to-br ${service.accent} opacity-55`} />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,7,12,0.04),rgba(4,7,12,0.58)_52%,rgba(4,7,12,0.9))]" />
-      <div className="absolute -right-12 top-5 h-28 w-28 rounded-full bg-cyan-300/6 blur-2xl transition duration-500 group-hover:scale-110" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(12,18,26,0.03),rgba(12,18,26,0.36)_52%,rgba(10,16,24,0.64))]" />
+      <div className="absolute -right-12 top-5 h-28 w-28 rounded-full bg-cyan-300/11 blur-2xl transition duration-500 group-hover:scale-110" />
 
       <div className="relative flex h-full flex-col justify-between">
         <div>
@@ -34,7 +34,7 @@ export default function ServiceCard({
             {service.navLabel}
           </h2>
 
-          <p className="mt-4 max-w-md text-sm leading-7 text-white/58">
+          <p className="mt-4 max-w-md text-sm leading-7 text-white/72">
             {service.intro}
           </p>
         </div>
@@ -45,7 +45,7 @@ export default function ServiceCard({
           data-track-category="services"
           data-track-label={service.navLabel}
           data-track-location="service-card"
-          className="mt-8 inline-flex items-center gap-2 self-start text-sm font-medium text-white/72 transition hover:text-white"
+          className="mt-8 inline-flex items-center gap-2 self-start text-sm font-medium text-white/82 transition hover:text-white"
         >
           {service.navLabel}
           <span className="text-cyan-200 transition group-hover:translate-x-1">→</span>

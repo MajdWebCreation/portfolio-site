@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="430" viewBox="200 280 620 430">
+  <g fill="#ffffff">
+    <path d="M236 308h64l76 108 76-108h30L388 440v116h-56V440L236 308Z"/>
+    <path d="M508 308h90l48 96 74-96h54v248h-52V350l-90 198h-2l-96-198v206h-26V308Z"/>
+  </g>
+  <text x="512" y="662" text-anchor="middle"
+        font-family="Helvetica, Arial, sans-serif"
+        font-size="74" font-weight="300" letter-spacing="0.24em"
+        fill="#ffffff">creations</text>
+</svg>

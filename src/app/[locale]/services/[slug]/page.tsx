@@ -146,8 +146,8 @@ export function ServiceDetailContent({
             <RevealSection delay={0.08}>
               <div className="grid gap-4">
                 <AmbientMedia
-                  src="/images/visuals/services-system-visual.png"
-                  alt="Service system visual"
+                  src="/images/visuals/services-ui-architecture.png"
+                  alt="Service interface architecture visual"
                   className="min-h-[360px]"
                   imageClassName="object-cover object-center"
                 />

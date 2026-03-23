@@ -140,8 +140,8 @@ export default async function HomePage({
               </ParallaxLayer>
               <ParallaxLayer yRange={[-22, 18]} scaleRange={[1.01, 1.04]}>
                 <AmbientMedia
-                  src="/images/visuals/hero-master-visual.png"
-                  alt="YM Creations premium hero visual"
+                  src="/images/visuals/hero-ui-composition.png"
+                  alt="Interface composition showing a premium website system"
                   priority
                   className="min-h-[620px] rounded-[2.6rem]"
                   imageClassName="object-cover object-center scale-[1.02]"
@@ -197,8 +197,8 @@ export default async function HomePage({
             <RevealSection delay={0.08}>
               <div className="mx-auto w-full max-w-[42rem] lg:mx-0">
                 <AmbientMedia
-                  src="/images/visuals/services-system-visual.png"
-                  alt="Services system overview"
+                  src="/images/visuals/services-ui-architecture.png"
+                  alt="Interface architecture visual for service design and development"
                   className="min-h-[320px] rounded-[2.3rem]"
                   imageClassName="object-cover object-center"
                 />

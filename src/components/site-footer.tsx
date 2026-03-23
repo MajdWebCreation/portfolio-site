@@ -18,20 +18,20 @@ export default function SiteFooter({ locale, content }: SiteFooterProps) {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="relative z-20 mt-16 overflow-hidden border-t border-white/10">
-      <div className="ym-bg-arc ym-bg-float-fade absolute inset-[-6%] opacity-[0.5]" />
+    <footer className="relative z-20 mt-16 overflow-hidden border-t border-white/14 bg-[linear-gradient(180deg,rgba(18,28,39,0.42),rgba(12,20,29,0.8))]">
+      <div className="ym-bg-arc ym-bg-float-fade absolute inset-[-6%] opacity-[0.68]" />
       <div className="mx-auto max-w-7xl px-6 pb-14 pt-16 lg:px-10">
         <div className="grid gap-10 lg:grid-cols-[1.1fr_0.8fr_0.8fr_0.9fr]">
           <div>
             <BrandMark
               href={getLocalizedPath(locale, "home")}
               variant="white"
-              className="h-16 w-[190px]"
+              className="h-[6rem] w-[320px] sm:h-[6.5rem] sm:w-[344px]"
             />
-            <p className="mt-5 max-w-sm text-sm leading-7 text-white/60">
+            <p className="mt-5 max-w-sm text-sm leading-7 text-white/72">
               {content.description}
             </p>
-            <div className="mt-6 max-w-sm space-y-2 text-xs leading-6 text-white/42">
+            <div className="mt-6 max-w-sm space-y-2 text-xs leading-6 text-white/58">
               <p>
                 © {currentYear} {businessInfo.legalName}. {content.rights}
               </p>
@@ -44,7 +44,7 @@ export default function SiteFooter({ locale, content }: SiteFooterProps) {
 
           <div>
             <p className="text-sm font-medium text-white">{content.company}</p>
-            <ul className="mt-5 space-y-3 text-sm text-white/60">
+            <ul className="mt-5 space-y-3 text-sm text-white/72">
               <li>
                 <Link href={getLocalizedPath(locale, "home")}>Home</Link>
               </li>
@@ -73,7 +73,7 @@ export default function SiteFooter({ locale, content }: SiteFooterProps) {
 
           <div>
             <p className="text-sm font-medium text-white">{content.services}</p>
-            <ul className="mt-5 space-y-3 text-sm text-white/60">
+            <ul className="mt-5 space-y-3 text-sm text-white/72">
               {services.map((service) => (
                 <li key={service.path}>
                   <Link href={service.path}>{service.navLabel}</Link>
@@ -84,7 +84,7 @@ export default function SiteFooter({ locale, content }: SiteFooterProps) {
 
           <div>
             <p className="text-sm font-medium text-white">{content.contact}</p>
-            <ul className="mt-5 space-y-3 text-sm text-white/60">
+            <ul className="mt-5 space-y-3 text-sm text-white/72">
               <li>{businessInfo.email}</li>
               <li>{businessInfo.phone}</li>
               <li>ymcreations.com</li>
