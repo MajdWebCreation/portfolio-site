@@ -20,7 +20,24 @@ type ProjectPlannerProps = {
   locale: Locale;
 };
 
-function StepRail({
+type PlannerErrorKey =
+  | "projectType"
+  | "pageCount"
+  | "smartScope"
+  | "webshopProducts"
+  | "customScope"
+  | "launchTimeline"
+  | "contentReady"
+  | "brandingReady"
+  | "priority"
+  | "name"
+  | "email";
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function ProgressBar({
   labels,
   currentStep,
 }: {
@@ -28,29 +45,26 @@ function StepRail({
   currentStep: number;
 }) {
   return (
-    <div className="flex overflow-x-auto border-y border-white/10">
-      {labels.map((label, index) => {
-        const active = currentStep === index;
-        const complete = currentStep > index;
+    <div className="border-y border-white/10 py-4">
+      <div>
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.24em] text-cyan-300/76">
+            Step {String(currentStep + 1).padStart(2, "0")} / {String(labels.length).padStart(2, "0")}
+          </p>
+          <p className="mt-2 text-sm text-white">{labels[currentStep]}</p>
+        </div>
+      </div>
 
-        return (
-          <div
+      <div className="mt-4 flex gap-2">
+        {labels.map((label, index) => (
+          <span
             key={label}
-            className="min-w-[180px] border-r border-white/10 px-4 py-4 last:border-r-0"
-          >
-            <p
-              className={`text-[10px] uppercase tracking-[0.24em] ${
-                active || complete ? "text-cyan-300/76" : "text-white/32"
-              }`}
-            >
-              {String(index + 1).padStart(2, "0")}
-            </p>
-            <p className={`mt-2 text-sm ${active ? "text-white" : "text-white/56"}`}>
-              {label}
-            </p>
-          </div>
-        );
-      })}
+            className={`h-1.5 flex-1 rounded-full transition ${
+              index <= currentStep ? "bg-cyan-300/70" : "bg-white/10"
+            }`}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -115,21 +129,39 @@ function ToggleRow({
 function SectionLabel({
   title,
   support,
+  trailing,
+  expandedInfo,
 }: {
   title: string;
   support?: string;
+  trailing?: React.ReactNode;
+  expandedInfo?: React.ReactNode;
 }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-[0.26em] text-cyan-300/74">
-        {title}
-      </p>
+      <div className="flex items-center gap-3">
+        <p className="text-[10px] uppercase tracking-[0.26em] text-cyan-300/74">
+          {title}
+        </p>
+        {trailing}
+      </div>
       {support ? (
         <p className="mt-3 max-w-2xl text-sm leading-7 text-white/48">
           {support}
         </p>
       ) : null}
+      {expandedInfo}
     </div>
+  );
+}
+
+function InlineError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+
+  return (
+    <p id={id} className="mt-3 text-sm text-red-200">
+      {message}
+    </p>
   );
 }
 
@@ -156,6 +188,9 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
   const [step, setStep] = useState(0);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<PlannerErrorKey, string>>>({});
+  const [formError, setFormError] = useState("");
+  const [openInfoKey, setOpenInfoKey] = useState<"content" | "branding" | null>(null);
   const [form, setForm] = useState<PlannerState>({
     ...initialPlannerState,
     locale,
@@ -166,74 +201,215 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
   const summaryRange = summary.range
     ? `${formatEuro(summary.range.min, locale)} - ${formatEuro(summary.range.max, locale)}`
     : null;
+  const infoCopy = {
+    content:
+      locale === "nl"
+        ? "Content betekent de tekst, beelden, productinformatie of andere inhoud die op de website moet komen."
+        : "Content means the text, imagery, product information, or other material that needs to go on the website.",
+    branding:
+      locale === "nl"
+        ? "Branding betekent je merkuitstraling, zoals logo, kleuren, typografie en de algemene visuele richting."
+        : "Branding means your brand direction, such as logo, colors, typography, and the overall visual identity.",
+  } as const;
+
+  function renderInfoButton(key: keyof typeof infoCopy) {
+    const isOpen = openInfoKey === key;
+
+    return (
+      <button
+        type="button"
+        onClick={() => setOpenInfoKey((prev) => (prev === key ? null : key))}
+        aria-expanded={isOpen}
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/16 text-[11px] font-medium text-white/62 transition hover:border-cyan-300/35 hover:text-white"
+      >
+        !
+      </button>
+    );
+  }
+
+  function renderInfoText(key: keyof typeof infoCopy) {
+    const isOpen = openInfoKey === key;
+
+    if (!isOpen) return null;
+
+    return (
+      <p className="mt-3 max-w-2xl text-sm leading-7 text-white/52">
+        {infoCopy[key]}
+      </p>
+    );
+  }
 
   function update<K extends keyof PlannerState>(key: K, value: PlannerState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (status !== "idle") setStatus("idle");
+    if (formError) setFormError("");
   }
 
-  function isStepValid(currentStep: number) {
+  function clearError(key: PlannerErrorKey) {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
+
+  function getErrorCopy(key: PlannerErrorKey) {
+    const nl = {
+      projectType: "Kies een projecttype",
+      pageCount: "Maak een keuze voordat je doorgaat",
+      smartScope: "Kies minimaal een relevante functie",
+      webshopProducts: "Maak een keuze voordat je doorgaat",
+      customScope: "Kies minimaal een relevante functie",
+      launchTimeline: "Maak een keuze voordat je doorgaat",
+      contentReady: "Maak een keuze voordat je doorgaat",
+      brandingReady: "Maak een keuze voordat je doorgaat",
+      priority: "Maak een keuze voordat je doorgaat",
+      name: "Vul je naam in",
+      email: "Vul een geldig e-mailadres in",
+    } satisfies Record<PlannerErrorKey, string>;
+    const en = {
+      projectType: "Select a project type",
+      pageCount: "Make a selection before continuing",
+      smartScope: "Select at least one relevant option",
+      webshopProducts: "Make a selection before continuing",
+      customScope: "Select at least one relevant option",
+      launchTimeline: "Make a selection before continuing",
+      contentReady: "Make a selection before continuing",
+      brandingReady: "Make a selection before continuing",
+      priority: "Make a selection before continuing",
+      name: "Enter your name",
+      email: "Enter a valid email address",
+    } satisfies Record<PlannerErrorKey, string>;
+
+    return (locale === "nl" ? nl : en)[key];
+  }
+
+  function validateStep(currentStep: number) {
+    const errors: Partial<Record<PlannerErrorKey, string>> = {};
+
     if (currentStep === 0) {
-      return Boolean(form.projectType);
+      if (!form.projectType) {
+        errors.projectType = getErrorCopy("projectType");
+      }
+      return errors;
     }
 
     if (currentStep === 1) {
-      if (!form.projectType) return false;
+      if (!form.projectType) {
+        errors.projectType = getErrorCopy("projectType");
+        return errors;
+      }
 
       if (form.projectType === "starter" || form.projectType === "business") {
-        return Boolean(form.pageCount && form.brandingContentState);
+        if (!form.pageCount) {
+          errors.pageCount = getErrorCopy("pageCount");
+        }
       }
 
       if (form.projectType === "smart") {
-        return (
-          form.smartBookingFlow ||
-          form.smartConfirmations ||
-          form.smartPayments ||
-          form.smartMaps ||
-          form.smartCrm ||
-          form.smartAdmin ||
-          form.smartExpandedAdmin ||
-          form.smartReminderAutomation
-        );
+        if (
+          !form.smartBookingFlow &&
+          !form.smartConfirmations &&
+          !form.smartPayments &&
+          !form.smartMaps &&
+          !form.smartCrm &&
+          !form.smartAdmin &&
+          !form.smartExpandedAdmin &&
+          !form.smartReminderAutomation
+        ) {
+          errors.smartScope = getErrorCopy("smartScope");
+        }
       }
 
-      if (form.projectType === "webshop") {
-        return Boolean(form.webshopProducts);
+      if (form.projectType === "webshop" && !form.webshopProducts) {
+        errors.webshopProducts = getErrorCopy("webshopProducts");
       }
 
       if (form.projectType === "platform") {
-        return (
-          form.customLogin ||
-          form.customDashboards ||
-          form.customRoles ||
-          form.customWorkflows ||
-          form.customApi ||
-          form.customReporting ||
-          form.customNotifications ||
-          form.customAppExpansion
-        );
+        if (
+          !form.customLogin &&
+          !form.customDashboards &&
+          !form.customRoles &&
+          !form.customWorkflows &&
+          !form.customApi &&
+          !form.customReporting &&
+          !form.customNotifications &&
+          !form.customAppExpansion
+        ) {
+          errors.customScope = getErrorCopy("customScope");
+        }
       }
+
+      return errors;
     }
 
     if (currentStep === 2) {
-      return Boolean(
-        form.launchTimeline && form.contentReady && form.brandingReady && form.priority,
-      );
+      if (!form.launchTimeline) {
+        errors.launchTimeline = getErrorCopy("launchTimeline");
+      }
+      if (!form.contentReady) {
+        errors.contentReady = getErrorCopy("contentReady");
+      }
+      if (!form.brandingReady) {
+        errors.brandingReady = getErrorCopy("brandingReady");
+      }
+      if (!form.priority) {
+        errors.priority = getErrorCopy("priority");
+      }
+      return errors;
     }
 
     if (currentStep === 3) {
-      return form.name.trim().length >= 2 && form.email.trim().length >= 5;
+      if (form.name.trim().length < 2) {
+        errors.name = getErrorCopy("name");
+      }
+
+      if (!form.email.trim() || !isValidEmail(form.email.trim())) {
+        errors.email = getErrorCopy("email");
+      }
     }
 
-    return false;
+    return errors;
+  }
+
+  function handleNext() {
+    const errors = validateStep(step);
+    setFieldErrors((prev) => ({ ...prev, ...errors }));
+
+    if (Object.keys(errors).length > 0) {
+      setStatus("error");
+      setFormError(
+        locale === "nl"
+          ? "Controleer deze stap en vul de ontbrekende keuzes aan."
+          : "Check this step and complete the missing choices.",
+      );
+      return;
+    }
+
+    setStatus("idle");
+    setFormError("");
+    setStep((prev) => Math.min(prev + 1, 3));
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!isStepValid(3) || isSubmitting) return;
+    const errors = validateStep(3);
+    setFieldErrors((prev) => ({ ...prev, ...errors }));
+
+    if (Object.keys(errors).length > 0 || isSubmitting) {
+      setStatus("error");
+      setFormError(
+        locale === "nl"
+          ? "Controleer de verplichte velden en probeer opnieuw."
+          : "Check the required fields and try again.",
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     setStatus("idle");
+    setFormError("");
 
     try {
       const response = await fetch("/api/contact", {
@@ -251,6 +427,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
           website: form.website,
           message: form.notes || summary.reason,
           planner: {
+            projectTypeKey: form.projectType || "",
             selectedProjectType: form.projectType
               ? content.options.projectTypes[form.projectType]
               : "",
@@ -260,9 +437,35 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
             indicativeRange: summaryRange,
             selectedFeatures: summary.selectedFeatures,
             selectedAddOns: summary.selectedAddOns,
+            pageCount: form.pageCount,
+            smartScopeSelected: Boolean(
+              form.smartBookingFlow ||
+                form.smartConfirmations ||
+                form.smartPayments ||
+                form.smartMaps ||
+                form.smartCrm ||
+                form.smartAdmin ||
+                form.smartExpandedAdmin ||
+                form.smartReminderAutomation,
+            ),
+            webshopProducts: form.webshopProducts,
+            customScopeSelected: Boolean(
+              form.customLogin ||
+                form.customDashboards ||
+                form.customRoles ||
+                form.customWorkflows ||
+                form.customApi ||
+                form.customReporting ||
+                form.customNotifications ||
+                form.customAppExpansion,
+            ),
+            launchTimelineKey: form.launchTimeline,
             launchTimeline: getTimelineLabel(locale, form.launchTimeline),
+            contentReadyKey: form.contentReady,
             contentReady: getReadinessLabel(locale, form.contentReady),
+            brandingReadyKey: form.brandingReady,
             brandingReady: getReadinessLabel(locale, form.brandingReady),
+            priorityKey: form.priority,
             priority: getPriorityLabel(locale, form.priority),
             notes: form.notes,
           },
@@ -270,12 +473,29 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
       });
 
       if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as
+          | {
+              error?: string;
+              fieldErrors?: Partial<Record<PlannerErrorKey, string>>;
+            }
+          | null;
+
+        if (data?.fieldErrors) {
+          setFieldErrors((prev) => ({ ...prev, ...data.fieldErrors }));
+        }
+
+        if (data?.error) {
+          setFormError(data.error);
+        }
+
         throw new Error("Request failed");
       }
 
       setStatus("success");
       setForm({ ...initialPlannerState, locale });
       setStep(0);
+      setFieldErrors({});
+      setFormError("");
       trackEvent({
         name: "contact_form_submit_success",
         category: "project-planner",
@@ -284,6 +504,12 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
       });
     } catch {
       setStatus("error");
+      setFormError((prev) =>
+        prev ||
+        (locale === "nl"
+          ? "Je aanvraag kon niet worden verzonden. Probeer het opnieuw."
+          : "Your request could not be sent. Please try again."),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -304,7 +530,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
         transition={{ duration: 0.7 }}
         className="space-y-8"
       >
-        <StepRail labels={content.stepLabels} currentStep={step} />
+        <ProgressBar labels={content.stepLabels} currentStep={step} />
 
         <section className="border-t border-white/10 pt-8">
           {step === 0 ? (
@@ -317,11 +543,15 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                       key={key}
                       active={form.projectType === key}
                       label={content.options.projectTypes[key]}
-                      onClick={() => update("projectType", key)}
+                      onClick={() => {
+                        update("projectType", key);
+                        clearError("projectType");
+                      }}
                     />
                   ),
                 )}
               </div>
+              <InlineError id="planner-project-type-error" message={fieldErrors.projectType} />
             </div>
           ) : null}
 
@@ -335,17 +565,18 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                       key={value}
                       active={form.pageCount === value}
                       label={label}
-                      onClick={() => update("pageCount", value as PlannerState["pageCount"])}
+                      onClick={() => {
+                        update("pageCount", value as PlannerState["pageCount"]);
+                        clearError("pageCount");
+                      }}
                     />
                   ))}
                 </div>
+                <InlineError id="planner-page-count-error" message={fieldErrors.pageCount} />
               </div>
 
               <div className="space-y-4">
-                <SectionLabel
-                  title={content.questions.multilingual}
-                  support={content.questions.brandingContentSupport}
-                />
+                <SectionLabel title={content.questions.multilingual} />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <ChoiceButton
                     active={!form.multilingual}
@@ -357,20 +588,6 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                     label={content.options.yes}
                     onClick={() => update("multilingual", true)}
                   />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <SectionLabel title={content.questions.brandingContentState} />
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {(["yes", "partly", "no"] as PlannerReadiness[]).map((value) => (
-                    <ChoiceButton
-                      key={value}
-                      active={form.brandingContentState === value}
-                      label={getReadinessLabel(locale, value)}
-                      onClick={() => update("brandingContentState", value)}
-                    />
-                  ))}
                 </div>
               </div>
 
@@ -507,15 +724,16 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
             <div className="space-y-8">
               <SectionLabel title={content.questions.smartScope} />
               <div className="border-t border-white/10">
-                <ToggleRow checked={form.smartBookingFlow} label={locale === "nl" ? "Booking of reserveringsflow" : "Booking or reservation flow"} onChange={(checked) => update("smartBookingFlow", checked)} />
-                <ToggleRow checked={form.smartConfirmations} label={locale === "nl" ? "Bevestigingen per e-mail" : "Confirmation emails"} onChange={(checked) => update("smartConfirmations", checked)} />
-                <ToggleRow checked={form.smartPayments} label={locale === "nl" ? "Betalingen" : "Payments"} onChange={(checked) => update("smartPayments", checked)} />
-                <ToggleRow checked={form.smartMaps} label={locale === "nl" ? "Google Maps / Routes / km-pricing" : "Google Maps / Routes / km pricing"} onChange={(checked) => update("smartMaps", checked)} />
-                <ToggleRow checked={form.smartCrm} label={locale === "nl" ? "CRM- of kalenderintegratie" : "CRM or calendar integration"} onChange={(checked) => update("smartCrm", checked)} />
-                <ToggleRow checked={form.smartAdmin} label={locale === "nl" ? "Admin-omgeving" : "Admin area"} onChange={(checked) => update("smartAdmin", checked)} />
-                <ToggleRow checked={form.smartExpandedAdmin} label={locale === "nl" ? "Uitgebreider admin panel" : "Expanded admin panel"} onChange={(checked) => update("smartExpandedAdmin", checked)} />
-                <ToggleRow checked={form.smartReminderAutomation} label={locale === "nl" ? "Reminder e-mails / automatisering" : "Reminder emails / automation"} onChange={(checked) => update("smartReminderAutomation", checked)} />
+                <ToggleRow checked={form.smartBookingFlow} label={locale === "nl" ? "Booking of reserveringsflow" : "Booking or reservation flow"} onChange={(checked) => { update("smartBookingFlow", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartConfirmations} label={locale === "nl" ? "Bevestigingen per e-mail" : "Confirmation emails"} onChange={(checked) => { update("smartConfirmations", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartPayments} label={locale === "nl" ? "Betalingen" : "Payments"} onChange={(checked) => { update("smartPayments", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartMaps} label={locale === "nl" ? "Google Maps / Routes / km-pricing" : "Google Maps / Routes / km pricing"} onChange={(checked) => { update("smartMaps", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartCrm} label={locale === "nl" ? "CRM- of kalenderintegratie" : "CRM or calendar integration"} onChange={(checked) => { update("smartCrm", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartAdmin} label={locale === "nl" ? "Admin-omgeving" : "Admin area"} onChange={(checked) => { update("smartAdmin", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartExpandedAdmin} label={locale === "nl" ? "Uitgebreider admin panel" : "Expanded admin panel"} onChange={(checked) => { update("smartExpandedAdmin", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartReminderAutomation} label={locale === "nl" ? "Reminder e-mails / automatisering" : "Reminder emails / automation"} onChange={(checked) => { update("smartReminderAutomation", checked); clearError("smartScope"); }} />
               </div>
+              <InlineError id="planner-smart-scope-error" message={fieldErrors.smartScope} />
 
               <div className="space-y-4">
                 <SectionLabel title={content.questions.smartUpgrade} />
@@ -539,10 +757,17 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                       key={value}
                       active={form.webshopProducts === value}
                       label={label}
-                      onClick={() => update("webshopProducts", value as PlannerState["webshopProducts"])}
+                      onClick={() => {
+                        update("webshopProducts", value as PlannerState["webshopProducts"]);
+                        clearError("webshopProducts");
+                      }}
                     />
                   ))}
                 </div>
+                <InlineError
+                  id="planner-webshop-products-error"
+                  message={fieldErrors.webshopProducts}
+                />
               </div>
 
               <div className="space-y-4">
@@ -570,15 +795,16 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
             <div className="space-y-4">
               <SectionLabel title={content.questions.customScope} />
               <div className="border-t border-white/10">
-                <ToggleRow checked={form.customLogin} label={locale === "nl" ? "Login of accounts" : "Login or accounts"} onChange={(checked) => update("customLogin", checked)} />
-                <ToggleRow checked={form.customDashboards} label={locale === "nl" ? "Dashboard(s)" : "Dashboard(s)"} onChange={(checked) => update("customDashboards", checked)} />
-                <ToggleRow checked={form.customRoles} label={locale === "nl" ? "Gebruikersrollen en rechten" : "User roles and permissions"} onChange={(checked) => update("customRoles", checked)} />
-                <ToggleRow checked={form.customWorkflows} label={locale === "nl" ? "Adminworkflows" : "Admin workflows"} onChange={(checked) => update("customWorkflows", checked)} />
-                <ToggleRow checked={form.customApi} label={locale === "nl" ? "API-integraties" : "API integrations"} onChange={(checked) => update("customApi", checked)} />
-                <ToggleRow checked={form.customReporting} label={locale === "nl" ? "Reporting / analytics" : "Reporting / analytics"} onChange={(checked) => update("customReporting", checked)} />
-                <ToggleRow checked={form.customNotifications} label={locale === "nl" ? "Notificatiesysteem" : "Notification system"} onChange={(checked) => update("customNotifications", checked)} />
-                <ToggleRow checked={form.customAppExpansion} label={locale === "nl" ? "App-uitbreiding later" : "App expansion later"} onChange={(checked) => update("customAppExpansion", checked)} />
+                <ToggleRow checked={form.customLogin} label={locale === "nl" ? "Login of accounts" : "Login or accounts"} onChange={(checked) => { update("customLogin", checked); clearError("customScope"); }} />
+                <ToggleRow checked={form.customDashboards} label={locale === "nl" ? "Dashboard(s)" : "Dashboard(s)"} onChange={(checked) => { update("customDashboards", checked); clearError("customScope"); }} />
+                <ToggleRow checked={form.customRoles} label={locale === "nl" ? "Gebruikersrollen en rechten" : "User roles and permissions"} onChange={(checked) => { update("customRoles", checked); clearError("customScope"); }} />
+                <ToggleRow checked={form.customWorkflows} label={locale === "nl" ? "Adminworkflows" : "Admin workflows"} onChange={(checked) => { update("customWorkflows", checked); clearError("customScope"); }} />
+                <ToggleRow checked={form.customApi} label={locale === "nl" ? "API-integraties" : "API integrations"} onChange={(checked) => { update("customApi", checked); clearError("customScope"); }} />
+                <ToggleRow checked={form.customReporting} label={locale === "nl" ? "Reporting / analytics" : "Reporting / analytics"} onChange={(checked) => { update("customReporting", checked); clearError("customScope"); }} />
+                <ToggleRow checked={form.customNotifications} label={locale === "nl" ? "Notificatiesysteem" : "Notification system"} onChange={(checked) => { update("customNotifications", checked); clearError("customScope"); }} />
+                <ToggleRow checked={form.customAppExpansion} label={locale === "nl" ? "App-uitbreiding later" : "App expansion later"} onChange={(checked) => { update("customAppExpansion", checked); clearError("customScope"); }} />
               </div>
+              <InlineError id="planner-custom-scope-error" message={fieldErrors.customScope} />
             </div>
           ) : null}
 
@@ -593,39 +819,65 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                         key={value}
                         active={form.launchTimeline === value}
                         label={content.options.timeline[value]}
-                        onClick={() => update("launchTimeline", value)}
+                        onClick={() => {
+                          update("launchTimeline", value);
+                          clearError("launchTimeline");
+                        }}
                       />
                     ),
                   )}
                 </div>
+                <InlineError
+                  id="planner-launch-timeline-error"
+                  message={fieldErrors.launchTimeline}
+                />
               </div>
 
               <div className="space-y-4">
-                <SectionLabel title={content.questions.contentReady} />
+                <SectionLabel
+                  title={content.questions.contentReady}
+                  trailing={renderInfoButton("content")}
+                  expandedInfo={renderInfoText("content")}
+                />
                 <div className="grid gap-3 sm:grid-cols-3">
                   {(["yes", "partly", "no"] as PlannerReadiness[]).map((value) => (
                     <ChoiceButton
                       key={value}
                       active={form.contentReady === value}
                       label={getReadinessLabel(locale, value)}
-                      onClick={() => update("contentReady", value)}
+                      onClick={() => {
+                        update("contentReady", value);
+                        clearError("contentReady");
+                      }}
                     />
                   ))}
                 </div>
+                <InlineError id="planner-content-ready-error" message={fieldErrors.contentReady} />
               </div>
 
               <div className="space-y-4">
-                <SectionLabel title={content.questions.brandingReady} />
+                <SectionLabel
+                  title={content.questions.brandingReady}
+                  trailing={renderInfoButton("branding")}
+                  expandedInfo={renderInfoText("branding")}
+                />
                 <div className="grid gap-3 sm:grid-cols-3">
                   {(["yes", "partly", "no"] as PlannerReadiness[]).map((value) => (
                     <ChoiceButton
                       key={value}
                       active={form.brandingReady === value}
                       label={getReadinessLabel(locale, value)}
-                      onClick={() => update("brandingReady", value)}
+                      onClick={() => {
+                        update("brandingReady", value);
+                        clearError("brandingReady");
+                      }}
                     />
                   ))}
                 </div>
+                <InlineError
+                  id="planner-branding-ready-error"
+                  message={fieldErrors.brandingReady}
+                />
               </div>
 
               <div className="space-y-4">
@@ -637,11 +889,15 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                         key={value}
                         active={form.priority === value}
                         label={content.options.priority[value]}
-                        onClick={() => update("priority", value)}
+                        onClick={() => {
+                          update("priority", value);
+                          clearError("priority");
+                        }}
                       />
                     ),
                   )}
                 </div>
+                <InlineError id="planner-priority-error" message={fieldErrors.priority} />
               </div>
             </div>
           ) : null}
@@ -658,11 +914,17 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                   <input
                     id="planner-name"
                     value={form.name}
-                    onChange={(e) => update("name", e.target.value)}
+                    onChange={(e) => {
+                      update("name", e.target.value);
+                      clearError("name");
+                    }}
                     placeholder={content.fields.placeholders.name}
-                    className={inputBase}
+                    className={`${inputBase} ${fieldErrors.name ? "border-red-300/55 bg-red-400/[0.06] focus:border-red-300/65" : ""}`}
                     autoComplete="name"
+                    aria-invalid={Boolean(fieldErrors.name)}
+                    aria-describedby={fieldErrors.name ? "planner-name-error" : undefined}
                   />
+                  <InlineError id="planner-name-error" message={fieldErrors.name} />
                 </div>
                 <div>
                   <label htmlFor="planner-email" className={labelBase}>
@@ -672,11 +934,17 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                     id="planner-email"
                     type="email"
                     value={form.email}
-                    onChange={(e) => update("email", e.target.value)}
+                    onChange={(e) => {
+                      update("email", e.target.value);
+                      clearError("email");
+                    }}
                     placeholder={content.fields.placeholders.email}
-                    className={inputBase}
+                    className={`${inputBase} ${fieldErrors.email ? "border-red-300/55 bg-red-400/[0.06] focus:border-red-300/65" : ""}`}
                     autoComplete="email"
+                    aria-invalid={Boolean(fieldErrors.email)}
+                    aria-describedby={fieldErrors.email ? "planner-email-error" : undefined}
                   />
+                  <InlineError id="planner-email-error" message={fieldErrors.email} />
                 </div>
               </div>
 
@@ -738,7 +1006,11 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={() => setStep((prev) => Math.max(prev - 1, 0))}
+              onClick={() => {
+                setStatus("idle");
+                setFormError("");
+                setStep((prev) => Math.max(prev - 1, 0));
+              }}
               disabled={step === 0}
               className="rounded-full border border-white/12 px-5 py-3 text-sm text-white/74 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
             >
@@ -748,16 +1020,15 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
             {step < 3 ? (
               <button
                 type="button"
-                onClick={() => setStep((prev) => Math.min(prev + 1, 3))}
-                disabled={!isStepValid(step)}
-                className="rounded-full bg-white px-5 py-3 text-sm font-medium text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+                onClick={handleNext}
+                className="rounded-full bg-white px-5 py-3 text-sm font-medium text-black transition hover:opacity-90"
               >
                 {content.nextLabel}
               </button>
             ) : (
               <button
                 type="submit"
-                disabled={!isStepValid(3) || isSubmitting}
+                disabled={isSubmitting}
                 className="rounded-full bg-white px-5 py-3 text-sm font-medium text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {isSubmitting ? content.submittingLabel : content.submitLabel}
@@ -770,7 +1041,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
               <span className="text-cyan-300/85">{content.successMessage}</span>
             ) : null}
             {status === "error" ? (
-              <span className="text-red-300/85">{content.errorMessage}</span>
+              <span className="text-red-300/85">{formError || content.errorMessage}</span>
             ) : null}
           </div>
         </div>

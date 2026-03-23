@@ -140,8 +140,6 @@ type PlannerPageContent = {
     projectType: string;
     pageCount: string;
     multilingual: string;
-    brandingContentState: string;
-    brandingContentSupport: string;
     starterAddOns: string;
     starterUpgrade: string;
     businessAddOns: string;
@@ -302,9 +300,6 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       projectType: "What do you need?",
       pageCount: "How many pages do you expect?",
       multilingual: "Do you need multilingual support?",
-      brandingContentState: "Do you already have branding or content?",
-      brandingContentSupport:
-        "This helps estimate how ready the project already is.",
       starterAddOns: "Which optional refinements matter?",
       starterUpgrade: "Would any more advanced functionality be essential?",
       businessAddOns: "Which extensions matter here?",
@@ -411,9 +406,6 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       projectType: "Wat heb je nodig?",
       pageCount: "Hoeveel pagina's verwacht je ongeveer?",
       multilingual: "Heb je meertalige ondersteuning nodig?",
-      brandingContentState: "Heb je al branding of content?",
-      brandingContentSupport:
-        "Dit helpt inschatten hoe ver het project al staat.",
       starterAddOns: "Welke extra verfijningen zijn relevant?",
       starterUpgrade: "Zou geavanceerdere functionaliteit essentieel zijn?",
       businessAddOns: "Welke uitbreidingen zijn hier relevant?",
@@ -821,8 +813,6 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
   if (state.contentReady === "no") buffer += 300;
   if (state.brandingReady === "partly") buffer += 150;
   if (state.brandingReady === "no") buffer += 300;
-  if (state.brandingContentState === "partly") buffer += 100;
-  if (state.brandingContentState === "no") buffer += 200;
   if (selectedAddOns.length > 2) buffer += 150;
   if (selectedAddOns.length > 4) buffer += 250;
 
@@ -860,4 +850,3 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
     disclaimer: plannerContent[locale].summary.disclaimer,
   };
 }
-

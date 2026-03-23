@@ -10,6 +10,7 @@ type ContactPayload = {
   message: string;
   website?: string;
   planner?: {
+    projectTypeKey?: string;
     selectedProjectType?: string;
     recommendedPackage?: string;
     reason?: string;
@@ -17,9 +18,18 @@ type ContactPayload = {
     indicativeRange?: string | null;
     selectedFeatures?: string[];
     selectedAddOns?: string[];
+    pageCount?: string;
+    brandingContentState?: string;
+    smartScopeSelected?: boolean;
+    webshopProducts?: string;
+    customScopeSelected?: boolean;
+    launchTimelineKey?: string;
     launchTimeline?: string;
+    contentReadyKey?: string;
     contentReady?: string;
+    brandingReadyKey?: string;
     brandingReady?: string;
+    priorityKey?: string;
     priority?: string;
     notes?: string;
   };
@@ -36,6 +46,22 @@ type NormalizedSubmission = {
   website: string;
   planner?: ContactPayload["planner"];
 };
+
+type ValidationField =
+  | "name"
+  | "email"
+  | "message"
+  | "projectType"
+  | "pageCount"
+  | "smartScope"
+  | "webshopProducts"
+  | "customScope"
+  | "launchTimeline"
+  | "contentReady"
+  | "brandingReady"
+  | "priority";
+
+type ValidationErrorMap = Partial<Record<ValidationField, string>>;
 
 function escapeHtml(value: string) {
   return value
@@ -78,6 +104,110 @@ function normalizeSubmission(body: ContactPayload): NormalizedSubmission {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function getValidationMessage(locale: "en" | "nl", field: ValidationField) {
+  const nl: Record<ValidationField, string> = {
+    name: "Vul je naam in",
+    email: "Vul een geldig e-mailadres in",
+    message: "Je bericht is te kort",
+    projectType: "Kies een projecttype",
+    pageCount: "Maak een keuze voordat je doorgaat",
+    smartScope: "Kies minimaal een relevante functie",
+    webshopProducts: "Maak een keuze voordat je doorgaat",
+    customScope: "Kies minimaal een relevante functie",
+    launchTimeline: "Maak een keuze voordat je doorgaat",
+    contentReady: "Maak een keuze voordat je doorgaat",
+    brandingReady: "Maak een keuze voordat je doorgaat",
+    priority: "Maak een keuze voordat je doorgaat",
+  };
+
+  const en: Record<ValidationField, string> = {
+    name: "Enter your name",
+    email: "Enter a valid email address",
+    message: "Your message is too short",
+    projectType: "Select a project type",
+    pageCount: "Make a selection before continuing",
+    smartScope: "Select at least one relevant option",
+    webshopProducts: "Make a selection before continuing",
+    customScope: "Select at least one relevant option",
+    launchTimeline: "Make a selection before continuing",
+    contentReady: "Make a selection before continuing",
+    brandingReady: "Make a selection before continuing",
+    priority: "Make a selection before continuing",
+  };
+
+  return (locale === "nl" ? nl : en)[field];
+}
+
+function validateSubmission(submission: NormalizedSubmission) {
+  const errors: ValidationErrorMap = {};
+
+  if (submission.name.length < 2) {
+    errors.name = getValidationMessage(submission.locale, "name");
+  }
+
+  if (!submission.email || !isValidEmail(submission.email)) {
+    errors.email = getValidationMessage(submission.locale, "email");
+  }
+
+  if (submission.mode === "contact") {
+    if (submission.message.trim().length < 12) {
+      errors.message = getValidationMessage(submission.locale, "message");
+    }
+    return errors;
+  }
+
+  const planner = submission.planner;
+
+  if (!planner?.projectTypeKey) {
+    errors.projectType = getValidationMessage(submission.locale, "projectType");
+  }
+
+  if (
+    planner?.projectTypeKey === "starter" ||
+    planner?.projectTypeKey === "business"
+  ) {
+    if (!planner.pageCount) {
+      errors.pageCount = getValidationMessage(submission.locale, "pageCount");
+    }
+  }
+
+  if (planner?.projectTypeKey === "smart" && !planner.smartScopeSelected) {
+    errors.smartScope = getValidationMessage(submission.locale, "smartScope");
+  }
+
+  if (planner?.projectTypeKey === "webshop" && !planner.webshopProducts) {
+    errors.webshopProducts = getValidationMessage(
+      submission.locale,
+      "webshopProducts",
+    );
+  }
+
+  if (planner?.projectTypeKey === "platform" && !planner.customScopeSelected) {
+    errors.customScope = getValidationMessage(submission.locale, "customScope");
+  }
+
+  if (!planner?.launchTimelineKey) {
+    errors.launchTimeline = getValidationMessage(
+      submission.locale,
+      "launchTimeline",
+    );
+  }
+  if (!planner?.contentReadyKey) {
+    errors.contentReady = getValidationMessage(submission.locale, "contentReady");
+  }
+  if (!planner?.brandingReadyKey) {
+    errors.brandingReady = getValidationMessage(
+      submission.locale,
+      "brandingReady",
+    );
+  }
+  if (!planner?.priorityKey) {
+    errors.priority = getValidationMessage(submission.locale, "priority");
+  }
+
+  return errors;
 }
 
 function buildPlannerCustomerEmail(params: {
@@ -322,14 +452,27 @@ export async function POST(request: Request) {
       return Response.json({ ok: true });
     }
 
-    if (
-      name.length < 2 ||
-      email.length < 5 ||
-      !isValidEmail(email) ||
-      message.length < 12
-    ) {
+    const validationErrors = validateSubmission({
+      name,
+      email,
+      company,
+      phone,
+      message,
+      website,
+      mode,
+      locale,
+      planner,
+    });
+
+    if (Object.keys(validationErrors).length > 0) {
       return Response.json(
-        { error: "Invalid form submission." },
+        {
+          error:
+            locale === "nl"
+              ? "Controleer de verplichte velden en probeer opnieuw."
+              : "Check the required fields and try again.",
+          fieldErrors: validationErrors,
+        },
         { status: 400 }
       );
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { trackEvent } from "@/lib/analytics";
 
@@ -44,6 +44,12 @@ const initialState: FormState = {
   website: "",
 };
 
+type ContactField = "name" | "email" | "message";
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 export default function ContactForm({
   copy,
   className = "",
@@ -52,26 +58,74 @@ export default function ContactForm({
   const [form, setForm] = useState<FormState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<ContactField, string>>>({});
+  const [formError, setFormError] = useState("");
 
-  const isValid = useMemo(() => {
-    return (
-      form.name.trim().length >= 2 &&
-      form.email.trim().length >= 5 &&
-      form.message.trim().length >= 12
-    );
-  }, [form]);
+  function validateForm(values: FormState) {
+    const errors: Partial<Record<ContactField, string>> = {};
+
+    if (values.name.trim().length < 2) {
+      errors.name = copy.nameLabel.toLowerCase().includes("naam")
+        ? "Vul je naam in"
+        : "Enter your name";
+    }
+
+    if (!values.email.trim()) {
+      errors.email = copy.emailLabel.toLowerCase().includes("e-mail")
+        ? "Vul een geldig e-mailadres in"
+        : "Enter a valid email address";
+    } else if (!isValidEmail(values.email.trim())) {
+      errors.email = copy.emailLabel.toLowerCase().includes("e-mail")
+        ? "Vul een geldig e-mailadres in"
+        : "Enter a valid email address";
+    }
+
+    if (!values.message.trim()) {
+      errors.message = copy.messageLabel.toLowerCase().includes("bericht")
+        ? "Vul je bericht in"
+        : "Enter your message";
+    } else if (values.message.trim().length < 12) {
+      errors.message = copy.messageLabel.toLowerCase().includes("bericht")
+        ? "Je bericht is te kort"
+        : "Your message is too short";
+    }
+
+    return errors;
+  }
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (status !== "idle") setStatus("idle");
+    if (formError) setFormError("");
+    if (key === "name" || key === "email" || key === "message") {
+      const fieldKey = key as ContactField;
+      setFieldErrors((prev) => {
+        if (!prev[fieldKey]) return prev;
+        const next = { ...prev };
+        delete next[fieldKey];
+        return next;
+      });
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!isValid || isSubmitting) return;
+    const nextErrors = validateForm(form);
+    setFieldErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0 || isSubmitting) {
+      setStatus("error");
+      setFormError(
+        copy.messageLabel.toLowerCase().includes("bericht")
+          ? "Controleer de verplichte velden en probeer opnieuw."
+          : "Check the required fields and try again.",
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     setStatus("idle");
+    setFormError("");
 
     try {
       const response = await fetch("/api/contact", {
@@ -83,11 +137,28 @@ export default function ContactForm({
       });
 
       if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as
+          | {
+              error?: string;
+              fieldErrors?: Partial<Record<ContactField, string>>;
+            }
+          | null;
+
+        if (data?.fieldErrors) {
+          setFieldErrors(data.fieldErrors);
+        }
+
+        if (data?.error) {
+          setFormError(data.error);
+        }
+
         throw new Error("Request failed");
       }
 
       setStatus("success");
       setForm(initialState);
+      setFieldErrors({});
+      setFormError("");
       trackEvent({
         name: "contact_form_submit_success",
         category: "contact",
@@ -96,6 +167,7 @@ export default function ContactForm({
       });
     } catch {
       setStatus("error");
+      setFormError((prev) => prev || copy.errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -155,10 +227,17 @@ export default function ContactForm({
                 value={form.name}
                 onChange={(e) => updateField("name", e.target.value)}
                 placeholder={copy.namePlaceholder}
-                className={inputBase}
+                className={`${inputBase} ${fieldErrors.name ? "border-red-300/55 bg-red-400/[0.06] focus:border-red-300/65" : ""}`}
                 autoComplete="name"
                 required
+                aria-invalid={Boolean(fieldErrors.name)}
+                aria-describedby={fieldErrors.name ? "contact-name-error" : undefined}
               />
+              {fieldErrors.name ? (
+                <p id="contact-name-error" className="mt-2 text-sm text-red-200">
+                  {fieldErrors.name}
+                </p>
+              ) : null}
             </div>
 
             <div>
@@ -172,10 +251,17 @@ export default function ContactForm({
                 value={form.email}
                 onChange={(e) => updateField("email", e.target.value)}
                 placeholder={copy.emailPlaceholder}
-                className={inputBase}
+                className={`${inputBase} ${fieldErrors.email ? "border-red-300/55 bg-red-400/[0.06] focus:border-red-300/65" : ""}`}
                 autoComplete="email"
                 required
+                aria-invalid={Boolean(fieldErrors.email)}
+                aria-describedby={fieldErrors.email ? "contact-email-error" : undefined}
               />
+              {fieldErrors.email ? (
+                <p id="contact-email-error" className="mt-2 text-sm text-red-200">
+                  {fieldErrors.email}
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -204,15 +290,22 @@ export default function ContactForm({
               value={form.message}
               onChange={(e) => updateField("message", e.target.value)}
               placeholder={copy.messagePlaceholder}
-              className={`${inputBase} min-h-[160px] resize-none`}
+              className={`${inputBase} min-h-[160px] resize-none ${fieldErrors.message ? "border-red-300/55 bg-red-400/[0.06] focus:border-red-300/65" : ""}`}
               required
+              aria-invalid={Boolean(fieldErrors.message)}
+              aria-describedby={fieldErrors.message ? "contact-message-error" : undefined}
             />
+            {fieldErrors.message ? (
+              <p id="contact-message-error" className="mt-2 text-sm text-red-200">
+                {fieldErrors.message}
+              </p>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="submit"
-              disabled={!isValid || isSubmitting}
+              disabled={isSubmitting}
               data-track-event="contact_cta_click"
               data-track-category="contact"
               data-track-label={copy.submitLabel}
@@ -227,7 +320,7 @@ export default function ContactForm({
                 <span className="text-cyan-300/85">{copy.successMessage}</span>
               )}
               {status === "error" && (
-                <span className="text-red-300/85">{copy.errorMessage}</span>
+                <span className="text-red-300/85">{formError || copy.errorMessage}</span>
               )}
             </div>
           </div>
