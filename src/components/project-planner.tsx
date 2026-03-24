@@ -97,60 +97,102 @@ function ToggleRow({
   checked,
   label,
   onChange,
+  infoText,
 }: {
   checked: boolean;
   label: string;
   onChange: (checked: boolean) => void;
+  infoText?: string;
 }) {
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
+
   return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 border-b border-white/8 py-4 text-left last:border-b-0"
-    >
-      <span className="text-sm leading-7 text-white/66">{label}</span>
-      <span
-        className={`h-6 w-11 rounded-full border transition ${
-          checked
-            ? "border-cyan-300/40 bg-cyan-300/20"
-            : "border-white/12 bg-white/[0.04]"
-        }`}
-      >
-        <span
-          className={`mt-[3px] block h-4 w-4 rounded-full bg-white transition ${
-            checked ? "ml-[22px]" : "ml-[3px]"
-          }`}
-        />
-      </span>
-    </button>
+    <div className="border-b border-white/8 py-4 last:border-b-0">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <span className="text-sm leading-7 text-white/66">{label}</span>
+            {infoText ? (
+              <button
+                type="button"
+                onClick={() => setIsInfoOpen((prev) => !prev)}
+                aria-expanded={isInfoOpen}
+                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-white/16 text-[11px] font-medium text-white/62 transition hover:border-cyan-300/35 hover:text-white"
+              >
+                !
+              </button>
+            ) : null}
+          </div>
+          {isInfoOpen && infoText ? (
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/50">
+              {infoText}
+            </p>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onChange(!checked)}
+          aria-pressed={checked}
+          className="shrink-0"
+        >
+          <span
+            className={`block h-6 w-11 rounded-full border transition ${
+              checked
+                ? "border-cyan-300/40 bg-cyan-300/20"
+                : "border-white/12 bg-white/[0.04]"
+            }`}
+          >
+            <span
+              className={`mt-[3px] block h-4 w-4 rounded-full bg-white transition ${
+                checked ? "ml-[22px]" : "ml-[3px]"
+              }`}
+            />
+          </span>
+        </button>
+      </div>
+    </div>
   );
 }
 
 function SectionLabel({
   title,
   support,
-  trailing,
-  expandedInfo,
+  infoText,
 }: {
   title: string;
   support?: string;
-  trailing?: React.ReactNode;
-  expandedInfo?: React.ReactNode;
+  infoText?: string;
 }) {
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
+
   return (
     <div>
       <div className="flex items-center gap-3">
         <p className="text-[10px] uppercase tracking-[0.26em] text-cyan-300/74">
           {title}
         </p>
-        {trailing}
+        {infoText ? (
+          <button
+            type="button"
+            onClick={() => setIsInfoOpen((prev) => !prev)}
+            aria-expanded={isInfoOpen}
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/16 text-[11px] font-medium text-white/62 transition hover:border-cyan-300/35 hover:text-white"
+          >
+            !
+          </button>
+        ) : null}
       </div>
       {support ? (
         <p className="mt-3 max-w-2xl text-sm leading-7 text-white/48">
           {support}
         </p>
       ) : null}
-      {expandedInfo}
+      {isInfoOpen && infoText ? (
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-white/52">
+          {infoText}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -191,7 +233,6 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<PlannerErrorKey, string>>>({});
   const [formError, setFormError] = useState("");
-  const [openInfoKey, setOpenInfoKey] = useState<"content" | "branding" | null>(null);
   const [form, setForm] = useState<PlannerState>({
     ...initialPlannerState,
     locale,
@@ -202,7 +243,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
   const summaryRange = summary.range
     ? `${formatEuro(summary.range.min, locale)} - ${formatEuro(summary.range.max, locale)}`
     : null;
-  const infoCopy = {
+  const helperCopy = {
     content:
       locale === "nl"
         ? "Content betekent de tekst, beelden, productinformatie of andere inhoud die op de website moet komen."
@@ -211,34 +252,75 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
       locale === "nl"
         ? "Branding betekent je merkuitstraling, zoals logo, kleuren, typografie en de algemene visuele richting."
         : "Branding means your brand direction, such as logo, colors, typography, and the overall visual identity.",
+    starterAddOns:
+      locale === "nl"
+        ? "SEO helpt je website beter vindbaar te maken in Google. Motion gaat over subtiele animatie en verfijning in hoe de interface beweegt."
+        : "SEO helps your website become easier to find in Google. Motion refers to subtle animation and refinement in how the interface moves.",
+    businessAddOns:
+      locale === "nl"
+        ? "SEO Growth gaat verder dan basis SEO. Admin-lite betekent lichte beheerfuncties, en een API-integratie koppelt je site aan een ander systeem of tool."
+        : "SEO Growth goes beyond basic SEO. Admin-lite means lightweight management features, and an API integration connects your site to another system or tool.",
+    smartScope:
+      locale === "nl"
+        ? "Hier gaat het om functionele onderdelen zoals booking, betalingen, CRM-koppelingen en beheer. Kies alleen wat echt onderdeel van het project moet zijn."
+        : "This covers functional parts such as booking, payments, CRM connections, and admin. Only select what really needs to be part of the project.",
+    smartUpgrade:
+      locale === "nl"
+        ? "Gebruikersrollen, dashboards en bredere workflowlogica horen meestal bij een platformniveau. Dit helpt onderscheid maken tussen een slimme website en een maatwerk systeem."
+        : "User roles, dashboards, and broader workflow logic usually belong to a platform-level project. This helps distinguish a smart website from a true custom system.",
+    webshopScope:
+      locale === "nl"
+        ? "Filters, memberships en CRM- of ERP-koppelingen maken een webshop complexer dan een standaard online winkel."
+        : "Filters, memberships, and CRM or ERP connections make a webshop more complex than a standard online store.",
+    customScope:
+      locale === "nl"
+        ? "Dit zijn termen voor maatwerk systemen: rollen en rechten bepalen wie wat mag zien of doen, API-integraties koppelen externe systemen, en reporting gaat over dashboards en inzichten."
+        : "These are terms for custom systems: roles and permissions define who can see or do what, API integrations connect outside systems, and reporting covers dashboards and insights.",
+    seoBoost:
+      locale === "nl"
+        ? "SEO-boost betekent extra aandacht voor paginatitels, structuur en basis optimalisatie om beter gevonden te worden."
+        : "SEO boost means extra attention to page titles, structure, and basic optimization to help the site get found more easily.",
+    seoGrowth:
+      locale === "nl"
+        ? "SEO Growth richt zich sterker op pagina-opbouw, zoekintentie en groeikansen dan een basis SEO-instelling."
+        : "SEO Growth focuses more on page structure, search intent, and growth opportunities than a basic SEO setup.",
+    adminLite:
+      locale === "nl"
+        ? "Admin-lite betekent een lichte beheerlaag voor eenvoudige updates of contentbeheer, geen volledig intern systeem."
+        : "Admin-lite means a lightweight admin layer for simple updates or content management, not a full internal system.",
+    lightApi:
+      locale === "nl"
+        ? "Een lichte API-integratie is een eenvoudige koppeling met bijvoorbeeld een externe tool, formulierdienst of databron."
+        : "A light API integration is a simple connection to something like an outside tool, form service, or data source.",
+    mapsRoutes:
+      locale === "nl"
+        ? "Google Maps, routes en kilometerprijzen betekenen dat de site afstanden of locaties gebruikt om een rit of prijs te berekenen."
+        : "Google Maps, routes, and kilometer pricing mean the site uses locations or distance to calculate a trip or price.",
+    crmCalendar:
+      locale === "nl"
+        ? "CRM- of kalenderintegratie koppelt je site aan systemen voor klantbeheer, afspraken of planning."
+        : "CRM or calendar integration connects your site to systems for customer management, appointments, or scheduling.",
+    expandedAdmin:
+      locale === "nl"
+        ? "Een uitgebreider admin panel geeft meer beheermogelijkheden dan een eenvoudige lijst of invoerpagina."
+        : "An expanded admin panel gives more management options than a simple list or input page.",
+    subscriptions:
+      locale === "nl"
+        ? "Subscriptions of memberships betekenen terugkerende betalingen of toegang op basis van een lidmaatschap."
+        : "Subscriptions or memberships mean recurring payments or access based on a membership.",
+    webshopIntegrations:
+      locale === "nl"
+        ? "CRM, ERP of boekhoudintegraties koppelen je webshop aan systemen voor klantbeheer, voorraad of administratie."
+        : "CRM, ERP, or accounting integrations connect your webshop to systems for customer management, stock, or administration.",
+    rolesPermissions:
+      locale === "nl"
+        ? "Rollen en rechten bepalen welke gebruikers toegang hebben tot bepaalde onderdelen of acties binnen een platform."
+        : "Roles and permissions define which users can access specific parts or actions within a platform.",
+    reporting:
+      locale === "nl"
+        ? "Reporting of analytics betekent dashboards, rapportages en inzichten op basis van data uit het systeem."
+        : "Reporting or analytics means dashboards, reports, and insights based on data from the system.",
   } as const;
-
-  function renderInfoButton(key: keyof typeof infoCopy) {
-    const isOpen = openInfoKey === key;
-
-    return (
-      <button
-        type="button"
-        onClick={() => setOpenInfoKey((prev) => (prev === key ? null : key))}
-        aria-expanded={isOpen}
-        className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/16 text-[11px] font-medium text-white/62 transition hover:border-cyan-300/35 hover:text-white"
-      >
-        !
-      </button>
-    );
-  }
-
-  function renderInfoText(key: keyof typeof infoCopy) {
-    const isOpen = openInfoKey === key;
-
-    if (!isOpen) return null;
-
-    return (
-      <p className="mt-3 max-w-2xl text-sm leading-7 text-white/52">
-        {infoCopy[key]}
-      </p>
-    );
-  }
 
   function update<K extends keyof PlannerState>(key: K, value: PlannerState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -618,6 +700,11 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                       ? content.questions.starterAddOns
                       : content.questions.businessAddOns
                   }
+                  infoText={
+                    form.projectType === "starter"
+                      ? helperCopy.starterAddOns
+                      : helperCopy.businessAddOns
+                  }
                 />
                 <div className="border-t border-white/10">
                   {form.projectType === "starter" ? (
@@ -625,6 +712,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                       <ToggleRow
                         checked={form.starterSeoBoost}
                         label={locale === "nl" ? "SEO-boost" : "SEO boost"}
+                        infoText={helperCopy.seoBoost}
                         onChange={(checked) => update("starterSeoBoost", checked)}
                       />
                       <ToggleRow
@@ -642,6 +730,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                       <ToggleRow
                         checked={form.businessSeoGrowth}
                         label="SEO Growth"
+                        infoText={helperCopy.seoGrowth}
                         onChange={(checked) => update("businessSeoGrowth", checked)}
                       />
                       <ToggleRow
@@ -658,6 +747,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                       <ToggleRow
                         checked={form.businessAdminLite}
                         label="Admin-lite / content management"
+                        infoText={helperCopy.adminLite}
                         onChange={(checked) => update("businessAdminLite", checked)}
                       />
                       <ToggleRow
@@ -667,6 +757,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                             ? "Lichte API-integratie"
                             : "Light API integration"
                         }
+                        infoText={helperCopy.lightApi}
                         onChange={(checked) => update("businessLightApi", checked)}
                       />
                     </>
@@ -742,21 +833,21 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
 
           {step === 1 && form.projectType === "smart" ? (
             <div className="space-y-8">
-              <SectionLabel title={content.questions.smartScope} />
+              <SectionLabel title={content.questions.smartScope} infoText={helperCopy.smartScope} />
               <div className="border-t border-white/10">
                 <ToggleRow checked={form.smartBookingFlow} label={locale === "nl" ? "Booking of reserveringsflow" : "Booking or reservation flow"} onChange={(checked) => { update("smartBookingFlow", checked); clearError("smartScope"); }} />
                 <ToggleRow checked={form.smartConfirmations} label={locale === "nl" ? "Bevestigingen per e-mail" : "Confirmation emails"} onChange={(checked) => { update("smartConfirmations", checked); clearError("smartScope"); }} />
                 <ToggleRow checked={form.smartPayments} label={locale === "nl" ? "Betalingen" : "Payments"} onChange={(checked) => { update("smartPayments", checked); clearError("smartScope"); }} />
-                <ToggleRow checked={form.smartMaps} label={locale === "nl" ? "Google Maps / Routes / km-pricing" : "Google Maps / Routes / km pricing"} onChange={(checked) => { update("smartMaps", checked); clearError("smartScope"); }} />
-                <ToggleRow checked={form.smartCrm} label={locale === "nl" ? "CRM- of kalenderintegratie" : "CRM or calendar integration"} onChange={(checked) => { update("smartCrm", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartMaps} label={locale === "nl" ? "Google Maps / Routes / km-pricing" : "Google Maps / Routes / km pricing"} infoText={helperCopy.mapsRoutes} onChange={(checked) => { update("smartMaps", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartCrm} label={locale === "nl" ? "CRM- of kalenderintegratie" : "CRM or calendar integration"} infoText={helperCopy.crmCalendar} onChange={(checked) => { update("smartCrm", checked); clearError("smartScope"); }} />
                 <ToggleRow checked={form.smartAdmin} label={locale === "nl" ? "Admin-omgeving" : "Admin area"} onChange={(checked) => { update("smartAdmin", checked); clearError("smartScope"); }} />
-                <ToggleRow checked={form.smartExpandedAdmin} label={locale === "nl" ? "Uitgebreider admin panel" : "Expanded admin panel"} onChange={(checked) => { update("smartExpandedAdmin", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartExpandedAdmin} label={locale === "nl" ? "Uitgebreider admin panel" : "Expanded admin panel"} infoText={helperCopy.expandedAdmin} onChange={(checked) => { update("smartExpandedAdmin", checked); clearError("smartScope"); }} />
                 <ToggleRow checked={form.smartReminderAutomation} label={locale === "nl" ? "Reminder e-mails / automatisering" : "Reminder emails / automation"} onChange={(checked) => { update("smartReminderAutomation", checked); clearError("smartScope"); }} />
               </div>
               <InlineError id="planner-smart-scope-error" message={fieldErrors.smartScope} />
 
               <div className="space-y-4">
-                <SectionLabel title={content.questions.smartUpgrade} />
+                <SectionLabel title={content.questions.smartUpgrade} infoText={helperCopy.smartUpgrade} />
                 <div className="border-t border-white/10">
                   <ToggleRow checked={form.smartNeedRoles} label={locale === "nl" ? "Meerdere gebruikersrollen" : "Multiple user roles"} onChange={(checked) => update("smartNeedRoles", checked)} />
                   <ToggleRow checked={form.smartNeedDashboards} label={locale === "nl" ? "Dashboardsystemen" : "Dashboard systems"} onChange={(checked) => update("smartNeedDashboards", checked)} />
@@ -791,11 +882,11 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
               </div>
 
               <div className="space-y-4">
-                <SectionLabel title={content.questions.webshopScope} />
+                <SectionLabel title={content.questions.webshopScope} infoText={helperCopy.webshopScope} />
                 <div className="border-t border-white/10">
-                  <ToggleRow checked={form.webshopSubscriptions} label="Subscriptions / memberships" onChange={(checked) => update("webshopSubscriptions", checked)} />
+                  <ToggleRow checked={form.webshopSubscriptions} label="Subscriptions / memberships" infoText={helperCopy.subscriptions} onChange={(checked) => update("webshopSubscriptions", checked)} />
                   <ToggleRow checked={form.webshopFilters} label={locale === "nl" ? "Geavanceerde filters / search" : "Advanced filters / search"} onChange={(checked) => update("webshopFilters", checked)} />
-                  <ToggleRow checked={form.webshopIntegrations} label={locale === "nl" ? "CRM / ERP / boekhoudintegratie" : "CRM / ERP / accounting integration"} onChange={(checked) => update("webshopIntegrations", checked)} />
+                  <ToggleRow checked={form.webshopIntegrations} label={locale === "nl" ? "CRM / ERP / boekhoudintegratie" : "CRM / ERP / accounting integration"} infoText={helperCopy.webshopIntegrations} onChange={(checked) => update("webshopIntegrations", checked)} />
                   <ToggleRow checked={form.webshopMultilingual} label={locale === "nl" ? "Meertalige ondersteuning" : "Multilingual support"} onChange={(checked) => update("webshopMultilingual", checked)} />
                   <ToggleRow checked={form.webshopSeo} label={locale === "nl" ? "Geavanceerde SEO voor producten / categorieën" : "Advanced SEO for products / categories"} onChange={(checked) => update("webshopSeo", checked)} />
                 </div>
@@ -813,14 +904,14 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
 
           {step === 1 && form.projectType === "platform" ? (
             <div className="space-y-4">
-              <SectionLabel title={content.questions.customScope} />
+              <SectionLabel title={content.questions.customScope} infoText={helperCopy.customScope} />
               <div className="border-t border-white/10">
                 <ToggleRow checked={form.customLogin} label={locale === "nl" ? "Login of accounts" : "Login or accounts"} onChange={(checked) => { update("customLogin", checked); clearError("customScope"); }} />
                 <ToggleRow checked={form.customDashboards} label={locale === "nl" ? "Dashboard(s)" : "Dashboard(s)"} onChange={(checked) => { update("customDashboards", checked); clearError("customScope"); }} />
-                <ToggleRow checked={form.customRoles} label={locale === "nl" ? "Gebruikersrollen en rechten" : "User roles and permissions"} onChange={(checked) => { update("customRoles", checked); clearError("customScope"); }} />
+                <ToggleRow checked={form.customRoles} label={locale === "nl" ? "Gebruikersrollen en rechten" : "User roles and permissions"} infoText={helperCopy.rolesPermissions} onChange={(checked) => { update("customRoles", checked); clearError("customScope"); }} />
                 <ToggleRow checked={form.customWorkflows} label={locale === "nl" ? "Adminworkflows" : "Admin workflows"} onChange={(checked) => { update("customWorkflows", checked); clearError("customScope"); }} />
                 <ToggleRow checked={form.customApi} label={locale === "nl" ? "API-integraties" : "API integrations"} onChange={(checked) => { update("customApi", checked); clearError("customScope"); }} />
-                <ToggleRow checked={form.customReporting} label={locale === "nl" ? "Reporting / analytics" : "Reporting / analytics"} onChange={(checked) => { update("customReporting", checked); clearError("customScope"); }} />
+                <ToggleRow checked={form.customReporting} label={locale === "nl" ? "Reporting / analytics" : "Reporting / analytics"} infoText={helperCopy.reporting} onChange={(checked) => { update("customReporting", checked); clearError("customScope"); }} />
                 <ToggleRow checked={form.customNotifications} label={locale === "nl" ? "Notificatiesysteem" : "Notification system"} onChange={(checked) => { update("customNotifications", checked); clearError("customScope"); }} />
                 <ToggleRow checked={form.customAppExpansion} label={locale === "nl" ? "App-uitbreiding later" : "App expansion later"} onChange={(checked) => { update("customAppExpansion", checked); clearError("customScope"); }} />
               </div>
@@ -854,11 +945,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
               </div>
 
               <div className="space-y-4">
-                <SectionLabel
-                  title={content.questions.contentReady}
-                  trailing={renderInfoButton("content")}
-                  expandedInfo={renderInfoText("content")}
-                />
+                <SectionLabel title={content.questions.contentReady} infoText={helperCopy.content} />
                 <div className="grid gap-3 sm:grid-cols-3">
                   {(["yes", "partly", "no"] as PlannerReadiness[]).map((value) => (
                     <ChoiceButton
@@ -876,11 +963,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
               </div>
 
               <div className="space-y-4">
-                <SectionLabel
-                  title={content.questions.brandingReady}
-                  trailing={renderInfoButton("branding")}
-                  expandedInfo={renderInfoText("branding")}
-                />
+                <SectionLabel title={content.questions.brandingReady} infoText={helperCopy.branding} />
                 <div className="grid gap-3 sm:grid-cols-3">
                   {(["yes", "partly", "no"] as PlannerReadiness[]).map((value) => (
                     <ChoiceButton
