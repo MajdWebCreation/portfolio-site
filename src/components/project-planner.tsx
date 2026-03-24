@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { trackEvent } from "@/lib/analytics";
 import {
   buildPlannerSummary,
@@ -623,13 +622,9 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
 
   return (
     <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-start">
-      <motion.form
+      <form
         ref={formTopRef}
         onSubmit={handleSubmit}
-        initial={{ opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.15 }}
-        transition={{ duration: 0.7 }}
         className="space-y-8"
       >
         <ProgressBar labels={content.stepLabels} currentStep={step} />
@@ -1154,7 +1149,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
             ) : null}
           </div>
         </div>
-      </motion.form>
+      </form>
 
       <aside className="lg:sticky lg:top-28">
         <div className="border-t border-white/10 pt-6 lg:pt-8">

@@ -61,43 +61,43 @@ export default function ContactPanel({
 
   return (
     <div className="grid gap-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-start">
-      <section className="rounded-[2.1rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-6 md:p-8">
-        <p className="text-[11px] uppercase tracking-[0.3em] text-cyan-300/76">
+      <section className="rounded-[2.1rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 p-6 md:p-8">
+        <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--accent-text)]">
           {content.signal}
         </p>
 
-        <h2 className="mt-5 max-w-lg text-3xl font-semibold leading-tight text-white sm:text-4xl">
+        <h2 className="mt-5 max-w-lg text-3xl font-semibold leading-tight text-[var(--foreground)] sm:text-4xl">
           {locale === "nl"
             ? "Een kort bericht is genoeg om te starten."
             : "A short message is enough to get started."}
         </h2>
 
-        <p className="mt-5 max-w-md text-sm leading-7 text-white/58">
+        <p className="mt-5 max-w-md text-sm leading-7 text-[color:var(--muted-foreground)]">
           {locale === "nl"
             ? "Geen lang intakeformulier. Vertel kort waar je aan werkt, wat je nodig hebt en wat de volgende stap ongeveer moet zijn."
             : "No long intake flow. Briefly share what you’re working on, what you need, and what the next step should roughly be."}
         </p>
 
-        <div className="mt-8 space-y-4 border-t border-white/10 pt-6">
-          <div className="flex items-start justify-between gap-4 border-b border-white/8 pb-4">
-            <span className="text-[10px] uppercase tracking-[0.26em] text-white/38">
+        <div className="mt-8 space-y-4 border-t border-[color:var(--line)] pt-6">
+          <div className="flex items-start justify-between gap-4 border-b border-[color:var(--line)] pb-4">
+            <span className="text-[10px] uppercase tracking-[0.26em] text-[color:var(--muted-foreground)]">
               Email
             </span>
-            <span className="text-sm text-white/72">{businessInfo.email}</span>
+            <span className="text-sm text-[var(--foreground)]">{businessInfo.email}</span>
           </div>
 
-          <div className="flex items-start justify-between gap-4 border-b border-white/8 pb-4">
-            <span className="text-[10px] uppercase tracking-[0.26em] text-white/38">
+          <div className="flex items-start justify-between gap-4 border-b border-[color:var(--line)] pb-4">
+            <span className="text-[10px] uppercase tracking-[0.26em] text-[color:var(--muted-foreground)]">
               {locale === "nl" ? "Telefoon" : "Phone"}
             </span>
-            <span className="text-sm text-white/72">{businessInfo.phone}</span>
+            <span className="text-sm text-[var(--foreground)]">{businessInfo.phone}</span>
           </div>
 
-          <div className="flex items-start justify-between gap-4 border-b border-white/8 pb-4">
-            <span className="text-[10px] uppercase tracking-[0.26em] text-white/38">
+          <div className="flex items-start justify-between gap-4 border-b border-[color:var(--line)] pb-4">
+            <span className="text-[10px] uppercase tracking-[0.26em] text-[color:var(--muted-foreground)]">
               {footer.kvkLabel}
             </span>
-            <span className="text-sm text-white/72">{businessInfo.kvk}</span>
+            <span className="text-sm text-[var(--foreground)]">{businessInfo.kvk}</span>
           </div>
         </div>
       </section>

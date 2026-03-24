@@ -18,20 +18,20 @@ export default function SiteFooter({ locale, content }: SiteFooterProps) {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="relative z-20 mt-16 overflow-hidden border-t border-white/14 bg-[linear-gradient(180deg,rgba(18,28,39,0.42),rgba(12,20,29,0.8))]">
-      <div className="ym-bg-arc ym-bg-float-fade absolute inset-[-6%] opacity-[0.68]" />
+    <footer className="ym-footer-surface relative z-20 mt-16 overflow-hidden border-t border-[color:var(--line)]">
+      <div className="ym-bg-arc pointer-events-none absolute inset-[-6%] opacity-[0.28]" />
       <div className="mx-auto max-w-7xl px-6 pb-14 pt-16 lg:px-10">
         <div className="grid gap-10 lg:grid-cols-[1.1fr_0.8fr_0.8fr_0.9fr]">
           <div>
             <BrandMark
               href={getLocalizedPath(locale, "home")}
               variant="white"
-              className="h-[6rem] w-[320px] sm:h-[6.5rem] sm:w-[344px]"
+              className="h-[4.25rem] w-[220px] sm:h-[4.75rem] sm:w-[244px]"
             />
-            <p className="mt-5 max-w-sm text-sm leading-7 text-white/72">
+            <p className="mt-3 max-w-sm text-sm leading-7 text-[color:var(--muted-foreground)]">
               {content.description}
             </p>
-            <div className="mt-6 max-w-sm space-y-2 text-xs leading-6 text-white/58">
+            <div className="mt-5 max-w-sm space-y-2 text-xs leading-6 text-[color:var(--muted-foreground)]">
               <p>
                 © {currentYear} {businessInfo.legalName}. {content.rights}
               </p>
@@ -43,8 +43,8 @@ export default function SiteFooter({ locale, content }: SiteFooterProps) {
           </div>
 
           <div>
-            <p className="text-sm font-medium text-white">{content.company}</p>
-            <ul className="mt-5 space-y-3 text-sm text-white/72">
+            <p className="text-sm font-medium text-[var(--foreground)]">{content.company}</p>
+            <ul className="mt-5 space-y-3 text-sm text-[color:var(--muted-foreground)]">
               <li>
                 <Link href={getLocalizedPath(locale, "home")}>Home</Link>
               </li>
@@ -77,8 +77,8 @@ export default function SiteFooter({ locale, content }: SiteFooterProps) {
           </div>
 
           <div>
-            <p className="text-sm font-medium text-white">{content.services}</p>
-            <ul className="mt-5 space-y-3 text-sm text-white/72">
+            <p className="text-sm font-medium text-[var(--foreground)]">{content.services}</p>
+            <ul className="mt-5 space-y-3 text-sm text-[color:var(--muted-foreground)]">
               {services.map((service) => (
                 <li key={service.path}>
                   <Link href={service.path}>{service.navLabel}</Link>
@@ -88,8 +88,8 @@ export default function SiteFooter({ locale, content }: SiteFooterProps) {
           </div>
 
           <div>
-            <p className="text-sm font-medium text-white">{content.contact}</p>
-            <ul className="mt-5 space-y-3 text-sm text-white/72">
+            <p className="text-sm font-medium text-[var(--foreground)]">{content.contact}</p>
+            <ul className="mt-5 space-y-3 text-sm text-[color:var(--muted-foreground)]">
               <li>{businessInfo.email}</li>
               <li>{businessInfo.phone}</li>
               <li>ymcreations.com</li>

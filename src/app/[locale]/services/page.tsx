@@ -74,18 +74,18 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
         <section className="relative mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-10 lg:py-14">
-          <div className="ym-bg-curve ym-bg-breathe pointer-events-none absolute inset-x-[-6%] inset-y-0 opacity-[0.48]" />
+          <div className="ym-bg-curve pointer-events-none absolute inset-x-[-6%] inset-y-0 opacity-[0.18]" />
 
           <div className="relative grid gap-8 lg:grid-cols-[1.04fr_0.96fr] lg:items-end">
             <RevealSection>
               <div className="mx-auto max-w-[22rem] text-center sm:max-w-[34rem] lg:mx-0 lg:max-w-3xl lg:text-left">
-                <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
+                <p className="text-[11px] uppercase tracking-[0.32em] text-[var(--accent-text)]">
                   {overview.eyebrow}
                 </p>
-                <h1 className="mt-5 text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+                <h1 className="mt-5 text-balance text-4xl font-semibold leading-tight text-[var(--foreground)] sm:text-5xl lg:text-6xl">
                   {overview.title}
                 </h1>
-                <p className="mt-5 max-w-2xl text-base leading-8 text-white/62">
+                <p className="mt-5 max-w-2xl text-base leading-8 text-[color:var(--muted-foreground)]">
                   {overview.intro}
                 </p>
 
@@ -96,10 +96,10 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
                     data-track-category="services-overview"
                     data-track-label={locale === "nl" ? "Projecten" : "Projects"}
                     data-track-location="services-hero-links"
-                    className="text-sm text-white/56 transition hover:text-white"
+                    className="text-sm text-[color:var(--muted-foreground)] transition hover:text-[var(--foreground)]"
                   >
                     {locale === "nl" ? "Bekijk projecten" : "View projects"}{" "}
-                    <span className="text-cyan-200/65">→</span>
+                    <span className="text-[var(--accent-text)]">→</span>
                   </Link>
                   <Link
                     href={getLocalizedPath(locale, "contact")}
@@ -107,25 +107,25 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
                     data-track-category="services-overview"
                     data-track-label={locale === "nl" ? "Contact" : "Contact"}
                     data-track-location="services-hero-links"
-                    className="text-sm text-white/56 transition hover:text-white"
+                    className="text-sm text-[color:var(--muted-foreground)] transition hover:text-[var(--foreground)]"
                   >
                     {locale === "nl" ? "Neem contact op" : "Contact us"}{" "}
-                    <span className="text-cyan-200/65">→</span>
+                    <span className="text-[var(--accent-text)]">→</span>
                   </Link>
                 </div>
               </div>
             </RevealSection>
 
             <RevealSection delay={0.08}>
-              <div className="mx-auto max-w-[34rem] border-t border-white/10 pt-5 lg:mx-0">
-                <p className="text-[10px] uppercase tracking-[0.32em] text-cyan-300/76">
+              <div className="mx-auto max-w-[34rem] border-t border-[color:var(--line)] pt-5 lg:mx-0">
+                <p className="text-[10px] uppercase tracking-[0.32em] text-[var(--accent-text)]">
                   {overview.whyTitle}
                 </p>
                 <div className="mt-4 space-y-3">
                   {overview.whyPoints.map((point) => (
                     <p
                       key={point}
-                      className="border-b border-white/8 pb-3 text-sm leading-7 text-white/56 last:border-b-0 last:pb-0"
+                      className="border-b border-[color:var(--line)] pb-3 text-sm leading-7 text-[color:var(--muted-foreground)] last:border-b-0 last:pb-0"
                     >
                       {point}
                     </p>
@@ -139,10 +139,10 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
             <div className="mt-10">
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/74">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--accent-text)]">
                     {locale === "nl" ? "Start hier" : "Start here"}
                   </p>
-                  <p className="mt-2 text-sm text-white/52">
+                  <p className="mt-2 text-sm text-[color:var(--muted-foreground)]">
                     {locale === "nl"
                       ? "De duidelijkste hoofdroute voor veel bedrijven."
                       : "The clearest main direction for many businesses."}
@@ -158,19 +158,19 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
           <section className="mx-auto mt-2 w-full max-w-7xl px-4 pb-4 sm:px-6 lg:px-10">
             <ServicesOverviewRail services={railServices} locale={locale} />
 
-            <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 border-t border-white/10 pt-6">
+            <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 border-t border-[color:var(--line)] pt-6">
               <Link
                 href={getLocalizedPath(locale, "pricing")}
                 data-track-event="primary_cta_click"
                 data-track-category="services-overview"
                 data-track-label={locale === "nl" ? "Tarieven" : "Pricing"}
                 data-track-location="services-bottom-links"
-                className="text-sm text-white/48 transition hover:text-white"
+                className="text-sm text-[color:var(--muted-foreground)] transition hover:text-[var(--foreground)]"
               >
                 {locale === "nl"
                   ? "Bekijk instapniveaus en logische uitbreidingen"
                   : "View entry levels and logical upgrades"}{" "}
-                <span className="text-cyan-200/65">→</span>
+                <span className="text-[var(--accent-text)]">→</span>
               </Link>
 
               <Link
@@ -183,12 +183,12 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
                     : "Use the Project Planner"
                 }
                 data-track-location="services-bottom-links"
-                className="text-sm text-white/48 transition hover:text-white"
+                className="text-sm text-[color:var(--muted-foreground)] transition hover:text-[var(--foreground)]"
               >
                 {locale === "nl"
                   ? "Hulp nodig bij het kiezen? Gebruik de Project Planner"
                   : "Need help choosing? Use the Project Planner"}{" "}
-                <span className="text-cyan-200/65">→</span>
+                <span className="text-[var(--accent-text)]">→</span>
               </Link>
             </div>
           </section>

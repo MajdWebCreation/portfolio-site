@@ -1,23 +1,58 @@
 @import "tailwindcss";
 
 :root {
+  --background: #f5f8fb;
+  --background-elevated: #ffffff;
+  --foreground: #112032;
+  --muted-foreground: rgba(17, 32, 50, 0.74);
+  --line: rgba(125, 154, 183, 0.24);
+  --line-strong: rgba(125, 154, 183, 0.38);
+  --cyan-soft: rgba(32, 149, 214, 0.12);
+  --cyan-strong: #0f7fc7;
+  --accent-text: #0b5f97;
+  --button-bg: #10243a;
+  --button-text: #f8fbfe;
+  --surface-shadow: 0 22px 58px rgba(35, 60, 84, 0.08);
+  --shell-gradient: linear-gradient(180deg,rgba(255,255,255,0.78),rgba(246,250,253,0.9) 42%,rgba(237,243,248,0.98));
+  --shell-bottom-fade: linear-gradient(180deg,transparent,rgba(237,243,248,0.72) 70%,rgba(237,243,248,0.94));
+  --surface-glow:
+    radial-gradient(circle at 20% 15%, rgba(66, 214, 255, 0.12), transparent 30%),
+    radial-gradient(circle at 80% 10%, rgba(153, 214, 255, 0.1), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.74));
+}
+
+html[data-theme="dark"] {
   --background: #0b1723;
   --background-elevated: #12202d;
   --foreground: #f4f8fb;
   --muted-foreground: rgba(231, 241, 248, 0.82);
   --line: rgba(169, 215, 244, 0.22);
+  --line-strong: rgba(169, 215, 244, 0.34);
   --cyan-soft: rgba(113, 227, 255, 0.18);
   --cyan-strong: #71e3ff;
+  --accent-text: #8ce7ff;
+  --button-bg: #ffffff;
+  --button-text: #071018;
+  --surface-shadow: 0 20px 52px rgba(2, 6, 10, 0.16);
+  --shell-gradient: linear-gradient(180deg,rgba(12,20,30,0.98),rgba(15,25,36,0.95) 42%,rgba(11,18,27,1));
+  --shell-bottom-fade: linear-gradient(180deg,transparent,rgba(8,13,20,0.62) 70%,rgba(11,18,27,0.9));
   --surface-glow:
-    radial-gradient(circle at 20% 15%, rgba(66, 214, 255, 0.2), transparent 30%),
-    radial-gradient(circle at 80% 10%, rgba(153, 214, 255, 0.13), transparent 26%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015));
+    radial-gradient(circle at 20% 15%, rgba(66, 214, 255, 0.12), transparent 30%),
+    radial-gradient(circle at 80% 10%, rgba(153, 214, 255, 0.1), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
 }
 
 html {
   scroll-behavior: smooth;
   max-width: 100%;
   overflow-x: clip;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(77, 191, 255, 0.1), transparent 28%),
+    radial-gradient(circle at 82% 12%, rgba(88, 145, 255, 0.08), transparent 26%),
+    linear-gradient(180deg, #f8fbfe 0%, #f3f7fb 42%, #edf3f8 100%);
+}
+
+html[data-theme="dark"] {
   background:
     radial-gradient(circle at 18% 0%, rgba(77, 191, 255, 0.16), transparent 28%),
     radial-gradient(circle at 82% 12%, rgba(88, 145, 255, 0.14), transparent 26%),
@@ -28,7 +63,7 @@ body {
   max-width: 100%;
   overflow-x: clip;
   background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.03), transparent 32%),
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.38), transparent 32%),
     var(--background);
   color: var(--foreground);
   font-family:
@@ -58,8 +93,8 @@ h6 {
 }
 
 ::selection {
-  background: rgba(113, 227, 255, 0.24);
-  color: #ffffff;
+  background: rgba(15, 127, 199, 0.18);
+  color: var(--foreground);
 }
 
 .text-balance {
@@ -68,8 +103,8 @@ h6 {
 
 .ym-grid {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    linear-gradient(rgba(121, 146, 172, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(121, 146, 172, 0.08) 1px, transparent 1px);
   background-size: 72px 72px;
 }
 
@@ -78,7 +113,6 @@ h6 {
     radial-gradient(circle at 18% 24%, rgba(103, 224, 255, 0.14), transparent 0 34%),
     radial-gradient(circle at 74% 18%, rgba(92, 144, 255, 0.11), transparent 0 30%),
     radial-gradient(circle at 50% 100%, rgba(89, 214, 255, 0.08), transparent 0 38%);
-  filter: blur(16px);
 }
 
 .ym-bg-field {
@@ -86,21 +120,18 @@ h6 {
     radial-gradient(circle at 24% 30%, rgba(108, 230, 255, 0.14), transparent 0 24%),
     radial-gradient(circle at 70% 60%, rgba(87, 143, 255, 0.1), transparent 0 22%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 42%);
-  filter: blur(30px);
 }
 
 .ym-bg-sweep {
   background:
     linear-gradient(120deg, transparent 0%, rgba(104, 210, 255, 0.08) 22%, transparent 42%),
     linear-gradient(160deg, transparent 22%, rgba(91, 138, 255, 0.07) 44%, transparent 68%);
-  filter: blur(20px);
 }
 
 .ym-bg-curve {
   background:
     radial-gradient(120% 90% at 50% 100%, rgba(98, 218, 255, 0.11), transparent 44%),
     radial-gradient(90% 60% at 10% 100%, rgba(88, 145, 255, 0.08), transparent 46%);
-  filter: blur(20px);
 }
 
 .ym-bg-drift-slow {
@@ -121,13 +152,67 @@ h6 {
 
 .ym-surface {
   background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 253, 0.92)),
+    rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), var(--surface-shadow);
+  backdrop-filter: blur(8px);
+}
+
+html[data-theme="dark"] .ym-surface {
+  background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.035)),
     rgba(16, 27, 39, 0.86);
-  border: 1px solid var(--line);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 26px 70px rgba(2, 6, 10, 0.2);
-  backdrop-filter: blur(20px);
+    var(--surface-shadow);
+  backdrop-filter: blur(10px);
+}
+
+.ym-surface-soft {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background-elevated) 94%, transparent),
+      color-mix(in srgb, var(--background) 86%, transparent)
+    ),
+    color-mix(in srgb, var(--background-elevated) 92%, transparent);
+  border: 1px solid var(--line);
+  box-shadow: var(--surface-shadow);
+}
+
+.ym-surface-strong {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background-elevated) 98%, transparent),
+      color-mix(in srgb, var(--background) 92%, transparent)
+    ),
+    color-mix(in srgb, var(--background-elevated) 96%, transparent);
+  border: 1px solid var(--line);
+  box-shadow: var(--surface-shadow);
+}
+
+.ym-footer-surface {
+  background: var(--shell-gradient);
+}
+
+.ym-glow-overlay {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(113, 227, 255, 0.08), transparent 24%),
+    radial-gradient(circle at 86% 14%, rgba(88, 145, 255, 0.07), transparent 24%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background-elevated) 50%, transparent),
+      transparent
+    );
+}
+
+html[data-theme="dark"] .ym-glow-overlay {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(113, 227, 255, 0.1), transparent 24%),
+    radial-gradient(circle at 86% 14%, rgba(88, 145, 255, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
 }
 
 .ym-panel-glow {
@@ -185,6 +270,27 @@ h6 {
 
 .ym-link:hover::after {
   transform: scaleX(1);
+}
+
+.ym-logo-dark {
+  display: none;
+}
+
+html[data-theme="dark"] .ym-logo-light {
+  display: none;
+}
+
+html[data-theme="dark"] .ym-logo-dark {
+  display: block;
+}
+
+a {
+  text-underline-offset: 0.18em;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(15, 127, 199, 0.65);
+  outline-offset: 3px;
 }
 
 .animate-ym-float {

@@ -68,29 +68,29 @@ export function ProjectPlannerPageContent({ locale }: { locale: Locale }) {
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
         <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="ym-bg-curve ym-bg-breathe pointer-events-none absolute inset-x-[-8%] inset-y-0 opacity-[0.46]" />
+          <div className="ym-bg-curve pointer-events-none absolute inset-x-[-8%] inset-y-0 opacity-[0.18]" />
 
-          <div className="relative grid gap-10 border-b border-white/10 pb-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-end">
+          <div className="relative grid gap-10 border-b border-[color:var(--line)] pb-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-end">
             <RevealSection>
               <div className="mx-auto max-w-[22rem] text-center sm:max-w-[34rem] lg:mx-0 lg:max-w-3xl lg:text-left">
-                <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
+                <p className="text-[11px] uppercase tracking-[0.32em] text-[var(--accent-text)]">
                   {planner.hero.eyebrow}
                 </p>
-                <h1 className="mt-5 text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+                <h1 className="mt-5 text-balance text-4xl font-semibold leading-tight text-[var(--foreground)] sm:text-5xl lg:text-6xl">
                   {planner.hero.title}
                 </h1>
-                <p className="mt-6 max-w-2xl text-base leading-8 text-white/62 sm:text-lg">
+                <p className="mt-6 max-w-2xl text-base leading-8 text-[color:var(--muted-foreground)] sm:text-lg">
                   {planner.hero.description}
                 </p>
               </div>
             </RevealSection>
 
             <RevealSection delay={0.06}>
-              <div className="mx-auto max-w-[42rem] border-t border-white/10 pt-6 lg:mx-0">
-                <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/74">
+              <div className="mx-auto max-w-[42rem] border-t border-[color:var(--line)] pt-6 lg:mx-0">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--accent-text)]">
                   {locale === "nl" ? "Twee paden" : "Two paths"}
                 </p>
-                <p className="mt-4 text-sm leading-7 text-white/58">
+                <p className="mt-4 text-sm leading-7 text-[color:var(--muted-foreground)]">
                   {locale === "nl"
                     ? "Gebruik deze planner als je eerst helder wilt krijgen welk niveau, welke functies en welke richting het best passen. Voor een korter bericht blijft de normale contactpagina gewoon beschikbaar."
                     : "Use this planner if you want clarity first on level, functionality, and direction. If you prefer a shorter message, the normal contact page remains available."}
@@ -98,24 +98,24 @@ export function ProjectPlannerPageContent({ locale }: { locale: Locale }) {
                 <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3">
                   <Link
                     href={getLocalizedPath(locale, "contact")}
-                    className="text-sm text-white/54 transition hover:text-white"
+                    className="text-sm text-[color:var(--muted-foreground)] transition hover:text-[var(--foreground)]"
                   >
                     {locale === "nl" ? "Naar contact" : "Go to contact"}{" "}
-                    <span className="text-cyan-200/65">→</span>
+                    <span className="text-[var(--accent-text)]">→</span>
                   </Link>
                   <Link
                     href={getLocalizedPath(locale, "pricing")}
-                    className="text-sm text-white/54 transition hover:text-white"
+                    className="text-sm text-[color:var(--muted-foreground)] transition hover:text-[var(--foreground)]"
                   >
                     {locale === "nl" ? "Bekijk tarieven" : "View pricing"}{" "}
-                    <span className="text-cyan-200/65">→</span>
+                    <span className="text-[var(--accent-text)]">→</span>
                   </Link>
                 </div>
               </div>
             </RevealSection>
           </div>
 
-          <div className="relative z-10 mt-12">
+          <div className="relative z-10 mt-12 rounded-[2.4rem] border border-[color:var(--line)] bg-[linear-gradient(180deg,rgba(9,16,24,0.96),rgba(7,12,19,0.98))] p-5 shadow-[0_22px_60px_rgba(7,15,25,0.18)] md:p-8">
             <ProjectPlanner locale={locale} />
           </div>
         </section>

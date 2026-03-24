@@ -26,7 +26,7 @@ function renderInlineLinks(content: string) {
       <Link
         key={`${href}-${index}`}
         href={href}
-        className="text-cyan-300 transition hover:text-cyan-200"
+        className="font-medium text-[var(--accent-text)] transition hover:opacity-80"
       >
         {label}
       </Link>
@@ -43,7 +43,7 @@ export default function ArticleRichText({ blocks }: ArticleRichTextProps) {
             return (
               <h2
                 key={index}
-                className="pt-10 text-3xl font-semibold leading-tight text-white sm:text-[2.15rem]"
+                className="pt-10 text-3xl font-semibold leading-tight text-[var(--foreground)] sm:text-[2.15rem]"
               >
                 {block.content}
               </h2>
@@ -53,7 +53,7 @@ export default function ArticleRichText({ blocks }: ArticleRichTextProps) {
           return (
             <h3
               key={index}
-              className="pt-5 text-2xl font-semibold leading-tight text-white"
+              className="pt-5 text-2xl font-semibold leading-tight text-[var(--foreground)]"
             >
               {block.content}
             </h3>
@@ -62,7 +62,7 @@ export default function ArticleRichText({ blocks }: ArticleRichTextProps) {
 
         if (block.type === "list") {
           return (
-            <ul key={index} className="space-y-4 pl-5 text-white/72 marker:text-cyan-300">
+            <ul key={index} className="space-y-4 pl-5 text-[color:var(--muted-foreground)] marker:text-[var(--accent-text)]">
               {block.items.map((item) => (
                 <li key={item} className="list-disc text-[1.03rem] leading-8">
                   {renderInlineLinks(item)}
@@ -73,7 +73,7 @@ export default function ArticleRichText({ blocks }: ArticleRichTextProps) {
         }
 
         return (
-          <p key={index} className="text-[1.05rem] leading-8 text-white/74">
+          <p key={index} className="text-[1.05rem] leading-8 text-[color:var(--muted-foreground)]">
             {renderInlineLinks(block.content)}
           </p>
         );

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { trackEvent } from "@/lib/analytics";
 
 type ContactFormCopy = {
@@ -174,30 +173,26 @@ export default function ContactForm({
   }
 
   const inputBase =
-    "w-full rounded-[1.15rem] border border-white/14 bg-white/[0.08] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/40 focus:border-cyan-400/50 focus:bg-white/[0.1]";
+    "w-full rounded-[1.15rem] border border-[color:var(--line)] bg-[var(--background-elevated)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--line-strong)]";
   const labelBase =
-    "mb-2 block text-[11px] uppercase tracking-[0.24em] text-white/56";
+    "mb-2 block text-[11px] uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: 0.7 }}
-      className={`relative overflow-hidden rounded-[2rem] border border-white/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.075),rgba(255,255,255,0.028))] p-5 backdrop-blur-md sm:p-6 ${className}`}
+    <div
+      className={`ym-surface-soft relative overflow-hidden rounded-[2rem] p-5 sm:p-6 ${className}`}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.16),transparent_34%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_34%)]" />
 
       <div className="relative z-10">
         {!hideIntro ? (
           <>
-            <p className="mb-3 text-[11px] uppercase tracking-[0.28em] text-cyan-300/78">
+            <p className="mb-3 text-[11px] uppercase tracking-[0.28em] text-[var(--accent-text)]">
               {copy.eyebrow}
             </p>
-            <h3 className="max-w-xl text-2xl font-semibold text-white sm:text-3xl">
+            <h3 className="max-w-xl text-2xl font-semibold text-[var(--foreground)] sm:text-3xl">
               {copy.title}
             </h3>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-white/76">
+            <p className="mt-4 max-w-xl text-sm leading-7 text-[color:var(--muted-foreground)]">
               {copy.description}
             </p>
           </>
@@ -310,15 +305,13 @@ export default function ContactForm({
               data-track-category="contact"
               data-track-label={copy.submitLabel}
               data-track-location="contact-form-submit"
-              className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-full bg-[var(--button-bg)] px-6 py-3 text-sm font-medium text-[var(--button-text)] transition hover:opacity-92 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? copy.sendingLabel : copy.submitLabel}
             </button>
 
-            <div className="min-h-[24px] text-sm text-white/72">
-              {status === "success" && (
-                <span className="text-cyan-300/85">{copy.successMessage}</span>
-              )}
+            <div className="min-h-[24px] text-sm text-[color:var(--muted-foreground)]">
+              {status === "success" && <span className="text-[var(--accent-text)]">{copy.successMessage}</span>}
               {status === "error" && (
                 <span className="text-red-300/85">{formError || copy.errorMessage}</span>
               )}
@@ -326,6 +319,6 @@ export default function ContactForm({
           </div>
         </form>
       </div>
-    </motion.div>
+    </div>
   );
 }

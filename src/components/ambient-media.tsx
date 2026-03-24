@@ -6,6 +6,7 @@ type AmbientMediaProps = {
   className?: string;
   priority?: boolean;
   sizes?: string;
+  quality?: number;
   overlayClassName?: string;
   imageClassName?: string;
 };
@@ -16,6 +17,7 @@ export default function AmbientMedia({
   className = "",
   priority = false,
   sizes = "(min-width: 1024px) 42vw, 100vw",
+  quality = 82,
   overlayClassName = "",
   imageClassName = "",
 }: AmbientMediaProps) {
@@ -30,6 +32,7 @@ export default function AmbientMedia({
         fill
         priority={priority}
         sizes={sizes}
+        quality={quality}
         className={`object-cover object-center ${imageClassName}`}
       />
       <div

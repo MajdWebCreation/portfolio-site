@@ -101,17 +101,17 @@ export default function PersistentCta({
           data-track-category="persistent-cta"
           data-track-label={title}
           data-track-location="mobile-floating-cta"
-          className="flex items-center justify-between gap-4 rounded-[1.35rem] border border-white/12 bg-[rgba(8,13,20,0.86)] px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl"
+          className="flex items-center justify-between gap-4 rounded-[1.35rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 px-4 py-3 shadow-[0_18px_40px_rgba(36,60,84,0.12)] backdrop-blur-md"
         >
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.24em] text-cyan-300/72">
+            <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--accent-text)]">
               {support}
             </p>
-            <p className="mt-1 truncate text-sm font-medium text-white">
+            <p className="mt-1 truncate text-sm font-medium text-[var(--foreground)]">
               {title}
             </p>
           </div>
-          <span className="shrink-0 rounded-full bg-white px-4 py-2 text-sm font-medium text-black">
+          <span className="shrink-0 rounded-full bg-[var(--button-bg)] px-4 py-2 text-sm font-medium text-[var(--button-text)]">
             {title}
           </span>
         </Link>
@@ -126,14 +126,14 @@ export default function PersistentCta({
           data-track-category="persistent-cta"
           data-track-label={title}
           data-track-location="desktop-floating-cta"
-          className="block rounded-[1.45rem] border border-white/12 bg-[rgba(8,13,20,0.82)] px-5 py-4 shadow-[0_20px_48px_rgba(0,0,0,0.26)] backdrop-blur-xl"
+          className="block rounded-[1.45rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 px-5 py-4 shadow-[0_20px_48px_rgba(36,60,84,0.12)] backdrop-blur-md"
         >
-          <p className="text-[10px] uppercase tracking-[0.24em] text-cyan-300/72">
+          <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--accent-text)]">
             {support}
           </p>
           <div className="mt-3 flex items-center gap-3">
-            <span className="text-sm font-medium text-white">{title}</span>
-            <span className="text-cyan-200">→</span>
+            <span className="text-sm font-medium text-[var(--foreground)]">{title}</span>
+            <span className="text-[var(--accent-text)]">→</span>
           </div>
         </Link>
       </div>

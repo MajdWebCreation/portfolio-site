@@ -28,7 +28,7 @@ export default function EditorialArticleCard({
 
   return (
     <article
-      className={`group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#071019] ${
+      className={`group relative overflow-hidden rounded-[2rem] border border-[color:var(--line)] bg-[var(--background-elevated)] ${
         variant === "featured" ? "min-h-[520px]" : "min-h-[360px]"
       }`}
     >
@@ -44,34 +44,34 @@ export default function EditorialArticleCard({
         <div
           className={`absolute inset-0 ${
             variant === "featured"
-              ? "bg-[linear-gradient(180deg,rgba(4,7,12,0.04),rgba(4,7,12,0.44)_38%,rgba(4,7,12,0.95)_100%)]"
-              : "bg-[linear-gradient(180deg,rgba(4,7,12,0.06),rgba(4,7,12,0.54)_44%,rgba(4,7,12,0.96)_100%)]"
+              ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(245,249,252,0.58)_40%,rgba(245,249,252,0.96)_100%)]"
+              : "bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(245,249,252,0.72)_44%,rgba(245,249,252,0.98)_100%)]"
           }`}
         />
       </div>
 
       <div className="relative flex h-full flex-col justify-end p-6 md:p-7">
-        <div className="mb-5 flex flex-wrap gap-x-3 gap-y-2 text-[10px] uppercase tracking-[0.24em] text-cyan-200/76">
+        <div className="mb-5 flex flex-wrap gap-x-3 gap-y-2 text-[10px] uppercase tracking-[0.24em] text-[var(--accent-text)]">
           <span>{getBlogCategoryLabel(locale, article.category)}</span>
-          <span className="text-white/22">/</span>
+          <span className="text-[color:var(--muted-foreground)]">/</span>
           <span>{article.readingTime}</span>
           {variant === "default" && formattedDate ? (
             <>
-              <span className="text-white/22">/</span>
-              <span className="text-white/40">{formattedDate}</span>
+              <span className="text-[color:var(--muted-foreground)]">/</span>
+              <span className="text-[color:var(--muted-foreground)]">{formattedDate}</span>
             </>
           ) : null}
         </div>
 
         <h2
-          className={`max-w-xl font-semibold leading-tight text-white ${
+          className={`max-w-xl font-semibold leading-tight text-[var(--foreground)] ${
             variant === "featured" ? "text-[2.15rem]" : "text-[1.75rem]"
           }`}
         >
           {article.title}
         </h2>
 
-        <p className="mt-4 max-w-xl text-sm leading-7 text-white/62">
+        <p className="mt-4 max-w-xl text-sm leading-7 text-[color:var(--muted-foreground)]">
           {article.metaDescription}
         </p>
 
@@ -83,16 +83,16 @@ export default function EditorialArticleCard({
               data-track-category="blog-overview"
               data-track-label={article.title}
               data-track-location="editorial-article-card"
-              className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-black/35 px-5 py-3 text-sm font-medium text-white transition duration-300 hover:border-cyan-300/40 hover:bg-black/50"
+              className="inline-flex items-center gap-3 rounded-full border border-[color:var(--line-strong)] bg-[var(--button-bg)] px-5 py-3 text-sm font-medium text-[var(--button-text)] transition duration-300 hover:opacity-92"
             >
               {locale === "nl" ? "Lees artikel" : "Read article"}
-              <span className="text-cyan-200 transition group-hover:translate-x-1">
+              <span className="text-[var(--button-text)] transition group-hover:translate-x-1">
                 →
               </span>
             </Link>
 
             {formattedDate ? (
-              <span className="text-xs uppercase tracking-[0.22em] text-white/36">
+              <span className="text-xs uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">
                 {formattedDate}
               </span>
             ) : null}
@@ -105,10 +105,10 @@ export default function EditorialArticleCard({
               data-track-category="blog-overview"
               data-track-label={article.title}
               data-track-location="editorial-article-card"
-              className="inline-flex items-center gap-2 text-sm font-medium text-white/76 transition hover:text-white"
+              className="inline-flex items-center gap-2 text-sm font-medium text-[color:var(--muted-foreground)] transition hover:text-[var(--foreground)]"
             >
               {locale === "nl" ? "Lees artikel" : "Read article"}
-              <span className="text-cyan-200 transition group-hover:translate-x-1">
+              <span className="text-[var(--accent-text)] transition group-hover:translate-x-1">
                 →
               </span>
             </Link>

@@ -75,10 +75,10 @@ export const siteContent = {
       cta: "Start a project",
     },
     hero: {
-      eyebrow: "Premium web design, development, and technical polish",
-      title: "Premium websites and web applications.",
+      eyebrow: "Websites, webshops, and custom digital products",
+      title: "Clearer digital products for ambitious businesses.",
       description:
-        "YM Creations designs and builds refined websites, landing pages, ecommerce experiences, and custom web tools for modern brands.",
+        "YM Creations helps businesses launch a clearer website, a stronger conversion flow, or a custom platform with the right level of scope from the start.",
       primaryCta: "Explore services",
       secondaryCta: "Contact us",
       cardEyebrow: "Experience-driven build system",
@@ -90,9 +90,9 @@ export const siteContent = {
     },
     homeServices: {
       eyebrow: "Services",
-      title: "A focused service stack for premium digital work.",
+      title: "Choose the service direction that fits the project.",
       description:
-        "From business websites to custom web tools, every project is shaped around clear communication, strong UX, and technical refinement.",
+        "From business websites to smarter booking flows and custom platforms, the service stack is designed to help you move quickly to the right next step.",
       allServicesLabel: "View all services",
     },
     prototypeStory: {
@@ -169,9 +169,9 @@ export const siteContent = {
     },
     contact: {
       eyebrow: "Start a project",
-      title: "Ready for a website or web application that feels as sharp as your brand?",
+      title: "Tell us what you want to build.",
       description:
-        "Share what you want to build and we’ll reply with the next step. Company websites, landing pages, ecommerce builds, redesigns, and custom tools all start here.",
+        "Share the direction, scope, or business goal. We’ll reply with the clearest next step, whether that starts with advice, a scoped proposal, or the planner.",
       primary: "Book a call",
       secondary: "Send an email",
       signal: "Open transmission",
@@ -202,10 +202,10 @@ export const siteContent = {
       cta: "Start een project",
     },
     hero: {
-      eyebrow: "Premium webdesign, development en technische afwerking",
-      title: "Premium websites en webapplicaties.",
+      eyebrow: "Websites, webshops en maatwerk digitale producten",
+      title: "Duidelijkere digitale producten voor ambitieuze bedrijven.",
       description:
-        "YM Creations ontwerpt en bouwt verfijnde websites, landingspagina’s, webshops en maatwerk webtools voor moderne merken.",
+        "YM Creations helpt bedrijven aan een helderdere website, een sterkere conversieflow of een maatwerk platform met vanaf het begin het juiste scopeniveau.",
       primaryCta: "Bekijk diensten",
       secondaryCta: "Neem contact op",
       cardEyebrow: "Doordacht bouwsysteem",
@@ -217,9 +217,9 @@ export const siteContent = {
     },
     homeServices: {
       eyebrow: "Diensten",
-      title: "Een gerichte service stack voor premium digitaal werk.",
+      title: "Kies de dienstrichting die bij het project past.",
       description:
-        "Van bedrijfswebsites tot maatwerk webtools: ieder project draait om heldere communicatie, sterke UX en technische verfijning.",
+        "Van bedrijfswebsites tot slimmere bookingflows en maatwerk platforms: de service stack helpt je snel naar de juiste volgende stap.",
       allServicesLabel: "Bekijk alle diensten",
     },
     prototypeStory: {
@@ -296,9 +296,9 @@ export const siteContent = {
     },
     contact: {
       eyebrow: "Start een project",
-      title: "Klaar voor een website of webapplicatie die net zo scherp voelt als jouw merk?",
+      title: "Vertel kort wat je wilt laten bouwen.",
       description:
-        "Vertel wat je wilt laten bouwen en we reageren met de volgende stap. Bedrijfswebsites, landingspagina’s, webshops, redesigns en maatwerk tools beginnen hier.",
+        "Deel de richting, scope of businessdoel. Daarna krijg je de duidelijkste volgende stap terug, of dat nu advies, een voorstel of eerst de planner is.",
       primary: "Plan een gesprek",
       secondary: "Stuur een e-mail",
       signal: "Open verbinding",

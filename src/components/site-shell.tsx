@@ -2,6 +2,7 @@ import Link from "next/link";
 import BrandMark from "@/components/brand-mark";
 import MobileNav from "@/components/mobile-nav";
 import PersistentCta from "@/components/persistent-cta";
+import ThemeToggle from "@/components/theme-toggle";
 import {
   type Locale,
   type SiteContent,
@@ -18,15 +19,14 @@ type SiteShellProps = {
 export function BlueprintBackground() {
   return (
     <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(12,20,30,0.98),rgba(15,25,36,0.94)_42%,rgba(11,18,27,1))]" />
-      <div className="ym-bg-arc ym-bg-drift-slow absolute inset-[-6%] opacity-[0.92]" />
-      <div className="ym-bg-field ym-bg-float-fade absolute inset-x-[-10%] top-[-4%] h-[38rem] opacity-[0.92]" />
-      <div className="ym-bg-sweep ym-bg-orbit absolute inset-x-[-12%] top-[18%] h-[30rem] opacity-[0.74]" />
-      <div className="ym-bg-curve ym-bg-breathe absolute inset-x-[-8%] bottom-[-8%] h-[24rem] opacity-[0.86]" />
-      <div className="ym-grid absolute inset-0 opacity-[0.055]" />
-      <div className="absolute -left-24 top-10 h-[22rem] w-[22rem] rounded-full bg-cyan-300/[0.07] blur-3xl" />
-      <div className="ym-bg-float-fade absolute right-[-6%] top-[22%] h-[26rem] w-[26rem] rounded-full bg-blue-300/[0.07] blur-3xl" />
-      <div className="absolute inset-x-0 bottom-0 h-48 bg-[linear-gradient(180deg,transparent,rgba(8,13,20,0.62)_70%,rgba(11,18,27,0.9))]" />
+      <div className="absolute inset-0 bg-[image:var(--shell-gradient)]" />
+      <div className="ym-bg-arc absolute inset-[-4%] opacity-[0.34]" />
+      <div className="ym-bg-field absolute inset-x-[-8%] top-[-2%] h-[26rem] opacity-[0.22]" />
+      <div className="ym-bg-curve absolute inset-x-[-6%] bottom-[-6%] h-[18rem] opacity-[0.2]" />
+      <div className="ym-grid absolute inset-0 opacity-[0.035]" />
+      <div className="absolute -left-20 top-8 h-[16rem] w-[16rem] rounded-full bg-cyan-300/[0.04] blur-3xl" />
+      <div className="absolute right-[-4%] top-[18%] h-[18rem] w-[18rem] rounded-full bg-blue-300/[0.045] blur-3xl" />
+      <div className="absolute inset-x-0 bottom-0 h-48 bg-[image:var(--shell-bottom-fade)]" />
     </div>
   );
 }
@@ -64,30 +64,30 @@ export default function SiteShell({
       : getLocalizedPath(locale, "contact");
 
   return (
-    <div className="relative min-h-screen overflow-x-clip bg-[var(--background)] text-white">
+    <div className="relative min-h-screen overflow-x-clip bg-[var(--background)] text-[var(--foreground)]">
       <BlueprintBackground />
 
       <header className="relative z-30">
         <nav className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
-          <div className="relative flex w-full items-center justify-between gap-3 rounded-[1.5rem] border border-white/14 bg-[rgba(17,26,38,0.74)] px-3 py-3 shadow-[0_18px_48px_rgba(3,8,13,0.16)] backdrop-blur-xl sm:px-5 sm:py-3.5 lg:px-6">
-            <div className="relative z-10 flex min-w-0 items-center gap-4 sm:gap-6">
+          <div className="relative flex w-full items-center justify-between gap-3 rounded-[1.5rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/84 px-3 py-3 shadow-[0_18px_42px_rgba(36,60,84,0.08)] backdrop-blur-md sm:px-5 sm:py-3.5 lg:px-6">
+            <div className="relative z-10 flex min-w-0 items-center gap-3 sm:gap-5">
               <BrandMark
                 href={getLocalizedPath(locale, "home")}
                 priority
                 variant="white"
-                className="h-[3.15rem] w-[200px] sm:h-[3.6rem] sm:w-[228px]"
+                className="h-[2.5rem] w-[138px] sm:h-[2.85rem] sm:w-[156px]"
               />
-              <span className="hidden text-[10px] uppercase tracking-[0.32em] text-white/42 xl:block">
+              <span className="hidden text-[10px] uppercase tracking-[0.32em] text-[color:var(--muted-foreground)] xl:block">
                 Premium digital systems
               </span>
             </div>
 
-            <div className="hidden items-center gap-7 text-sm text-white/72 md:flex">
+            <div className="hidden items-center gap-7 text-sm text-[color:var(--muted-foreground)] md:flex">
               {navigation.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="transition duration-300 hover:text-white"
+                  className="transition duration-300 hover:text-[var(--foreground)]"
                 >
                   {item.label}
                 </Link>
@@ -95,13 +95,13 @@ export default function SiteShell({
             </div>
 
             <div className="relative z-10 hidden items-center gap-3 md:flex">
-              <div className="rounded-full border border-white/10 bg-black/25 p-1">
+              <div className="rounded-full border border-[color:var(--line)] bg-[var(--background-elevated)]/85 p-1">
                 <Link
                   href={locale === "en" ? currentPath : counterpartPath}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                     locale === "en"
-                      ? "bg-white text-black"
-                      : "text-white/65 hover:text-white"
+                      ? "bg-[var(--foreground)] text-[var(--background-elevated)]"
+                      : "text-[color:var(--muted-foreground)] hover:text-[var(--foreground)]"
                   }`}
                 >
                   EN
@@ -110,8 +110,8 @@ export default function SiteShell({
                   href={locale === "nl" ? currentPath : counterpartPath}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                     locale === "nl"
-                      ? "bg-white text-black"
-                      : "text-white/65 hover:text-white"
+                      ? "bg-[var(--foreground)] text-[var(--background-elevated)]"
+                      : "text-[color:var(--muted-foreground)] hover:text-[var(--foreground)]"
                   }`}
                 >
                   NL
@@ -123,7 +123,7 @@ export default function SiteShell({
                 data-track-category="navigation"
                 data-track-label={content.nav.cta}
                 data-track-location="desktop-header"
-                className="rounded-full border border-white/14 bg-white/[0.06] px-4 py-2.5 text-sm font-medium text-white transition duration-300 hover:border-cyan-300/30 hover:bg-white/[0.09]"
+                className="rounded-full border border-[color:var(--line-strong)] bg-[var(--button-bg)] px-4 py-2.5 text-sm font-medium text-[var(--button-text)] transition duration-300 hover:opacity-92"
               >
                 {content.nav.cta}
               </Link>
@@ -143,6 +143,7 @@ export default function SiteShell({
       </header>
 
       <main className="relative z-20">{children}</main>
+      <ThemeToggle />
       <PersistentCta
         locale={locale}
         currentPath={currentPath}

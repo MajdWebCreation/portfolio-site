@@ -107,31 +107,31 @@ export default async function BlogArticlePage({
       />
       <SiteShell locale={locale} content={content} currentPath={article.path}>
         <article className="relative mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="ym-bg-curve ym-bg-breathe absolute inset-x-[-8%] inset-y-0 opacity-[0.52]" />
-          <header className="relative overflow-hidden rounded-[2.6rem] border border-white/10 bg-[#07111a]">
+          <div className="ym-bg-curve absolute inset-x-[-8%] inset-y-0 opacity-[0.22]" />
+          <header className="relative overflow-hidden rounded-[2.6rem] border border-[color:var(--line)] bg-[var(--background-elevated)]">
             <div className="grid lg:grid-cols-[1.02fr_0.98fr]">
               <div className="relative z-10 p-6 md:p-8 lg:p-10">
-                <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.22em] text-cyan-300/72">
+                <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.22em] text-[var(--accent-text)]">
                   <span>{getBlogCategoryLabel(locale, article.category)}</span>
-                  <span className="text-white/28">/</span>
+                  <span className="text-[color:var(--muted-foreground)]">/</span>
                   <span>{article.readingTime}</span>
                   {article.publishedAt ? (
                     <>
-                      <span className="text-white/28">/</span>
+                      <span className="text-[color:var(--muted-foreground)]">/</span>
                       <span>{getArticleDateLabel(locale, article.publishedAt)}</span>
                     </>
                   ) : null}
                   {article.author ? (
                     <>
-                      <span className="text-white/28">/</span>
+                      <span className="text-[color:var(--muted-foreground)]">/</span>
                       <span>{article.author}</span>
                     </>
                   ) : null}
                 </div>
-                <h1 className="mt-5 max-w-4xl text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+                <h1 className="mt-5 max-w-4xl text-balance text-4xl font-semibold leading-tight text-[var(--foreground)] sm:text-5xl lg:text-6xl">
                   {article.title}
                 </h1>
-                <p className="mt-6 max-w-3xl text-base leading-8 text-white/68 sm:text-lg">
+                <p className="mt-6 max-w-3xl text-base leading-8 text-[color:var(--muted-foreground)] sm:text-lg">
                   {article.intro}
                 </p>
               </div>
@@ -145,18 +145,18 @@ export default async function BlogArticlePage({
                   sizes="(min-width: 1024px) 42vw, 100vw"
                   className="object-cover object-center"
                 />
-                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,7,12,0.78),transparent_36%),linear-gradient(180deg,rgba(4,7,12,0.12),rgba(4,7,12,0.72)_72%,rgba(4,7,12,0.92))]" />
+                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(245,249,252,0.72),transparent_36%),linear-gradient(180deg,rgba(245,249,252,0.12),rgba(245,249,252,0.72)_72%,rgba(245,249,252,0.92))]" />
               </div>
             </div>
           </header>
 
-          <div className="relative mt-10 rounded-[2.4rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-6 md:p-8 lg:p-10">
+          <div className="relative mt-10 rounded-[2.4rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/96 p-6 md:p-8 lg:p-10">
             <ArticleRichText blocks={article.bodyBlocks} />
           </div>
 
           {article.relatedServices.length > 0 ? (
-            <section className="mt-10 rounded-[2.2rem] border border-white/10 bg-white/[0.03] p-6 md:p-8">
-              <h2 className="text-3xl font-semibold text-white">
+            <section className="mt-10 rounded-[2.2rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 p-6 md:p-8">
+              <h2 className="text-3xl font-semibold text-[var(--foreground)]">
                 {locale === "nl" ? "Gerelateerde links" : "Related links"}
               </h2>
               <div className="mt-6 flex flex-wrap gap-3">
@@ -168,7 +168,7 @@ export default async function BlogArticlePage({
                     data-track-category="article"
                     data-track-label={getRelatedLinkLabel(locale, href)}
                     data-track-location="article-related-links"
-                    className="rounded-full border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
+                    className="rounded-full border border-[color:var(--line)] bg-[var(--background-elevated)] px-5 py-2.5 text-sm font-medium text-[var(--foreground)] transition hover:border-[color:var(--line-strong)]"
                   >
                     {getRelatedLinkLabel(locale, href)}
                   </Link>

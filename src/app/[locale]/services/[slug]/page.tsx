@@ -122,16 +122,16 @@ export function ServiceDetailContent({
       />
       <SiteShell locale={locale} content={content} currentPath={service.path}>
         <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="ym-bg-arc ym-bg-float-fade absolute inset-[-6%] opacity-[0.58]" />
+          <div className="ym-bg-arc pointer-events-none absolute inset-[-6%] opacity-[0.22]" />
           <div className="relative grid gap-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-end">
             <RevealSection>
-              <p className="mb-4 text-sm uppercase tracking-[0.3em] text-cyan-300/80">
+              <p className="mb-4 text-sm uppercase tracking-[0.3em] text-[var(--accent-text)]">
                 {content.nav.services}
               </p>
-              <h1 className="max-w-4xl text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+              <h1 className="max-w-4xl text-4xl font-semibold leading-tight text-[var(--foreground)] sm:text-5xl lg:text-6xl">
                 {service.title}
               </h1>
-              <p className="mt-6 max-w-3xl text-base leading-8 text-white/65 sm:text-lg">
+              <p className="mt-6 max-w-3xl text-base leading-8 text-[color:var(--muted-foreground)] sm:text-lg">
                 {service.intro}
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
@@ -141,7 +141,7 @@ export function ServiceDetailContent({
                   data-track-category="service-detail"
                   data-track-label={locale === "nl" ? "Bespreek je project" : "Discuss your project"}
                   data-track-location="service-hero"
-                  className="rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:opacity-90"
+                  className="rounded-full bg-[var(--button-bg)] px-6 py-3 text-sm font-medium text-[var(--button-text)] transition hover:opacity-92"
                 >
                   {locale === "nl" ? "Bespreek je project" : "Discuss your project"}
                 </Link>
@@ -151,7 +151,7 @@ export function ServiceDetailContent({
                   data-track-category="service-detail"
                   data-track-label={locale === "nl" ? "Bekijk alle diensten" : "View all services"}
                   data-track-location="service-hero"
-                  className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white transition hover:border-cyan-400/50 hover:bg-white/10"
+                  className="rounded-full border border-[color:var(--line)] bg-[var(--background-elevated)] px-6 py-3 text-sm font-medium text-[var(--foreground)] transition hover:border-[color:var(--line-strong)]"
                 >
                   {locale === "nl" ? "Bekijk alle diensten" : "View all services"}
                 </Link>
@@ -161,8 +161,9 @@ export function ServiceDetailContent({
             <RevealSection delay={0.08}>
               <div className="grid gap-4">
                 <AmbientMedia
-                  src="/images/visuals/services-ui-architecture.png"
+                  src="/images/visuals/services-ui-architecture.jpg"
                   alt="Service interface architecture visual"
+                  quality={78}
                   className="min-h-[360px]"
                   imageClassName="object-cover object-center"
                 />
@@ -170,12 +171,12 @@ export function ServiceDetailContent({
                   {service.deliverables.slice(0, 4).map((item) => (
                     <div
                       key={item}
-                      className="rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] p-5"
+                      className="rounded-[1.7rem] border border-[color:var(--line)] bg-[var(--background-elevated)] p-5"
                     >
-                      <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/72">
+                      <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--accent-text)]">
                         {service.icon}
                       </p>
-                      <p className="mt-4 text-sm leading-7 text-white/68">{item}</p>
+                      <p className="mt-4 text-sm leading-7 text-[color:var(--muted-foreground)]">{item}</p>
                     </div>
                   ))}
                 </div>
@@ -185,18 +186,18 @@ export function ServiceDetailContent({
         </section>
 
         <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-10">
-          <section className="rounded-[2.2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.015))] p-6 md:p-8">
-            <h2 className="text-3xl font-semibold text-white">
+          <section className="rounded-[2.2rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 p-6 md:p-8">
+            <h2 className="text-3xl font-semibold text-[var(--foreground)]">
               {service.forWhoTitle}
             </h2>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-white/65">
+            <p className="mt-4 max-w-2xl text-base leading-8 text-[color:var(--muted-foreground)]">
               {service.forWhoDescription}
             </p>
             <ul className="mt-6 space-y-3">
               {service.suitableFor.map((item) => (
                 <li
                   key={item}
-                  className="rounded-[1.2rem] border border-white/10 bg-black/35 px-4 py-4 text-sm leading-7 text-white/68"
+                  className="rounded-[1.2rem] border border-[color:var(--line)] bg-[var(--background)] px-4 py-4 text-sm leading-7 text-[color:var(--muted-foreground)]"
                 >
                   {item}
                 </li>
@@ -204,16 +205,16 @@ export function ServiceDetailContent({
             </ul>
           </section>
 
-          <section className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-[#071119] p-6 md:p-8">
-            <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(113,227,255,0.14),transparent_70%)]" />
-            <h2 className="text-3xl font-semibold text-white">
+          <section className="relative overflow-hidden rounded-[2.2rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 p-6 md:p-8">
+            <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(113,227,255,0.08),transparent_70%)]" />
+            <h2 className="text-3xl font-semibold text-[var(--foreground)]">
               {service.useCasesTitle}
             </h2>
             <ul className="mt-6 space-y-3">
               {service.useCases.map((item) => (
                 <li
                   key={item}
-                  className="rounded-[1.2rem] border border-white/10 bg-black/35 px-4 py-4 text-sm leading-7 text-white/68"
+                  className="rounded-[1.2rem] border border-[color:var(--line)] bg-[var(--background)] px-4 py-4 text-sm leading-7 text-[color:var(--muted-foreground)]"
                 >
                   {item}
                 </li>
@@ -253,16 +254,16 @@ export function ServiceDetailContent({
 
         <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-10">
           <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
-            <div className="rounded-[2.2rem] border border-white/10 bg-black/30 p-6 md:p-8">
-              <p className="text-[11px] uppercase tracking-[0.3em] text-cyan-300/72">
+            <div className="rounded-[2.2rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 p-6 md:p-8">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--accent-text)]">
                 Service compass
               </p>
-              <p className="mt-5 text-base leading-8 text-white/65">
+              <p className="mt-5 text-base leading-8 text-[color:var(--muted-foreground)]">
                 {service.intro}
               </p>
             </div>
-            <div className="rounded-[2.2rem] border border-white/10 bg-black/35 p-6 md:p-8">
-            <h2 className="text-3xl font-semibold text-white">
+            <div className="rounded-[2.2rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 p-6 md:p-8">
+            <h2 className="text-3xl font-semibold text-[var(--foreground)]">
               {locale === "nl" ? "Andere diensten" : "Other services"}
             </h2>
             <div className="mt-8 grid gap-4 lg:grid-cols-3">
@@ -274,10 +275,10 @@ export function ServiceDetailContent({
                   data-track-category="service-detail"
                   data-track-label={item.navLabel}
                   data-track-location="related-services"
-                  className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
+                  className="rounded-[1.4rem] border border-[color:var(--line)] bg-[var(--background)]/84 p-5 transition hover:border-[color:var(--line-strong)]"
                 >
-                  <p className="text-sm font-medium text-white">{item.navLabel}</p>
-                  <p className="mt-3 text-sm leading-7 text-white/62">
+                  <p className="text-sm font-medium text-[var(--foreground)]">{item.navLabel}</p>
+                  <p className="mt-3 text-sm leading-7 text-[color:var(--muted-foreground)]">
                     {item.intro}
                   </p>
                 </Link>
@@ -290,7 +291,7 @@ export function ServiceDetailContent({
                 data-track-category="service-detail"
                 data-track-label={locale === "nl" ? "Projecten" : "Projects"}
                 data-track-location="service-related-links"
-                className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-white/62 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
+                className="rounded-[1.4rem] border border-[color:var(--line)] bg-[var(--background)]/84 p-5 text-sm leading-7 text-[color:var(--muted-foreground)] transition hover:border-[color:var(--line-strong)]"
               >
                 {locale === "nl"
                   ? "Bekijk het projectenoverzicht voor de manier waarop werk en richting worden opgebouwd."
@@ -302,7 +303,7 @@ export function ServiceDetailContent({
                 data-track-category="service-detail"
                 data-track-label={locale === "nl" ? "Inzichten" : "Insights"}
                 data-track-location="service-related-links"
-                className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-white/62 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
+                className="rounded-[1.4rem] border border-[color:var(--line)] bg-[var(--background)]/84 p-5 text-sm leading-7 text-[color:var(--muted-foreground)] transition hover:border-[color:var(--line-strong)]"
               >
                 {locale === "nl"
                   ? "Lees inzichten over performance, structuur en technische keuzes."
@@ -314,7 +315,7 @@ export function ServiceDetailContent({
                 data-track-category="service-detail"
                 data-track-label={locale === "nl" ? "Contact" : "Contact"}
                 data-track-location="service-related-links"
-                className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5 text-sm leading-7 text-white/62 transition hover:border-cyan-300/25 hover:bg-white/[0.05]"
+                className="rounded-[1.4rem] border border-[color:var(--line)] bg-[var(--background)]/84 p-5 text-sm leading-7 text-[color:var(--muted-foreground)] transition hover:border-[color:var(--line-strong)]"
               >
                 {locale === "nl"
                   ? "Neem contact op om te bespreken of deze dienst past bij je project."

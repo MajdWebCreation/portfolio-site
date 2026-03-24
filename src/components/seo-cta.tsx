@@ -20,16 +20,16 @@ export default function SeoCta({
   trackingContext = "service",
 }: SeoCtaProps) {
   return (
-    <section className="relative border-t border-white/14 pt-10">
+    <section className="relative border-t border-[color:var(--line)] pt-10">
       <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="max-w-3xl">
-          <p className="text-[11px] uppercase tracking-[0.3em] text-cyan-200/72">
+          <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--accent-text)]">
             Next move
           </p>
-          <h2 className="mt-4 text-3xl font-semibold leading-tight text-white sm:text-4xl">
+          <h2 className="mt-4 text-3xl font-semibold leading-tight text-[var(--foreground)] sm:text-4xl">
             {title}
           </h2>
-          <p className="mt-4 max-w-2xl text-base leading-8 text-white/76">
+          <p className="mt-4 max-w-2xl text-base leading-8 text-[color:var(--muted-foreground)]">
             {text}
           </p>
         </div>
@@ -43,7 +43,7 @@ export default function SeoCta({
             data-track-category={trackingContext}
             data-track-label={primaryLabel}
             data-track-location="seo-cta-primary"
-            className="rounded-full border border-white/12 bg-white px-6 py-3 text-sm font-medium text-black transition hover:opacity-90"
+            className="rounded-full border border-[color:var(--line-strong)] bg-[var(--button-bg)] px-6 py-3 text-sm font-medium text-[var(--button-text)] transition hover:opacity-92"
           >
             {primaryLabel}
           </Link>
@@ -56,10 +56,10 @@ export default function SeoCta({
             data-track-category={trackingContext}
             data-track-label={secondaryLabel}
             data-track-location="seo-cta-secondary"
-            className="inline-flex items-center text-sm font-medium text-white/78 transition hover:text-white"
+            className="inline-flex items-center text-sm font-medium text-[color:var(--muted-foreground)] transition hover:text-[var(--foreground)]"
           >
             {secondaryLabel}
-            <span className="ml-2 text-cyan-200/72">→</span>
+            <span className="ml-2 text-[var(--accent-text)]">→</span>
           </Link>
         </div>
       </div>

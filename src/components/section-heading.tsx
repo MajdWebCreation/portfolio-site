@@ -23,15 +23,15 @@ export default function SectionHeading({
   return (
     <div className={`flex flex-col ${alignment}`}>
       {eyebrow ? (
-        <p className="mb-4 text-sm uppercase tracking-[0.3em] text-cyan-300/80">
+        <p className="mb-4 text-sm uppercase tracking-[0.3em] text-[var(--accent-text)]">
           {eyebrow}
         </p>
       ) : null}
-      <HeadingTag className="max-w-4xl text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+      <HeadingTag className="max-w-4xl text-4xl font-semibold leading-tight text-[var(--foreground)] sm:text-5xl lg:text-6xl">
         {title}
       </HeadingTag>
       {description ? (
-        <p className="mt-6 max-w-3xl text-base leading-8 text-white/65 sm:text-lg">
+        <p className="mt-6 max-w-3xl text-base leading-8 text-[color:var(--muted-foreground)] sm:text-lg">
           {description}
         </p>
       ) : null}
