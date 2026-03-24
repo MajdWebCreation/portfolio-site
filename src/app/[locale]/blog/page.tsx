@@ -74,7 +74,7 @@ export default async function BlogPage({
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
         <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="ym-bg-curve absolute inset-x-[-6%] inset-y-0 opacity-[0.22]" />
+          <div className="ym-bg-curve pointer-events-none absolute inset-x-[-6%] inset-y-0 opacity-[0.18]" />
 
           <div className="relative grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-end">
             <RevealSection>
@@ -92,7 +92,7 @@ export default async function BlogPage({
             </RevealSection>
 
             <RevealSection delay={0.08}>
-              <div className="mx-auto max-w-[42rem] rounded-[2rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 p-6 text-center md:p-7 lg:mx-0 lg:text-left">
+              <div className="ym-surface-soft mx-auto max-w-[42rem] rounded-[2rem] p-6 text-center md:p-7 lg:mx-0 lg:text-left">
                 <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--accent-text)]">
                   {overview.pillarsTitle}
                 </p>
@@ -144,7 +144,7 @@ export default async function BlogPage({
             <div className="relative mx-auto mt-14 max-w-[26rem] grid gap-5 sm:max-w-[42rem] md:max-w-none md:grid-cols-2">
               {overview.pillars.slice(0, 4).map((pillar, index) => (
                 <RevealSection key={pillar.title} delay={index * 0.04}>
-                  <article className="rounded-[1.8rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 p-6">
+                  <article className="ym-surface-soft rounded-[1.8rem] p-6">
                     <h2 className="text-2xl font-semibold text-[var(--foreground)]">
                       {pillar.title}
                     </h2>
