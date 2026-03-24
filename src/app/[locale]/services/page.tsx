@@ -73,10 +73,10 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
         })}
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
-        <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
+        <section className="relative mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-10 lg:py-14">
           <div className="ym-bg-curve ym-bg-breathe pointer-events-none absolute inset-x-[-6%] inset-y-0 opacity-[0.48]" />
 
-          <div className="relative grid gap-12 lg:grid-cols-[1.04fr_0.96fr] lg:items-start">
+          <div className="relative grid gap-8 lg:grid-cols-[1.04fr_0.96fr] lg:items-end">
             <RevealSection>
               <div className="mx-auto max-w-[22rem] text-center sm:max-w-[34rem] lg:mx-0 lg:max-w-3xl lg:text-left">
                 <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-300/72">
@@ -85,11 +85,11 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
                 <h1 className="mt-5 text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
                   {overview.title}
                 </h1>
-                <p className="mt-6 max-w-2xl text-base leading-8 text-white/62 sm:text-lg">
+                <p className="mt-5 max-w-2xl text-base leading-8 text-white/62">
                   {overview.intro}
                 </p>
 
-                <div className="mt-10 flex flex-wrap justify-center gap-x-6 gap-y-3 lg:justify-start">
+                <div className="mt-7 flex flex-wrap justify-center gap-x-6 gap-y-3 lg:justify-start">
                   <Link
                     href={getLocalizedPath(locale, "projects")}
                     data-track-event="primary_cta_click"
@@ -117,20 +117,15 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
             </RevealSection>
 
             <RevealSection delay={0.08}>
-              <div className="mx-auto max-w-[40rem] border-t border-white/10 pt-7 lg:mx-0">
+              <div className="mx-auto max-w-[34rem] border-t border-white/10 pt-5 lg:mx-0">
                 <p className="text-[10px] uppercase tracking-[0.32em] text-cyan-300/76">
                   {overview.whyTitle}
                 </p>
-                <p className="mt-5 max-w-xl text-2xl font-semibold leading-tight text-white">
-                  {locale === "nl"
-                    ? "Een compacte service stack, met heldere verschillen in scope."
-                    : "A compact service stack, with clear differences in scope."}
-                </p>
-                <div className="mt-7 space-y-4">
+                <div className="mt-4 space-y-3">
                   {overview.whyPoints.map((point) => (
                     <p
                       key={point}
-                      className="border-b border-white/8 pb-4 text-sm leading-7 text-white/58 last:border-b-0 last:pb-0"
+                      className="border-b border-white/8 pb-3 text-sm leading-7 text-white/56 last:border-b-0 last:pb-0"
                     >
                       {point}
                     </p>
@@ -139,16 +134,28 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
               </div>
             </RevealSection>
           </div>
-        </section>
 
-        <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-          <RevealSection>
-            {featuredService ? <ServiceCard service={featuredService} featured /> : null}
+          <RevealSection delay={0.06}>
+            <div className="mt-10">
+              <div className="mb-5 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/74">
+                    {locale === "nl" ? "Start hier" : "Start here"}
+                  </p>
+                  <p className="mt-2 text-sm text-white/52">
+                    {locale === "nl"
+                      ? "De duidelijkste hoofdroute voor veel bedrijven."
+                      : "The clearest main direction for many businesses."}
+                  </p>
+                </div>
+              </div>
+              {featuredService ? <ServiceCard service={featuredService} featured /> : null}
+            </div>
           </RevealSection>
         </section>
 
         <RevealSection delay={0.1}>
-          <section className="mx-auto mt-10 w-full max-w-7xl px-4 pb-4 sm:px-6 lg:px-10">
+          <section className="mx-auto mt-2 w-full max-w-7xl px-4 pb-4 sm:px-6 lg:px-10">
             <ServicesOverviewRail services={railServices} locale={locale} />
 
             <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 border-t border-white/10 pt-6">
