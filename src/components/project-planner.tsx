@@ -22,6 +22,7 @@ type ProjectPlannerProps = {
 type PlannerErrorKey =
   | "projectType"
   | "pageCount"
+  | "multilingual"
   | "smartScope"
   | "webshopProducts"
   | "customScope"
@@ -352,6 +353,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
     const nl = {
       projectType: "Kies een projecttype",
       pageCount: "Maak een keuze voordat je doorgaat",
+      multilingual: "Maak een keuze voordat je doorgaat",
       smartScope: "Kies minimaal een relevante functie",
       webshopProducts: "Maak een keuze voordat je doorgaat",
       customScope: "Kies minimaal een relevante functie",
@@ -365,6 +367,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
     const en = {
       projectType: "Select a project type",
       pageCount: "Make a selection before continuing",
+      multilingual: "Make a selection before continuing",
       smartScope: "Select at least one relevant option",
       webshopProducts: "Make a selection before continuing",
       customScope: "Select at least one relevant option",
@@ -398,6 +401,9 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
       if (form.projectType === "starter" || form.projectType === "business") {
         if (!form.pageCount) {
           errors.pageCount = getErrorCopy("pageCount");
+        }
+        if (!form.multilingual) {
+          errors.multilingual = getErrorCopy("multilingual");
         }
       }
 
@@ -538,6 +544,13 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
             selectedFeatures: summary.selectedFeatures,
             selectedAddOns: summary.selectedAddOns,
             pageCount: form.pageCount,
+            multilingualKey: form.multilingual,
+            multilingual:
+              form.multilingual === "yes"
+                ? content.options.yes
+                : form.multilingual === "no"
+                  ? content.options.no
+                  : "",
             smartScopeSelected: Boolean(
               form.smartBookingFlow ||
                 form.smartConfirmations ||
@@ -676,16 +689,26 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                 <SectionLabel title={content.questions.multilingual} />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <ChoiceButton
-                    active={!form.multilingual}
+                    active={form.multilingual === "no"}
                     label={content.options.no}
-                    onClick={() => update("multilingual", false)}
+                    onClick={() => {
+                      update("multilingual", "no");
+                      clearError("multilingual");
+                    }}
                   />
                   <ChoiceButton
-                    active={form.multilingual}
+                    active={form.multilingual === "yes"}
                     label={content.options.yes}
-                    onClick={() => update("multilingual", true)}
+                    onClick={() => {
+                      update("multilingual", "yes");
+                      clearError("multilingual");
+                    }}
                   />
                 </div>
+                <InlineError
+                  id="planner-multilingual-error"
+                  message={fieldErrors.multilingual}
+                />
               </div>
 
               <div className="space-y-4">

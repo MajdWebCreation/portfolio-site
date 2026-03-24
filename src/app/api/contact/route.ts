@@ -19,6 +19,8 @@ type ContactPayload = {
     selectedFeatures?: string[];
     selectedAddOns?: string[];
     pageCount?: string;
+    multilingualKey?: string;
+    multilingual?: string;
     brandingContentState?: string;
     smartScopeSelected?: boolean;
     webshopProducts?: string;
@@ -53,6 +55,7 @@ type ValidationField =
   | "message"
   | "projectType"
   | "pageCount"
+  | "multilingual"
   | "smartScope"
   | "webshopProducts"
   | "customScope"
@@ -113,6 +116,7 @@ function getValidationMessage(locale: "en" | "nl", field: ValidationField) {
     message: "Je bericht is te kort",
     projectType: "Kies een projecttype",
     pageCount: "Maak een keuze voordat je doorgaat",
+    multilingual: "Maak een keuze voordat je doorgaat",
     smartScope: "Kies minimaal een relevante functie",
     webshopProducts: "Maak een keuze voordat je doorgaat",
     customScope: "Kies minimaal een relevante functie",
@@ -128,6 +132,7 @@ function getValidationMessage(locale: "en" | "nl", field: ValidationField) {
     message: "Your message is too short",
     projectType: "Select a project type",
     pageCount: "Make a selection before continuing",
+    multilingual: "Make a selection before continuing",
     smartScope: "Select at least one relevant option",
     webshopProducts: "Make a selection before continuing",
     customScope: "Select at least one relevant option",
@@ -170,6 +175,12 @@ function validateSubmission(submission: NormalizedSubmission) {
   ) {
     if (!planner.pageCount) {
       errors.pageCount = getValidationMessage(submission.locale, "pageCount");
+    }
+    if (!planner.multilingualKey) {
+      errors.multilingual = getValidationMessage(
+        submission.locale,
+        "multilingual",
+      );
     }
   }
 

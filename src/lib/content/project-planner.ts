@@ -16,6 +16,7 @@ export type PlannerTimeline =
   | "";
 
 export type PlannerReadiness = "yes" | "partly" | "no" | "";
+export type PlannerYesNo = "yes" | "no" | "";
 
 export type PlannerPriority =
   | "speed"
@@ -33,7 +34,7 @@ export type PlannerState = {
   locale: Locale;
   projectType: PlannerPackageKey | "";
   pageCount: PlannerPageCount;
-  multilingual: boolean;
+  multilingual: PlannerYesNo;
   brandingContentState: PlannerReadiness;
   starterSeoBoost: boolean;
   starterMotion: boolean;
@@ -190,7 +191,7 @@ export const initialPlannerState: PlannerState = {
   locale: "en",
   projectType: "",
   pageCount: "",
-  multilingual: false,
+  multilingual: "",
   brandingContentState: "",
   starterSeoBoost: false,
   starterMotion: false,
@@ -535,8 +536,13 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
 
     pushItem(
       selectedFeatures,
-      state.multilingual,
+      state.multilingual === "yes",
       locale === "nl" ? "meertalige ondersteuning" : "multilingual support",
+    );
+    pushItem(
+      selectedFeatures,
+      state.multilingual === "no",
+      locale === "nl" ? "enkele taal" : "single language",
     );
     pushItem(
       selectedFeatures,
@@ -546,7 +552,7 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
         : `${state.pageCount} pages`,
     );
 
-    if (state.multilingual) {
+    if (state.multilingual === "yes") {
       addAddon(
         locale === "nl" ? "Meertalige setup" : "Multilingual setup",
         200,
@@ -623,8 +629,13 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
     );
     pushItem(
       selectedFeatures,
-      state.multilingual,
+      state.multilingual === "yes",
       locale === "nl" ? "meertalige ondersteuning" : "multilingual support",
+    );
+    pushItem(
+      selectedFeatures,
+      state.multilingual === "no",
+      locale === "nl" ? "enkele taal" : "single language",
     );
 
     if (state.businessSeoGrowth) {
