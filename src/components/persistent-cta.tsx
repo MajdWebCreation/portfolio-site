@@ -104,7 +104,7 @@ export default function PersistentCta({
           className="flex items-center justify-between gap-4 rounded-[1.35rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 px-4 py-3 shadow-[0_18px_40px_rgba(36,60,84,0.12)] backdrop-blur-md"
         >
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--accent-text)]">
+            <p className="text-[0.7rem] uppercase tracking-[0.24em] text-[var(--accent-text)]">
               {support}
             </p>
             <p className="mt-1 truncate text-sm font-medium text-[var(--foreground)]">
@@ -128,7 +128,7 @@ export default function PersistentCta({
           data-track-location="desktop-floating-cta"
           className="block rounded-[1.45rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 px-5 py-4 shadow-[0_20px_48px_rgba(36,60,84,0.12)] backdrop-blur-md"
         >
-          <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--accent-text)]">
+          <p className="text-[0.7rem] uppercase tracking-[0.24em] text-[var(--accent-text)]">
             {support}
           </p>
           <div className="mt-3 flex items-center gap-3">

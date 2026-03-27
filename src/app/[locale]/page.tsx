@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -121,7 +122,26 @@ export default async function HomePage({
                 </div>
 
                 <div className="mt-12 flex w-full flex-col items-center justify-center gap-4 border-t border-[color:var(--line)] pt-6 text-center lg:flex-row lg:justify-start lg:text-left">
-                  <BrandMark className="h-8 w-[104px] opacity-[0.18]" />
+                  <div
+                    data-logo-variant="theme"
+                    className="relative h-[4.5rem] w-[6.5rem] shrink-0 sm:h-[5rem] sm:w-[7.2rem]"
+                  >
+                    <Image
+                      src="/images/branding/logo-black.svg"
+                      alt="YM Creations"
+                      fill
+                      className="ym-logo-image ym-logo-image-dark object-contain"
+                      sizes="(min-width: 640px) 115px, 104px"
+                    />
+                    <Image
+                      src="/images/branding/logo.svg"
+                      alt=""
+                      aria-hidden="true"
+                      fill
+                      className="ym-logo-image ym-logo-image-light object-contain"
+                      sizes="(min-width: 640px) 115px, 104px"
+                    />
+                  </div>
                   <p className="max-w-md text-sm leading-7 text-[color:var(--muted-foreground)]">
                     {content.hero.cardText}
                   </p>
@@ -141,7 +161,10 @@ export default async function HomePage({
                 imageClassName="object-cover object-center"
               />
               <div className="pointer-events-none absolute right-8 top-10 hidden lg:block">
-                <BrandMark className="h-12 w-[154px] opacity-[0.12]" />
+                <BrandMark
+                  variant="light"
+                  className="h-12 w-[154px]"
+                />
               </div>
               <div className="absolute left-5 top-5 rounded-full border border-[color:var(--line)] bg-[var(--background-elevated)]/84 px-4 py-2 text-[10px] uppercase tracking-[0.3em] text-[var(--accent-text)] backdrop-blur-sm">
                 {content.hero.blueprintLabel}

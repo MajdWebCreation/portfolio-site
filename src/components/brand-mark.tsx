@@ -6,7 +6,8 @@ type BrandMarkProps = {
   className?: string;
   priority?: boolean;
   label?: string;
-  variant?: "transparent" | "white";
+  variant?: "theme" | "dark" | "light";
+  assetSet?: "png" | "svg";
 };
 
 export default function BrandMark({
@@ -14,27 +15,42 @@ export default function BrandMark({
   className = "",
   priority = false,
   label = "YM Creations",
-  variant = "transparent",
+  variant = "theme",
+  assetSet = "png",
 }: BrandMarkProps) {
-  void variant;
+  const darkSrc =
+    assetSet === "svg"
+      ? "/images/branding/logo-black.svg"
+      : "/images/branding/ym-logo-black.png";
+  const lightSrc =
+    assetSet === "svg"
+      ? "/images/branding/logo.svg"
+      : "/images/branding/ym-logo-white.png";
 
   const logo = (
-    <div className={`relative block h-11 w-[184px] shrink-0 overflow-hidden ${className}`}>
+    <div
+      data-logo-variant={variant}
+      className={`relative block h-11 w-[184px] shrink-0 overflow-hidden ${className}`}
+    >
       <Image
-        src="/images/branding/ym-logo-black.png"
+        src={darkSrc}
         alt={label}
         fill
         priority={priority}
-        className="ym-logo-light object-contain scale-[1.12]"
+        className={`ym-logo-image ym-logo-image-dark object-contain ${
+          assetSet === "png" ? "scale-[1.12]" : ""
+        }`}
         sizes="(min-width: 1024px) 230px, (min-width: 640px) 220px, 200px"
       />
       <Image
-        src="/images/branding/ym-logo-white.png"
+        src={lightSrc}
         alt=""
         aria-hidden="true"
         fill
         priority={priority}
-        className="ym-logo-dark object-contain scale-[1.12]"
+        className={`ym-logo-image ym-logo-image-light object-contain ${
+          assetSet === "png" ? "scale-[1.12]" : ""
+        }`}
         sizes="(min-width: 1024px) 230px, (min-width: 640px) 220px, 200px"
       />
     </div>

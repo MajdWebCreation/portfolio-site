@@ -74,10 +74,11 @@ export default function SiteShell({
               <BrandMark
                 href={getLocalizedPath(locale, "home")}
                 priority
-                variant="white"
+                variant="theme"
+                assetSet="svg"
                 className="h-[2.5rem] w-[138px] sm:h-[2.85rem] sm:w-[156px]"
               />
-              <span className="hidden text-[10px] uppercase tracking-[0.32em] text-[color:var(--muted-foreground)] xl:block">
+              <span className="hidden text-[0.7rem] uppercase tracking-[0.32em] text-[color:var(--muted-foreground)] xl:block">
                 Premium digital systems
               </span>
             </div>
@@ -98,7 +99,7 @@ export default function SiteShell({
               <div className="rounded-full border border-[color:var(--line)] bg-[var(--background-elevated)]/85 p-1">
                 <Link
                   href={locale === "en" ? currentPath : counterpartPath}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                     locale === "en"
                       ? "bg-[var(--foreground)] text-[var(--background-elevated)]"
                       : "text-[color:var(--muted-foreground)] hover:text-[var(--foreground)]"
@@ -108,7 +109,7 @@ export default function SiteShell({
                 </Link>
                 <Link
                   href={locale === "nl" ? currentPath : counterpartPath}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                     locale === "nl"
                       ? "bg-[var(--foreground)] text-[var(--background-elevated)]"
                       : "text-[color:var(--muted-foreground)] hover:text-[var(--foreground)]"

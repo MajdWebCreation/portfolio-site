@@ -50,7 +50,7 @@ export default function MobileNav({
         data-track-category="navigation"
         data-track-label={contactLabel}
         data-track-location="mobile-header"
-        className="inline-flex h-12 max-w-[9.75rem] min-w-0 shrink items-center justify-center whitespace-nowrap rounded-full border border-[color:var(--line-strong)] bg-[var(--button-bg)] px-4 text-[13px] font-medium leading-none text-[var(--button-text)] transition hover:opacity-92 sm:h-14 sm:max-w-none sm:px-5 sm:text-[15px]"
+        className="inline-flex h-12 max-w-[9.75rem] min-w-0 shrink items-center justify-center whitespace-nowrap rounded-full border border-[color:var(--line-strong)] bg-[var(--button-bg)] px-4 text-sm font-medium leading-none text-[var(--button-text)] transition hover:opacity-92 sm:h-14 sm:max-w-none sm:px-5 sm:text-base"
         onClick={() => setMobileMenuOpen(false)}
       >
         {contactLabel}
@@ -103,14 +103,14 @@ export default function MobileNav({
           <Link
             href={currentPath}
             onClick={() => setMobileMenuOpen(false)}
-            className="flex-1 rounded-full bg-[var(--foreground)] px-3 py-2 text-center text-xs font-medium text-[var(--background-elevated)] transition"
+            className="flex-1 rounded-full bg-[var(--foreground)] px-3 py-2 text-center text-sm font-medium text-[var(--background-elevated)] transition"
           >
             {currentLocaleLabel}
           </Link>
           <Link
             href={counterpartPath}
             onClick={() => setMobileMenuOpen(false)}
-            className="flex-1 rounded-full px-3 py-2 text-center text-xs font-medium text-[color:var(--muted-foreground)] transition hover:text-[var(--foreground)]"
+            className="flex-1 rounded-full px-3 py-2 text-center text-sm font-medium text-[color:var(--muted-foreground)] transition hover:text-[var(--foreground)]"
           >
             {alternateLocaleLabel}
           </Link>

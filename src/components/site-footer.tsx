@@ -25,7 +25,8 @@ export default function SiteFooter({ locale, content }: SiteFooterProps) {
           <div>
             <BrandMark
               href={getLocalizedPath(locale, "home")}
-              variant="white"
+              variant="theme"
+              assetSet="svg"
               className="h-[4.25rem] w-[220px] sm:h-[4.75rem] sm:w-[244px]"
             />
             <p className="mt-3 max-w-sm text-sm leading-7 text-[color:var(--muted-foreground)]">

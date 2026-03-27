@@ -20,13 +20,11 @@ function getResolvedTheme(): Theme {
 }
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>(() => getResolvedTheme());
 
   useEffect(() => {
-    const resolved = getResolvedTheme();
-    setTheme(resolved);
-    document.documentElement.dataset.theme = resolved;
-  }, []);
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   function applyTheme(nextTheme: Theme) {
     setTheme(nextTheme);
@@ -36,7 +34,6 @@ export default function ThemeToggle() {
 
   const isLight = theme === "light";
   const nextTheme: Theme = isLight ? "dark" : "light";
-  const label = isLight ? "Light mode" : "Dark mode";
   const icon = isLight ? "Sun" : "Moon";
 
   return (
@@ -46,12 +43,12 @@ export default function ThemeToggle() {
         onClick={() => applyTheme(nextTheme)}
         aria-label={`Switch to ${nextTheme} mode`}
         title={`Switch to ${nextTheme} mode`}
-        className="group inline-flex items-center gap-2 rounded-full border border-[color:var(--line)] bg-[var(--background-elevated)]/92 px-3 py-2 text-xs font-medium text-[var(--foreground)] shadow-[0_12px_26px_rgba(36,60,84,0.12)] backdrop-blur-sm transition hover:border-[color:var(--line-strong)] hover:shadow-[0_14px_30px_rgba(36,60,84,0.16)]"
+        className="group inline-flex items-center gap-2 rounded-full border border-[color:var(--line)] bg-[var(--background-elevated)]/92 px-3 py-2 text-sm font-medium text-[var(--foreground)] shadow-[0_12px_26px_rgba(36,60,84,0.12)] backdrop-blur-sm transition hover:border-[color:var(--line-strong)] hover:shadow-[0_14px_30px_rgba(36,60,84,0.16)]"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[color:var(--line)] bg-[var(--background)] text-[11px] text-[var(--accent-text)] transition group-hover:border-[color:var(--line-strong)]">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[color:var(--line)] bg-[var(--background)] text-[0.72rem] text-[var(--accent-text)] transition group-hover:border-[color:var(--line-strong)]">
           {isLight ? "☼" : "◐"}
         </span>
-        <span className="pr-1 text-[11px] uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">
+        <span className="pr-1 text-[0.72rem] uppercase tracking-[0.22em] text-[color:var(--muted-foreground)]">
           {icon}
         </span>
       </button>

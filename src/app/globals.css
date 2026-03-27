@@ -46,6 +46,7 @@ html {
   scroll-behavior: smooth;
   max-width: 100%;
   overflow-x: clip;
+  font-size: clamp(16.7px, 1rem + 0.12vw, 17.2px);
   background:
     radial-gradient(circle at 18% 0%, rgba(77, 191, 255, 0.1), transparent 28%),
     radial-gradient(circle at 82% 12%, rgba(88, 145, 255, 0.08), transparent 26%),
@@ -272,15 +273,28 @@ html[data-theme="dark"] .ym-glow-overlay {
   transform: scaleX(1);
 }
 
-.ym-logo-dark {
+.ym-logo-image {
+  opacity: 1;
+  filter: none;
+  mix-blend-mode: normal;
+}
+
+[data-logo-variant="theme"] .ym-logo-image-light,
+[data-logo-variant="dark"] .ym-logo-image-light,
+[data-logo-variant="light"] .ym-logo-image-dark {
   display: none;
 }
 
-html[data-theme="dark"] .ym-logo-light {
+[data-logo-variant="dark"] .ym-logo-image-dark,
+[data-logo-variant="light"] .ym-logo-image-light {
+  display: block;
+}
+
+html[data-theme="dark"] [data-logo-variant="theme"] .ym-logo-image-dark {
   display: none;
 }
 
-html[data-theme="dark"] .ym-logo-dark {
+html[data-theme="dark"] [data-logo-variant="theme"] .ym-logo-image-light {
   display: block;
 }
 
