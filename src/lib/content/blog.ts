@@ -665,97 +665,25 @@ export const blogOverviewContent = {
   en: {
     metaTitle: "Insights",
     metaDescription:
-      "Insights from YM Creations on websites, web applications, ecommerce, performance, redesign, and multilingual technical SEO.",
-    eyebrow: "Insights",
-    title:
-      "A growing knowledge base around premium websites, web applications, performance, and multilingual structure.",
+      "Articles by YM Creations on website costs, launch checklists, web application projects and performance.",
+    title: "Insights",
     intro:
-      "The insights section is where YM Creations publishes practical thinking around digital structure, frontend quality, performance, ecommerce, redesign decisions, and multilingual SEO foundations.",
-    pillarsTitle: "Topics this section is built around",
-    pillars: [
-      {
-        title: "Websites",
-        description:
-          "Positioning, page structure, messaging hierarchy, and how premium websites support commercial intent.",
-      },
-      {
-        title: "Web applications",
-        description:
-          "Workflow-driven interfaces, custom tools, portals, and how structure affects usability.",
-      },
-      {
-        title: "Ecommerce",
-        description:
-          "Storefront clarity, product presentation, conversion flow, and technical polish for online shops.",
-      },
-      {
-        title: "Performance",
-        description:
-          "Frontend execution, responsiveness, interaction quality, and the technical side of a sharper user experience.",
-      },
-      {
-        title: "Redesign",
-        description:
-          "How to approach site improvements when the current experience no longer matches the business.",
-      },
-      {
-        title: "Technical SEO",
-        description:
-          "Multilingual routing, information architecture, internal linking, and scalable metadata foundations.",
-      },
-    ],
-    supportTitle: "Built to connect insight with execution",
-    supportText:
-      "This section supports the service work, not empty publishing volume. New insights and future case content will grow around real project patterns, technical decisions, and practical implementation lessons.",
+      "Articles about what a website costs, what a launch checklist should contain, how a web application project runs and how to make a site respond fast.",
     emptyState:
-      "English article detail pages will only go live when finalized English editorial copy is available.",
+      "The articles are currently published in Dutch only.",
+    emptyStateLinkLabel: "Read the Dutch articles",
+    readLabel: "Read article",
   },
   nl: {
     metaTitle: "Inzichten",
     metaDescription:
-      "Inzichten van YM Creations over websites, webapplicaties, ecommerce, performance, redesign en meertalige technische SEO.",
-    eyebrow: "Inzichten",
-    title:
-      "Een groeiende kennisbasis rond premium websites, webapplicaties, performance en meertalige structuur.",
+      "Artikelen van YM Creations over websitekosten, launch-checklists, webapplicatieprojecten en performance.",
+    title: "Inzichten",
     intro:
-      "De inzichten-sectie is waar YM Creations praktische kennis deelt over digitale structuur, frontend kwaliteit, performance, ecommerce, redesign-keuzes en meertalige SEO-fundamenten.",
-    pillarsTitle: "Onderwerpen waar deze sectie om draait",
-    pillars: [
-      {
-        title: "Websites",
-        description:
-          "Positionering, paginastructuur, boodschapshiërarchie en hoe premium websites commerciële intentie ondersteunen.",
-      },
-      {
-        title: "Webapplicaties",
-        description:
-          "Workflow-gedreven interfaces, maatwerk tools, portalen en hoe structuur gebruiksgemak beïnvloedt.",
-      },
-      {
-        title: "Ecommerce",
-        description:
-          "Storefront-structuur, productpresentatie, conversieflow en technische afwerking voor webshops.",
-      },
-      {
-        title: "Performance",
-        description:
-          "Frontend uitvoering, responsiveness, interactiekwaliteit en de technische kant van een scherpere gebruikerservaring.",
-      },
-      {
-        title: "Redesign",
-        description:
-          "Hoe je een site verbetert wanneer de huidige ervaring niet meer past bij het niveau van het bedrijf.",
-      },
-      {
-        title: "Technische SEO",
-        description:
-          "Meertalige routing, informatiearchitectuur, interne links en schaalbare metadata-fundamenten.",
-      },
-    ],
-    supportTitle: "Gebouwd om inzicht met uitvoering te verbinden",
-    supportText:
-      "Deze sectie ondersteunt het servicewerk, niet lege publicatievolumes. Nieuwe inzichten en toekomstige case content groeien vanuit echte projectpatronen, technische keuzes en praktische implementatielessen.",
+      "Artikelen over wat een website kost, wat er in een launch-checklist hoort, hoe een webapplicatieproject verloopt en hoe je een site echt snel laat reageren.",
     emptyState: "",
+    emptyStateLinkLabel: "",
+    readLabel: "Lees artikel",
   },
 } as const;
 

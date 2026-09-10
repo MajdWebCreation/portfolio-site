@@ -1,6 +1,8 @@
-export const locales = ["en", "nl"] as const;
+export const locales = ["nl", "en"] as const;
 
 export type Locale = (typeof locales)[number];
+
+export const defaultLocale: Locale = "nl";
 
 export function isValidLocale(value: string): value is Locale {
   return locales.includes(value as Locale);
@@ -11,310 +13,322 @@ export const businessInfo = {
   legalName: "YM Creations",
   email: "contact@ymcreations.com",
   phone: "+31653400220",
+  phoneDisplay: "+31 6 53 40 02 20",
   kvk: "96175354",
   websiteUrl: "https://ymcreations.com",
 } as const;
 
+/** The four project phases, shown in full on service pages and the werkwijze page. */
 export const processSteps = {
-  en: [
-    {
-      number: "01",
-      title: "Strategy",
-      text: "We define what the website or platform needs to communicate, who it is for, and how it should support the business.",
-    },
-    {
-      number: "02",
-      title: "Design",
-      text: "We shape the visual direction, structure, and user experience with clarity, hierarchy, and a premium feel in mind.",
-    },
-    {
-      number: "03",
-      title: "Development",
-      text: "We build the site or application with performance, responsiveness, and polished interaction from the start.",
-    },
-    {
-      number: "04",
-      title: "Refinement",
-      text: "We refine content flow, motion, and technical details until the full experience feels ready to launch.",
-    },
-  ],
   nl: [
     {
       number: "01",
-      title: "Strategie",
-      text: "We bepalen wat de website of applicatie moet communiceren, voor wie die bedoeld is en hoe die het bedrijf moet ondersteunen.",
+      title: "Intake en scope",
+      text: "We bespreken wat de website of applicatie moet doen, voor wie, en welke functies echt nodig zijn. Daaruit volgt een vaste scope met prijs en planning.",
+    },
+    {
+      number: "02",
+      title: "Ontwerp",
+      text: "Paginaopbouw, teksten, beeld en interactie worden in de browser uitgewerkt. Je ziet vroeg hoe het wordt, ook op een telefoon.",
+    },
+    {
+      number: "03",
+      title: "Bouw",
+      text: "Ontwikkeling in Next.js met eigen componenten: formulieren, e-mailflows, koppelingen, meertaligheid of beheer, afhankelijk van de scope.",
+    },
+    {
+      number: "04",
+      title: "Livegang en nazorg",
+      text: "Domein, hosting, e-mail, analytics en technische SEO worden ingericht voordat de site live gaat. Daarna blijven we bereikbaar voor aanpassingen.",
+    },
+  ],
+  en: [
+    {
+      number: "01",
+      title: "Intake and scope",
+      text: "We discuss what the website or application has to do, for whom, and which features are actually needed. That results in a fixed scope with price and planning.",
     },
     {
       number: "02",
       title: "Design",
-      text: "We vormen de visuele richting, structuur en gebruikerservaring met focus op helderheid, hiërarchie en een premium uitstraling.",
+      text: "Page structure, copy, imagery and interaction are worked out in the browser. You see early what it will become, on a phone as well.",
     },
     {
       number: "03",
-      title: "Development",
-      text: "We bouwen de site of applicatie met performance, responsiveness en verfijnde interactie vanaf het begin.",
+      title: "Build",
+      text: "Development in Next.js with custom components: forms, email flows, integrations, multilingual setup or admin, depending on the scope.",
     },
     {
       number: "04",
-      title: "Verfijning",
-      text: "We verfijnen contentflow, motion en technische details totdat de volledige ervaring klaar voelt om live te gaan.",
+      title: "Launch and aftercare",
+      text: "Domain, hosting, email, analytics and technical SEO are set up before the site goes live. After that we stay available for changes.",
     },
   ],
 } as const;
 
 export const siteContent = {
-  en: {
-    localeLabel: "EN",
-    nav: {
-      services: "Services",
-      pricing: "Pricing",
-      projects: "Projects",
-      blog: "Insights",
-      about: "Process",
-      contact: "Contact",
-      cta: "Start a project",
-    },
-    hero: {
-      eyebrow: "Websites, webshops, and custom digital products",
-      title: "Clearer digital products for ambitious businesses.",
-      description:
-        "YM Creations helps businesses launch a clearer website, a stronger conversion flow, or a custom platform with the right level of scope from the start.",
-      primaryCta: "Explore services",
-      secondaryCta: "Contact us",
-      cardEyebrow: "Experience-driven build system",
-      cardText:
-        "Structure, motion, responsiveness, and implementation quality designed to feel sharp from the first scroll.",
-      blueprintLabel: "Live blueprint",
-      servicePath: "/en/services",
-      contactPath: "/en/contact",
-    },
-    homeServices: {
-      eyebrow: "Services",
-      title: "Choose the service direction that fits the project.",
-      description:
-        "From business websites to smarter booking flows and custom platforms, the service stack is designed to help you move quickly to the right next step.",
-      allServicesLabel: "View all services",
-    },
-    prototypeStory: {
-      eyebrow: "Prototype story",
-      title:
-        "An idea starts quiet, becomes structure, and resolves into a sharper interface.",
-      description:
-        "This section slows the homepage down on purpose. Instead of showing everything at once, it reveals how a digital direction takes shape.",
-      boardLabel: "Prototype",
-      helperLabel: "Scroll to guide the reveal",
-      ctaLabel: "Open project thinking",
-      finalEyebrow: "Refined result",
-      finalTitle:
-        "A calmer interface with stronger hierarchy and clearer intent.",
-      finalText:
-        "Once the structure, rhythm, and messaging align, the final frame settles into a cleaner premium presentation.",
-      interfaceChips: [
-        "Wireframe rhythm",
-        "Measured motion",
-        "Sharper CTA",
-      ],
-      stages: [
-        {
-          label: "01 / Idea",
-          title: "A quiet starting point",
-          text: "The first frame stays intentionally sparse so the direction can emerge with more control.",
-        },
-        {
-          label: "02 / Prototype",
-          title: "Structure gets sketched in",
-          text: "Wireframe blocks and page zones appear before the interface becomes fully articulated.",
-        },
-        {
-          label: "03 / Interface",
-          title: "The system gains rhythm",
-          text: "Spacing, UI components, and messaging start to feel deliberate instead of temporary.",
-        },
-        {
-          label: "04 / Refine",
-          title: "The final state settles",
-          text: "The result feels calmer, clearer, and more premium than dumping everything in at once.",
-        },
-      ],
-    },
-    projects: {
-      eyebrow: "Projects",
-      title: "From first concept to launch-ready execution.",
-      description:
-        "The work starts with direction, becomes structure, and ends as a polished digital product.",
-      stages: ["Sketch", "Structure", "Interface", "Launch"],
-      itemTitle: "Featured project concept",
-      itemText:
-        "A concept panel showing how a loose idea evolves into a structured, premium online presence.",
-      conceptLabel: "Concept",
-      progressLabel: "Progress",
-      premiumBuildLabel: "Premium build",
-      premiumBuildText:
-        "Clear hierarchy, clean implementation, and the kind of polish that makes a site feel deliberate.",
-      refinedDirectionLabel: "Refined direction",
-      sideTexts: [
-        "The first direction takes shape around goals, offer, and audience.",
-        "The structure becomes clearer and more intentional.",
-        "The interface gains rhythm, contrast, and visual precision.",
-        "The final experience feels cohesive and ready to launch.",
-      ],
-      overviewLabel: "View projects overview",
-      overviewPath: "/en/projects",
-    },
-    about: {
-      eyebrow: "Process",
-      title: "Design, development, and refinement in one clear workflow.",
-      description:
-        "YM Creations combines strategy, visual design, frontend craft, and technical polish into one streamlined process.",
-    },
-    contact: {
-      eyebrow: "Start a project",
-      title: "Tell us what you want to build.",
-      description:
-        "Share the direction, scope, or business goal. We’ll reply with the clearest next step, whether that starts with advice, a scoped proposal, or the planner.",
-      primary: "Book a call",
-      secondary: "Send an email",
-      signal: "Open transmission",
-      pagePath: "/en/contact",
-    },
-    footer: {
-      description:
-        "Premium web design and development for businesses that want a stronger online presence.",
-      company: "Company",
-      services: "Services",
-      pricing: "Pricing",
-      insights: "Insights",
-      contact: "Contact",
-      kvkLabel: "KVK",
-      rights:
-        "All website rights and brand content belong to YM Creations.",
-    },
-  },
   nl: {
     localeLabel: "NL",
     nav: {
       services: "Diensten",
+      process: "Werkwijze",
       pricing: "Tarieven",
       projects: "Projecten",
+      planner: "Projectplanner",
       blog: "Inzichten",
-      about: "Proces",
       contact: "Contact",
-      cta: "Start een project",
+      cta: "Project bespreken",
+      menuLabel: "Menu",
+      closeLabel: "Sluiten",
+      switchLocaleLabel: "English version",
     },
     hero: {
-      eyebrow: "Websites, webshops en maatwerk digitale producten",
-      title: "Duidelijkere digitale producten voor ambitieuze bedrijven.",
+      title: "Digitale producten, gebouwd rond hoe jouw bedrijf werkt.",
       description:
-        "YM Creations helpt bedrijven aan een helderdere website, een sterkere conversieflow of een maatwerk platform met vanaf het begin het juiste scopeniveau.",
-      primaryCta: "Bekijk diensten",
-      secondaryCta: "Neem contact op",
-      cardEyebrow: "Doordacht bouwsysteem",
-      cardText:
-        "Structuur, motion, responsiveness en implementatiekwaliteit die vanaf de eerste scroll sterk aanvoelen.",
-      blueprintLabel: "Live ontwerp",
-      servicePath: "/nl/diensten",
-      contactPath: "/nl/contact",
+        "YM Creations ontwerpt en bouwt websites, webshops en software op maat voor Nederlandse bedrijven. Geen template dat je bedrijf in een mal drukt, maar een product dat aansluit op je proces en meegroeit met wat je nodig hebt.",
+      primaryCta: "Vertel over je project",
+      secondaryCta: "Bekijk projecten",
+      flow: {
+        caption: "Van aanvraag tot bevestiging",
+        layers: [
+          {
+            label: "Voorkant",
+            title: "Wat je klant ziet en gebruikt",
+            status: "Aanvraag verstuurd",
+          },
+          {
+            label: "Beheer",
+            title: "Waar jij alles beheert",
+            status: "Zichtbaar in beheer",
+          },
+          {
+            label: "Data",
+            title: "Waar alles wordt opgeslagen",
+            status: "Opgeslagen",
+          },
+          {
+            label: "Koppelingen",
+            title: "Wat automatisch wordt verstuurd en gedeeld",
+            status: "Bevestiging verstuurd",
+          },
+        ],
+        base: "Draait op eigen domein en hosting, in eigen code.",
+      },
     },
-    homeServices: {
-      eyebrow: "Diensten",
-      title: "Kies de dienstrichting die bij het project past.",
+    build: {
+      title: "Wat we bouwen",
       description:
-        "Van bedrijfswebsites tot slimmere bookingflows en maatwerk platforms: de service stack helpt je snel naar de juiste volgende stap.",
-      allServicesLabel: "Bekijk alle diensten",
-    },
-    prototypeStory: {
-      eyebrow: "Prototype story",
-      title:
-        "Een idee begint rustig, krijgt structuur en landt uiteindelijk als een scherpere interface.",
-      description:
-        "Deze sectie vertraagt de homepage bewust. In plaats van alles tegelijk te tonen, laat ze zien hoe een digitale richting stap voor stap vorm krijgt.",
-      boardLabel: "Prototype",
-      helperLabel: "Scroll om de reveal te sturen",
-      ctaLabel: "Bekijk projectdenken",
-      finalEyebrow: "Verfijnd resultaat",
-      finalTitle:
-        "Een rustigere interface met sterkere hiërarchie en duidelijkere intentie.",
-      finalText:
-        "Zodra structuur, ritme en messaging samenvallen, zakt het eindbeeld in een schonere premium presentatie.",
-      interfaceChips: [
-        "Wireframe-ritme",
-        "Beheerde motion",
-        "Scherpere CTA",
+        "Van een compacte bedrijfswebsite tot een compleet systeem waar je klanten en je team dagelijks mee werken.",
+      linkLabel: "Bekijk alle diensten",
+      groups: [
+        {
+          key: "websites",
+          title: "Websites en webshops",
+          text: "Bedrijfswebsites, landingspagina's en webshops, ingericht op aanvragen en bestellingen.",
+          serviceKey: "business-websites",
+          size: "xl",
+        },
+        {
+          key: "applications",
+          title: "Webapplicaties, portalen en apps",
+          text: "Reserveringen, klantportalen, beheeromgevingen en apps met inlog en rollen.",
+          serviceKey: "web-app-development",
+          size: "xl",
+        },
+        {
+          key: "configurators",
+          title: "3D-configurators",
+          text: "Klanten stellen een product samen en zien direct de prijs.",
+          serviceKey: "3d-configurators",
+          size: "lg",
+          emphasis: true,
+        },
+        {
+          key: "integrations",
+          title: "Koppelingen en automatisering",
+          text: "Betalingen, e-mail en API's, zodat handwerk verdwijnt.",
+          serviceKey: "integrations-automation",
+          size: "lg",
+        },
       ],
-      stages: [
-        {
-          label: "01 / Idee",
-          title: "Een rustige start",
-          text: "Het eerste frame blijft bewust spaarzaam zodat de richting gecontroleerd kan ontstaan.",
-        },
-        {
-          label: "02 / Prototype",
-          title: "De structuur wordt geschetst",
-          text: "Wireframeblokken en paginazones verschijnen voordat de interface volledig wordt uitgewerkt.",
-        },
-        {
-          label: "03 / Interface",
-          title: "Het systeem krijgt ritme",
-          text: "Spacing, UI-componenten en messaging gaan bewuster en minder tijdelijk aanvoelen.",
-        },
-        {
-          label: "04 / Verfijnen",
-          title: "De eindstaat landt",
-          text: "Het resultaat voelt rustiger, helderder en premiumer dan alles ineens op het scherm zetten.",
-        },
-      ],
     },
-    projects: {
-      eyebrow: "Projecten",
-      title: "Van eerste concept tot een resultaat dat klaar is om live te gaan.",
-      description:
-        "Het werk begint met richting, krijgt vorm in structuur en eindigt als een verfijnd digitaal product.",
-      stages: ["Schets", "Structuur", "Interface", "Live"],
-      itemTitle: "Uitgelicht projectconcept",
-      itemText:
-        "Een conceptpaneel dat laat zien hoe een eerste idee verandert in een sterke en verfijnde online presentatie.",
-      conceptLabel: "Concept",
-      progressLabel: "Voortgang",
-      premiumBuildLabel: "Premium build",
-      premiumBuildText:
-        "Duidelijke hiërarchie, schone implementatie en een afwerking die bewust en hoogwaardig aanvoelt.",
-      refinedDirectionLabel: "Verfijnde richting",
-      sideTexts: [
-        "De eerste richting ontstaat vanuit doel, aanbod en doelgroep.",
-        "De structuur wordt helderder en bewuster opgebouwd.",
-        "De interface krijgt ritme, contrast en visuele precisie.",
-        "De eindervaring voelt samenhangend en klaar om live te gaan.",
+    collaboration: {
+      label: "Werkwijze",
+      statements: [
+        "Vaste scope en prijs vooraf.",
+        "Tijdens de bouw kijk je mee in de browser.",
+        "Na livegang blijven we bereikbaar.",
       ],
-      overviewLabel: "Bekijk projectenoverzicht",
-      overviewPath: "/nl/projecten",
+      linkLabel: "Zo verloopt een project, in vier stappen",
     },
-    about: {
-      eyebrow: "Proces",
-      title: "Design, development en verfijning in één helder traject.",
+    pointers: {
+      projects: {
+        label: "Projecten",
+        title: "Bekijk wat er nu live draait",
+        text: "Websites en applicaties die in gebruik zijn, elk met een link naar de site zelf.",
+      },
+      pricing: {
+        label: "Tarieven",
+        title: "Vanafprijzen per pakket, maatwerk op offerte",
+        text: "Zo weet je vooraf waar je aan toe bent.",
+      },
+    },
+    contactCta: {
+      title: "Eén bericht is genoeg om te starten.",
       description:
-        "YM Creations brengt strategie, visueel ontwerp, frontend vakwerk en technische afwerking samen in één gestroomlijnd proces.",
+        "Beschrijf kort wat je wilt laten bouwen. Je krijgt advies, een voorstel met scope en prijs, of eerst een gesprek.",
+      primaryLabel: "Stuur een bericht",
+      plannerLabel: "Liever eerst de scope bepalen? Gebruik de projectplanner",
+      replyNote: "Reactie op werkdagen binnen 24 uur",
     },
     contact: {
-      eyebrow: "Start een project",
-      title: "Vertel kort wat je wilt laten bouwen.",
-      description:
-        "Deel de richting, scope of businessdoel. Daarna krijg je de duidelijkste volgende stap terug, of dat nu advies, een voorstel of eerst de planner is.",
-      primary: "Plan een gesprek",
-      secondary: "Stuur een e-mail",
-      signal: "Open verbinding",
       pagePath: "/nl/contact",
+      directLabel: "Direct",
+      replyNote: "Reactie op werkdagen binnen 24 uur.",
+      plannerLabel: "Liever eerst de scope bepalen? Gebruik de projectplanner",
+      businessNote:
+        "YM Creations werkt voor zakelijke opdrachtgevers. Een bericht is vrijblijvend en nog geen opdracht.",
+      termsLabel: "Algemene voorwaarden",
     },
     footer: {
-      description:
-        "Premium webdesign en development voor bedrijven die online sterker zichtbaar willen zijn.",
-      company: "Bedrijf",
-      services: "Diensten",
-      pricing: "Tarieven",
-      insights: "Inzichten",
+      navigation: "Navigatie",
       contact: "Contact",
       kvkLabel: "KVK",
-      rights:
-        "Alle rechten van deze website en merkcontent behoren toe aan YM Creations.",
+      rights: "Alle rechten voorbehouden.",
+      legal: "Juridisch",
+      terms: "Algemene voorwaarden",
+    },
+  },
+  en: {
+    localeLabel: "EN",
+    nav: {
+      services: "Services",
+      process: "How we work",
+      pricing: "Pricing",
+      projects: "Projects",
+      planner: "Project planner",
+      blog: "Insights",
+      contact: "Contact",
+      cta: "Discuss a project",
+      menuLabel: "Menu",
+      closeLabel: "Close",
+      switchLocaleLabel: "Nederlandse versie",
+    },
+    hero: {
+      title: "Digital products, built around how your business works.",
+      description:
+        "YM Creations designs and builds custom websites, webshops and software for Dutch businesses. No template that forces your business into a mould, but a product that fits your process and grows with what you need.",
+      primaryCta: "Tell us about your project",
+      secondaryCta: "View projects",
+      flow: {
+        caption: "From request to confirmation",
+        layers: [
+          {
+            label: "Front end",
+            title: "What your customer sees and uses",
+            status: "Request sent",
+          },
+          {
+            label: "Admin",
+            title: "Where you manage everything",
+            status: "Visible in admin",
+          },
+          {
+            label: "Data",
+            title: "Where everything is stored",
+            status: "Saved",
+          },
+          {
+            label: "Integrations",
+            title: "What is sent and shared automatically",
+            status: "Confirmation sent",
+          },
+        ],
+        base: "Runs on your own domain and hosting, in custom code.",
+      },
+    },
+    build: {
+      title: "What we build",
+      description:
+        "From a compact company website to a complete system your customers and your team work with every day.",
+      linkLabel: "View all services",
+      groups: [
+        {
+          key: "websites",
+          title: "Websites and webshops",
+          text: "Company websites, landing pages and webshops, set up for enquiries and orders.",
+          serviceKey: "business-websites",
+          size: "xl",
+        },
+        {
+          key: "applications",
+          title: "Web applications, portals and apps",
+          text: "Bookings, client portals, admin environments and apps with login and roles.",
+          serviceKey: "web-app-development",
+          size: "xl",
+        },
+        {
+          key: "configurators",
+          title: "3D configurators",
+          text: "Customers compose a product and see the price instantly.",
+          serviceKey: "3d-configurators",
+          size: "lg",
+          emphasis: true,
+        },
+        {
+          key: "integrations",
+          title: "Integrations and automation",
+          text: "Payments, email and APIs, so manual work disappears.",
+          serviceKey: "integrations-automation",
+          size: "lg",
+        },
+      ],
+    },
+    collaboration: {
+      label: "How we work",
+      statements: [
+        "Fixed scope and price up front.",
+        "During the build you follow along in the browser.",
+        "After launch we stay reachable.",
+      ],
+      linkLabel: "How a project runs, in four steps",
+    },
+    pointers: {
+      projects: {
+        label: "Projects",
+        title: "See what is live right now",
+        text: "Websites and applications in daily use, each linking to the site itself.",
+      },
+      pricing: {
+        label: "Pricing",
+        title: "Starting prices per package, custom work on quote",
+        text: "So you know where you stand before we start.",
+      },
+    },
+    contactCta: {
+      title: "One message is enough to start.",
+      description:
+        "Briefly describe what you want built. You get advice, a proposal with scope and price, or a call first.",
+      primaryLabel: "Send a message",
+      plannerLabel: "Prefer to define the scope first? Use the project planner",
+      replyNote: "Reply within 24 hours on working days",
+    },
+    contact: {
+      pagePath: "/en/contact",
+      directLabel: "Direct",
+      replyNote: "Reply within 24 hours on working days.",
+      plannerLabel: "Prefer to define the scope first? Use the project planner",
+      businessNote:
+        "YM Creations works for business clients. A message is non-binding and not yet an order.",
+      termsLabel: "General terms (Dutch)",
+    },
+    footer: {
+      navigation: "Navigation",
+      contact: "Contact",
+      kvkLabel: "KVK",
+      rights: "All rights reserved.",
+      legal: "Legal",
+      terms: "General terms (Dutch)",
     },
   },
 } as const;

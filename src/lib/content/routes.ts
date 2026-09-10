@@ -5,6 +5,7 @@ export type StaticRouteKey =
   | "services"
   | "pricing"
   | "projectPlanner"
+  | "process"
   | "projects"
   | "contact"
   | "blog";
@@ -25,6 +26,10 @@ const localizedStaticRoutes: Record<StaticRouteKey, Record<Locale, string>> = {
   projectPlanner: {
     en: "/en/project-planner",
     nl: "/nl/projectplanner",
+  },
+  process: {
+    en: "/en/how-we-work",
+    nl: "/nl/werkwijze",
   },
   projects: {
     en: "/en/projects",
@@ -65,7 +70,24 @@ const localizedServiceSlugs = [
     en: "performance-optimization",
     nl: "performance",
   },
+  {
+    en: "3d-configurator",
+    nl: "3d-configurator",
+  },
+  {
+    en: "integrations-automation",
+    nl: "koppelingen-automatisering",
+  },
 ] as const;
+
+/**
+ * Legal documents exist in Dutch only, so both locales link to the same
+ * Dutch page. They are deliberately not part of the localized route map:
+ * there is no English counterpart to switch to.
+ */
+export const legalRoutes = {
+  terms: "/nl/algemene-voorwaarden",
+} as const;
 
 export function getLocalizedPath(locale: Locale, route: StaticRouteKey) {
   return localizedStaticRoutes[route][locale];
@@ -80,14 +102,14 @@ export function getRouteAlternates(route: StaticRouteKey) {
     languages: {
       en: localizedStaticRoutes[route].en,
       nl: localizedStaticRoutes[route].nl,
-      "x-default": localizedStaticRoutes[route].en,
+      "x-default": localizedStaticRoutes[route].nl,
     },
   };
 }
 
 function normalizePathname(pathname: string) {
   if (!pathname || pathname === "/") {
-    return localizedStaticRoutes.home.en;
+    return localizedStaticRoutes.home.nl;
   }
 
   return pathname.length > 1 && pathname.endsWith("/")

@@ -23,11 +23,7 @@ function renderInlineLinks(content: string) {
     const [, label, href] = linkMatch;
 
     return (
-      <Link
-        key={`${href}-${index}`}
-        href={href}
-        className="font-medium text-[var(--accent-text)] transition hover:opacity-80"
-      >
+      <Link key={`${href}-${index}`} href={href} className="link-static text-ink">
         {label}
       </Link>
     );
@@ -36,25 +32,19 @@ function renderInlineLinks(content: string) {
 
 export default function ArticleRichText({ blocks }: ArticleRichTextProps) {
   return (
-    <div className="ym-reading-column space-y-7">
+    <div className="reading space-y-6">
       {blocks.map((block, index) => {
         if (block.type === "heading") {
           if (block.level === 2) {
             return (
-              <h2
-                key={index}
-                className="pt-10 text-3xl font-semibold leading-tight text-[var(--foreground)] sm:text-[2.15rem]"
-              >
+              <h2 key={index} className="display-sm pt-8">
                 {block.content}
               </h2>
             );
           }
 
           return (
-            <h3
-              key={index}
-              className="pt-5 text-2xl font-semibold leading-tight text-[var(--foreground)]"
-            >
+            <h3 key={index} className="pt-3 text-[1.15rem] font-semibold text-ink">
               {block.content}
             </h3>
           );
@@ -62,9 +52,9 @@ export default function ArticleRichText({ blocks }: ArticleRichTextProps) {
 
         if (block.type === "list") {
           return (
-            <ul key={index} className="space-y-4 pl-5 text-[color:var(--muted-foreground)] marker:text-[var(--accent-text)]">
+            <ul key={index} className="space-y-3 pl-5 marker:text-accent">
               {block.items.map((item) => (
-                <li key={item} className="list-disc text-[1.03rem] leading-8">
+                <li key={item} className="list-disc text-[1.05rem] leading-relaxed text-body">
                   {renderInlineLinks(item)}
                 </li>
               ))}
@@ -73,7 +63,7 @@ export default function ArticleRichText({ blocks }: ArticleRichTextProps) {
         }
 
         return (
-          <p key={index} className="text-[1.05rem] leading-8 text-[color:var(--muted-foreground)]">
+          <p key={index} className="text-[1.05rem] leading-relaxed text-body">
             {renderInlineLinks(block.content)}
           </p>
         );

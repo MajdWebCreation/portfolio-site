@@ -6,54 +6,36 @@ type BrandMarkProps = {
   className?: string;
   priority?: boolean;
   label?: string;
-  variant?: "theme" | "dark" | "light";
-  assetSet?: "png" | "svg";
+  tone?: "dark" | "light";
 };
 
+/**
+ * The YM Creations wordmark. `tone="dark"` renders the ink version for light
+ * backgrounds, `tone="light"` the white version for ink backgrounds.
+ */
 export default function BrandMark({
   href,
-  className = "",
+  className = "h-9 w-[124px]",
   priority = false,
   label = "YM Creations",
-  variant = "theme",
-  assetSet = "png",
+  tone = "dark",
 }: BrandMarkProps) {
-  const darkSrc =
-    assetSet === "svg"
-      ? "/images/branding/logo-black.svg"
-      : "/images/branding/ym-logo-black.png";
-  const lightSrc =
-    assetSet === "svg"
+  const src =
+    tone === "light"
       ? "/images/branding/logo.svg"
-      : "/images/branding/ym-logo-white.png";
+      : "/images/branding/logo-black.svg";
 
   const logo = (
-    <div
-      data-logo-variant={variant}
-      className={`relative block h-11 w-[184px] shrink-0 overflow-hidden ${className}`}
-    >
+    <span className={`relative block shrink-0 ${className}`}>
       <Image
-        src={darkSrc}
-        alt={label}
+        src={src}
+        alt={href ? "" : label}
         fill
         priority={priority}
-        className={`ym-logo-image ym-logo-image-dark object-contain ${
-          assetSet === "png" ? "scale-[1.12]" : ""
-        }`}
-        sizes="(min-width: 1024px) 230px, (min-width: 640px) 220px, 200px"
+        sizes="200px"
+        className="object-contain object-left"
       />
-      <Image
-        src={lightSrc}
-        alt=""
-        aria-hidden="true"
-        fill
-        priority={priority}
-        className={`ym-logo-image ym-logo-image-light object-contain ${
-          assetSet === "png" ? "scale-[1.12]" : ""
-        }`}
-        sizes="(min-width: 1024px) 230px, (min-width: 640px) 220px, 200px"
-      />
-    </div>
+    </span>
   );
 
   if (!href) {

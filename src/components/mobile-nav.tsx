@@ -1,133 +1,128 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-
-type NavigationItem = {
-  href: string;
-  label: string;
-};
+import { useEffect, useId, useState } from "react";
+import type { NavigationItem } from "@/components/site-header";
 
 type MobileNavProps = {
-  currentPath: string;
+  navigation: NavigationItem[];
   counterpartPath: string;
-  currentLocaleLabel: string;
   alternateLocaleLabel: string;
   contactHref: string;
   contactLabel: string;
-  navigation: NavigationItem[];
+  menuLabel: string;
+  closeLabel: string;
 };
 
 export default function MobileNav({
-  currentPath,
+  navigation,
   counterpartPath,
-  currentLocaleLabel,
   alternateLocaleLabel,
   contactHref,
   contactLabel,
-  navigation,
+  menuLabel,
+  closeLabel,
 }: MobileNavProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
 
   useEffect(() => {
-    if (!mobileMenuOpen) {
-      document.body.style.overflow = "";
+    if (!open) {
       return;
     }
 
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
     };
-  }, [mobileMenuOpen]);
+  }, [open]);
 
   return (
-    <div className="flex shrink-0 items-center gap-2 md:hidden">
-      <Link
-        href={contactHref}
-        data-track-event="contact_cta_click"
-        data-track-category="navigation"
-        data-track-label={contactLabel}
-        data-track-location="mobile-header"
-        className="inline-flex h-12 max-w-[9.75rem] min-w-0 shrink items-center justify-center whitespace-nowrap rounded-full border border-[color:var(--line-strong)] bg-[var(--button-bg)] px-4 text-sm font-medium leading-none text-[var(--button-text)] transition hover:opacity-92 sm:h-14 sm:max-w-none sm:px-5 sm:text-base"
-        onClick={() => setMobileMenuOpen(false)}
-      >
-        {contactLabel}
-      </Link>
-
+    <div className="lg:hidden">
       <button
         type="button"
-        aria-label="Toggle menu"
-        onClick={() => setMobileMenuOpen((prev) => !prev)}
-        className="relative z-[60] flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[color:var(--line)] bg-[var(--background-elevated)]/92 sm:h-14 sm:w-14"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((value) => !value)}
+        className="relative z-50 -mr-2 inline-flex min-h-11 items-center gap-3 px-2 text-[0.95rem] font-medium text-ink"
       >
-        <div className="flex flex-col gap-1.5">
+        <span>{open ? closeLabel : menuLabel}</span>
+        <span aria-hidden="true" className="relative block h-3 w-5">
           <span
-            className={`block h-px w-5 bg-[var(--foreground)] transition ${
-              mobileMenuOpen ? "translate-y-[7px] rotate-45" : ""
+            className={`absolute left-0 top-0 block h-px w-5 bg-ink transition-transform duration-300 ${
+              open ? "translate-y-[5.5px] rotate-45" : ""
             }`}
           />
           <span
-            className={`block h-px w-5 bg-[var(--foreground)] transition ${
-              mobileMenuOpen ? "opacity-0" : ""
+            className={`absolute bottom-0 left-0 block h-px w-5 bg-ink transition-transform duration-300 ${
+              open ? "-translate-y-[5.5px] -rotate-45" : ""
             }`}
           />
-          <span
-            className={`block h-px w-5 bg-[var(--foreground)] transition ${
-              mobileMenuOpen ? "-translate-y-[7px] -rotate-45" : ""
-            }`}
-          />
-        </div>
+        </span>
       </button>
 
       <div
-        className={`fixed inset-0 z-40 transition duration-200 md:hidden ${
-          mobileMenuOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        id={panelId}
+        aria-hidden={!open}
+        className={`fixed inset-x-0 bottom-0 top-16 z-40 flex flex-col overflow-y-auto border-t border-line bg-paper transition-[opacity,transform] duration-300 ease-out ${
+          open
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-2 opacity-0"
         }`}
       >
-        <div
-          className="absolute inset-0 bg-[rgba(17,32,50,0.18)] backdrop-blur-[2px]"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      </div>
-
-      <div
-        className={`fixed inset-x-4 top-[84px] z-50 max-h-[calc(100vh-100px)] overflow-y-auto rounded-[1.75rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/96 p-4 shadow-[0_24px_54px_rgba(36,60,84,0.12)] backdrop-blur-md transition duration-200 md:hidden sm:top-[88px] sm:max-h-[calc(100vh-104px)] ${
-          mobileMenuOpen
-            ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-            : "pointer-events-none -translate-y-3 scale-[0.985] opacity-0"
-        }`}
-      >
-        <div className="mb-5 flex rounded-full border border-[color:var(--line)] bg-[var(--background)]/72 p-1">
-          <Link
-            href={currentPath}
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex-1 rounded-full bg-[var(--foreground)] px-3 py-2 text-center text-sm font-medium text-[var(--background-elevated)] transition"
-          >
-            {currentLocaleLabel}
-          </Link>
-          <Link
-            href={counterpartPath}
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex-1 rounded-full px-3 py-2 text-center text-sm font-medium text-[color:var(--muted-foreground)] transition hover:text-[var(--foreground)]"
-          >
-            {alternateLocaleLabel}
-          </Link>
-        </div>
-
-        <div className="flex flex-col">
+        <nav className="container-x flex flex-1 flex-col pt-4">
           {navigation.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setMobileMenuOpen(false)}
-              className="border-b border-[color:var(--line)] px-4 py-4 text-base font-medium text-[var(--foreground)] transition hover:text-[var(--accent-text)]"
+              onClick={() => setOpen(false)}
+              aria-current={item.active ? "page" : undefined}
+              className={`flex min-h-14 items-center justify-between border-b border-line text-[1.35rem] font-medium tracking-[-0.01em] ${
+                item.active ? "text-accent" : "text-ink"
+              }`}
+              tabIndex={open ? 0 : -1}
             >
               {item.label}
+              <span aria-hidden="true" className="text-faint">
+                →
+              </span>
             </Link>
           ))}
-        </div>
+
+          <div className="mt-auto space-y-4 py-8">
+            <Link
+              href={contactHref}
+              onClick={() => setOpen(false)}
+              data-track-event="contact_cta_click"
+              data-track-category="navigation"
+              data-track-label={contactLabel}
+              data-track-location="mobile-menu"
+              className="flex min-h-12 items-center justify-center rounded-sm bg-ink px-5 text-[1rem] font-medium text-paper"
+              tabIndex={open ? 0 : -1}
+            >
+              {contactLabel}
+            </Link>
+            <Link
+              href={counterpartPath}
+              onClick={() => setOpen(false)}
+              className="label-mono block py-2 text-center"
+              tabIndex={open ? 0 : -1}
+            >
+              {alternateLocaleLabel}
+            </Link>
+          </div>
+        </nav>
       </div>
     </div>
   );

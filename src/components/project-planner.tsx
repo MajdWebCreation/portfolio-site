@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { trackEvent } from "@/lib/analytics";
 import {
   buildPlannerSummary,
   formatEuro,
+  formatMonthlyFrom,
   getPlannerPageContent,
   initialPlannerState,
   type PlannerPackageKey,
@@ -14,6 +16,7 @@ import {
   type PlannerTimeline,
 } from "@/lib/content/project-planner";
 import { type Locale } from "@/lib/content/site-content";
+import { getAddOn, isPackageId, type PackageId } from "@/lib/pricing";
 
 type ProjectPlannerProps = {
   locale: Locale;
@@ -31,7 +34,15 @@ type PlannerErrorKey =
   | "brandingReady"
   | "priority"
   | "name"
-  | "email";
+  | "email"
+  | "businessDeclaration";
+
+const subscribeNoop = () => () => {};
+const readPackageParam = () => {
+  const value = new URLSearchParams(window.location.search).get("package");
+  return isPackageId(value) ? value : null;
+};
+const noPackage = () => null;
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -48,7 +59,7 @@ function ProgressBar({
     <div className="border-y border-white/10 py-4">
       <div>
         <div>
-          <p className="text-[10px] uppercase tracking-[0.24em] text-cyan-300/76">
+          <p className="text-[10px] uppercase tracking-[0.24em] text-accent-soft/76">
             Step {String(currentStep + 1).padStart(2, "0")} / {String(labels.length).padStart(2, "0")}
           </p>
           <p className="mt-2 text-sm text-white">{labels[currentStep]}</p>
@@ -60,7 +71,7 @@ function ProgressBar({
           <span
             key={label}
             className={`h-1.5 flex-1 rounded-full transition ${
-              index <= currentStep ? "bg-cyan-300/70" : "bg-white/10"
+              index <= currentStep ? "bg-accent-soft/70" : "bg-white/10"
             }`}
           />
         ))}
@@ -82,9 +93,9 @@ function ChoiceButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-[1.2rem] border px-4 py-3 text-left text-sm transition ${
+      className={`rounded-sm border px-4 py-3 text-left text-sm transition ${
         active
-          ? "border-cyan-300/38 bg-[rgba(15,28,40,0.82)] text-white"
+          ? "border-accent-soft/38 bg-white/[0.08] text-white"
           : "border-white/10 bg-white/[0.025] text-white/64 hover:border-white/18 hover:text-white"
       }`}
     >
@@ -117,7 +128,7 @@ function ToggleRow({
                 type="button"
                 onClick={() => setIsInfoOpen((prev) => !prev)}
                 aria-expanded={isInfoOpen}
-                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-white/16 text-[11px] font-medium text-white/62 transition hover:border-cyan-300/35 hover:text-white"
+                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-white/16 text-[11px] font-medium text-white/62 transition hover:border-accent-soft/35 hover:text-white"
               >
                 !
               </button>
@@ -139,7 +150,7 @@ function ToggleRow({
           <span
             className={`block h-6 w-11 rounded-full border transition ${
               checked
-                ? "border-cyan-300/40 bg-cyan-300/20"
+                ? "border-accent-soft/40 bg-accent-soft/20"
                 : "border-white/12 bg-white/[0.04]"
             }`}
           >
@@ -169,7 +180,7 @@ function SectionLabel({
   return (
     <div>
       <div className="flex items-center gap-3">
-        <p className="text-[10px] uppercase tracking-[0.26em] text-cyan-300/74">
+        <p className="text-[10px] uppercase tracking-[0.26em] text-accent-soft/74">
           {title}
         </p>
         {infoText ? (
@@ -177,7 +188,7 @@ function SectionLabel({
             type="button"
             onClick={() => setIsInfoOpen((prev) => !prev)}
             aria-expanded={isInfoOpen}
-            className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/16 text-[11px] font-medium text-white/62 transition hover:border-cyan-300/35 hover:text-white"
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/16 text-[11px] font-medium text-white/62 transition hover:border-accent-soft/35 hover:text-white"
           >
             !
           </button>
@@ -237,8 +248,20 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
     ...initialPlannerState,
     locale,
   });
+  /*
+    Package chosen on the pricing page (?package=...). It counts as the
+    project type until the visitor picks another one here.
+  */
+  const preselected = useSyncExternalStore(subscribeNoop, readPackageParam, noPackage);
+  const view = useMemo<PlannerState>(
+    () => ({ ...form, projectType: form.projectType || preselected || "" }),
+    [form, preselected],
+  );
 
-  const summary = useMemo(() => buildPlannerSummary(form), [form]);
+  const addOnLabel = (packageId: PackageId, addOnId: string) =>
+    getAddOn(locale, packageId, addOnId).label;
+
+  const summary = useMemo(() => buildPlannerSummary(view), [view]);
 
   const summaryRange = summary.range
     ? `${formatEuro(summary.range.min, locale)} - ${formatEuro(summary.range.max, locale)}`
@@ -363,6 +386,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
       priority: "Maak een keuze voordat je doorgaat",
       name: "Vul je naam in",
       email: "Vul een geldig e-mailadres in",
+      businessDeclaration: "Bevestig dat je deze aanvraag zakelijk doet",
     } satisfies Record<PlannerErrorKey, string>;
     const en = {
       projectType: "Select a project type",
@@ -377,6 +401,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
       priority: "Make a selection before continuing",
       name: "Enter your name",
       email: "Enter a valid email address",
+      businessDeclaration: "Confirm that this is a business request",
     } satisfies Record<PlannerErrorKey, string>;
 
     return (locale === "nl" ? nl : en)[key];
@@ -386,19 +411,19 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
     const errors: Partial<Record<PlannerErrorKey, string>> = {};
 
     if (currentStep === 0) {
-      if (!form.projectType) {
+      if (!view.projectType) {
         errors.projectType = getErrorCopy("projectType");
       }
       return errors;
     }
 
     if (currentStep === 1) {
-      if (!form.projectType) {
+      if (!view.projectType) {
         errors.projectType = getErrorCopy("projectType");
         return errors;
       }
 
-      if (form.projectType === "starter" || form.projectType === "business") {
+      if (view.projectType === "starter" || view.projectType === "business") {
         if (!form.pageCount) {
           errors.pageCount = getErrorCopy("pageCount");
         }
@@ -407,7 +432,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
         }
       }
 
-      if (form.projectType === "smart") {
+      if (view.projectType === "smart") {
         if (
           !form.smartBookingFlow &&
           !form.smartConfirmations &&
@@ -422,11 +447,11 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
         }
       }
 
-      if (form.projectType === "webshop" && !form.webshopProducts) {
+      if (view.projectType === "webshop" && !form.webshopProducts) {
         errors.webshopProducts = getErrorCopy("webshopProducts");
       }
 
-      if (form.projectType === "platform") {
+      if (view.projectType === "platform") {
         if (
           !form.customLogin &&
           !form.customDashboards &&
@@ -467,6 +492,10 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
 
       if (!form.email.trim() || !isValidEmail(form.email.trim())) {
         errors.email = getErrorCopy("email");
+      }
+
+      if (!form.businessDeclaration) {
+        errors.businessDeclaration = getErrorCopy("businessDeclaration");
       }
     }
 
@@ -533,13 +562,14 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
           website: form.website,
           message: form.notes || summary.reason,
           planner: {
-            projectTypeKey: form.projectType || "",
-            selectedProjectType: form.projectType
-              ? content.options.projectTypes[form.projectType]
+            projectTypeKey: view.projectType || "",
+            selectedProjectType: view.projectType
+              ? content.options.projectTypes[view.projectType]
               : "",
             recommendedPackage: summary.recommendedLabel,
             reason: summary.reason,
             startingPrice: formatEuro(summary.startingPrice, locale),
+            monthlyManagement: formatMonthlyFrom(summary.monthlyManagementFrom, locale),
             indicativeRange: summaryRange,
             selectedFeatures: summary.selectedFeatures,
             selectedAddOns: summary.selectedAddOns,
@@ -581,6 +611,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
             priorityKey: form.priority,
             priority: getPriorityLabel(locale, form.priority),
             notes: form.notes,
+            businessDeclaration: form.businessDeclaration,
           },
         }),
       });
@@ -629,7 +660,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
   }
 
   const inputBase =
-    "w-full rounded-[1.15rem] border border-white/14 bg-white/[0.08] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/40 focus:border-cyan-400/50 focus:bg-white/[0.1]";
+    "w-full rounded-sm border border-white/14 bg-white/[0.08] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/40 focus:border-accent-soft/50 focus:bg-white/[0.1]";
   const labelBase =
     "mb-2 block text-[11px] uppercase tracking-[0.24em] text-white/56";
 
@@ -646,12 +677,26 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
           {step === 0 ? (
             <div className="space-y-6">
               <SectionLabel title={content.questions.projectType} />
+              {preselected ? (
+                <p className="rounded-sm border border-accent-soft/30 bg-white/[0.05] px-4 py-3 text-sm leading-6 text-white/80">
+                  <span className="text-accent-soft">
+                    {locale === "nl" ? "Geselecteerd via tarieven:" : "Selected from pricing:"}
+                  </span>{" "}
+                  <span className="font-medium text-white">
+                    {content.options.projectTypes[preselected]}
+                  </span>
+                  {". "}
+                  {locale === "nl"
+                    ? "Je kunt dit hieronder nog wijzigen."
+                    : "You can still change it below."}
+                </p>
+              ) : null}
               <div className="grid gap-3 sm:grid-cols-2">
                 {(Object.keys(content.options.projectTypes) as PlannerPackageKey[]).map(
                   (key) => (
                     <ChoiceButton
                       key={key}
-                      active={form.projectType === key}
+                      active={view.projectType === key}
                       label={content.options.projectTypes[key]}
                       onClick={() => {
                         update("projectType", key);
@@ -665,7 +710,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
             </div>
           ) : null}
 
-          {step === 1 && (form.projectType === "starter" || form.projectType === "business") ? (
+          {step === 1 && (view.projectType === "starter" || view.projectType === "business") ? (
             <div className="space-y-8">
               <div className="space-y-4">
                 <SectionLabel title={content.questions.pageCount} />
@@ -714,32 +759,28 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
               <div className="space-y-4">
                 <SectionLabel
                   title={
-                    form.projectType === "starter"
+                    view.projectType === "starter"
                       ? content.questions.starterAddOns
                       : content.questions.businessAddOns
                   }
                   infoText={
-                    form.projectType === "starter"
+                    view.projectType === "starter"
                       ? helperCopy.starterAddOns
                       : helperCopy.businessAddOns
                   }
                 />
                 <div className="border-t border-white/10">
-                  {form.projectType === "starter" ? (
+                  {view.projectType === "starter" ? (
                     <>
                       <ToggleRow
                         checked={form.starterSeoBoost}
-                        label={locale === "nl" ? "SEO-boost" : "SEO boost"}
+                        label={addOnLabel("starter", "seo-plus")}
                         infoText={helperCopy.seoBoost}
                         onChange={(checked) => update("starterSeoBoost", checked)}
                       />
                       <ToggleRow
                         checked={form.starterMotion}
-                        label={
-                          locale === "nl"
-                            ? "Extra motion / premium animatie"
-                            : "Extra motion / premium animation"
-                        }
+                        label={addOnLabel("starter", "motion")}
                         onChange={(checked) => update("starterMotion", checked)}
                       />
                     </>
@@ -747,34 +788,26 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                     <>
                       <ToggleRow
                         checked={form.businessSeoGrowth}
-                        label="SEO Growth"
+                        label={addOnLabel("business", "seo-growth")}
                         infoText={helperCopy.seoGrowth}
                         onChange={(checked) => update("businessSeoGrowth", checked)}
                       />
                       <ToggleRow
                         checked={form.businessAdvancedEmail}
-                        label={
-                          locale === "nl"
-                            ? "Geavanceerde e-mailflow"
-                            : "Advanced email flow"
-                        }
+                        label={addOnLabel("business", "email-flow")}
                         onChange={(checked) =>
                           update("businessAdvancedEmail", checked)
                         }
                       />
                       <ToggleRow
                         checked={form.businessAdminLite}
-                        label="Admin-lite / content management"
+                        label={addOnLabel("business", "content-admin")}
                         infoText={helperCopy.adminLite}
                         onChange={(checked) => update("businessAdminLite", checked)}
                       />
                       <ToggleRow
                         checked={form.businessLightApi}
-                        label={
-                          locale === "nl"
-                            ? "Lichte API-integratie"
-                            : "Light API integration"
-                        }
+                        label={addOnLabel("business", "light-api")}
                         infoText={helperCopy.lightApi}
                         onChange={(checked) => update("businessLightApi", checked)}
                       />
@@ -786,13 +819,13 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
               <div className="space-y-4">
                 <SectionLabel
                   title={
-                    form.projectType === "starter"
+                    view.projectType === "starter"
                       ? content.questions.starterUpgrade
                       : content.questions.businessUpgrade
                   }
                 />
                 <div className="border-t border-white/10">
-                  {form.projectType === "starter" ? (
+                  {view.projectType === "starter" ? (
                     <>
                       <ToggleRow
                         checked={form.starterNeedBooking}
@@ -849,18 +882,18 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
             </div>
           ) : null}
 
-          {step === 1 && form.projectType === "smart" ? (
+          {step === 1 && view.projectType === "smart" ? (
             <div className="space-y-8">
               <SectionLabel title={content.questions.smartScope} infoText={helperCopy.smartScope} />
               <div className="border-t border-white/10">
                 <ToggleRow checked={form.smartBookingFlow} label={locale === "nl" ? "Booking of reserveringsflow" : "Booking or reservation flow"} onChange={(checked) => { update("smartBookingFlow", checked); clearError("smartScope"); }} />
                 <ToggleRow checked={form.smartConfirmations} label={locale === "nl" ? "Bevestigingen per e-mail" : "Confirmation emails"} onChange={(checked) => { update("smartConfirmations", checked); clearError("smartScope"); }} />
-                <ToggleRow checked={form.smartPayments} label={locale === "nl" ? "Betalingen" : "Payments"} onChange={(checked) => { update("smartPayments", checked); clearError("smartScope"); }} />
-                <ToggleRow checked={form.smartMaps} label={locale === "nl" ? "Google Maps / Routes / km-pricing" : "Google Maps / Routes / km pricing"} infoText={helperCopy.mapsRoutes} onChange={(checked) => { update("smartMaps", checked); clearError("smartScope"); }} />
-                <ToggleRow checked={form.smartCrm} label={locale === "nl" ? "CRM- of kalenderintegratie" : "CRM or calendar integration"} infoText={helperCopy.crmCalendar} onChange={(checked) => { update("smartCrm", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartPayments} label={addOnLabel("smart", "payments")} onChange={(checked) => { update("smartPayments", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartMaps} label={addOnLabel("smart", "maps-routes")} infoText={helperCopy.mapsRoutes} onChange={(checked) => { update("smartMaps", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartCrm} label={addOnLabel("smart", "crm-calendar")} infoText={helperCopy.crmCalendar} onChange={(checked) => { update("smartCrm", checked); clearError("smartScope"); }} />
                 <ToggleRow checked={form.smartAdmin} label={locale === "nl" ? "Admin-omgeving" : "Admin area"} onChange={(checked) => { update("smartAdmin", checked); clearError("smartScope"); }} />
-                <ToggleRow checked={form.smartExpandedAdmin} label={locale === "nl" ? "Uitgebreider admin panel" : "Expanded admin panel"} infoText={helperCopy.expandedAdmin} onChange={(checked) => { update("smartExpandedAdmin", checked); clearError("smartScope"); }} />
-                <ToggleRow checked={form.smartReminderAutomation} label={locale === "nl" ? "Reminder e-mails / automatisering" : "Reminder emails / automation"} onChange={(checked) => { update("smartReminderAutomation", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartExpandedAdmin} label={addOnLabel("smart", "expanded-admin")} infoText={helperCopy.expandedAdmin} onChange={(checked) => { update("smartExpandedAdmin", checked); clearError("smartScope"); }} />
+                <ToggleRow checked={form.smartReminderAutomation} label={addOnLabel("smart", "reminders")} onChange={(checked) => { update("smartReminderAutomation", checked); clearError("smartScope"); }} />
               </div>
               <InlineError id="planner-smart-scope-error" message={fieldErrors.smartScope} />
 
@@ -876,7 +909,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
             </div>
           ) : null}
 
-          {step === 1 && form.projectType === "webshop" ? (
+          {step === 1 && view.projectType === "webshop" ? (
             <div className="space-y-8">
               <div className="space-y-4">
                 <SectionLabel title={locale === "nl" ? "Hoeveel producten ongeveer?" : "How many products approximately?"} />
@@ -902,11 +935,11 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
               <div className="space-y-4">
                 <SectionLabel title={content.questions.webshopScope} infoText={helperCopy.webshopScope} />
                 <div className="border-t border-white/10">
-                  <ToggleRow checked={form.webshopSubscriptions} label="Subscriptions / memberships" infoText={helperCopy.subscriptions} onChange={(checked) => update("webshopSubscriptions", checked)} />
-                  <ToggleRow checked={form.webshopFilters} label={locale === "nl" ? "Geavanceerde filters / search" : "Advanced filters / search"} onChange={(checked) => update("webshopFilters", checked)} />
-                  <ToggleRow checked={form.webshopIntegrations} label={locale === "nl" ? "CRM / ERP / boekhoudintegratie" : "CRM / ERP / accounting integration"} infoText={helperCopy.webshopIntegrations} onChange={(checked) => update("webshopIntegrations", checked)} />
-                  <ToggleRow checked={form.webshopMultilingual} label={locale === "nl" ? "Meertalige ondersteuning" : "Multilingual support"} onChange={(checked) => update("webshopMultilingual", checked)} />
-                  <ToggleRow checked={form.webshopSeo} label={locale === "nl" ? "Geavanceerde SEO voor producten / categorieën" : "Advanced SEO for products / categories"} onChange={(checked) => update("webshopSeo", checked)} />
+                  <ToggleRow checked={form.webshopSubscriptions} label={addOnLabel("webshop", "subscriptions")} infoText={helperCopy.subscriptions} onChange={(checked) => update("webshopSubscriptions", checked)} />
+                  <ToggleRow checked={form.webshopFilters} label={addOnLabel("webshop", "filters-search")} onChange={(checked) => update("webshopFilters", checked)} />
+                  <ToggleRow checked={form.webshopIntegrations} label={addOnLabel("webshop", "erp-crm")} infoText={helperCopy.webshopIntegrations} onChange={(checked) => update("webshopIntegrations", checked)} />
+                  <ToggleRow checked={form.webshopMultilingual} label={addOnLabel("webshop", "multilingual")} onChange={(checked) => update("webshopMultilingual", checked)} />
+                  <ToggleRow checked={form.webshopSeo} label={addOnLabel("webshop", "product-seo")} onChange={(checked) => update("webshopSeo", checked)} />
                 </div>
               </div>
 
@@ -920,7 +953,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
             </div>
           ) : null}
 
-          {step === 1 && form.projectType === "platform" ? (
+          {step === 1 && view.projectType === "platform" ? (
             <div className="space-y-4">
               <SectionLabel title={content.questions.customScope} infoText={helperCopy.customScope} />
               <div className="border-t border-white/10">
@@ -929,8 +962,8 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                 <ToggleRow checked={form.customRoles} label={locale === "nl" ? "Gebruikersrollen en rechten" : "User roles and permissions"} infoText={helperCopy.rolesPermissions} onChange={(checked) => { update("customRoles", checked); clearError("customScope"); }} />
                 <ToggleRow checked={form.customWorkflows} label={locale === "nl" ? "Adminworkflows" : "Admin workflows"} onChange={(checked) => { update("customWorkflows", checked); clearError("customScope"); }} />
                 <ToggleRow checked={form.customApi} label={locale === "nl" ? "API-integraties" : "API integrations"} onChange={(checked) => { update("customApi", checked); clearError("customScope"); }} />
-                <ToggleRow checked={form.customReporting} label={locale === "nl" ? "Reporting / analytics" : "Reporting / analytics"} infoText={helperCopy.reporting} onChange={(checked) => { update("customReporting", checked); clearError("customScope"); }} />
-                <ToggleRow checked={form.customNotifications} label={locale === "nl" ? "Notificatiesysteem" : "Notification system"} onChange={(checked) => { update("customNotifications", checked); clearError("customScope"); }} />
+                <ToggleRow checked={form.customReporting} label={addOnLabel("platform", "reporting")} infoText={helperCopy.reporting} onChange={(checked) => { update("customReporting", checked); clearError("customScope"); }} />
+                <ToggleRow checked={form.customNotifications} label={addOnLabel("platform", "notifications")} onChange={(checked) => { update("customNotifications", checked); clearError("customScope"); }} />
                 <ToggleRow checked={form.customAppExpansion} label={locale === "nl" ? "App-uitbreiding later" : "App expansion later"} onChange={(checked) => { update("customAppExpansion", checked); clearError("customScope"); }} />
               </div>
               <InlineError id="planner-custom-scope-error" message={fieldErrors.customScope} />
@@ -1111,6 +1144,44 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                 />
               </div>
 
+              <div>
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    id="planner-business-declaration"
+                    type="checkbox"
+                    checked={form.businessDeclaration}
+                    onChange={(e) => {
+                      update("businessDeclaration", e.target.checked);
+                      clearError("businessDeclaration");
+                    }}
+                    aria-invalid={Boolean(fieldErrors.businessDeclaration)}
+                    aria-describedby={
+                      fieldErrors.businessDeclaration
+                        ? "planner-business-declaration-error"
+                        : undefined
+                    }
+                    className="mt-[0.3rem] h-4 w-4 shrink-0 accent-accent-soft"
+                  />
+                  <span className="text-sm leading-6 text-white/80">
+                    {content.fields.businessDeclaration}
+                  </span>
+                </label>
+                <InlineError
+                  id="planner-business-declaration-error"
+                  message={fieldErrors.businessDeclaration}
+                />
+                <p className="mt-3 text-sm leading-6 text-white/50">
+                  {content.fields.requestNote}{" "}
+                  <Link
+                    href={content.links.terms}
+                    hrefLang="nl"
+                    className="text-white/75 underline decoration-white/30 underline-offset-[0.2em] transition-colors hover:text-white"
+                  >
+                    {content.fields.termsLabel}
+                  </Link>
+                </p>
+              </div>
+
               <div className="hidden">
                 <label htmlFor="planner-website">Website</label>
                 <input
@@ -1139,7 +1210,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                 });
               }}
               disabled={step === 0}
-              className="rounded-full border border-white/12 px-5 py-3 text-sm text-white/74 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+              className="rounded-sm border border-white/16 px-5 py-3 text-sm text-white/74 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
             >
               {content.backLabel}
             </button>
@@ -1148,7 +1219,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
               <button
                 type="button"
                 onClick={handleNext}
-                className="rounded-full bg-white px-5 py-3 text-sm font-medium text-black transition hover:opacity-90"
+                className="rounded-sm bg-white px-5 py-3 text-sm font-medium text-ink transition hover:opacity-90"
               >
                 {content.nextLabel}
               </button>
@@ -1156,7 +1227,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="rounded-full bg-white px-5 py-3 text-sm font-medium text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+                className="rounded-sm bg-white px-5 py-3 text-sm font-medium text-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {isSubmitting ? content.submittingLabel : content.submitLabel}
               </button>
@@ -1165,7 +1236,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
 
           <div className="min-h-[24px] text-sm text-white/72">
             {status === "success" ? (
-              <span className="text-cyan-300/85">{content.successMessage}</span>
+              <span className="text-accent-soft/85">{content.successMessage}</span>
             ) : null}
             {status === "error" ? (
               <span className="text-red-300/85">{formError || content.errorMessage}</span>
@@ -1176,7 +1247,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
 
       <aside className="lg:sticky lg:top-28">
         <div className="border-t border-white/10 pt-6 lg:pt-8">
-          <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300/74">
+          <p className="text-[10px] uppercase tracking-[0.28em] text-accent-soft/74">
             {content.summary.eyebrow}
           </p>
           <h2 className="mt-4 text-3xl font-semibold text-white">
@@ -1205,6 +1276,15 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                   {content.summary.rangeLabel}: {summaryRange}
                 </p>
               ) : null}
+            </div>
+
+            <div className="border-b border-white/8 pb-5">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-white/36">
+                {content.summary.monthlyLabel}
+              </p>
+              <p className="mt-3 text-base font-medium text-white">
+                {formatMonthlyFrom(summary.monthlyManagementFrom, locale)}
+              </p>
             </div>
 
             <div className="border-b border-white/8 pb-5">

@@ -1,12 +1,20 @@
-import { getLocalizedPath } from "@/lib/content/routes";
+import { getLocalizedPath, legalRoutes } from "@/lib/content/routes";
 import { type Locale } from "@/lib/content/site-content";
+import {
+  formatEuro,
+  formatMonthlyFrom,
+  getAddOn,
+  getMonthlyManagementFrom,
+  getPackageName,
+  getStartingPrice,
+  packageIds,
+  type PackageId,
+} from "@/lib/pricing";
 
-export type PlannerPackageKey =
-  | "starter"
-  | "business"
-  | "smart"
-  | "webshop"
-  | "platform";
+export { formatEuro, formatMonthlyFrom };
+
+/** Planner project types are the pricing packages. */
+export type PlannerPackageKey = PackageId;
 
 export type PlannerTimeline =
   | "asap"
@@ -88,6 +96,8 @@ export type PlannerState = {
   company: string;
   phone: string;
   notes: string;
+  /** The request is made on behalf of a business or in a professional capacity. */
+  businessDeclaration: boolean;
   website: string;
 };
 
@@ -96,6 +106,8 @@ export type PlannerSummary = {
   recommendedLabel: string;
   reason: string;
   startingPrice: number;
+  /** Minimum monthly technical management for the recommended package. */
+  monthlyManagementFrom: number;
   range?: {
     min: number;
     max: number;
@@ -104,11 +116,6 @@ export type PlannerSummary = {
   selectedAddOns: string[];
   selectedAddOnTotal: number;
   disclaimer: string;
-};
-
-type PackageDefinition = {
-  label: string;
-  basePrice: number;
 };
 
 type PlannerPageContent = {
@@ -131,6 +138,7 @@ type PlannerPageContent = {
     title: string;
     recommendedLabel: string;
     priceLabel: string;
+    monthlyLabel: string;
     rangeLabel: string;
     selectedFeaturesLabel: string;
     selectedAddOnsLabel: string;
@@ -173,6 +181,10 @@ type PlannerPageContent = {
     company: string;
     phone: string;
     notes: string;
+    businessDeclaration: string;
+    /** A planner request is not an order; links to the terms. */
+    requestNote: string;
+    termsLabel: string;
     placeholders: {
       name: string;
       email: string;
@@ -184,6 +196,7 @@ type PlannerPageContent = {
   links: {
     pricing: string;
     contact: string;
+    terms: string;
   };
 };
 
@@ -245,25 +258,15 @@ export const initialPlannerState: PlannerState = {
   company: "",
   phone: "",
   notes: "",
+  businessDeclaration: false,
   website: "",
 };
 
-const packages: Record<Locale, Record<PlannerPackageKey, PackageDefinition>> = {
-  en: {
-    starter: { label: "Starter Website", basePrice: 695 },
-    business: { label: "Business Website", basePrice: 1750 },
-    smart: { label: "Smart Website / Booking", basePrice: 3250 },
-    webshop: { label: "Webshop", basePrice: 2495 },
-    platform: { label: "Custom Platform / Portal / SaaS", basePrice: 6500 },
-  },
-  nl: {
-    starter: { label: "Starter Website", basePrice: 695 },
-    business: { label: "Business Website", basePrice: 1750 },
-    smart: { label: "Smart Website / Booking", basePrice: 3250 },
-    webshop: { label: "Webshop", basePrice: 2495 },
-    platform: { label: "Maatwerk Platform / Portaal / SaaS", basePrice: 6500 },
-  },
-};
+function projectTypeOptions(locale: Locale): Record<PlannerPackageKey, string> {
+  return Object.fromEntries(
+    packageIds.map((id) => [id, getPackageName(locale, id)]),
+  ) as Record<PlannerPackageKey, string>;
+}
 
 const plannerContent: Record<Locale, PlannerPageContent> = {
   en: {
@@ -289,7 +292,8 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       eyebrow: "Live summary",
       title: "Project snapshot",
       recommendedLabel: "Recommended package",
-      priceLabel: "Starting from",
+      priceLabel: "One-off, starting from",
+      monthlyLabel: "Technical management",
       rangeLabel: "Indicative range",
       selectedFeaturesLabel: "Selected scope",
       selectedAddOnsLabel: "Relevant add-ons",
@@ -318,13 +322,7 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       notes: "Extra context",
     },
     options: {
-      projectTypes: {
-        starter: "Starter Website",
-        business: "Business Website",
-        smart: "Smart Website / Booking",
-        webshop: "Webshop",
-        platform: "Custom Platform / Portal / SaaS",
-      },
+      projectTypes: projectTypeOptions("en"),
       yes: "Yes",
       no: "No",
       partly: "Partly",
@@ -359,6 +357,10 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       company: "Company",
       phone: "Phone",
       notes: "Project notes",
+      businessDeclaration:
+        "I am making this request on behalf of a business or in the course of a profession or trade.",
+      requestNote: "A planner request is non-binding and not yet an order.",
+      termsLabel: "General terms (Dutch)",
       placeholders: {
         name: "Your name",
         email: "you@company.com",
@@ -370,6 +372,7 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
     links: {
       pricing: getLocalizedPath("en", "pricing"),
       contact: getLocalizedPath("en", "contact"),
+      terms: legalRoutes.terms,
     },
   },
   nl: {
@@ -395,7 +398,8 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       eyebrow: "Live samenvatting",
       title: "Projectsnapshot",
       recommendedLabel: "Aanbevolen pakket",
-      priceLabel: "Vanaf",
+      priceLabel: "Eenmalig, vanaf",
+      monthlyLabel: "Technisch beheer",
       rangeLabel: "Indicatieve range",
       selectedFeaturesLabel: "Geselecteerde scope",
       selectedAddOnsLabel: "Relevante add-ons",
@@ -424,13 +428,7 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       notes: "Extra context",
     },
     options: {
-      projectTypes: {
-        starter: "Starter Website",
-        business: "Business Website",
-        smart: "Smart Website / Booking",
-        webshop: "Webshop",
-        platform: "Maatwerk Platform / Portaal / SaaS",
-      },
+      projectTypes: projectTypeOptions("nl"),
       yes: "Ja",
       no: "Nee",
       partly: "Deels",
@@ -465,6 +463,10 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       company: "Bedrijf",
       phone: "Telefoon",
       notes: "Projectnotities",
+      businessDeclaration:
+        "Ik doe deze aanvraag namens een onderneming of in de uitoefening van beroep of bedrijf.",
+      requestNote: "Een planner-aanvraag is vrijblijvend en nog geen opdracht.",
+      termsLabel: "Algemene voorwaarden",
       placeholders: {
         name: "Jouw naam",
         email: "jij@bedrijf.nl",
@@ -476,6 +478,7 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
     links: {
       pricing: getLocalizedPath("nl", "pricing"),
       contact: getLocalizedPath("nl", "contact"),
+      terms: legalRoutes.terms,
     },
   },
 };
@@ -491,19 +494,11 @@ function pushItem(items: string[], condition: boolean, value: string) {
 }
 
 function getPackageLabel(locale: Locale, packageKey: PlannerPackageKey) {
-  return packages[locale][packageKey].label;
+  return getPackageName(locale, packageKey);
 }
 
 function getBasePrice(packageKey: PlannerPackageKey) {
-  return packages.en[packageKey].basePrice;
-}
-
-export function formatEuro(amount: number, locale: Locale) {
-  return new Intl.NumberFormat(locale === "nl" ? "nl-NL" : "en-US", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return getStartingPrice(packageKey);
 }
 
 export function getPlannerPageContent(locale: Locale) {
@@ -519,9 +514,12 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
   let addOnTotal = 0;
   let buffer = 0;
 
-  const addAddon = (label: string, amount: number) => {
-    selectedAddOns.push(label);
-    addOnTotal += amount;
+  /* Extensions come from the pricing module, by stable id, for the chosen type. */
+  const addAddon = (addOnId: string) => {
+    if (!state.projectType) return;
+    const addOn = getAddOn(locale, state.projectType, addOnId);
+    selectedAddOns.push(addOn.label);
+    addOnTotal += addOn.amount;
   };
 
   if (state.projectType === "starter") {
@@ -553,21 +551,13 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
     );
 
     if (state.multilingual === "yes") {
-      addAddon(
-        locale === "nl" ? "Meertalige setup" : "Multilingual setup",
-        200,
-      );
+      addAddon("multilingual");
     }
     if (state.starterSeoBoost) {
-      addAddon(locale === "nl" ? "SEO-boost" : "SEO boost", 250);
+      addAddon("seo-plus");
     }
     if (state.starterMotion) {
-      addAddon(
-        locale === "nl"
-          ? "Premium animatie"
-          : "Premium animation",
-        175,
-      );
+      addAddon("motion");
     }
 
     const smartTrigger =
@@ -639,28 +629,19 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
     );
 
     if (state.businessSeoGrowth) {
-      addAddon(locale === "nl" ? "SEO Growth" : "SEO Growth", 350);
+      addAddon("seo-growth");
     }
     if (state.businessAdvancedEmail) {
-      addAddon(
-        locale === "nl" ? "Geavanceerde e-mailflow" : "Advanced email flow",
-        200,
-      );
+      addAddon("email-flow");
     }
     if (state.businessAdminLite) {
-      addAddon(
-        locale === "nl" ? "Admin-lite / content management" : "Admin-lite / content management",
-        450,
-      );
+      addAddon("content-admin");
     }
     if (state.businessLightApi) {
-      addAddon(
-        locale === "nl" ? "Lichte API-integratie" : "Light API integration",
-        550,
-      );
+      addAddon("light-api");
     }
     if (state.pageCount === "12+") {
-      addAddon(locale === "nl" ? "Extra pagina's" : "Extra pages", 75);
+      addAddon("extra-page");
       buffer += 150;
     }
 
@@ -707,31 +688,19 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
     pushItem(selectedFeatures, state.smartAdmin, locale === "nl" ? "basis adminomgeving" : "basic admin environment");
 
     if (state.smartPayments) {
-      addAddon(locale === "nl" ? "Payment integratie" : "Payment integration", 650);
+      addAddon("payments");
     }
     if (state.smartMaps) {
-      addAddon(
-        locale === "nl" ? "Google Maps / Routes / km-pricing" : "Google Maps / Routes / km pricing",
-        1250,
-      );
+      addAddon("maps-routes");
     }
     if (state.smartCrm) {
-      addAddon(
-        locale === "nl" ? "CRM- of kalenderintegratie" : "CRM or calendar integration",
-        650,
-      );
+      addAddon("crm-calendar");
     }
     if (state.smartExpandedAdmin) {
-      addAddon(
-        locale === "nl" ? "Uitgebreider admin panel" : "Expanded admin panel",
-        950,
-      );
+      addAddon("expanded-admin");
     }
     if (state.smartReminderAutomation) {
-      addAddon(
-        locale === "nl" ? "Reminder e-mails / automatisering" : "Reminder emails / automation",
-        250,
-      );
+      addAddon("reminders");
     }
 
     const customTrigger =
@@ -765,25 +734,19 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
     );
 
     if (state.webshopSubscriptions) {
-      addAddon(locale === "nl" ? "Subscriptions / memberships" : "Subscriptions / memberships", 900);
+      addAddon("subscriptions");
     }
     if (state.webshopFilters) {
-      addAddon(locale === "nl" ? "Geavanceerde filters / search" : "Advanced filters / search", 450);
+      addAddon("filters-search");
     }
     if (state.webshopIntegrations) {
-      addAddon(
-        locale === "nl" ? "CRM / ERP / boekhoudintegratie" : "CRM / ERP / accounting integration",
-        750,
-      );
+      addAddon("erp-crm");
     }
     if (state.webshopMultilingual) {
-      addAddon(locale === "nl" ? "Meertalige setup" : "Multilingual setup", 200);
+      addAddon("multilingual");
     }
     if (state.webshopSeo) {
-      addAddon(
-        locale === "nl" ? "Geavanceerde SEO" : "Advanced SEO",
-        450,
-      );
+      addAddon("product-seo");
     }
 
     if (state.webshopNeedAccountLogic || state.webshopNeedWorkflowLogic) {
@@ -806,16 +769,16 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
     pushItem(selectedFeatures, state.customWorkflows, locale === "nl" ? "adminworkflows" : "admin workflows");
 
     if (state.customApi) {
-      addAddon(locale === "nl" ? "Complexe API-integratie" : "Complex API integration", 1500);
+      addAddon("complex-api");
     }
     if (state.customReporting) {
-      addAddon(locale === "nl" ? "Reporting / analytics" : "Reporting / analytics", 750);
+      addAddon("reporting");
     }
     if (state.customNotifications) {
-      addAddon(locale === "nl" ? "Notificatiesysteem" : "Notification system", 350);
+      addAddon("notifications");
     }
     if (state.customAppExpansion) {
-      addAddon(locale === "nl" ? "Mobile app extension" : "Mobile app extension", 3500);
+      addAddon("mobile-app");
       buffer += 400;
     }
   }
@@ -848,6 +811,7 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
     recommendedLabel: getPackageLabel(locale, recommendedPackage),
     reason,
     startingPrice,
+    monthlyManagementFrom: getMonthlyManagementFrom(recommendedPackage),
     range:
       rangeMax && rangeMax > startingPrice
         ? {

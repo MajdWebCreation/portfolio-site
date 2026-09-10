@@ -15,6 +15,7 @@ type ContactPayload = {
     recommendedPackage?: string;
     reason?: string;
     startingPrice?: string;
+    monthlyManagement?: string;
     indicativeRange?: string | null;
     selectedFeatures?: string[];
     selectedAddOns?: string[];
@@ -34,6 +35,7 @@ type ContactPayload = {
     priorityKey?: string;
     priority?: string;
     notes?: string;
+    businessDeclaration?: boolean;
   };
 };
 
@@ -62,7 +64,8 @@ type ValidationField =
   | "launchTimeline"
   | "contentReady"
   | "brandingReady"
-  | "priority";
+  | "priority"
+  | "businessDeclaration";
 
 type ValidationErrorMap = Partial<Record<ValidationField, string>>;
 
@@ -124,6 +127,7 @@ function getValidationMessage(locale: "en" | "nl", field: ValidationField) {
     contentReady: "Maak een keuze voordat je doorgaat",
     brandingReady: "Maak een keuze voordat je doorgaat",
     priority: "Maak een keuze voordat je doorgaat",
+    businessDeclaration: "Bevestig dat je deze aanvraag zakelijk doet",
   };
 
   const en: Record<ValidationField, string> = {
@@ -140,6 +144,7 @@ function getValidationMessage(locale: "en" | "nl", field: ValidationField) {
     contentReady: "Make a selection before continuing",
     brandingReady: "Make a selection before continuing",
     priority: "Make a selection before continuing",
+    businessDeclaration: "Confirm that this is a business request",
   };
 
   return (locale === "nl" ? nl : en)[field];
@@ -217,6 +222,12 @@ function validateSubmission(submission: NormalizedSubmission) {
   if (!planner?.priorityKey) {
     errors.priority = getValidationMessage(submission.locale, "priority");
   }
+  if (planner?.businessDeclaration !== true) {
+    errors.businessDeclaration = getValidationMessage(
+      submission.locale,
+      "businessDeclaration",
+    );
+  }
 
   return errors;
 }
@@ -287,10 +298,18 @@ function buildPlannerCustomerEmail(params: {
                 </tr>
                 <tr>
                   <td style="padding:0 0 12px;vertical-align:top;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                    ${isNl ? "Startprijs" : "Starting price"}
+                    ${isNl ? "Eenmalig, vanaf" : "One-off, from"}
                   </td>
                   <td style="padding:0 0 12px;vertical-align:top;font-size:14px;line-height:1.7;color:#ffffff;text-align:right;">
                     ${escapeHtml(planner?.startingPrice || "—")}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 12px;vertical-align:top;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
+                    ${isNl ? "Technisch beheer" : "Technical management"}
+                  </td>
+                  <td style="padding:0 0 12px;vertical-align:top;font-size:14px;line-height:1.7;color:#ffffff;text-align:right;">
+                    ${escapeHtml(planner?.monthlyManagement || "—")}
                   </td>
                 </tr>
                 ${
@@ -418,7 +437,8 @@ ${isNl
 ${isNl ? "Projecttype" : "Project type"}: ${planner?.selectedProjectType || "—"}
 ${isNl ? "Aanbevolen pakket" : "Recommended package"}: ${planner?.recommendedPackage || "—"}
 ${isNl ? "Waarom dit past" : "Why this fits"}: ${planner?.reason || "—"}
-${isNl ? "Startprijs" : "Starting price"}: ${planner?.startingPrice || "—"}
+${isNl ? "Eenmalig, vanaf" : "One-off, from"}: ${planner?.startingPrice || "—"}
+${isNl ? "Technisch beheer" : "Technical management"}: ${planner?.monthlyManagement || "—"}
 ${planner?.indicativeRange ? `${isNl ? "Indicatieve range" : "Indicative range"}: ${planner.indicativeRange}` : ""}
 ${isNl ? "Planning" : "Timeline"}: ${planner?.launchTimeline || "—"}
 ${isNl ? "Content" : "Content"}: ${planner?.contentReady || "—"}
@@ -517,11 +537,13 @@ export async function POST(request: Request) {
       <p><strong>Recommended package:</strong> ${escapeHtml(planner?.recommendedPackage || "—")}</p>
       <p><strong>Reason:</strong> ${escapeHtml(planner?.reason || "—")}</p>
       <p><strong>Starting price:</strong> ${escapeHtml(planner?.startingPrice || "—")}</p>
+      <p><strong>Technical management:</strong> ${escapeHtml(planner?.monthlyManagement || "—")}</p>
       <p><strong>Indicative range:</strong> ${escapeHtml(planner?.indicativeRange || "—")}</p>
       <p><strong>Launch timeline:</strong> ${escapeHtml(planner?.launchTimeline || "—")}</p>
       <p><strong>Content readiness:</strong> ${escapeHtml(planner?.contentReady || "—")}</p>
       <p><strong>Branding readiness:</strong> ${escapeHtml(planner?.brandingReady || "—")}</p>
       <p><strong>Priority:</strong> ${escapeHtml(planner?.priority || "—")}</p>
+      <p><strong>Business declaration:</strong> ${planner?.businessDeclaration ? "Yes" : "No"}</p>
       <p><strong>Phone:</strong> ${escapeHtml(phone || "—")}</p>
       <p><strong>Selected scope:</strong></p>
       <ul>
@@ -571,11 +593,13 @@ Selected project type: ${planner?.selectedProjectType || "—"}
 Recommended package: ${planner?.recommendedPackage || "—"}
 Reason: ${planner?.reason || "—"}
 Starting price: ${planner?.startingPrice || "—"}
+Technical management: ${planner?.monthlyManagement || "—"}
 Indicative range: ${planner?.indicativeRange || "—"}
 Launch timeline: ${planner?.launchTimeline || "—"}
 Content readiness: ${planner?.contentReady || "—"}
 Branding readiness: ${planner?.brandingReady || "—"}
 Priority: ${planner?.priority || "—"}
+Business declaration: ${planner?.businessDeclaration ? "Yes" : "No"}
 Phone: ${phone || "—"}
 
 Selected scope:

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getLocalizedPath } from "@/lib/content/routes";
+import { getLocalizedPath, getRouteAlternates } from "@/lib/content/routes";
 import { businessInfo, type Locale } from "@/lib/content/site-content";
 
 type MetadataInput = {
@@ -9,6 +9,9 @@ type MetadataInput = {
   description: string;
   absoluteTitle?: boolean;
   alternates?: Metadata["alternates"];
+  image?: string;
+  /** Keep the page out of search results (used for draft legal documents). */
+  noindex?: boolean;
 };
 
 export function getCanonicalUrl(pathname: string) {
@@ -22,6 +25,8 @@ export function buildMetadata({
   description,
   absoluteTitle = false,
   alternates,
+  image,
+  noindex = false,
 }: MetadataInput): Metadata {
   const canonical = getCanonicalUrl(pathname);
 
@@ -38,7 +43,9 @@ export function buildMetadata({
       url: canonical,
       siteName: businessInfo.name,
       locale: locale === "nl" ? "nl_NL" : "en_US",
+      alternateLocale: locale === "nl" ? ["en_US"] : ["nl_NL"],
       type: "website",
+      ...(image ? { images: [{ url: image }] } : {}),
     },
     twitter: {
       card: "summary_large_image",
@@ -46,7 +53,7 @@ export function buildMetadata({
       description,
     },
     robots: {
-      index: true,
+      index: !noindex,
       follow: true,
     },
   };
@@ -56,32 +63,20 @@ export function getHomeMetadata(locale: Locale) {
   if (locale === "nl") {
     return buildMetadata({
       locale,
-      pathname: "/nl",
-      title: "Premium Webdesign & Development",
+      pathname: getLocalizedPath("nl", "home"),
+      title: "Maatwerk websites, webshops en webapplicaties",
       description:
-        "Maatwerk websites, webapplicaties, webshops en landingspagina’s voor bedrijven die online sterker zichtbaar willen zijn.",
-      alternates: {
-        languages: {
-          en: getLocalizedPath("en", "home"),
-          nl: getLocalizedPath("nl", "home"),
-          "x-default": getLocalizedPath("en", "home"),
-        },
-      },
+        "YM Creations is een Nederlands IT- en webbedrijf. We ontwerpen en bouwen maatwerk websites, webshops, webapplicaties, apps en 3D-configurators in eigen code.",
+      alternates: getRouteAlternates("home"),
     });
   }
 
   return buildMetadata({
     locale,
-    pathname: "/en",
-    title: "Premium Web Design & Development",
+    pathname: getLocalizedPath("en", "home"),
+    title: "Custom websites, webshops and web applications",
     description:
-      "Custom websites, web applications, ecommerce builds, and landing pages for businesses that want a stronger online presence.",
-    alternates: {
-      languages: {
-        en: getLocalizedPath("en", "home"),
-        nl: getLocalizedPath("nl", "home"),
-        "x-default": getLocalizedPath("en", "home"),
-      },
-    },
+      "YM Creations is a Dutch IT and web company. We design and build custom websites, webshops, web applications, apps and 3D configurators in custom code.",
+    alternates: getRouteAlternates("home"),
   });
 }

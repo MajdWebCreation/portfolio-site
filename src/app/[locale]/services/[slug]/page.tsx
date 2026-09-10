@@ -1,14 +1,15 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import AmbientMedia from "@/components/ambient-media";
-import FaqBlock from "@/components/faq-block";
+import CtaLink from "@/components/cta-link";
+import FaqList from "@/components/faq-list";
 import JsonLd from "@/components/json-ld";
-import ProcessBlock from "@/components/process-block";
-import RevealSection from "@/components/reveal-section";
-import SeoCta from "@/components/seo-cta";
-import SiteFooter from "@/components/site-footer";
+import NextStep from "@/components/next-step";
+import PageHeader from "@/components/page-header";
+import ProcessSteps from "@/components/process-steps";
+import ProjectRow from "@/components/project-row";
 import SiteShell from "@/components/site-shell";
+import { getProjectById, type Project } from "@/lib/content/projects";
 import { getLocalizedPath } from "@/lib/content/routes";
 import {
   getServiceAlternates,
@@ -16,6 +17,8 @@ import {
   getServicesForLocale,
   serviceDefinitions,
   serviceKeys,
+  type LocalizedService,
+  type ServicePart,
 } from "@/lib/content/services";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
 import { serviceSchema, webPageSchema } from "@/lib/schema";
@@ -61,15 +64,108 @@ export default async function ServiceDetailPage({
 }) {
   const { locale, slug } = await params;
 
-  if (!isValidLocale(locale)) {
-    notFound();
-  }
-
-  if (locale !== "en") {
+  if (!isValidLocale(locale) || locale !== "en") {
     notFound();
   }
 
   return <ServiceDetailContent locale={locale} slug={slug} />;
+}
+
+const labels = {
+  nl: {
+    services: "Diensten",
+    proof: "Uit de praktijk",
+    visit: "Bekijk live",
+    built: "Gebouwd",
+    related: "Andere diensten",
+    allProjects: "Alle projecten",
+    contact: "Neem contact op",
+    planner: "Gebruik de projectplanner",
+    pricing: "Bekijk tarieven",
+  },
+  en: {
+    services: "Services",
+    proof: "From practice",
+    visit: "View live",
+    built: "Built",
+    related: "Other services",
+    allProjects: "All projects",
+    contact: "Get in touch",
+    planner: "Use the project planner",
+    pricing: "View pricing",
+  },
+} as const;
+
+/* A short list with an accent dash in front of each item. */
+function DashList({ items, className = "" }: { items: string[]; className?: string }) {
+  return (
+    <ul className={`space-y-2.5 ${className}`}>
+      {items.map((item) => (
+        <li key={item} className="flex gap-3 text-[0.98rem] leading-snug text-body">
+          <span aria-hidden="true" className="mt-[0.65em] h-px w-3 shrink-0 bg-accent" />
+          {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/* What is not automatically included: a tinted panel. */
+function ScopePanel({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-sm bg-paper-deep p-6 sm:p-7">
+      <h2 className="label-mono text-ink">{title}</h2>
+      <ul className="mt-4 space-y-2.5">
+        {items.map((item) => (
+          <li key={item} className="flex gap-3 text-[0.95rem] leading-snug text-body">
+            <span aria-hidden="true" className="mt-[0.6em] h-px w-3 shrink-0 bg-line-strong" />
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/* Layers of a product, stacked along a rail. */
+function PartsLayers({ parts }: { parts: ServicePart[] }) {
+  return (
+    <dl className="grid gap-x-10 border-t border-line md:grid-cols-2">
+      {parts.map((part) => (
+        <div
+          key={part.label}
+          className="grid grid-cols-[1.25rem_1fr] gap-x-3 border-b border-line py-4"
+        >
+          <span aria-hidden="true" className="relative top-[0.55em] block h-[8px] w-[8px] rounded-full bg-accent" />
+          <dt className="text-[1.05rem] font-semibold leading-snug text-ink">{part.label}</dt>
+          <dd className="col-start-2 mt-1 text-[0.95rem] leading-relaxed text-muted">
+            {part.text}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/* Steps a customer takes, left to right, joined by a hairline. */
+function PartsFlow({ parts }: { parts: ServicePart[] }) {
+  return (
+    <ol className="grid gap-y-8 sm:grid-cols-2 lg:grid-cols-5 lg:gap-x-6">
+      {parts.map((part, index) => (
+        <li key={part.label} className="relative pt-4">
+          <span aria-hidden="true" className="absolute left-0 top-0 h-px w-full bg-line-strong" />
+          <span
+            aria-hidden="true"
+            className={`absolute top-[-4px] block h-[9px] w-[9px] rounded-full ${
+              index === parts.length - 1 ? "bg-ink" : "bg-accent"
+            }`}
+          />
+          <h3 className="text-[1.05rem] font-semibold leading-snug text-ink">{part.label}</h3>
+          <p className="mt-1.5 text-[0.93rem] leading-relaxed text-muted">{part.text}</p>
+        </li>
+      ))}
+    </ol>
+  );
 }
 
 export function ServiceDetailContent({
@@ -86,23 +182,15 @@ export function ServiceDetailContent({
   }
 
   const content = siteContent[locale];
+  const text = labels[locale];
   const siblingServices = getServicesForLocale(locale).filter(
     (item) => item.key !== service.key,
   );
-  const supportsPlannerCta =
-    service.key === "business-websites" ||
-    service.key === "web-app-development" ||
-    service.key === "ecommerce-development";
-  const secondaryCtaLabel = supportsPlannerCta
-    ? locale === "nl"
-      ? "Gebruik de Project Planner"
-      : "Use the Project Planner"
-    : locale === "nl"
-      ? "Terug naar diensten"
-      : "Back to services";
-  const secondaryCtaHref = supportsPlannerCta
-    ? getLocalizedPath(locale, "projectPlanner")
-    : service.overviewPath;
+  const proofProjects = service.proof
+    .map((id) => getProjectById(id))
+    .filter((project): project is Project => Boolean(project));
+  const supportsPlanner =
+    service.kind === "package" || service.key === "web-app-development";
 
   return (
     <>
@@ -115,219 +203,224 @@ export function ServiceDetailContent({
           }),
           serviceSchema({
             name: service.navLabel,
-            description: service.intro,
+            description: service.metaDescription,
             url: getCanonicalUrl(service.path),
           }),
         ]}
       />
       <SiteShell locale={locale} content={content} currentPath={service.path}>
-        <section className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-10 lg:py-20">
-          <div className="ym-bg-arc pointer-events-none absolute inset-[-6%] opacity-[0.22]" />
-          <div className="relative grid gap-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-end">
-            <RevealSection>
-              <p className="mb-4 text-sm uppercase tracking-[0.3em] text-[var(--accent-text)]">
-                {content.nav.services}
+        <PageHeader
+          label={`${text.services} · ${service.familyTitle}`}
+          title={service.title}
+          intro={service.intro}
+        >
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+            <CtaLink
+              href={service.contactPath}
+              data-track-event="contact_cta_click"
+              data-track-category="service-detail"
+              data-track-label={text.contact}
+              data-track-location="service-header"
+            >
+              {text.contact}
+            </CtaLink>
+            {service.kind === "package" ? (
+              <CtaLink
+                href={getLocalizedPath(locale, "pricing")}
+                variant="text"
+                data-track-event="primary_cta_click"
+                data-track-category="service-detail"
+                data-track-label={text.pricing}
+                data-track-location="service-header"
+              >
+                {text.pricing}
+              </CtaLink>
+            ) : service.priceNote ? (
+              <p className="flex max-w-sm items-start gap-2.5 text-[0.9rem] leading-snug text-muted">
+                <span aria-hidden="true" className="mt-[0.5em] block h-[7px] w-[7px] shrink-0 rounded-full bg-accent" />
+                {service.priceNote}
               </p>
-              <h1 className="max-w-4xl text-4xl font-semibold leading-tight text-[var(--foreground)] sm:text-5xl lg:text-6xl">
-                {service.title}
-              </h1>
-              <p className="mt-6 max-w-3xl text-base leading-8 text-[color:var(--muted-foreground)] sm:text-lg">
-                {service.intro}
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  href={service.contactPath}
-                  data-track-event="contact_cta_click"
-                  data-track-category="service-detail"
-                  data-track-label={locale === "nl" ? "Bespreek je project" : "Discuss your project"}
-                  data-track-location="service-hero"
-                  className="rounded-full bg-[var(--button-bg)] px-6 py-3 text-sm font-medium text-[var(--button-text)] transition hover:opacity-92"
-                >
-                  {locale === "nl" ? "Bespreek je project" : "Discuss your project"}
-                </Link>
-                <Link
-                  href={service.overviewPath}
-                  data-track-event="primary_cta_click"
-                  data-track-category="service-detail"
-                  data-track-label={locale === "nl" ? "Bekijk alle diensten" : "View all services"}
-                  data-track-location="service-hero"
-                  className="rounded-full border border-[color:var(--line)] bg-[var(--background-elevated)] px-6 py-3 text-sm font-medium text-[var(--foreground)] transition hover:border-[color:var(--line-strong)]"
-                >
-                  {locale === "nl" ? "Bekijk alle diensten" : "View all services"}
-                </Link>
-              </div>
-            </RevealSection>
+            ) : null}
+          </div>
+        </PageHeader>
 
-            <RevealSection delay={0.08}>
-              <div className="grid gap-4">
-                <AmbientMedia
-                  src="/images/visuals/services-ui-architecture.jpg"
-                  alt="Service interface architecture visual"
-                  quality={78}
-                  className="min-h-[360px]"
-                  imageClassName="object-cover object-center"
-                />
-                <div className="grid gap-4 md:grid-cols-2">
-                  {service.deliverables.slice(0, 4).map((item) => (
-                    <div
-                      key={item}
-                      className="rounded-[1.7rem] border border-[color:var(--line)] bg-[var(--background-elevated)] p-5"
-                    >
-                      <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--accent-text)]">
-                        {service.icon}
-                      </p>
-                      <p className="mt-4 text-sm leading-7 text-[color:var(--muted-foreground)]">{item}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </RevealSection>
+        {/* When it fits, and what we build or change. */}
+        <section className="container-x pt-12 lg:pt-16">
+          <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
+            <div className="lg:col-span-5">
+              <h2 className="display-sm">{service.fitTitle}</h2>
+              <DashList items={service.fit} className="mt-5" />
+            </div>
+            <div className="lg:col-span-6 lg:col-start-7">
+              <h2 className="display-sm">{service.buildTitle}</h2>
+              <DashList items={service.build} className="mt-5" />
+            </div>
           </div>
         </section>
 
-        <section className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-10">
-          <section className="rounded-[2.2rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 p-6 md:p-8">
-            <h2 className="text-3xl font-semibold text-[var(--foreground)]">
-              {service.forWhoTitle}
-            </h2>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-[color:var(--muted-foreground)]">
-              {service.forWhoDescription}
-            </p>
-            <ul className="mt-6 space-y-3">
-              {service.suitableFor.map((item) => (
-                <li
-                  key={item}
-                  className="rounded-[1.2rem] border border-[color:var(--line)] bg-[var(--background)] px-4 py-4 text-sm leading-7 text-[color:var(--muted-foreground)]"
-                >
-                  {item}
-                </li>
+        {/* Parts and scope, laid out by the kind of service. */}
+        <ServiceParts service={service} />
+
+        {/* Proof: a live project that shows this kind of work. */}
+        {proofProjects.length > 0 ? (
+          <section className="container-x mt-16 lg:mt-24">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t border-line pt-8">
+              <h2 className="display-sm">{text.proof}</h2>
+              <CtaLink
+                href={getLocalizedPath(locale, "projects")}
+                variant="text"
+                data-track-event="primary_cta_click"
+                data-track-category="service-detail"
+                data-track-label="projects"
+                data-track-location="service-proof"
+              >
+                {text.allProjects}
+              </CtaLink>
+            </div>
+            <div className="mt-2 border-b border-line">
+              {proofProjects.map((project) => (
+                <ProjectRow
+                  key={project.id}
+                  project={project}
+                  locale={locale}
+                  visitLabel={text.visit}
+                  builtLabel={text.built}
+                />
               ))}
-            </ul>
+            </div>
           </section>
+        ) : null}
 
-          <section className="relative overflow-hidden rounded-[2.2rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 p-6 md:p-8">
-            <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(113,227,255,0.08),transparent_70%)]" />
-            <h2 className="text-3xl font-semibold text-[var(--foreground)]">
-              {service.useCasesTitle}
-            </h2>
-            <ul className="mt-6 space-y-3">
-              {service.useCases.map((item) => (
-                <li
-                  key={item}
-                  className="rounded-[1.2rem] border border-[color:var(--line)] bg-[var(--background)] px-4 py-4 text-sm leading-7 text-[color:var(--muted-foreground)]"
-                >
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </section>
+        {/* How the project runs, specific to this service. */}
+        <section className="container-x mt-16 lg:mt-24">
+          <div className="border-t border-line pt-8">
+            <h2 className="display-sm">{service.approachTitle}</h2>
+            <div className="mt-8">
+              <ProcessSteps steps={service.approach} />
+            </div>
+          </div>
         </section>
 
-        <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-10">
-          <ProcessBlock
-            title={locale === "nl" ? "Het projectproces" : "The project process"}
-            steps={service.process}
-          />
+        {/* FAQ. */}
+        <section className="container-x mt-16 lg:mt-24">
+          <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
+            <h2 className="display-sm lg:col-span-4">{service.faqTitle}</h2>
+            <div className="lg:col-span-7 lg:col-start-6">
+              <FaqList items={service.faqs} />
+            </div>
+          </div>
         </section>
 
-        <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-10">
-          <FaqBlock title={service.faqTitle} items={service.faqs} />
-        </section>
-
-        <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-10">
-          <SeoCta
+        {/* Closing step. */}
+        <div className="mt-20 lg:mt-28">
+          <NextStep
             title={service.ctaTitle}
-            text={
-              supportsPlannerCta
-                ? locale === "nl"
-                  ? `${service.ctaText} Twijfel je nog over het juiste niveau of de juiste scope, dan helpt de Project Planner om dat eerst helder te krijgen.`
-                  : `${service.ctaText} If you are still unsure about the right level or scope, the Project Planner helps clarify that first.`
-                : service.ctaText
-            }
-            primaryLabel={locale === "nl" ? "Neem contact op" : "Contact us"}
+            text={service.ctaText}
+            primaryLabel={text.contact}
             primaryHref={service.contactPath}
-            secondaryLabel={secondaryCtaLabel}
-            secondaryHref={secondaryCtaHref}
+            secondaryLabel={supportsPlanner ? text.planner : undefined}
+            secondaryHref={
+              supportsPlanner ? getLocalizedPath(locale, "projectPlanner") : undefined
+            }
             trackingContext="service"
           />
-        </section>
+        </div>
 
-        <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-10">
-          <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
-            <div className="rounded-[2.2rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 p-6 md:p-8">
-              <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--accent-text)]">
-                Service compass
-              </p>
-              <p className="mt-5 text-base leading-8 text-[color:var(--muted-foreground)]">
-                {service.intro}
-              </p>
-            </div>
-            <div className="rounded-[2.2rem] border border-[color:var(--line)] bg-[var(--background-elevated)]/94 p-6 md:p-8">
-            <h2 className="text-3xl font-semibold text-[var(--foreground)]">
-              {locale === "nl" ? "Andere diensten" : "Other services"}
-            </h2>
-            <div className="mt-8 grid gap-4 lg:grid-cols-3">
-              {siblingServices.slice(0, 3).map((item) => (
+        {/* Related services, as plain links. */}
+        <nav aria-label={text.related} className="container-x mt-16 lg:mt-20">
+          <p className="label-mono">{text.related}</p>
+          <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+            {siblingServices.map((item) => (
+              <li key={item.path}>
                 <Link
-                  key={item.path}
                   href={item.path}
                   data-track-event="service_cta_click"
                   data-track-category="service-detail"
                   data-track-label={item.navLabel}
                   data-track-location="related-services"
-                  className="rounded-[1.4rem] border border-[color:var(--line)] bg-[var(--background)]/84 p-5 transition hover:border-[color:var(--line-strong)]"
+                  className="link-static text-[0.98rem] text-ink"
                 >
-                  <p className="text-sm font-medium text-[var(--foreground)]">{item.navLabel}</p>
-                  <p className="mt-3 text-sm leading-7 text-[color:var(--muted-foreground)]">
-                    {item.intro}
-                  </p>
+                  {item.navLabel}
                 </Link>
-              ))}
-            </div>
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              </li>
+            ))}
+            <li>
               <Link
-                href={locale === "nl" ? "/nl/projecten" : "/en/projects"}
-                data-track-event="primary_cta_click"
+                href={service.overviewPath}
+                className="link-static text-[0.98rem] text-muted"
+                data-track-event="service_cta_click"
                 data-track-category="service-detail"
-                data-track-label={locale === "nl" ? "Projecten" : "Projects"}
-                data-track-location="service-related-links"
-                className="rounded-[1.4rem] border border-[color:var(--line)] bg-[var(--background)]/84 p-5 text-sm leading-7 text-[color:var(--muted-foreground)] transition hover:border-[color:var(--line-strong)]"
+                data-track-label="services-overview"
+                data-track-location="related-services"
               >
-                {locale === "nl"
-                  ? "Bekijk het projectenoverzicht voor de manier waarop werk en richting worden opgebouwd."
-                  : "View the projects overview for how work and direction are shaped."}
+                {text.services} →
               </Link>
-              <Link
-                href={locale === "nl" ? "/nl/blog" : "/en/blog"}
-                data-track-event="article_cta_click"
-                data-track-category="service-detail"
-                data-track-label={locale === "nl" ? "Inzichten" : "Insights"}
-                data-track-location="service-related-links"
-                className="rounded-[1.4rem] border border-[color:var(--line)] bg-[var(--background)]/84 p-5 text-sm leading-7 text-[color:var(--muted-foreground)] transition hover:border-[color:var(--line-strong)]"
-              >
-                {locale === "nl"
-                  ? "Lees inzichten over performance, structuur en technische keuzes."
-                  : "Read insights on performance, structure, and technical decisions."}
-              </Link>
-              <Link
-                href={service.contactPath}
-                data-track-event="contact_cta_click"
-                data-track-category="service-detail"
-                data-track-label={locale === "nl" ? "Contact" : "Contact"}
-                data-track-location="service-related-links"
-                className="rounded-[1.4rem] border border-[color:var(--line)] bg-[var(--background)]/84 p-5 text-sm leading-7 text-[color:var(--muted-foreground)] transition hover:border-[color:var(--line-strong)]"
-              >
-                {locale === "nl"
-                  ? "Neem contact op om te bespreken of deze dienst past bij je project."
-                  : "Get in touch to discuss whether this service fits your project."}
-              </Link>
-            </div>
-            </div>
-          </div>
-        </section>
-
-        <SiteFooter locale={locale} content={content.footer} />
+            </li>
+          </ul>
+        </nav>
       </SiteShell>
     </>
+  );
+}
+
+/**
+ * Package: what is included next to what depends on scope.
+ * Custom: the parts of the product as layers or as a flow, then scope.
+ * Improve: no parts list; only what depends on scope.
+ */
+function ServiceParts({ service }: { service: LocalizedService }) {
+  if (service.kind === "custom" && service.parts && service.partsTitle) {
+    return (
+      <section className="container-x mt-16 lg:mt-24">
+        <div className="border-t border-line pt-8">
+          <h2 className="display-sm">{service.partsTitle}</h2>
+          <div className="mt-8">
+            {service.partsLayout === "flow" ? (
+              <PartsFlow parts={service.parts} />
+            ) : (
+              <PartsLayers parts={service.parts} />
+            )}
+          </div>
+        </div>
+        <div className="mt-8 rounded-sm bg-paper-deep p-6 sm:p-8">
+          <h2 className="label-mono text-ink">{service.scopeTitle}</h2>
+          <ul className="mt-4 grid gap-x-10 gap-y-2.5 md:grid-cols-2">
+            {service.scope.map((item) => (
+              <li key={item} className="flex gap-3 text-[0.95rem] leading-snug text-body">
+                <span aria-hidden="true" className="mt-[0.6em] h-px w-3 shrink-0 bg-line-strong" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    );
+  }
+
+  if (service.kind === "package" && service.parts && service.partsTitle) {
+    return (
+      <section className="container-x mt-16 lg:mt-24">
+        <div className="grid gap-10 border-t border-line pt-8 lg:grid-cols-12 lg:gap-8">
+          <div className="lg:col-span-6">
+            <h2 className="display-sm">{service.partsTitle}</h2>
+            <DashList items={service.parts.map((part) => part.label)} className="mt-5" />
+          </div>
+          <div className="lg:col-span-5 lg:col-start-8">
+            <ScopePanel title={service.scopeTitle} items={service.scope} />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="container-x mt-16 lg:mt-24">
+      <div className="grid gap-6 border-t border-line pt-8 lg:grid-cols-12 lg:gap-8">
+        <h2 className="display-sm lg:col-span-4">{service.scopeTitle}</h2>
+        <div className="lg:col-span-7 lg:col-start-6">
+          <DashList items={service.scope} />
+        </div>
+      </div>
+    </section>
   );
 }

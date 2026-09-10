@@ -1,77 +1,66 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f5f8fb;
-  --background-elevated: #ffffff;
-  --foreground: #112032;
-  --muted-foreground: rgba(17, 32, 50, 0.74);
-  --line: rgba(125, 154, 183, 0.24);
-  --line-strong: rgba(125, 154, 183, 0.38);
-  --cyan-soft: rgba(32, 149, 214, 0.12);
-  --cyan-strong: #0f7fc7;
-  --accent-text: #0b5f97;
-  --button-bg: #10243a;
-  --button-text: #f8fbfe;
-  --surface-shadow: 0 22px 58px rgba(35, 60, 84, 0.08);
-  --shell-gradient: linear-gradient(180deg,rgba(255,255,255,0.78),rgba(246,250,253,0.9) 42%,rgba(237,243,248,0.98));
-  --shell-bottom-fade: linear-gradient(180deg,transparent,rgba(237,243,248,0.72) 70%,rgba(237,243,248,0.94));
-  --surface-glow:
-    radial-gradient(circle at 20% 15%, rgba(66, 214, 255, 0.12), transparent 30%),
-    radial-gradient(circle at 80% 10%, rgba(153, 214, 255, 0.1), transparent 26%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.74));
+/*
+  YM Creations design tokens.
+  One light palette: ink on paper, a single blue accent used for signals only.
+*/
+@theme {
+  --color-paper: #f4f3ee;
+  --color-paper-deep: #e9e8e1;
+  --color-surface: #fbfaf7;
+  --color-ink: #101827;
+  --color-ink-soft: #1c2536;
+  --color-body: #2c3547;
+  --color-muted: #5d6677;
+  --color-faint: #8b93a3;
+  --color-line: #d6d5cd;
+  --color-line-strong: #b9b8ae;
+  --color-accent: #2149c9;
+  --color-accent-soft: #a9bcf5;
+  --color-success: #1d7a4c;
+  --color-danger: #b9402d;
+
+  --font-sans:
+    var(--font-grotesk), "Helvetica Neue", Helvetica, Arial, ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono:
+    var(--font-mono), "SFMono-Regular", Menlo, Consolas, ui-monospace,
+    monospace;
+
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+
+  --shadow-lift: 0 1px 2px rgba(16, 24, 39, 0.06), 0 12px 32px -16px rgba(16, 24, 39, 0.28);
+  --shadow-image: 0 1px 1px rgba(16, 24, 39, 0.06), 0 24px 48px -24px rgba(16, 24, 39, 0.35);
+
+  --breakpoint-xs: 30rem;
 }
 
-html[data-theme="dark"] {
-  --background: #0b1723;
-  --background-elevated: #12202d;
-  --foreground: #f4f8fb;
-  --muted-foreground: rgba(231, 241, 248, 0.82);
-  --line: rgba(169, 215, 244, 0.22);
-  --line-strong: rgba(169, 215, 244, 0.34);
-  --cyan-soft: rgba(113, 227, 255, 0.18);
-  --cyan-strong: #71e3ff;
-  --accent-text: #8ce7ff;
-  --button-bg: #ffffff;
-  --button-text: #071018;
-  --surface-shadow: 0 20px 52px rgba(2, 6, 10, 0.16);
-  --shell-gradient: linear-gradient(180deg,rgba(12,20,30,0.98),rgba(15,25,36,0.95) 42%,rgba(11,18,27,1));
-  --shell-bottom-fade: linear-gradient(180deg,transparent,rgba(8,13,20,0.62) 70%,rgba(11,18,27,0.9));
-  --surface-glow:
-    radial-gradient(circle at 20% 15%, rgba(66, 214, 255, 0.12), transparent 30%),
-    radial-gradient(circle at 80% 10%, rgba(153, 214, 255, 0.1), transparent 26%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+@layer base {
+:root {
+  color-scheme: light;
 }
 
 html {
-  scroll-behavior: smooth;
   max-width: 100%;
   overflow-x: clip;
-  font-size: clamp(16.7px, 1rem + 0.12vw, 17.2px);
-  background:
-    radial-gradient(circle at 18% 0%, rgba(77, 191, 255, 0.1), transparent 28%),
-    radial-gradient(circle at 82% 12%, rgba(88, 145, 255, 0.08), transparent 26%),
-    linear-gradient(180deg, #f8fbfe 0%, #f3f7fb 42%, #edf3f8 100%);
-}
-
-html[data-theme="dark"] {
-  background:
-    radial-gradient(circle at 18% 0%, rgba(77, 191, 255, 0.16), transparent 28%),
-    radial-gradient(circle at 82% 12%, rgba(88, 145, 255, 0.14), transparent 26%),
-    linear-gradient(180deg, #0d1b28 0%, #10202e 42%, #0b1723 100%);
+  background: var(--color-paper);
+  scroll-padding-top: 5.5rem;
 }
 
 body {
   max-width: 100%;
   overflow-x: clip;
-  background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.38), transparent 32%),
-    var(--background);
-  color: var(--foreground);
-  font-family:
-    "Avenir Next", "Inter Display", "Segoe UI", ui-sans-serif, system-ui,
-    -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-body);
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.6;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11", "kern";
 }
 
 @supports not (overflow: clip) {
@@ -84,329 +73,964 @@ body {
 h1,
 h2,
 h3,
-h4,
-h5,
-h6 {
-  font-family:
-    "Avenir Next", "SF Pro Display", "Segoe UI", ui-sans-serif, system-ui,
-    sans-serif;
-  letter-spacing: -0.03em;
-}
-
-::selection {
-  background: rgba(15, 127, 199, 0.18);
-  color: var(--foreground);
-}
-
-.text-balance {
+h4 {
+  color: var(--color-ink);
+  font-weight: 600;
+  letter-spacing: -0.022em;
   text-wrap: balance;
 }
 
-.ym-grid {
-  background-image:
-    linear-gradient(rgba(121, 146, 172, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(121, 146, 172, 0.08) 1px, transparent 1px);
-  background-size: 72px 72px;
+p {
+  text-wrap: pretty;
 }
 
-.ym-bg-arc {
-  background:
-    radial-gradient(circle at 18% 24%, rgba(103, 224, 255, 0.14), transparent 0 34%),
-    radial-gradient(circle at 74% 18%, rgba(92, 144, 255, 0.11), transparent 0 30%),
-    radial-gradient(circle at 50% 100%, rgba(89, 214, 255, 0.08), transparent 0 38%);
-}
-
-.ym-bg-field {
-  background:
-    radial-gradient(circle at 24% 30%, rgba(108, 230, 255, 0.14), transparent 0 24%),
-    radial-gradient(circle at 70% 60%, rgba(87, 143, 255, 0.1), transparent 0 22%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 42%);
-}
-
-.ym-bg-sweep {
-  background:
-    linear-gradient(120deg, transparent 0%, rgba(104, 210, 255, 0.08) 22%, transparent 42%),
-    linear-gradient(160deg, transparent 22%, rgba(91, 138, 255, 0.07) 44%, transparent 68%);
-}
-
-.ym-bg-curve {
-  background:
-    radial-gradient(120% 90% at 50% 100%, rgba(98, 218, 255, 0.11), transparent 44%),
-    radial-gradient(90% 60% at 10% 100%, rgba(88, 145, 255, 0.08), transparent 46%);
-}
-
-.ym-bg-drift-slow {
-  animation: ym-bg-drift-slow 22s ease-in-out infinite;
-}
-
-.ym-bg-float-fade {
-  animation: ym-bg-float-fade 18s ease-in-out infinite;
-}
-
-.ym-bg-orbit {
-  animation: ym-bg-orbit 26s ease-in-out infinite;
-}
-
-.ym-bg-breathe {
-  animation: ym-bg-breathe 14s ease-in-out infinite;
-}
-
-.ym-surface {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 253, 0.92)),
-    rgba(255, 255, 255, 0.92);
-  border: 1px solid var(--line);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), var(--surface-shadow);
-  backdrop-filter: blur(8px);
-}
-
-html[data-theme="dark"] .ym-surface {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.035)),
-    rgba(16, 27, 39, 0.86);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    var(--surface-shadow);
-  backdrop-filter: blur(10px);
-}
-
-.ym-surface-soft {
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--background-elevated) 94%, transparent),
-      color-mix(in srgb, var(--background) 86%, transparent)
-    ),
-    color-mix(in srgb, var(--background-elevated) 92%, transparent);
-  border: 1px solid var(--line);
-  box-shadow: var(--surface-shadow);
-}
-
-.ym-surface-strong {
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--background-elevated) 98%, transparent),
-      color-mix(in srgb, var(--background) 92%, transparent)
-    ),
-    color-mix(in srgb, var(--background-elevated) 96%, transparent);
-  border: 1px solid var(--line);
-  box-shadow: var(--surface-shadow);
-}
-
-.ym-footer-surface {
-  background: var(--shell-gradient);
-}
-
-.ym-glow-overlay {
-  background:
-    radial-gradient(circle at 18% 16%, rgba(113, 227, 255, 0.08), transparent 24%),
-    radial-gradient(circle at 86% 14%, rgba(88, 145, 255, 0.07), transparent 24%),
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--background-elevated) 50%, transparent),
-      transparent
-    );
-}
-
-html[data-theme="dark"] .ym-glow-overlay {
-  background:
-    radial-gradient(circle at 18% 16%, rgba(113, 227, 255, 0.1), transparent 24%),
-    radial-gradient(circle at 86% 14%, rgba(88, 145, 255, 0.08), transparent 24%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
-}
-
-.ym-panel-glow {
-  background-image: var(--surface-glow);
-}
-
-.ym-hairline {
-  position: relative;
-}
-
-.ym-hairline::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.24),
-    rgba(113, 227, 255, 0.17),
-    rgba(255, 255, 255, 0.06)
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
-.ym-radial-fade {
-  mask-image: radial-gradient(circle at center, black 55%, transparent 100%);
-}
-
-.ym-reading-column {
-  max-width: 72ch;
-}
-
-.ym-link {
-  position: relative;
-}
-
-.ym-link::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -0.25rem;
-  height: 1px;
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 300ms ease;
-  background: linear-gradient(90deg, rgba(113, 227, 255, 0.7), transparent);
-}
-
-.ym-link:hover::after {
-  transform: scaleX(1);
-}
-
-.ym-logo-image {
-  opacity: 1;
-  filter: none;
-  mix-blend-mode: normal;
-}
-
-[data-logo-variant="theme"] .ym-logo-image-light,
-[data-logo-variant="dark"] .ym-logo-image-light,
-[data-logo-variant="light"] .ym-logo-image-dark {
-  display: none;
-}
-
-[data-logo-variant="dark"] .ym-logo-image-dark,
-[data-logo-variant="light"] .ym-logo-image-light {
-  display: block;
-}
-
-html[data-theme="dark"] [data-logo-variant="theme"] .ym-logo-image-dark {
-  display: none;
-}
-
-html[data-theme="dark"] [data-logo-variant="theme"] .ym-logo-image-light {
-  display: block;
+::selection {
+  background: rgba(33, 73, 201, 0.16);
+  color: var(--color-ink);
 }
 
 a {
-  text-underline-offset: 0.18em;
+  text-underline-offset: 0.16em;
+  text-decoration-thickness: 1px;
 }
 
 :focus-visible {
-  outline: 2px solid rgba(15, 127, 199, 0.65);
+  outline: 2px solid var(--color-accent);
   outline-offset: 3px;
+  border-radius: 2px;
 }
 
-.animate-ym-float {
-  animation: ym-float 14s ease-in-out infinite;
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
 }
 
-.animate-ym-drift {
-  animation: ym-drift 22s ease-in-out infinite;
-}
-
-.animate-ym-pulse {
-  animation: ym-pulse 8s ease-in-out infinite;
-}
-
-@keyframes ym-float {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(0, -14px, 0);
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
-
-@keyframes ym-drift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(16px, -12px, 0) scale(1.02);
-  }
 }
 
-@keyframes ym-pulse {
-  0%,
-  100% {
-    opacity: 0.38;
+/* ---------- Layout helpers ---------- */
+
+@utility container-x {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 82rem;
+  padding-inline: 1.25rem;
+
+  @media (min-width: 40rem) {
+    padding-inline: 2rem;
   }
-  50% {
-    opacity: 0.8;
+
+  @media (min-width: 64rem) {
+    padding-inline: 3rem;
   }
 }
 
-@keyframes ym-bg-drift-slow {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.88;
+@utility reading {
+  max-width: 68ch;
+}
+
+/* Small technical label: mono, uppercase, modest tracking. */
+@utility label-mono {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Underline that grows on hover, used for inline text links. */
+@utility link-line {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  transition: background-size 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  padding-bottom: 0.08em;
+}
+
+.link-line:hover,
+.link-line:focus-visible,
+.group:hover .link-line {
+  background-size: 100% 1px;
+}
+
+/* Static hairline underline for text links inside prose. */
+@utility link-static {
+  text-decoration: underline;
+  text-decoration-color: var(--color-line-strong);
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color 200ms ease;
+}
+
+.link-static:hover {
+  text-decoration-color: currentColor;
+}
+
+/* ---------- Entrance motion (hero only) ---------- */
+
+@keyframes ym-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
   }
-  50% {
-    transform: translate3d(1.2%, -1%, 0) scale(1.03);
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility rise {
+  animation: ym-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility rise-delay-1 {
+  animation-delay: 90ms;
+}
+
+@utility rise-delay-2 {
+  animation-delay: 180ms;
+}
+
+@utility rise-delay-3 {
+  animation-delay: 280ms;
+}
+
+/* ---------- Typography helpers ---------- */
+
+@utility display-xl {
+  font-size: clamp(2.6rem, 1.3rem + 4vw, 4.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  font-weight: 600;
+}
+
+@utility display-lg {
+  font-size: clamp(2.1rem, 1.3rem + 3vw, 3.6rem);
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+}
+
+@utility display-md {
+  font-size: clamp(1.7rem, 1.2rem + 1.8vw, 2.5rem);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
+
+@utility display-sm {
+  font-size: clamp(1.3rem, 1.1rem + 0.8vw, 1.65rem);
+  line-height: 1.2;
+  letter-spacing: -0.018em;
+  font-weight: 600;
+}
+
+@utility lede {
+  font-size: clamp(1.1rem, 1rem + 0.45vw, 1.3rem);
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+/* Logo images: the wordmark SVGs use hard-coded fills. */
+.ym-logo-dark {
+  display: block;
+}
+
+/* ---------- Hero flow (homepage) ---------- */
+
+.hero-flow-layer,
+.hero-flow-node,
+.hero-flow-status,
+.hero-flow-label {
+  animation-duration: 10s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-delay: calc(var(--flow-index, 0) * 2.2s);
+}
+
+.hero-flow-layer {
+  animation-name: ym-flow-layer;
+  transition: background-color 400ms ease, color 400ms ease;
+}
+
+.hero-flow-node {
+  animation-name: ym-flow-node;
+}
+
+.hero-flow-status {
+  opacity: 0;
+  animation-name: ym-flow-status;
+}
+
+.hero-flow-label {
+  animation-name: ym-flow-label;
+}
+
+.hero-flow-pulse {
+  animation: ym-flow-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes ym-flow-layer {
+  0%, 19% {
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+  }
+  24%, 100% {
+    background-color: transparent;
+    color: var(--color-ink);
+  }
+}
+
+@keyframes ym-flow-label {
+  0%, 19% {
+    color: var(--color-accent-soft);
+  }
+  24%, 100% {
+    color: var(--color-muted);
+  }
+}
+
+@keyframes ym-flow-node {
+  0%, 19% {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    transform: translateY(var(--node-shift, 0)) scale(1.25);
+  }
+  24%, 100% {
+    background-color: var(--color-surface);
+    border-color: var(--color-line-strong);
+    transform: translateY(var(--node-shift, 0)) scale(1);
+  }
+}
+
+@keyframes ym-flow-status {
+  0%, 2% {
+    opacity: 0;
+    color: var(--color-accent-soft);
+  }
+  5%, 19% {
+    opacity: 1;
+    color: var(--color-accent-soft);
+  }
+  24%, 100% {
+    opacity: 0;
+  }
+}
+
+@keyframes ym-flow-pulse {
+  0%, 100% {
     opacity: 1;
   }
-}
-
-@keyframes ym-bg-float-fade {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.78;
-  }
   50% {
-    transform: translate3d(-1%, 1.1%, 0) scale(1.04);
-    opacity: 1;
-  }
-}
-
-@keyframes ym-bg-orbit {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(1.8%, -0.8%, 0) scale(1.02);
-  }
-}
-
-@keyframes ym-bg-breathe {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.84;
-  }
-  50% {
-    transform: translate3d(0, -1%, 0) scale(1.03);
-    opacity: 1;
+    opacity: 0.35;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
+  .hero-flow-layer,
+  .hero-flow-node,
+  .hero-flow-status,
+  .hero-flow-label,
+  .hero-flow-pulse {
+    animation: none;
   }
 
-  .animate-ym-float,
-  .animate-ym-drift,
-  .animate-ym-pulse,
-  .ym-bg-drift-slow,
-  .ym-bg-float-fade,
-  .ym-bg-orbit,
-  .ym-bg-breathe {
-    animation: none !important;
+  .hero-flow-layer:first-child {
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+  }
+
+  .hero-flow-layer:first-child .hero-flow-label {
+    color: var(--color-accent-soft);
+  }
+
+  .hero-flow-layer:first-child .hero-flow-node {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  .hero-flow-layer:first-child .hero-flow-status {
+    opacity: 1;
+    color: var(--color-accent-soft);
+  }
+}
+
+/* ---------- Services index ---------- */
+
+/*
+  A family or row shows where it leads: the rule above it fills with the
+  accent from left to right, the title turns accent, the arrow moves, and
+  the family's detail (layers, steps, systems) lights up in sequence.
+*/
+.svc-family,
+.svc-row {
+  position: relative;
+}
+
+.svc-family::before,
+.svc-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--color-accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.svc-family::before {
+  top: -2px;
+  height: 2px;
+}
+
+.svc-row::before {
+  top: -1px;
+  height: 1px;
+}
+
+.svc-family:hover::before,
+.svc-family:focus-visible::before,
+.svc-row:hover::before,
+.svc-row:focus-visible::before {
+  transform: scaleX(1);
+}
+
+.svc-title {
+  transition: color 200ms ease;
+}
+
+.svc-family:hover .svc-title,
+.svc-row:hover .svc-title {
+  color: var(--color-accent);
+}
+
+.svc-arrow {
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1), color 200ms ease;
+}
+
+.svc-family:hover .svc-arrow,
+.svc-row:hover .svc-arrow {
+  transform: translateX(6px);
+  color: var(--color-ink);
+}
+
+.svc-dot,
+.svc-step,
+.svc-joint {
+  transition-property: background-color, border-color, color;
+  transition-duration: 220ms;
+  transition-timing-function: ease;
+  transition-delay: calc(var(--i, 0) * 55ms);
+}
+
+.svc-family:hover .svc-dot {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.svc-family:hover .svc-step {
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+}
+
+.svc-family:hover .svc-joint {
+  background-color: var(--color-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .svc-family::before,
+  .svc-row::before,
+  .svc-arrow,
+  .svc-dot,
+  .svc-step,
+  .svc-joint {
+    transition: none;
+  }
+
+  .svc-family:hover .svc-arrow,
+  .svc-row:hover .svc-arrow {
+    transform: none;
+  }
+}
+
+/* ---------- Service hero sketch ---------- */
+
+/*
+  Exploded axonometric drawing in the services hero. Stroke widths are set
+  in screen pixels through --sk so the drawing stays crisp when the SVG is
+  rendered small. The draw effect uses pathLength="1" on every stroked
+  element: a dash of length 1 slides in from offset 1 to 0. All motion lives
+  inside the no-preference media query; the base state is the finished
+  drawing, which is what reduced motion gets.
+*/
+.sk {
+  --sk: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 640 / 470;
+  overflow: visible;
+  fill: none;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+}
+
+@media (max-width: 39.99rem) {
+  .sk {
+    --sk: 1.55;
+  }
+
+  .sk-fine {
+    display: none;
+  }
+}
+
+@media (min-width: 40rem) and (max-width: 63.99rem) {
+  .sk {
+    --sk: 1.15;
+  }
+}
+
+/* Narrow desktop: the drawing sits in five columns, so scale strokes up a little. */
+@media (min-width: 64rem) and (max-width: 79.99rem) {
+  .sk {
+    --sk: 1.3;
+  }
+}
+
+.sk-c,
+.sk-c-dash {
+  --o: 1;
+  stroke: var(--color-line-strong);
+  stroke-width: calc(0.8px * var(--sk));
+  opacity: var(--o);
+}
+
+.sk-c-dash {
+  stroke-dasharray: 3 4;
+}
+
+.sk-ink {
+  --o: 0.92;
+  stroke: var(--color-ink);
+  stroke-width: calc(1.1px * var(--sk));
+  opacity: var(--o);
+}
+
+.sk-ink-2 {
+  --o: 0.6;
+  stroke: var(--color-ink);
+  stroke-width: calc(0.85px * var(--sk));
+  opacity: var(--o);
+}
+
+.sk-ghost {
+  --o: 0.16;
+  stroke: var(--color-ink);
+  stroke-width: calc(0.8px * var(--sk));
+  opacity: var(--o);
+}
+
+.sk-acc {
+  --o: 1;
+  stroke: var(--color-accent);
+  stroke-width: calc(1.25px * var(--sk));
+  opacity: var(--o);
+}
+
+.sk-node {
+  fill: var(--color-paper-deep);
+  stroke: var(--color-ink);
+  stroke-width: calc(1.1px * var(--sk));
+}
+
+.sk-ring {
+  --o: 0.7;
+  stroke: var(--color-accent);
+  stroke-width: calc(0.8px * var(--sk));
+  stroke-dasharray: 2 3;
+  opacity: var(--o);
+}
+
+.sk-joint {
+  fill: var(--color-paper-deep);
+  stroke: var(--color-accent);
+  stroke-width: calc(1.2px * var(--sk));
+}
+
+.sk-dot {
+  --o: 1;
+  fill: var(--color-accent);
+  opacity: var(--o);
+}
+
+.sk-dot-ink {
+  fill: var(--color-ink);
+}
+
+.sk-text {
+  font-family: var(--font-mono);
+  font-size: calc(8.5px * var(--sk));
+  letter-spacing: 0.08em;
+  fill: var(--color-muted);
+}
+
+.sk-fade {
+  --o: 1;
+  opacity: var(--o);
+}
+
+.sk-settle {
+  opacity: 0.55;
+}
+
+/* Idle: a short accent dash travels the spine now and then. Hidden at rest. */
+.sk-signal {
+  stroke: var(--color-accent);
+  stroke-width: calc(2.2px * var(--sk));
+  stroke-linecap: round;
+  stroke-dasharray: 0.06 1.94;
+  stroke-dashoffset: 0.5;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sk-draw {
+    stroke-dasharray: 1 2;
+    stroke-dashoffset: 1.02;
+    animation: ym-sk-draw var(--t, 500ms) cubic-bezier(0.35, 0, 0.25, 1) var(--d, 0ms) both;
+  }
+
+  .sk-fade {
+    opacity: 0;
+    animation: ym-sk-fade 420ms ease-out var(--d, 0ms) both;
+  }
+
+  .sk-settle {
+    opacity: 1;
+    animation: ym-sk-settle 1000ms ease var(--d, 3900ms) both;
+  }
+
+  .sk-signal {
+    animation: ym-sk-signal 9s linear 5400ms infinite;
+  }
+
+  .sk-end {
+    opacity: 0;
+    animation:
+      ym-sk-fade 420ms ease-out var(--d, 0ms) both,
+      ym-sk-blink 9s linear 5400ms infinite;
+  }
+}
+
+@keyframes ym-sk-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes ym-sk-fade {
+  to {
+    opacity: var(--o, 1);
+  }
+}
+
+@keyframes ym-sk-settle {
+  to {
+    opacity: 0.55;
+  }
+}
+
+@keyframes ym-sk-signal {
+  0% {
+    stroke-dashoffset: 0.07;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  15% {
+    stroke-dashoffset: -1;
+  }
+  15.01%,
+  100% {
+    stroke-dashoffset: 0.5;
+  }
+}
+
+@keyframes ym-sk-blink {
+  0%,
+  13% {
+    opacity: var(--o, 1);
+  }
+  15.5% {
+    opacity: 0.3;
+  }
+  19%,
+  100% {
+    opacity: var(--o, 1);
+  }
+}
+
+/* ---------- Process hero sketch (shares the sk-* tones) ---------- */
+
+.sk--process {
+  aspect-ratio: 640 / 440;
+}
+
+/* Sheet faces are opaque so each sheet covers the one behind it. */
+.sk-paper {
+  fill: var(--color-paper-deep);
+  stroke: var(--color-ink);
+  stroke-width: calc(0.9px * var(--sk));
+  stroke-opacity: 0.55;
+}
+
+.sk-paper--scope {
+  stroke: var(--color-line-strong);
+  stroke-opacity: 1;
+  stroke-dasharray: 3 4;
+}
+
+.sk-paper--built {
+  stroke-width: calc(1.1px * var(--sk));
+  stroke-opacity: 0.92;
+}
+
+.sk-paper-live {
+  fill: var(--color-surface);
+  stroke: var(--color-ink);
+  stroke-width: calc(1.1px * var(--sk));
+  stroke-opacity: 0.92;
+}
+
+.sk-fill {
+  --o: 0.88;
+  fill: var(--color-ink);
+  opacity: var(--o);
+}
+
+.sk-fill-acc {
+  --o: 1;
+  fill: var(--color-accent);
+  opacity: var(--o);
+}
+
+.sk-hatch {
+  stroke: var(--color-ink);
+  stroke-width: 0.7;
+  opacity: 0.32;
+}
+
+/* A sheet being laid down: slides in from lower left. */
+.sk-sheet {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+.sk-wipe {
+  transform: scaleX(1);
+  transform-origin: left center;
+  transform-box: fill-box;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sk-sheet {
+    opacity: 0;
+    transform: translate(-10px, 10px);
+    animation: ym-sk-sheet 520ms cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms) both;
+  }
+
+  .sk-wipe {
+    transform: scaleX(0);
+    animation: ym-sk-wipe 420ms cubic-bezier(0.35, 0, 0.25, 1) var(--d, 0ms) both;
+  }
+
+  /* One slow breath of the live ring, every eight seconds. */
+  .sk-live {
+    animation: ym-sk-breathe 8s ease-in-out 5000ms infinite;
+  }
+}
+
+@keyframes ym-sk-sheet {
+  to {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes ym-sk-wipe {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes ym-sk-breathe {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  8% {
+    opacity: 0.2;
+  }
+  16% {
+    opacity: 0.7;
+  }
+}
+
+/* ---------- Process timeline ---------- */
+
+/* One rail for all phases; each phase has its node on it. */
+.pt-timeline::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-line-strong);
+}
+
+.pt-phase + .pt-phase {
+  border-top: 1px solid var(--color-line);
+}
+
+/* The closing block starts with a short piece of the same rail. */
+.pt-cta-rail::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 0;
+  height: 2.35rem;
+  width: 1px;
+  background: var(--color-line-strong);
+}
+
+@media (min-width: 64rem) {
+  .pt-cta-rail::before {
+    height: 2.85rem;
+  }
+}
+
+/* ---------- Pricing hero sketch ---------- */
+
+.sk--pricing {
+  aspect-ratio: 640 / 440;
+}
+
+/* ---------- Pricing selector ---------- */
+
+/*
+  Levels on the left, one panel on the right (lg and up). The panel spans all
+  header rows plus a final flexible row that absorbs the remaining height, so
+  the headers keep their natural rhythm. Below lg the same markup reads as an
+  accordion, each panel directly under its header.
+*/
+.ps-head {
+  border-bottom: 1px solid var(--color-line);
+}
+
+.ps-button {
+  position: relative;
+  transition: color 200ms ease;
+}
+
+.ps-button::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  height: 2px;
+  background: var(--color-accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.ps-button.is-open::before,
+.ps-button:hover::before {
+  transform: scaleX(1);
+}
+
+.ps-button:hover .ps-name,
+.ps-button.is-open .ps-name {
+  color: var(--color-accent);
+}
+
+.ps-button:focus-visible {
+  outline-offset: -2px;
+}
+
+.ps-button:focus-visible::before {
+  transform: scaleX(1);
+}
+
+/* One arrow: points right, turns down when the panel opens beneath it. */
+.ps-arrow {
+  display: inline-block;
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1), color 200ms ease;
+}
+
+.ps-button.is-open .ps-arrow {
+  transform: rotate(90deg);
+  color: var(--color-ink);
+}
+
+@media (min-width: 64rem) {
+  .ps-button.is-open .ps-arrow {
+    transform: translateX(6px);
+  }
+}
+
+.ps-panel {
+  padding-block: 1.25rem 1.75rem;
+  border-bottom: 1px solid var(--color-line);
+}
+
+@media (min-width: 64rem) {
+  .ps {
+    grid-template-rows: repeat(5, auto) minmax(0, 1fr);
+  }
+
+  .ps-head {
+    grid-row: var(--row);
+    align-self: start;
+  }
+
+  .ps-panel {
+    grid-row: 1 / -1;
+    padding: 0.5rem 0 0 0;
+    border-bottom: 0;
+  }
+
+  .ps-head:first-of-type .ps-button::before {
+    top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ps-panel-inner {
+    animation: ym-ps-in 260ms ease-out both;
+  }
+}
+
+@keyframes ym-ps-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-button::before,
+  .ps-arrow {
+    transition: none;
+  }
+}
+
+/* ---------- Terms tables ---------- */
+
+/*
+  Data tables in the algemene voorwaarden. Regular columns from sm up; below
+  that every row stacks into label/value pairs, with the column header
+  repeated from data-label so a row stays readable without the header row.
+*/
+.tm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.tm-table th,
+.tm-table td {
+  padding: 0.65rem 1.25rem 0.65rem 0;
+  border-top: 1px solid var(--color-line);
+  vertical-align: top;
+}
+
+.tm-table th:last-child,
+.tm-table td:last-child {
+  padding-right: 0;
+}
+
+.tm-table th {
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.tm-table td:first-child {
+  color: var(--color-ink);
+  font-weight: 500;
+}
+
+.tm-table tbody tr:last-child td {
+  border-bottom: 1px solid var(--color-line);
+}
+
+@media (max-width: 39.99rem) {
+  .tm-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .tm-table tbody,
+  .tm-table tr {
+    display: block;
+  }
+
+  .tm-table tr {
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--color-line);
+  }
+
+  .tm-table tbody tr:last-child {
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .tm-table td {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.2rem 0;
+    border: 0;
+  }
+
+  .tm-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .tm-table td::before {
+    content: attr(data-label);
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--color-muted);
   }
 }

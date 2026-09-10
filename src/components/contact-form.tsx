@@ -1,12 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 
 type ContactFormCopy = {
-  eyebrow: string;
-  title: string;
-  description: string;
   nameLabel: string;
   emailLabel: string;
   companyLabel: string;
@@ -21,10 +19,18 @@ type ContactFormCopy = {
   errorMessage: string;
 };
 
+/** Short line under the form: who the form is for and where the terms are. */
+type ContactFormNote = {
+  text: string;
+  termsLabel: string;
+  termsHref: string;
+};
+
 type ContactFormProps = {
   copy: ContactFormCopy;
+  locale: "nl" | "en";
+  note?: ContactFormNote;
   className?: string;
-  hideIntro?: boolean;
 };
 
 type FormState = {
@@ -51,9 +57,11 @@ function isValidEmail(value: string) {
 
 export default function ContactForm({
   copy,
+  locale,
+  note,
   className = "",
-  hideIntro = false,
 }: ContactFormProps) {
+  const isDutch = locale === "nl";
   const [form, setForm] = useState<FormState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
@@ -64,27 +72,19 @@ export default function ContactForm({
     const errors: Partial<Record<ContactField, string>> = {};
 
     if (values.name.trim().length < 2) {
-      errors.name = copy.nameLabel.toLowerCase().includes("naam")
-        ? "Vul je naam in"
-        : "Enter your name";
+      errors.name = isDutch ? "Vul je naam in" : "Enter your name";
     }
 
-    if (!values.email.trim()) {
-      errors.email = copy.emailLabel.toLowerCase().includes("e-mail")
-        ? "Vul een geldig e-mailadres in"
-        : "Enter a valid email address";
-    } else if (!isValidEmail(values.email.trim())) {
-      errors.email = copy.emailLabel.toLowerCase().includes("e-mail")
+    if (!values.email.trim() || !isValidEmail(values.email.trim())) {
+      errors.email = isDutch
         ? "Vul een geldig e-mailadres in"
         : "Enter a valid email address";
     }
 
     if (!values.message.trim()) {
-      errors.message = copy.messageLabel.toLowerCase().includes("bericht")
-        ? "Vul je bericht in"
-        : "Enter your message";
+      errors.message = isDutch ? "Vul je bericht in" : "Enter your message";
     } else if (values.message.trim().length < 12) {
-      errors.message = copy.messageLabel.toLowerCase().includes("bericht")
+      errors.message = isDutch
         ? "Je bericht is te kort"
         : "Your message is too short";
     }
@@ -115,7 +115,7 @@ export default function ContactForm({
     if (Object.keys(nextErrors).length > 0 || isSubmitting) {
       setStatus("error");
       setFormError(
-        copy.messageLabel.toLowerCase().includes("bericht")
+        isDutch
           ? "Controleer de verplichte velden en probeer opnieuw."
           : "Check the required fields and try again.",
       );
@@ -132,7 +132,7 @@ export default function ContactForm({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, locale }),
       });
 
       if (!response.ok) {
@@ -173,32 +173,15 @@ export default function ContactForm({
   }
 
   const inputBase =
-    "w-full rounded-[1.15rem] border border-[color:var(--line)] bg-[var(--background-elevated)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--line-strong)]";
-  const labelBase =
-    "mb-2 block text-[11px] uppercase tracking-[0.24em] text-[color:var(--muted-foreground)]";
+    "min-h-12 w-full rounded-sm border border-line bg-surface px-3.5 py-3 text-[1rem] text-ink outline-none transition-colors placeholder:text-faint focus:border-ink";
+  const inputError = "border-danger focus:border-danger";
+  const labelBase = "label-mono mb-2 block";
+  const errorText = "mt-2 text-[0.85rem] text-danger";
 
   return (
-    <div
-      className={`ym-surface-soft relative overflow-hidden rounded-[2rem] p-5 sm:p-6 ${className}`}
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_34%)]" />
-
-      <div className="relative z-10">
-        {!hideIntro ? (
-          <>
-            <p className="mb-3 text-[11px] uppercase tracking-[0.28em] text-[var(--accent-text)]">
-              {copy.eyebrow}
-            </p>
-            <h3 className="max-w-xl text-2xl font-semibold text-[var(--foreground)] sm:text-3xl">
-              {copy.title}
-            </h3>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-[color:var(--muted-foreground)]">
-              {copy.description}
-            </p>
-          </>
-        ) : null}
-
-        <form onSubmit={handleSubmit} className={hideIntro ? "space-y-4" : "mt-8 space-y-4"}>
+    <div className={className}>
+      <div>
+        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           <div className="hidden">
             <label htmlFor="website">Website</label>
             <input
@@ -211,7 +194,7 @@ export default function ContactForm({
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2">
             <div>
               <label htmlFor="name" className={labelBase}>
                 {copy.nameLabel}
@@ -222,14 +205,14 @@ export default function ContactForm({
                 value={form.name}
                 onChange={(e) => updateField("name", e.target.value)}
                 placeholder={copy.namePlaceholder}
-                className={`${inputBase} ${fieldErrors.name ? "border-red-300/55 bg-red-400/[0.06] focus:border-red-300/65" : ""}`}
+                className={`${inputBase} ${fieldErrors.name ? inputError : ""}`}
                 autoComplete="name"
                 required
                 aria-invalid={Boolean(fieldErrors.name)}
                 aria-describedby={fieldErrors.name ? "contact-name-error" : undefined}
               />
               {fieldErrors.name ? (
-                <p id="contact-name-error" className="mt-2 text-sm text-red-200">
+                <p id="contact-name-error" className={errorText}>
                   {fieldErrors.name}
                 </p>
               ) : null}
@@ -246,14 +229,14 @@ export default function ContactForm({
                 value={form.email}
                 onChange={(e) => updateField("email", e.target.value)}
                 placeholder={copy.emailPlaceholder}
-                className={`${inputBase} ${fieldErrors.email ? "border-red-300/55 bg-red-400/[0.06] focus:border-red-300/65" : ""}`}
+                className={`${inputBase} ${fieldErrors.email ? inputError : ""}`}
                 autoComplete="email"
                 required
                 aria-invalid={Boolean(fieldErrors.email)}
                 aria-describedby={fieldErrors.email ? "contact-email-error" : undefined}
               />
               {fieldErrors.email ? (
-                <p id="contact-email-error" className="mt-2 text-sm text-red-200">
+                <p id="contact-email-error" className={errorText}>
                   {fieldErrors.email}
                 </p>
               ) : null}
@@ -285,19 +268,19 @@ export default function ContactForm({
               value={form.message}
               onChange={(e) => updateField("message", e.target.value)}
               placeholder={copy.messagePlaceholder}
-              className={`${inputBase} min-h-[160px] resize-none ${fieldErrors.message ? "border-red-300/55 bg-red-400/[0.06] focus:border-red-300/65" : ""}`}
+              className={`${inputBase} min-h-[180px] resize-y ${fieldErrors.message ? inputError : ""}`}
               required
               aria-invalid={Boolean(fieldErrors.message)}
               aria-describedby={fieldErrors.message ? "contact-message-error" : undefined}
             />
             {fieldErrors.message ? (
-              <p id="contact-message-error" className="mt-2 text-sm text-red-200">
+              <p id="contact-message-error" className={errorText}>
                 {fieldErrors.message}
               </p>
             ) : null}
           </div>
 
-          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 pt-1 sm:flex-row sm:items-start sm:justify-between">
             <button
               type="submit"
               disabled={isSubmitting}
@@ -305,18 +288,29 @@ export default function ContactForm({
               data-track-category="contact"
               data-track-label={copy.submitLabel}
               data-track-location="contact-form-submit"
-              className="inline-flex items-center justify-center rounded-full bg-[var(--button-bg)] px-6 py-3 text-sm font-medium text-[var(--button-text)] transition hover:opacity-92 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-sm bg-ink px-6 text-[0.95rem] font-medium text-paper transition-colors duration-200 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? copy.sendingLabel : copy.submitLabel}
             </button>
 
-            <div className="min-h-[24px] text-sm text-[color:var(--muted-foreground)]">
-              {status === "success" && <span className="text-[var(--accent-text)]">{copy.successMessage}</span>}
-              {status === "error" && (
-                <span className="text-red-300/85">{formError || copy.errorMessage}</span>
-              )}
+            <div className="min-h-6 text-[0.9rem] leading-snug" aria-live="polite">
+              {status === "success" ? (
+                <span className="text-success">{copy.successMessage}</span>
+              ) : null}
+              {status === "error" ? (
+                <span className="text-danger">{formError || copy.errorMessage}</span>
+              ) : null}
             </div>
           </div>
+
+          {note ? (
+            <p className="text-[0.85rem] leading-relaxed text-muted">
+              {note.text}{" "}
+              <Link href={note.termsHref} hrefLang="nl" className="link-static text-body">
+                {note.termsLabel}
+              </Link>
+            </p>
+          ) : null}
         </form>
       </div>
     </div>
