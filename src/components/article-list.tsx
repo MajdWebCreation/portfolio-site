@@ -1,10 +1,10 @@
 import Link from "next/link";
-import type { PublishedArticle } from "@/lib/content/blog";
+import type { PublicArticle } from "@/lib/content/articles";
 import { getArticleDateLabel, getBlogCategoryLabel } from "@/lib/content/blog";
 import type { Locale } from "@/lib/content/site-content";
 
 type ArticleListProps = {
-  articles: PublishedArticle[];
+  articles: PublicArticle[];
   locale: Locale;
   readLabel: string;
 };

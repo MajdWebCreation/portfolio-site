@@ -1,8 +1,20 @@
 import type { NextConfig } from "next";
 
+/*
+  Article images live in Supabase Storage, so next/image needs that host on
+  the allow list. Derived from the same environment value the app uses, and
+  narrowed to the public object path: nothing else on the host is loadable.
+*/
+const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
+  : null;
+
 const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
+    remotePatterns: supabaseHost
+      ? [{ protocol: "https", hostname: supabaseHost, pathname: "/storage/v1/object/public/**" }]
+      : [],
   },
   async redirects() {
     return [

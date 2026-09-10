@@ -9,6 +9,7 @@ import {
   getStartingPrice,
   packageIds,
   type PackageId,
+  type PricingCatalog,
 } from "@/lib/pricing";
 
 export { formatEuro, formatMonthlyFrom };
@@ -166,7 +167,6 @@ type PlannerPageContent = {
     notes: string;
   };
   options: {
-    projectTypes: Record<PlannerPackageKey, string>;
     yes: string;
     no: string;
     partly: string;
@@ -262,9 +262,17 @@ export const initialPlannerState: PlannerState = {
   website: "",
 };
 
-function projectTypeOptions(locale: Locale): Record<PlannerPackageKey, string> {
+/**
+ * The names of the project types, as the database holds them. Not part of
+ * `plannerContent` below: that is a fixed block of copy, while these come
+ * from the pricing catalog and are read per request.
+ */
+export function getProjectTypeOptions(
+  catalog: PricingCatalog,
+  locale: Locale,
+): Record<PlannerPackageKey, string> {
   return Object.fromEntries(
-    packageIds.map((id) => [id, getPackageName(locale, id)]),
+    packageIds.map((id) => [id, getPackageName(catalog, locale, id)]),
   ) as Record<PlannerPackageKey, string>;
 }
 
@@ -322,7 +330,6 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       notes: "Extra context",
     },
     options: {
-      projectTypes: projectTypeOptions("en"),
       yes: "Yes",
       no: "No",
       partly: "Partly",
@@ -428,7 +435,6 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       notes: "Extra context",
     },
     options: {
-      projectTypes: projectTypeOptions("nl"),
       yes: "Ja",
       no: "Nee",
       partly: "Deels",
@@ -493,19 +499,33 @@ function pushItem(items: string[], condition: boolean, value: string) {
   }
 }
 
-function getPackageLabel(locale: Locale, packageKey: PlannerPackageKey) {
-  return getPackageName(locale, packageKey);
+function getPackageLabel(
+  catalog: PricingCatalog,
+  locale: Locale,
+  packageKey: PlannerPackageKey,
+) {
+  return getPackageName(catalog, locale, packageKey);
 }
 
-function getBasePrice(packageKey: PlannerPackageKey) {
-  return getStartingPrice(packageKey);
+function getBasePrice(catalog: PricingCatalog, packageKey: PlannerPackageKey) {
+  return getStartingPrice(catalog, packageKey);
 }
 
 export function getPlannerPageContent(locale: Locale) {
   return plannerContent[locale];
 }
 
-export function buildPlannerSummary(state: PlannerState): PlannerSummary {
+/**
+ * The recommendation and its amounts. Every euro in here comes from the
+ * catalog that is passed in -- the starting price of the recommended type
+ * and the amounts of the selected add-ons -- while the rules that combine
+ * them (which type is recommended, which buffers apply, rounding to fifty)
+ * are unchanged and live only here.
+ */
+export function buildPlannerSummary(
+  state: PlannerState,
+  catalog: PricingCatalog,
+): PlannerSummary {
   const locale = state.locale;
   const selectedFeatures: string[] = [];
   const selectedAddOns: string[] = [];
@@ -517,7 +537,7 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
   /* Extensions come from the pricing module, by stable id, for the chosen type. */
   const addAddon = (addOnId: string) => {
     if (!state.projectType) return;
-    const addOn = getAddOn(locale, state.projectType, addOnId);
+    const addOn = getAddOn(catalog, locale, state.projectType, addOnId);
     selectedAddOns.push(addOn.label);
     addOnTotal += addOn.amount;
   };
@@ -790,7 +810,7 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
   if (selectedAddOns.length > 2) buffer += 150;
   if (selectedAddOns.length > 4) buffer += 250;
 
-  const startingPrice = getBasePrice(recommendedPackage) + addOnTotal;
+  const startingPrice = getBasePrice(catalog, recommendedPackage) + addOnTotal;
   const rangeMax = buffer > 0 ? roundToFifty(startingPrice + buffer) : undefined;
 
   if (reasons.length === 0) {
@@ -808,10 +828,10 @@ export function buildPlannerSummary(state: PlannerState): PlannerSummary {
 
   return {
     recommendedPackage,
-    recommendedLabel: getPackageLabel(locale, recommendedPackage),
+    recommendedLabel: getPackageLabel(catalog, locale, recommendedPackage),
     reason,
     startingPrice,
-    monthlyManagementFrom: getMonthlyManagementFrom(recommendedPackage),
+    monthlyManagementFrom: getMonthlyManagementFrom(catalog, recommendedPackage),
     range:
       rangeMax && rangeMax > startingPrice
         ? {

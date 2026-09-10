@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Schibsted_Grotesk } from "next/font/google";
 import Script from "next/script";
+import { grotesk, mono } from "@/app/fonts";
 import AnalyticsProvider from "@/components/analytics-provider";
 import {
   businessInfo,
@@ -9,20 +9,6 @@ import {
   locales,
 } from "@/lib/content/site-content";
 import "../globals.css";
-
-const grotesk = Schibsted_Grotesk({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-grotesk",
-  display: "swap",
-});
-
-const mono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-mono",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(businessInfo.websiteUrl),

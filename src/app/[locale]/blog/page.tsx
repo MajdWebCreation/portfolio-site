@@ -5,7 +5,8 @@ import CtaLink from "@/components/cta-link";
 import JsonLd from "@/components/json-ld";
 import PageHeader from "@/components/page-header";
 import SiteShell from "@/components/site-shell";
-import { blogOverviewContent, getPublishedArticles } from "@/lib/content/blog";
+import { getPublishedArticles } from "@/lib/content/articles";
+import { blogOverviewContent } from "@/lib/content/blog";
 import { getLocalizedPath, getRouteAlternates } from "@/lib/content/routes";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
 import { blogSchema } from "@/lib/schema";
@@ -48,7 +49,7 @@ export default async function BlogPage({
 
   const content = siteContent[locale];
   const overview = blogOverviewContent[locale];
-  const articles = getPublishedArticles(locale);
+  const articles = await getPublishedArticles(locale);
   const path = getLocalizedPath(locale, "blog");
 
   return (

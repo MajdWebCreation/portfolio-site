@@ -8,6 +8,7 @@ import {
   formatEuro,
   formatMonthlyFrom,
   getPlannerPageContent,
+  getProjectTypeOptions,
   initialPlannerState,
   type PlannerPackageKey,
   type PlannerPriority,
@@ -16,10 +17,16 @@ import {
   type PlannerTimeline,
 } from "@/lib/content/project-planner";
 import { type Locale } from "@/lib/content/site-content";
-import { getAddOn, isPackageId, type PackageId } from "@/lib/pricing";
+import { getAddOn, isPackageId, type PackageId, type PricingCatalog } from "@/lib/pricing";
 
 type ProjectPlannerProps = {
   locale: Locale;
+  /**
+   * The amounts, read from the database by the page that renders this. Passed
+   * down rather than fetched here: the planner runs in the browser, and every
+   * visitor sees the same prices, so there is nothing to query per session.
+   */
+  catalog: PricingCatalog;
 };
 
 type PlannerErrorKey =
@@ -236,8 +243,9 @@ function getPriorityLabel(locale: Locale, value: PlannerPriority) {
   return getPlannerPageContent(locale).options.priority[value];
 }
 
-export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
+export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps) {
   const content = getPlannerPageContent(locale);
+  const projectTypes = getProjectTypeOptions(catalog, locale);
   const formTopRef = useRef<HTMLFormElement | null>(null);
   const [step, setStep] = useState(0);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
@@ -259,9 +267,9 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
   );
 
   const addOnLabel = (packageId: PackageId, addOnId: string) =>
-    getAddOn(locale, packageId, addOnId).label;
+    getAddOn(catalog, locale, packageId, addOnId).label;
 
-  const summary = useMemo(() => buildPlannerSummary(view), [view]);
+  const summary = useMemo(() => buildPlannerSummary(view, catalog), [view, catalog]);
 
   const summaryRange = summary.range
     ? `${formatEuro(summary.range.min, locale)} - ${formatEuro(summary.range.max, locale)}`
@@ -564,7 +572,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
           planner: {
             projectTypeKey: view.projectType || "",
             selectedProjectType: view.projectType
-              ? content.options.projectTypes[view.projectType]
+              ? projectTypes[view.projectType]
               : "",
             recommendedPackage: summary.recommendedLabel,
             reason: summary.reason,
@@ -683,7 +691,7 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                     {locale === "nl" ? "Geselecteerd via tarieven:" : "Selected from pricing:"}
                   </span>{" "}
                   <span className="font-medium text-white">
-                    {content.options.projectTypes[preselected]}
+                    {projectTypes[preselected]}
                   </span>
                   {". "}
                   {locale === "nl"
@@ -692,12 +700,12 @@ export default function ProjectPlanner({ locale }: ProjectPlannerProps) {
                 </p>
               ) : null}
               <div className="grid gap-3 sm:grid-cols-2">
-                {(Object.keys(content.options.projectTypes) as PlannerPackageKey[]).map(
+                {(Object.keys(projectTypes) as PlannerPackageKey[]).map(
                   (key) => (
                     <ChoiceButton
                       key={key}
                       active={view.projectType === key}
-                      label={content.options.projectTypes[key]}
+                      label={projectTypes[key]}
                       onClick={() => {
                         update("projectType", key);
                         clearError("projectType");

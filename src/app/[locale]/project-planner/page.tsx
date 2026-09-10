@@ -7,6 +7,7 @@ import ProjectPlanner from "@/components/project-planner";
 import SiteShell from "@/components/site-shell";
 import { getLocalizedPath, getRouteAlternates } from "@/lib/content/routes";
 import { getPlannerPageContent } from "@/lib/content/project-planner";
+import { getPricingCatalog } from "@/lib/pricing/source";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
 import { isValidLocale, siteContent, type Locale } from "@/lib/content/site-content";
 import { webPageSchema } from "@/lib/schema";
@@ -51,10 +52,13 @@ export default async function ProjectPlannerPage({
   return <ProjectPlannerPageContent locale={locale} />;
 }
 
-export function ProjectPlannerPageContent({ locale }: { locale: Locale }) {
+export async function ProjectPlannerPageContent({ locale }: { locale: Locale }) {
   const content = siteContent[locale];
   const planner = getPlannerPageContent(locale);
   const path = getLocalizedPath(locale, "projectPlanner");
+  // The amounts the planner works with, read once here and handed to the
+  // client component; see lib/pricing/source.ts.
+  const catalog = await getPricingCatalog();
 
   return (
     <>
@@ -87,7 +91,7 @@ export function ProjectPlannerPageContent({ locale }: { locale: Locale }) {
 
         <section className="container-x pt-12 lg:pt-16">
           <div className="rounded-md bg-ink p-5 text-paper sm:p-8 lg:p-10">
-            <ProjectPlanner locale={locale} />
+            <ProjectPlanner locale={locale} catalog={catalog} />
           </div>
         </section>
       </SiteShell>

@@ -1,43 +1,17 @@
 import { Resend } from "resend";
-
-type ContactPayload = {
-  mode?: "contact" | "project_planner";
-  locale?: "en" | "nl";
-  name: string;
-  email: string;
-  company?: string;
-  phone?: string;
-  message: string;
-  website?: string;
-  planner?: {
-    projectTypeKey?: string;
-    selectedProjectType?: string;
-    recommendedPackage?: string;
-    reason?: string;
-    startingPrice?: string;
-    monthlyManagement?: string;
-    indicativeRange?: string | null;
-    selectedFeatures?: string[];
-    selectedAddOns?: string[];
-    pageCount?: string;
-    multilingualKey?: string;
-    multilingual?: string;
-    brandingContentState?: string;
-    smartScopeSelected?: boolean;
-    webshopProducts?: string;
-    customScopeSelected?: boolean;
-    launchTimelineKey?: string;
-    launchTimeline?: string;
-    contentReadyKey?: string;
-    contentReady?: string;
-    brandingReadyKey?: string;
-    brandingReady?: string;
-    priorityKey?: string;
-    priority?: string;
-    notes?: string;
-    businessDeclaration?: boolean;
-  };
-};
+import { storeInquiry } from "@/lib/contact/inquiry";
+import type { ContactPayload } from "@/lib/contact/payload";
+import {
+  emailLink,
+  emailList,
+  emailMeta,
+  emailPanel,
+  emailSection,
+  emailDivider,
+  emailShell,
+  emailText,
+  escapeEmailHtml as escapeHtml,
+} from "@/lib/email/shell";
 
 type NormalizedSubmission = {
   mode: "contact" | "project_planner";
@@ -69,21 +43,8 @@ type ValidationField =
 
 type ValidationErrorMap = Partial<Record<ValidationField, string>>;
 
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
 function renderEmailList(items: string[] | undefined, emptyLabel = "—") {
-  if (!items?.length) {
-    return `<li>${escapeHtml(emptyLabel)}</li>`;
-  }
-
-  return items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  return emailList(items ?? [], emptyLabel);
 }
 
 function renderTextList(items: string[] | undefined, emptyLabel = "—") {
@@ -257,171 +218,50 @@ function buildPlannerCustomerEmail(params: {
   const noScope = isNl ? "Nog geen extra scope geselecteerd." : "No additional scope selected.";
   const noAddOns = isNl ? "Nog geen relevante add-ons geselecteerd." : "No relevant add-ons selected.";
 
-  const html = `
-    <div style="margin:0;padding:0;background:#05070b;font-family:Arial,Helvetica,sans-serif;color:#ffffff;">
-      <div style="max-width:680px;margin:0 auto;padding:32px 16px;">
-        <div style="border:1px solid rgba(255,255,255,0.1);border-radius:24px;overflow:hidden;background:#07111a;">
-          <div style="padding:32px 24px 24px;background:radial-gradient(circle at top, rgba(103,232,249,0.18), transparent 42%), #07111a;border-bottom:1px solid rgba(255,255,255,0.08);">
-            <p style="margin:0 0 12px;font-size:11px;letter-spacing:0.26em;text-transform:uppercase;color:rgba(103,232,249,0.88);">
-              YM Creations
-            </p>
-            <h1 style="margin:0;font-size:28px;line-height:1.2;font-weight:700;color:#ffffff;">
-              ${introTitle}
-            </h1>
-            <p style="margin:16px 0 0;font-size:15px;line-height:1.8;color:rgba(255,255,255,0.72);">
-              ${introText}
-            </p>
-          </div>
-
-          <div style="padding:24px;">
-            <div style="padding:20px;border:1px solid rgba(255,255,255,0.08);border-radius:18px;background:rgba(255,255,255,0.03);">
-              <p style="margin:0 0 16px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(103,232,249,0.82);">
-                ${summaryTitle}
-              </p>
-
-              <table role="presentation" style="width:100%;border-collapse:collapse;">
-                <tr>
-                  <td style="padding:0 0 12px;vertical-align:top;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                    ${isNl ? "Projecttype" : "Project type"}
-                  </td>
-                  <td style="padding:0 0 12px;vertical-align:top;font-size:14px;line-height:1.7;color:rgba(255,255,255,0.84);text-align:right;">
-                    ${escapeHtml(planner?.selectedProjectType || "—")}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 0 12px;vertical-align:top;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                    ${isNl ? "Aanbevolen pakket" : "Recommended package"}
-                  </td>
-                  <td style="padding:0 0 12px;vertical-align:top;font-size:14px;line-height:1.7;color:#ffffff;text-align:right;">
-                    ${escapeHtml(planner?.recommendedPackage || "—")}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 0 12px;vertical-align:top;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                    ${isNl ? "Eenmalig, vanaf" : "One-off, from"}
-                  </td>
-                  <td style="padding:0 0 12px;vertical-align:top;font-size:14px;line-height:1.7;color:#ffffff;text-align:right;">
-                    ${escapeHtml(planner?.startingPrice || "—")}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 0 12px;vertical-align:top;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                    ${isNl ? "Technisch beheer" : "Technical management"}
-                  </td>
-                  <td style="padding:0 0 12px;vertical-align:top;font-size:14px;line-height:1.7;color:#ffffff;text-align:right;">
-                    ${escapeHtml(planner?.monthlyManagement || "—")}
-                  </td>
-                </tr>
-                ${
-                  planner?.indicativeRange
-                    ? `<tr>
-                  <td style="padding:0 0 12px;vertical-align:top;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                    ${isNl ? "Indicatieve range" : "Indicative range"}
-                  </td>
-                  <td style="padding:0 0 12px;vertical-align:top;font-size:14px;line-height:1.7;color:rgba(255,255,255,0.84);text-align:right;">
-                    ${escapeHtml(planner.indicativeRange)}
-                  </td>
-                </tr>`
-                    : ""
-                }
-                <tr>
-                  <td style="padding:0;vertical-align:top;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                    ${isNl ? "Planning" : "Timeline"}
-                  </td>
-                  <td style="padding:0;vertical-align:top;font-size:14px;line-height:1.7;color:rgba(255,255,255,0.84);text-align:right;">
-                    ${escapeHtml(planner?.launchTimeline || "—")}
-                  </td>
-                </tr>
-              </table>
-            </div>
-
-            <div style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.08);">
-              <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                ${isNl ? "Waarom dit past" : "Why this fits"}
-              </p>
-              <p style="margin:0;font-size:14px;line-height:1.9;color:rgba(255,255,255,0.72);">
-                ${escapeHtml(planner?.reason || "—")}
-              </p>
-            </div>
-
-            <div style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.08);">
-              <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                ${isNl ? "Geselecteerde scope" : "Selected scope"}
-              </p>
-              <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.9;color:rgba(255,255,255,0.72);">
-                ${renderEmailList(planner?.selectedFeatures, noScope)}
-              </ul>
-            </div>
-
-            <div style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.08);">
-              <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                ${isNl ? "Relevante add-ons" : "Relevant add-ons"}
-              </p>
-              <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.9;color:rgba(255,255,255,0.72);">
-                ${renderEmailList(planner?.selectedAddOns, noAddOns)}
-              </ul>
-            </div>
-
-            <div style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.08);">
-              <table role="presentation" style="width:100%;border-collapse:collapse;">
-                <tr>
-                  <td style="padding:0 0 10px;vertical-align:top;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                    ${isNl ? "Content" : "Content"}
-                  </td>
-                  <td style="padding:0 0 10px;vertical-align:top;font-size:14px;line-height:1.7;color:rgba(255,255,255,0.84);text-align:right;">
-                    ${escapeHtml(planner?.contentReady || "—")}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0 0 10px;vertical-align:top;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                    ${isNl ? "Branding" : "Branding"}
-                  </td>
-                  <td style="padding:0 0 10px;vertical-align:top;font-size:14px;line-height:1.7;color:rgba(255,255,255,0.84);text-align:right;">
-                    ${escapeHtml(planner?.brandingReady || "—")}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:0;vertical-align:top;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                    ${isNl ? "Focus" : "Priority"}
-                  </td>
-                  <td style="padding:0;vertical-align:top;font-size:14px;line-height:1.7;color:rgba(255,255,255,0.84);text-align:right;">
-                    ${escapeHtml(planner?.priority || "—")}
-                  </td>
-                </tr>
-              </table>
-            </div>
-
-            <div style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.08);">
-              <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                ${isNl ? "Extra notities" : "Additional notes"}
-              </p>
-              <p style="margin:0;font-size:14px;line-height:1.9;color:rgba(255,255,255,0.72);white-space:pre-wrap;">
-                ${escapeHtml(planner?.notes || noNotes)}
-              </p>
-            </div>
-
-            <div style="margin-top:22px;padding:18px 20px;border:1px solid rgba(255,255,255,0.08);border-radius:18px;background:rgba(255,255,255,0.02);">
-              <p style="margin:0 0 8px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(103,232,249,0.82);">
-                ${nextTitle}
-              </p>
-              <p style="margin:0;font-size:14px;line-height:1.9;color:rgba(255,255,255,0.72);">
-                ${nextText}
-              </p>
-              <p style="margin:12px 0 0;font-size:13px;line-height:1.8;color:rgba(255,255,255,0.54);">
-                ${pricingNote}
-              </p>
-            </div>
-          </div>
-
-          <div style="padding:18px 24px;border-top:1px solid rgba(255,255,255,0.08);font-size:12px;line-height:1.8;color:rgba(255,255,255,0.44);">
-            YM Creations<br />
-            Premium web design & development<br />
-            ymcreations.com
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+  const html = emailShell({
+    locale,
+    title: introTitle,
+    preheader: `${planner?.recommendedPackage || ""} ${planner?.startingPrice || ""}`.trim(),
+    content: [
+      emailText(introText, { top: 18 }),
+      emailMeta(
+        [
+          { label: isNl ? "Projecttype" : "Project type", value: planner?.selectedProjectType || "—" },
+          { label: isNl ? "Aanbevolen pakket" : "Recommended package", value: planner?.recommendedPackage || "—" },
+          { label: isNl ? "Eenmalig, vanaf" : "One-off, from", value: planner?.startingPrice || "—" },
+          { label: isNl ? "Technisch beheer" : "Technical management", value: planner?.monthlyManagement || "—" },
+          ...(planner?.indicativeRange
+            ? [{ label: isNl ? "Indicatieve range" : "Indicative range", value: planner.indicativeRange }]
+            : []),
+          { label: isNl ? "Planning" : "Timeline", value: planner?.launchTimeline || "—" },
+        ],
+        { label: summaryTitle },
+      ),
+      emailSection({
+        label: isNl ? "Waarom dit past" : "Why this fits",
+        html: escapeHtml(planner?.reason || "—"),
+      }),
+      emailSection({
+        label: isNl ? "Geselecteerde scope" : "Selected scope",
+        html: renderEmailList(planner?.selectedFeatures, noScope),
+      }),
+      emailSection({
+        label: isNl ? "Relevante add-ons" : "Relevant add-ons",
+        html: renderEmailList(planner?.selectedAddOns, noAddOns),
+      }),
+      emailMeta([
+        { label: isNl ? "Content" : "Content", value: planner?.contentReady || "—" },
+        { label: isNl ? "Branding" : "Branding", value: planner?.brandingReady || "—" },
+        { label: isNl ? "Focus" : "Priority", value: planner?.priority || "—" },
+      ]),
+      emailSection({
+        label: isNl ? "Extra notities" : "Additional notes",
+        html: escapeHtml(planner?.notes || noNotes),
+      }),
+      emailDivider(),
+      emailPanel({ label: nextTitle, html: `${escapeHtml(nextText)}<br /><br />${escapeHtml(pricingNote)}` }),
+    ].join(""),
+  });
 
   const text = `
 ${isNl ? `Hi ${name},` : `Hi ${name},`}
@@ -505,6 +345,25 @@ export async function POST(request: Request) {
           fieldErrors: validationErrors,
         },
         { status: 400 }
+      );
+    }
+
+    // Stored before anything is sent, and a failure here is reported as a
+    // failure: a visitor must never be told the request came through when
+    // there is no record of it. The mail below is the notification, not the
+    // record.
+    try {
+      await storeInquiry({ origin: mode, locale, name, email, company, message, phone, planner });
+    } catch (error) {
+      console.error("Storing inquiry failed", { mode, locale, customerEmail: email, error });
+      return Response.json(
+        {
+          error:
+            locale === "nl"
+              ? "We konden je aanvraag niet opslaan. Probeer het opnieuw."
+              : "We could not save your request. Please try again.",
+        },
+        { status: 500 }
       );
     }
 
@@ -653,73 +512,70 @@ ${plannerText}
         ? locale === "nl"
           ? "We hebben je projectaanvraag ontvangen — YM Creations"
           : "We received your project request — YM Creations"
-        : "We received your message — YM Creations";
+        : locale === "nl"
+          ? "Je bericht is ontvangen — YM Creations"
+          : "We received your message — YM Creations";
 
-    const defaultAutoReplyHtml = `
-      <div style="margin:0;padding:0;background:#050505;font-family:Arial,Helvetica,sans-serif;color:#ffffff;">
-        <div style="max-width:640px;margin:0 auto;padding:40px 20px;">
-          <div style="border:1px solid rgba(255,255,255,0.1);border-radius:28px;overflow:hidden;background:rgba(255,255,255,0.04);">
-            <div style="padding:32px 32px 20px;border-bottom:1px solid rgba(255,255,255,0.08);background:radial-gradient(circle at top, rgba(34,211,238,0.18), transparent 45%), #050505;">
-              <p style="margin:0 0 14px;font-size:11px;letter-spacing:0.28em;text-transform:uppercase;color:rgba(103,232,249,0.88);">
-                YM Creations
-              </p>
-              <h1 style="margin:0;font-size:30px;line-height:1.2;font-weight:700;color:#ffffff;">
-                We received your message.
-              </h1>
-              <p style="margin:16px 0 0;font-size:15px;line-height:1.8;color:rgba(255,255,255,0.68);">
-                Hi ${escapeHtml(name)}, thanks for reaching out. Your message came through successfully and we’ll get back to you as soon as possible.
-              </p>
-            </div>
+    /*
+      The contact confirmation. Same content and flow as before, in the shared
+      light shell; the body now follows the visitor's locale, the way the rest
+      of this route already does.
+    */
+    const isNl = locale === "nl";
+    const contactAddress = "contact@ymcreations.com";
 
-            <div style="padding:28px 32px;">
-              <div style="margin-bottom:20px;padding:20px;border:1px solid rgba(255,255,255,0.08);border-radius:20px;background:#0b0b0b;">
-                <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(103,232,249,0.82);">
-                  Your message
-                </p>
-                <div style="font-size:14px;line-height:1.9;color:rgba(255,255,255,0.72);white-space:pre-wrap;">${escapeHtml(
-                  message
-                )}</div>
-              </div>
+    const defaultAutoReplyHtml = emailShell({
+      locale,
+      title: isNl ? "Bericht ontvangen" : "Message received",
+      preheader: isNl
+        ? "We hebben je bericht ontvangen en nemen snel contact op."
+        : "We received your message and will be in touch soon.",
+      content: [
+        emailText(
+          isNl
+            ? `Beste ${escapeHtml(name)},`
+            : `Hi ${escapeHtml(name)},`,
+          { top: 18 },
+        ),
+        emailText(
+          isNl
+            ? "Bedankt voor je bericht. We hebben je aanvraag goed ontvangen en nemen zo snel mogelijk persoonlijk contact met je op."
+            : "Thanks for your message. We received your request and will get back to you personally as soon as possible.",
+        ),
+        emailPanel({
+          label: isNl ? "Jouw bericht" : "Your message",
+          html: escapeHtml(message),
+          preserveLineBreaks: true,
+        }),
+        emailSection({
+          label: isNl ? "Wat gebeurt er nu?" : "What happens next?",
+          html: isNl
+            ? `We bekijken je aanvraag en reageren persoonlijk via ${emailLink(`mailto:${contactAddress}`, contactAddress)}.`
+            : `We review your request and reply personally from ${emailLink(`mailto:${contactAddress}`, contactAddress)}.`,
+        }),
+      ].join(""),
+    });
 
-              <div style="padding:20px;border:1px solid rgba(255,255,255,0.08);border-radius:20px;background:#080808;">
-                <p style="margin:0 0 10px;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.42);">
-                  What happens next
-                </p>
-                <p style="margin:0;font-size:14px;line-height:1.9;color:rgba(255,255,255,0.68);">
-                ${
-                  mode === "project_planner"
-                    ? "We’ll review the scope, sanity-check the recommendation, and reply personally from <span style=\"color:#ffffff;\">contact@ymcreations.com</span>."
-                    : "We’ll review your inquiry and reply personally from <span style=\"color:#ffffff;\">contact@ymcreations.com</span>."
-                }
-              </p>
-            </div>
-            </div>
 
-            <div style="padding:20px 32px;border-top:1px solid rgba(255,255,255,0.08);font-size:12px;line-height:1.8;color:rgba(255,255,255,0.42);">
-              YM Creations<br />
-              Premium web design & development<br />
-              ymcreations.com
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
+    // Plain-text counterpart of the same mail, in the same language.
     const defaultAutoReplyText = `
-${locale === "nl" ? `Hoi ${name},` : `Hi ${name},`}
+${isNl ? `Beste ${name},` : `Hi ${name},`}
 
-${mode === "project_planner"
-  ? locale === "nl"
-    ? "Bedankt voor je Project Planner aanvraag bij YM Creations.\nWe hebben je scope ontvangen en komen zo snel mogelijk bij je terug."
-    : "Thanks for your Project Planner inquiry at YM Creations.\nWe received your scope successfully and will get back to you as soon as possible."
-  : `Thanks for reaching out to YM Creations.
-We received your message successfully and will get back to you as soon as possible.`}
+${isNl
+  ? "Bedankt voor je bericht. We hebben je aanvraag goed ontvangen en nemen zo snel mogelijk persoonlijk contact met je op."
+  : "Thanks for your message. We received your request and will get back to you personally as soon as possible."}
 
-Your message:
+${isNl ? "Jouw bericht:" : "Your message:"}
 ${message}
 
+${isNl ? "Wat gebeurt er nu?" : "What happens next?"}
+${isNl
+  ? `We bekijken je aanvraag en reageren persoonlijk via ${contactAddress}.`
+  : `We review your request and reply personally from ${contactAddress}.`}
+
 YM Creations
-contact@ymcreations.com
+${contactAddress}
++31 6 53 40 02 20
 ymcreations.com
     `.trim();
 

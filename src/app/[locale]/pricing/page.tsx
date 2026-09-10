@@ -17,10 +17,13 @@ import {
   formatEuro,
   formatMonthlyFrom,
   formatStartingPrice,
+  getPackageMetadata,
   getPackages,
   type AddOnGroup,
-  type PackageDefinition,
+  type CatalogPackage,
+  type PricingCatalog,
 } from "@/lib/pricing";
+import { getPricingCatalog } from "@/lib/pricing/source";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
 import { isValidLocale, siteContent, type Locale } from "@/lib/content/site-content";
 import { webPageSchema } from "@/lib/schema";
@@ -65,13 +68,16 @@ export default async function PricingPage({
   return <PricingPageContent locale={locale} />;
 }
 
-/* The pricing module in the shape the selector renders. */
+/* One catalog package in the shape the selector renders: amounts from the
+   database, the list of what is included and the boundary from the module
+   that describes what a project type is. */
 function toSelectorPackage(
-  pkg: PackageDefinition,
+  pkg: CatalogPackage,
   locale: Locale,
   plannerPath: string,
 ): SelectorPackage {
   const groups = new Map<AddOnGroup, SelectorAddOnGroup>();
+  const metadata = getPackageMetadata(pkg.id);
 
   for (const addOn of pkg.addOns) {
     const group = groups.get(addOn.group) ?? {
@@ -79,7 +85,7 @@ function toSelectorPackage(
       items: [],
     };
     group.items.push({
-      label: pkg.addOnLabels[locale][addOn.id] ?? addOn.id,
+      label: addOn.label[locale],
       price: formatAddOnPrice(addOn.amount, addOn.mode, locale),
     });
     groups.set(addOn.group, group);
@@ -93,20 +99,21 @@ function toSelectorPackage(
     priceAmount: `${formatEuro(pkg.startingPrice, locale)}${pkg.scopeDriven ? "+" : ""}`,
     monthly: formatMonthlyFrom(pkg.monthlyManagementFrom, locale),
     scopeDriven: pkg.scopeDriven,
-    included: pkg.included[locale],
+    included: metadata.included[locale],
     addOnGroups: [...groups.values()],
-    boundary: pkg.boundary[locale],
+    boundary: metadata.boundary[locale],
     plannerHref: `${plannerPath}?package=${pkg.id}`,
   };
 }
 
-export function PricingPageContent({ locale }: { locale: Locale }) {
+export async function PricingPageContent({ locale }: { locale: Locale }) {
   const content = siteContent[locale];
   const pricing = getPricingPageContent(locale);
   const path = getLocalizedPath(locale, "pricing");
   const plannerPath = getLocalizedPath(locale, "projectPlanner");
-  const packages = getPackages().map((pkg) => toSelectorPackage(pkg, locale, plannerPath));
-  const lowest = formatEuro(Math.min(...getPackages().map((pkg) => pkg.startingPrice)), locale);
+  const catalog: PricingCatalog = await getPricingCatalog();
+  const packages = getPackages(catalog).map((pkg) => toSelectorPackage(pkg, locale, plannerPath));
+  const lowest = formatEuro(Math.min(...getPackages(catalog).map((pkg) => pkg.startingPrice)), locale);
 
   return (
     <>

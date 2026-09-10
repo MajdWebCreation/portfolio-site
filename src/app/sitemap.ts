@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getPublishedArticles } from "@/lib/content/blog";
+import { getPublishedArticles } from "@/lib/content/articles";
 import {
   getLocalizedPath,
   legalRoutes,
@@ -37,7 +37,7 @@ function withAlternates(path: string, en: string, nl: string) {
   };
 }
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = staticRoutes.flatMap((route) =>
     locales.map((locale) =>
       withAlternates(
@@ -56,14 +56,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     return [withAlternates(nl, en, nl), withAlternates(en, en, nl)];
   });
 
-  const articleEntries: MetadataRoute.Sitemap = locales.flatMap((locale) =>
-    getPublishedArticles(locale).map((article) => ({
-      url: absolute(article.path),
-      ...(article.publishedAt
-        ? { lastModified: new Date(article.publishedAt) }
-        : {}),
-    })),
-  );
+  // Published articles only: the database hands out no other kind, so a
+  // draft cannot reach the sitemap.
+  const articlesPerLocale = await Promise.all(locales.map((locale) => getPublishedArticles(locale)));
+  const articleEntries: MetadataRoute.Sitemap = articlesPerLocale.flat().map((article) => ({
+    url: absolute(article.path),
+    ...(article.publishedAt ? { lastModified: new Date(article.publishedAt) } : {}),
+  }));
 
   // The terms page is Dutch only and is listed only once it is indexable
   // (it is served with noindex until then).

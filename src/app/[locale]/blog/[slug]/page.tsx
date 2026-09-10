@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -7,21 +8,31 @@ import NextStep from "@/components/next-step";
 import SiteShell from "@/components/site-shell";
 import {
   getArticleBySlug,
-  getArticleDateLabel,
   getArticleMetadataInput,
-  getBlogCategoryLabel,
   getPublishedArticlePaths,
+} from "@/lib/content/articles";
+import {
+  getArticleDateLabel,
+  getBlogCategoryLabel,
   getRelatedLinkLabel,
 } from "@/lib/content/blog";
+import { articleImageUrl } from "@/lib/admin/articles/media";
 import { getLocalizedPath } from "@/lib/content/routes";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
 import { blogPostingSchema, webPageSchema } from "@/lib/schema";
 import { isValidLocale, siteContent } from "@/lib/content/site-content";
 
-export const dynamicParams = false;
+/*
+  The published articles are prerendered, and an article that is published
+  after a build is rendered on demand rather than 404'd -- the admin's save
+  revalidates these paths, so publishing and unpublishing both take effect
+  without a deploy. A slug that is not a published article still 404s,
+  because the database returns nothing for it.
+*/
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  return getPublishedArticlePaths("nl").map((path) => ({
+  return (await getPublishedArticlePaths("nl")).map((path) => ({
     locale: "nl",
     slug: path.split("/").pop() ?? "",
   }));
@@ -38,7 +49,7 @@ export async function generateMetadata({
     return {};
   }
 
-  const article = getArticleBySlug(locale, slug);
+  const article = await getArticleBySlug(locale, slug);
 
   if (!article) {
     return {
@@ -71,7 +82,7 @@ export default async function BlogArticlePage({
     notFound();
   }
 
-  const article = getArticleBySlug(locale, slug);
+  const article = await getArticleBySlug(locale, slug);
 
   if (!article) {
     notFound();
@@ -80,12 +91,9 @@ export default async function BlogArticlePage({
   const content = siteContent[locale];
   const pageUrl = getCanonicalUrl(article.path);
   const blogPath = getLocalizedPath(locale, "blog");
-  // The first paragraph is shown as the lede in the header, so it is not
-  // repeated in the body.
-  const bodyBlocks =
-    article.bodyBlocks[0]?.type === "paragraph"
-      ? article.bodyBlocks.slice(1)
-      : article.bodyBlocks;
+  // The lede is the article's excerpt and is rendered in the header, so the
+  // body is the stored document as it is.
+  const bodyBlocks = article.bodyBlocks;
 
   return (
     <>
@@ -126,6 +134,20 @@ export default async function BlogArticlePage({
               <p className="lede reading mt-6">{article.intro}</p>
             </div>
           </header>
+
+          {/* Optional: an article without an image keeps the layout it had. */}
+          {article.featuredImage ? (
+            <div className="relative mt-10 aspect-[16/9] w-full overflow-hidden rounded-sm bg-paper-deep">
+              <Image
+                src={articleImageUrl(article.featuredImage.path)}
+                alt={article.featuredImage.alt}
+                fill
+                sizes="(min-width: 1024px) 60rem, 100vw"
+                className="object-cover"
+                priority
+              />
+            </div>
+          ) : null}
 
           <div className="mt-12 grid lg:grid-cols-12 lg:gap-8">
             <div className="border-t border-line pt-8 lg:col-span-8 lg:col-start-4">

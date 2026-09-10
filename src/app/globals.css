@@ -1034,3 +1034,193 @@ select {
     color: var(--color-muted);
   }
 }
+
+/*
+  Admin lists. A regular table from md up; below that every row stacks into
+  label/value pairs (the label comes from data-label), with the first cell as
+  the row's title. Same idea as .tm-table, tuned for operational lists.
+*/
+.adm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.adm-table th {
+  padding: 0 1rem 0.55rem 0;
+  border-bottom: 1px solid var(--color-line-strong);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.adm-table td {
+  padding: 0.7rem 1rem 0.7rem 0;
+  border-bottom: 1px solid var(--color-line);
+  vertical-align: top;
+  color: var(--color-body);
+}
+
+.adm-table th:last-child,
+.adm-table td:last-child {
+  padding-right: 0;
+}
+
+.adm-table tbody tr:hover {
+  background: var(--color-surface);
+}
+
+.adm-table .adm-title {
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.adm-table .adm-wrap {
+  overflow-wrap: anywhere;
+}
+
+.adm-table .adm-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Secondary columns that only fit from xl up; below md they stack like the rest. */
+@media (min-width: 48rem) and (max-width: 79.99rem) {
+  .adm-table .adm-xl {
+    display: none;
+  }
+}
+
+@media (max-width: 47.99rem) {
+  .adm-table thead,
+  .adm-table th {
+    display: block;
+  }
+
+  .adm-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .adm-table,
+  .adm-table tbody,
+  .adm-table tr {
+    display: block;
+  }
+
+  .adm-table tr {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .adm-table td {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.15rem 0;
+    border: 0;
+  }
+
+  .adm-table td::before {
+    content: attr(data-label);
+    font-size: 0.78rem;
+    color: var(--color-muted);
+  }
+
+  .adm-table td.adm-primary {
+    display: block;
+    padding-bottom: 0.35rem;
+    font-size: 1rem;
+  }
+
+  .adm-table td.adm-primary::before {
+    content: none;
+  }
+
+  .adm-table .adm-num {
+    text-align: left;
+  }
+}
+
+/* Article editor (Tiptap): the article typography at admin scale. */
+.adm-editor {
+  min-height: 22rem;
+  padding: 1rem 1.25rem 1.5rem;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--color-body);
+  outline: none;
+}
+
+.adm-editor > * + * {
+  margin-top: 0.9em;
+}
+
+.adm-editor h2 {
+  margin-top: 1.6em;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.adm-editor h3 {
+  margin-top: 1.3em;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.adm-editor ul,
+.adm-editor ol {
+  padding-left: 1.4rem;
+}
+
+.adm-editor ul {
+  list-style: disc;
+}
+
+.adm-editor ol {
+  list-style: decimal;
+}
+
+.adm-editor li::marker {
+  color: var(--color-accent);
+}
+
+.adm-editor li + li {
+  margin-top: 0.35em;
+}
+
+.adm-editor blockquote {
+  padding-left: 1rem;
+  border-left: 2px solid var(--color-accent);
+  color: var(--color-ink);
+}
+
+.adm-editor a {
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+}
+
+.adm-editor strong {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.adm-editor p.is-editor-empty:first-child::before {
+  content: "Begin met schrijven…";
+  float: left;
+  height: 0;
+  color: var(--color-faint);
+  pointer-events: none;
+}
