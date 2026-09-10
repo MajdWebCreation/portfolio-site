@@ -100,6 +100,7 @@ export default function SiteHeader({
 
         <MobileNav
           navigation={navigation}
+          homeHref={homePath}
           counterpartPath={counterpartPath}
           alternateLocaleLabel={
             alternateLocale === "en" ? "English" : "Nederlands"
