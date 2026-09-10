@@ -65,13 +65,13 @@ export default async function HomePage({
 
       <SiteShell locale={locale} content={content} currentPath={homePath}>
         {/* Hero: positioning on the left, a request travelling through a product on the right. */}
-        <section className="container-x grid gap-12 pb-16 pt-12 sm:pt-16 lg:grid-cols-12 lg:items-center lg:gap-8 lg:pb-24 lg:pt-20">
+        <section className="container-x grid gap-12 pb-16 pt-12 max-md:gap-9 max-md:pb-12 sm:pt-16 lg:grid-cols-12 lg:items-center lg:gap-8 lg:pb-24 lg:pt-20">
           <div className="lg:col-span-8 xl:col-span-7">
             <h1 className="display-xl rise max-w-[19ch]">{content.hero.title}</h1>
-            <p className="lede rise rise-delay-1 mt-7 max-w-[38rem]">
+            <p className="lede rise rise-delay-1 mt-7 max-w-[38rem] max-md:mt-5">
               {content.hero.description}
             </p>
-            <div className="rise rise-delay-2 mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
+            <div className="rise rise-delay-2 mt-9 flex flex-wrap items-center gap-x-6 gap-y-4 max-md:mt-7">
               <CtaLink
                 href={getLocalizedPath(locale, "contact")}
                 data-track-event="contact_cta_click"
@@ -117,7 +117,7 @@ export default async function HomePage({
 
         {/* How working together feels: three promises, set as one statement. */}
         <section className="bg-paper-deep" aria-labelledby="collaboration-heading">
-          <div className="container-x grid gap-6 py-16 lg:grid-cols-12 lg:gap-8 lg:py-24">
+          <div className="container-x grid gap-6 py-16 max-md:gap-5 max-md:py-12 lg:grid-cols-12 lg:gap-8 lg:py-24">
             <h2 id="collaboration-heading" className="label-mono pt-2 lg:col-span-2">
               {content.collaboration.label}
             </h2>
@@ -129,7 +129,7 @@ export default async function HomePage({
                   </span>
                 ))}
               </p>
-              <div className="mt-8">
+              <div className="mt-8 max-md:mt-6">
                 <CtaLink
                   href={getLocalizedPath(locale, "process")}
                   variant="text"
@@ -147,7 +147,7 @@ export default async function HomePage({
 
         {/* Pointers: proof and pricing live on their own pages. */}
         <section
-          className="container-x pt-16 lg:pt-24"
+          className="container-x pt-16 max-md:pt-12 lg:pt-24"
           aria-label={`${content.pointers.projects.label}, ${content.pointers.pricing.label}`}
         >
           <div className="grid gap-4 border-t border-line pt-6 lg:grid-cols-12 lg:gap-8">
@@ -159,25 +159,25 @@ export default async function HomePage({
                 data-track-category="homepage"
                 data-track-label={content.pointers.projects.title}
                 data-track-location="pointer-projects"
-                className="group inline-flex flex-wrap items-baseline gap-x-4"
+                className="group inline-flex flex-wrap items-baseline gap-x-4 max-md:inline"
               >
                 <span className="display-lg text-ink transition-colors group-hover:text-accent">
                   {content.pointers.projects.title}
                 </span>
                 <span
                   aria-hidden="true"
-                  className="display-lg text-faint transition-[transform,color] duration-300 group-hover:translate-x-2 group-hover:text-accent"
+                  className="display-lg text-faint transition-[transform,color] duration-300 group-hover:translate-x-2 group-hover:text-accent max-md:ml-3"
                 >
                   →
                 </span>
               </Link>
-              <p className="mt-3 max-w-md text-[1rem] leading-relaxed text-muted">
+              <p className="mt-3 max-w-md text-[1rem] leading-relaxed text-muted max-md:hidden">
                 {content.pointers.projects.text}
               </p>
             </div>
           </div>
 
-          <div className="mt-10 grid gap-3 border-t border-line pt-6 lg:grid-cols-12 lg:gap-8">
+          <div className="mt-10 grid gap-3 border-t border-line pt-6 max-md:mt-8 lg:grid-cols-12 lg:gap-8">
             <p className="label-mono lg:col-span-2">{content.pointers.pricing.label}</p>
             <div className="lg:col-span-9 lg:col-start-4">
               <Link
@@ -186,25 +186,25 @@ export default async function HomePage({
                 data-track-category="homepage"
                 data-track-label={content.pointers.pricing.title}
                 data-track-location="pointer-pricing"
-                className="group inline-flex flex-wrap items-baseline gap-x-3"
+                className="group inline-flex flex-wrap items-baseline gap-x-3 max-md:inline"
               >
                 <span className="display-sm text-ink transition-colors group-hover:text-accent">
                   {content.pointers.pricing.title}
                 </span>
                 <span
                   aria-hidden="true"
-                  className="text-faint transition-[transform,color] duration-300 group-hover:translate-x-1 group-hover:text-accent"
+                  className="text-faint transition-[transform,color] duration-300 group-hover:translate-x-1 group-hover:text-accent max-md:ml-2"
                 >
                   →
                 </span>
               </Link>
-              <p className="mt-2 text-[0.95rem] text-muted">{content.pointers.pricing.text}</p>
+              <p className="mt-2 text-[0.95rem] text-muted max-md:hidden">{content.pointers.pricing.text}</p>
             </div>
           </div>
         </section>
 
         {/* Closing step. */}
-        <section className="container-x pt-20 lg:pt-28" aria-labelledby="contact-heading">
+        <section className="container-x pt-20 max-md:pt-14 lg:pt-28" aria-labelledby="contact-heading">
           <ContactCta locale={locale} content={content.contactCta} headingId="contact-heading" />
         </section>
       </SiteShell>

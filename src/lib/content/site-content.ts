@@ -85,7 +85,7 @@ export const siteContent = {
     hero: {
       title: "Digitale producten, gebouwd rond hoe jouw bedrijf werkt.",
       description:
-        "YM Creations ontwerpt en bouwt websites, webshops en software op maat voor Nederlandse bedrijven. Geen template dat je bedrijf in een mal drukt, maar een product dat aansluit op je proces en meegroeit met wat je nodig hebt.",
+        "Websites, webshops en maatwerksoftware met sterke techniek, heldere UX en ruimte om uit te breiden.",
       primaryCta: "Vertel over je project",
       secondaryCta: "Bekijk projecten",
       flow: {
@@ -125,6 +125,7 @@ export const siteContent = {
           key: "websites",
           title: "Websites en webshops",
           text: "Bedrijfswebsites, landingspagina's en webshops, ingericht op aanvragen en bestellingen.",
+          short: "Voor presentatie, aanvragen en verkoop.",
           serviceKey: "business-websites",
           size: "xl",
         },
@@ -132,6 +133,7 @@ export const siteContent = {
           key: "applications",
           title: "Webapplicaties, portalen en apps",
           text: "Reserveringen, klantportalen, beheeromgevingen en apps met inlog en rollen.",
+          short: "Software voor processen en gebruikers.",
           serviceKey: "web-app-development",
           size: "xl",
         },
@@ -139,6 +141,7 @@ export const siteContent = {
           key: "configurators",
           title: "3D-configurators",
           text: "Klanten stellen een product samen en zien direct de prijs.",
+          short: "Producten interactief samenstellen.",
           serviceKey: "3d-configurators",
           size: "lg",
           emphasis: true,
@@ -147,6 +150,7 @@ export const siteContent = {
           key: "integrations",
           title: "Koppelingen en automatisering",
           text: "Betalingen, e-mail en API's, zodat handwerk verdwijnt.",
+          short: "Systemen slimmer laten samenwerken.",
           serviceKey: "integrations-automation",
           size: "lg",
         },
@@ -217,7 +221,7 @@ export const siteContent = {
     hero: {
       title: "Digital products, built around how your business works.",
       description:
-        "YM Creations designs and builds custom websites, webshops and software for Dutch businesses. No template that forces your business into a mould, but a product that fits your process and grows with what you need.",
+        "Websites, webshops and custom software with strong engineering, clear UX and room to grow.",
       primaryCta: "Tell us about your project",
       secondaryCta: "View projects",
       flow: {
@@ -257,6 +261,7 @@ export const siteContent = {
           key: "websites",
           title: "Websites and webshops",
           text: "Company websites, landing pages and webshops, set up for enquiries and orders.",
+          short: "For presentation, enquiries and sales.",
           serviceKey: "business-websites",
           size: "xl",
         },
@@ -264,6 +269,7 @@ export const siteContent = {
           key: "applications",
           title: "Web applications, portals and apps",
           text: "Bookings, client portals, admin environments and apps with login and roles.",
+          short: "Software for processes and users.",
           serviceKey: "web-app-development",
           size: "xl",
         },
@@ -271,6 +277,7 @@ export const siteContent = {
           key: "configurators",
           title: "3D configurators",
           text: "Customers compose a product and see the price instantly.",
+          short: "Compose products interactively.",
           serviceKey: "3d-configurators",
           size: "lg",
           emphasis: true,
@@ -279,6 +286,7 @@ export const siteContent = {
           key: "integrations",
           title: "Integrations and automation",
           text: "Payments, email and APIs, so manual work disappears.",
+          short: "Systems that work together.",
           serviceKey: "integrations-automation",
           size: "lg",
         },

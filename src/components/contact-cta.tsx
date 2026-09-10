@@ -24,10 +24,10 @@ export default function ContactCta({ locale, content, headingId }: ContactCtaPro
         <h2 id={headingId} className="display-lg max-w-[16ch]">
           {content.title}
         </h2>
-        <p className="mt-5 max-w-lg text-[1.05rem] leading-relaxed text-muted">
+        <p className="mt-5 max-w-lg text-[1.05rem] leading-relaxed text-muted max-md:hidden">
           {content.description}
         </p>
-        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4 max-md:mt-6">
           <CtaLink
             href={getLocalizedPath(locale, "contact")}
             data-track-event="contact_cta_click"
