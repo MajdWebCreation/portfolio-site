@@ -11,6 +11,14 @@ type BuildGroup = {
   serviceKey: ServiceKey;
   size: "xl" | "lg";
   emphasis?: boolean;
+  /**
+   * Other services in the same family, as their own links.
+   *
+   * A family names more than one product but its tile can only lead to one of
+   * them, so the rest are unreachable from here. These sit next to the tile
+   * link rather than inside it: an anchor cannot contain an anchor.
+   */
+  more?: readonly { label: string; serviceKey: ServiceKey }[];
 };
 
 type BuildOverviewProps = {
@@ -115,6 +123,25 @@ export default function BuildOverview({
                 {group.short}
               </span>
             </Link>
+
+            {group.more && group.more.length > 0 ? (
+              <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 max-md:mt-2">
+                {group.more.map((item) => (
+                  <li key={item.serviceKey}>
+                    <Link
+                      href={hrefFor(item.serviceKey)}
+                      data-track-event="service_cta_click"
+                      data-track-category="homepage"
+                      data-track-label={item.label}
+                      data-track-location="build-overview-more"
+                      className="text-[0.95rem] text-paper/80 underline decoration-paper/35 underline-offset-4 transition-colors hover:text-paper hover:decoration-paper max-md:text-[0.9rem]"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </li>
         ))}
       </ul>

@@ -55,6 +55,21 @@ export type ServicePart = {
   text: string;
 };
 
+/**
+ * A stretch of running text on a service page: one heading and the paragraphs
+ * under it.
+ *
+ * The lists on these pages say *what* a service contains; this is where the
+ * buying question gets answered -- for whom it fits, what determines the
+ * scope and the price, and what happens after launch. Paragraphs use the same
+ * inline notation the articles use, so `[label](/nl/tarieven)` becomes a link
+ * and `**text**` becomes bold; anything else is text.
+ */
+export type ServiceSection = {
+  heading: string;
+  paragraphs: string[];
+};
+
 type LocalizedServiceContent = {
   slug: string;
   navLabel: string;
@@ -64,6 +79,8 @@ type LocalizedServiceContent = {
   intro: string;
   /** One line for the services index. */
   summary: string;
+  /** The explanation in prose, between the header and the lists. */
+  sections?: ServiceSection[];
   /** Situations in which this service fits. */
   fitTitle: string;
   fit: string[];
@@ -110,12 +127,44 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
         navLabel: "Bedrijfswebsite",
         metaTitle: "Bedrijfswebsite laten maken",
         metaDescription:
-          "Een bedrijfswebsite op maat in eigen code: dienstenpagina's, contactflow met formulier, bellen en WhatsApp, en technische SEO vanaf de eerste versie.",
+          "Een zakelijke website laten maken in eigen code: dienstenpagina's, een contactflow met formulier, bellen en WhatsApp, technische SEO vanaf de eerste versie en technisch beheer na livegang.",
         title:
-          "Een bedrijfswebsite die vertelt wat je doet en de weg naar contact kort houdt.",
+          "Een bedrijfswebsite laten maken die vertelt wat je doet en de weg naar contact kort houdt.",
         intro:
           "De structuur volgt uit wat je aanbiedt en hoe klanten contact opnemen. Gebouwd in eigen code, zodat de site snel blijft en meegroeit als je aanbod verandert.",
         summary: "Dienstenpagina's, contactflow en lokale vindbaarheid.",
+        sections: [
+          {
+            heading: "Voor wie deze website bedoeld is",
+            paragraphs: [
+              "Dit is de website voor een bedrijf dat zijn werk moet uitleggen voordat iemand contact opneemt. Denk aan een installateur, een adviesbureau of een dienstverlener met een vast werkgebied: bezoekers willen eerst weten wat je precies doet, voor wie, en of je in hun buurt werkt. Pas als dat klopt, pakken ze de telefoon of vullen ze een formulier in.",
+              "De site heeft daarom twee taken tegelijk. Hij moet je aanbod zo opschrijven dat een bezoeker het in één pagina begrijpt, en hij moet de stap naar contact zo kort mogelijk maken. Die twee bepalen de opbouw: welke pagina's er zijn, wat er bovenaan staat en waar de knop naar contact zit.",
+              "Gaat het om een proces dat verder loopt dan een aanvraag, bijvoorbeeld reserveren, inloggen of bestellen, dan is dit niet het juiste type. Verkopen doe je met een [webshop](/nl/diensten/webshop-laten-maken); een proces met statussen en rollen hoort bij een [webapplicatie](/nl/diensten/webapplicatie-laten-maken).",
+            ],
+          },
+          {
+            heading: "Wat er op de site komt te staan",
+            paragraphs: [
+              "De paginastructuur volgt je aanbod: een eigen pagina per specialisme, zodat elke dienst zijn eigen uitleg en zijn eigen ingang vanuit Google heeft. Werk je in een vast gebied, dan komt daar een werkgebiedpagina bij, en waar het zin heeft een aparte pagina per stad. Bij D.O.S Slotenmaker zijn dat zes dienstpagina's plus een werkgebied met stadspagina; bij Taxi De Polder dienstpagina's voor luchthaven, zakelijk en regiovervoer. Beide staan op de [projectenpagina](/nl/projecten), met een link naar de site zelf.",
+              "De contactflow bestaat uit een formulier, een belknop en WhatsApp, met een bevestiging per e-mail zodat een aanvraag niet in het niets verdwijnt. Welke daarvan het zwaarst weegt, verschilt per bedrijf. Bij een slotenmaker die vooral gebeld wordt, staan bellen en WhatsApp op elke pagina bovenaan; bij een adviestraject is een formulier met ruimte voor uitleg logischer.",
+              "Werk je met klanten in meer dan één taal, dan krijgt elke taal een eigen URL in plaats van een vertaalknop die de pagina ter plekke omwisselt. Dat is te zien bij het Arabisch-Nederlands Tolkencollectief, waar de Arabische versie een eigen adres heeft en van rechts naar links leest.",
+            ],
+          },
+          {
+            heading: "Wat de prijs bepaalt",
+            paragraphs: [
+              "De prijs volgt het type project, niet een lijst losse functies. Een compacte website van één tot vijf pagina's is een ander type dan een bedrijfswebsite van zes tot twaalf pagina's met een bredere contentstructuur, formulieren en eenvoudig contentbeheer. Vraagt het product om een reserverings- of aanvraagflow, statusbeheer of prijslogica, dan verschuift het naar een zwaarder type. De vanafprijzen per type staan op de [tarievenpagina](/nl/tarieven).",
+              "Binnen een type is vooral de inhoud bepalend. Teksten komen van jou; we schrijven mee en scherpen aan, maar het verhaal is van het bedrijf. Fotografie, een beheeromgeving om zelf teksten te wijzigen en een extra taal zijn de onderdelen die de scope het vaakst laten bewegen. Wat er precies in zit, staat in het voorstel dat na de intake volgt.",
+            ],
+          },
+          {
+            heading: "Na livegang",
+            paragraphs: [
+              "Domein, hosting, e-mail, analytics en technische SEO worden ingericht voordat de site live gaat, niet erna. Bij de oplevering dragen we de site over inclusief uitleg van het beheer, zodat je weet waar je zelf bij kunt. Die volgorde is voor elk project hetzelfde en staat beschreven op de pagina [werkwijze](/nl/werkwijze).",
+              "Daarna draait de site onder technisch beheer: hosting en deployment binnen de afgesproken basis, SSL, updates en controle, zodat de omgeving online en actueel blijft. Omdat er in eigen code is gebouwd, is er geen thema of plug-in om bij te houden; het onderhoud beperkt zich tot de site zelf. Nieuwe functionaliteit en inhoudelijke wijzigingen vallen daarbuiten en worden apart geoffreerd, en betaalde diensten van derden die het project nodig heeft worden apart doorberekend.",
+            ],
+          },
+        ],
         fitTitle: "Past wanneer",
         fit: [
           "De website is het eerste contactmoment met nieuwe klanten",
@@ -274,11 +323,43 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
         navLabel: "Webshop",
         metaTitle: "Webshop laten maken",
         metaDescription:
-          "Een webshop op maat met productpagina's, winkelwagen, checkout met iDEAL en orderbeheer, gebouwd als één geheel met je website.",
-        title: "Een webshop met producten, checkout en beheer als één geheel.",
+          "Een webshop laten maken op maat: productpagina's met categorieën en filters, winkelwagen en checkout met iDEAL, bestelmails en beheer van producten, prijzen, voorraad en orders.",
+        title: "Een webshop laten maken waarin producten, checkout en beheer één geheel zijn.",
         intro:
           "Voor bedrijven die online willen verkopen en shop en website als één geheel willen: dezelfde code, dezelfde huisstijl, één beheer. Zonder apart platform dat meer instellingen heeft dan je gebruikt.",
         summary: "Productpagina's, checkout, betalingen en orderbeheer.",
+        sections: [
+          {
+            heading: "Wanneer een eigen webshop past",
+            paragraphs: [
+              "De vraag is zelden of je online kunt verkopen, maar hoeveel de shop onderdeel van je website moet zijn. Verkoop je producten naast je diensten, dan wil je meestal niet dat een bezoeker halverwege in een andere omgeving met een andere huisstijl belandt. Een shop in dezelfde code als de rest van de site voorkomt dat, en scheelt een tweede plek om bij te houden.",
+              "Deze opzet past het beste bij een klein of gecureerd assortiment, waar de productpagina's iets uit te leggen hebben en het aantal artikelen overzichtelijk is. Gaat het om honderden producten, dan is dat geen blokkade, maar kijken we in de intake eerst naar de structuur van de catalogus: categorieën, filters en beheer bepalen dan meer dan het ontwerp.",
+              "Heb je nog geen site waar de shop op kan staan, dan begint het bij een [bedrijfswebsite](/nl/diensten/bedrijfswebsite) en komt de shop daar als onderdeel op. Draait je huidige site op een ander platform, dan bekijken we of een aparte shop op een subdomein beter past.",
+            ],
+          },
+          {
+            heading: "Producten, checkout en orders",
+            paragraphs: [
+              "Aan de voorkant staan productpagina's met categorieën en filters, met een ontwerp dat op bestellen vanaf een telefoon is gericht. Aan de achterkant beheer je producten, prijzen en voorraad zelf, in dezelfde beheeromgeving als de rest van de site. Categorieën en producten krijgen hun eigen adres en hun eigen metadata, zodat ze los vindbaar zijn en niet alleen bereikbaar via een klik op de shop.",
+              "De checkout loopt van winkelwagen naar betaling via een betaalprovider. iDEAL en de gangbare kaarten zijn mogelijk; welke provider precies, stemmen we af op je bank en op wat je klanten gebruiken. Het hele pad van productpagina tot betaalde order testen we van begin tot eind voordat de shop live gaat.",
+              "Na een bestelling gaan orderbevestigingen en verzendmails automatisch de deur uit, en komt de order in het beheer binnen met de gegevens die je nodig hebt om hem uit te voeren. Dat is het basisbeheer van producten en bestellingen; waar die order daarna naartoe moet, is een aparte vraag die hieronder staat.",
+            ],
+          },
+          {
+            heading: "Waar de scope van koppelingen ligt",
+            paragraphs: [
+              "Een shop draait zelden alleen. Zodra orders ook in een boekhoud- of voorraadsysteem moeten landen, of verzendlabels ergens anders vandaan komen, gaat het om een [koppeling](/nl/diensten/koppelingen-automatisering) tussen twee systemen. Dat is een eigen traject met een eigen scope, omdat het afhangt van wat het andere systeem aan API of export biedt.",
+              "Andere onderdelen die de scope bepalen, zijn verzend- en btw-regels buiten Nederland, het importeren van producten en klanten uit een bestaande shop, en functies als kortingscodes, abonnementen of klantaccounts. Klantaccounts met eigen logica, of workflows die verder gaan dan bestellen en betalen, horen niet meer bij een webshop maar bij een [maatwerkplatform](/nl/diensten/webapplicatie-laten-maken).",
+            ],
+          },
+          {
+            heading: "Prijs, livegang en beheer",
+            paragraphs: [
+              "Een webshop is een eigen projecttype met een eigen vanafprijs, die de basis dekt: productpagina's, winkelwagen en checkout, bestelmails en het beheer van producten en bestellingen. Wat de prijs daarboven beweegt, is vooral het assortiment, de import vanuit een bestaande shop en het aantal koppelingen. De vanafprijzen per type staan op de [tarievenpagina](/nl/tarieven); het voorstel na de intake is leidend.",
+              "Voor livegang testen we betalingen en orderflow volledig door, daarna gaat de shop live op je eigen domein en dragen we hem over inclusief uitleg van het beheer. Vanaf dat moment draait de shop onder technisch beheer: hosting en deployment binnen de afgesproken basis, SSL, updates en controle. Nieuwe functionaliteit en inhoudelijke wijzigingen vallen daarbuiten en worden apart geoffreerd. Hoe een traject stap voor stap verloopt, staat op de pagina [werkwijze](/nl/werkwijze).",
+            ],
+          },
+        ],
         fitTitle: "Past wanneer",
         fit: [
           "Je verkoopt producten naast je diensten en wilt dat op één site",
@@ -579,13 +660,47 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
       nl: {
         slug: "webapplicatie-laten-maken",
         navLabel: "Webapplicatie",
-        metaTitle: "Webapplicatie laten maken",
+        metaTitle: "Webapplicatie of klantportaal laten maken",
         metaDescription:
-          "Maatwerk webapplicaties, portalen en apps: reserveringssystemen, klantportalen, dashboards en beheeromgevingen met inlog, rollen en koppelingen, gebouwd rond je eigen proces.",
-        title: "Webapplicaties, portalen en apps rond je eigen proces.",
+          "Een webapplicatie, klantportaal of maatwerksoftware laten maken: reserveringssystemen, portalen, dashboards en beheeromgevingen met inlog, rollen, koppelingen en beheer, gebouwd rond je eigen proces.",
+        title:
+          "Een webapplicatie, klantportaal of maatwerksoftware laten maken rond je eigen proces.",
         intro:
           "Als een website niet genoeg is omdat er iets moet gebeuren, en standaardsoftware niet past op hoe je werkt. We bouwen de applicatie rond het proces zoals het nu loopt, en laten weg wat je niet gebruikt.",
         summary: "Reserveringen, portalen, dashboards en beheer.",
+        sections: [
+          {
+            heading: "Wanneer een website niet genoeg is",
+            paragraphs: [
+              "Er is een punt waarop een website ophoudt te helpen. Dat is het moment dat er niet alleen iets gelezen moet worden, maar iets moet gebeuren: een afspraak vastleggen, een aanvraag door een aantal stappen loodsen, een status bijhouden, of een klant laten zien waar zijn dossier staat. Zolang dat via telefoon, e-mail en spreadsheets loopt, kost elke stap iemand tijd en blijft er informatie op één bureau liggen.",
+              "Maatwerksoftware is dan niet het doel maar het gevolg. De vraag is eerst welk deel van je proces echt eigen is, en welk deel een standaardpakket prima aankan. Wat overblijft, is meestal een kern die precies past bij hoe jouw bedrijf werkt en die je in geen enkel pakket terugvindt. Dat stuk bouwen we, en de rest laten we staan.",
+              "Hoe zo'n proces er als applicatie uit kan zien, is te zien bij Taxi De Polder: een reservering in vier stappen, van rit naar voertuig naar gegevens naar bevestiging, met vaste tarieven per bestemming en voertuigtype. Wat daarvoor een telefoontje was, komt nu compleet en gestructureerd binnen. Die site staat op de [projectenpagina](/nl/projecten).",
+            ],
+          },
+          {
+            heading: "Gebruikers, rollen en gegevens",
+            paragraphs: [
+              "Een applicatie is in de kern een afspraak over wie wat mag zien en doen. Een klant hoort zijn eigen aanvragen en documenten te zien en verder niets. Een medewerker heeft het overzicht over de aanvragen waar hij aan werkt. Een beheerder komt overal bij en past instellingen aan. Die drie rollen zijn zelden precies hetzelfde bij twee bedrijven, en daarom bepalen we ze in de intake voordat er een scherm wordt getekend.",
+              "Onder die rollen ligt de database: de plek waar aanvragen, klanten, statussen en documenten gestructureerd worden opgeslagen, zodat ze terug te vinden en te koppelen zijn. Daarboven zitten de bedrijfsregels. Prijslogica, welke status na welke status mag komen, welke uitzonderingen er zijn en wat een geldige invoer is, wordt in code vastgelegd in plaats van in een afspraak die iemand moet onthouden.",
+              "Rond dat geheel staan de dingen die het bruikbaar maken: een interface die op telefoon en desktop werkt, e-mails en notificaties bij een bevestiging of statuswijziging, en een beheeromgeving waar jij de aanvragen en instellingen beheert. Betalingen, een agenda of een boekhoudsysteem sluiten daarop aan waar dat nodig is.",
+            ],
+          },
+          {
+            heading: "Wat in een eerste versie hoort, en wat dat kost",
+            paragraphs: [
+              "Een applicatie wordt niet in één keer af opgeleverd. We beginnen bij de kern: het onderdeel dat het meeste handwerk wegneemt, zodat het na oplevering meteen iets scheelt. Wat kan wachten, schuiven we bewust naar later in plaats van het uit de scope te laten verdwijnen. Tijdens de bouw test je tussentijds met echte situaties, zodat je merkt of een stap in de praktijk klopt.",
+              "Niet alles ligt aan ons. Een koppeling met een bestaand systeem kan alleen als dat systeem een bruikbare API of export heeft; dat controleren we voordat het in de scope komt. Migratie van bestaande gegevens is een eigen onderdeel, en een app in de App Store of Play Store naast de webversie is een apart traject. Meestal begint het als webapp, omdat die op elke telefoon werkt zonder installatie en sneller uit te breiden is.",
+              "De prijs volgt uit die scope en niet uit het aantal schermen. Rollen, workflows, koppelingen en infrastructuur wegen het zwaarst. Op de [tarievenpagina](/nl/tarieven) staat het maatwerkplatform als eigen projecttype met een vanafprijs; wil je zelf eerst de omvang verkennen, dan kan dat in de [projectplanner](/nl/projectplanner). Na de intake krijg je een voorstel met prijs en planning.",
+            ],
+          },
+          {
+            heading: "Beheer en doorontwikkeling",
+            paragraphs: [
+              "Na oplevering beheer je de applicatie zelf via de beheeromgeving, en dragen we hem over inclusief uitleg van dat beheer en documentatie. Daarnaast draait de omgeving onder technisch beheer: hosting en deployment binnen de afgesproken basis, SSL, updates en controle, zodat de applicatie online en actueel blijft. Het beheerniveau volgt uit het project en de techniek erachter.",
+              "Doorontwikkeling is een eigen spoor. Nieuwe functionaliteit en werk buiten de afgesproken scope worden apart geoffreerd, en voor onderhoud, hosting en uitbreidingen spreken we vooraf af wat vast is en wat per aanpassing gaat. Dat is bewust: bij software die dagelijks gebruikt wordt, komen de beste ideeën meestal pas ná de eerste versie. De volledige gang van intake tot livegang staat op de pagina [werkwijze](/nl/werkwijze).",
+            ],
+          },
+        ],
         fitTitle: "Past wanneer",
         fit: [
           "Een proces loopt via telefoon, e-mail of spreadsheets en klanten zouden het zelf moeten kunnen doen",
@@ -802,10 +917,42 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
         metaDescription:
           "Een 3D-productconfigurator op maat: opties en maten, live 3D-beeld, prijsberekening, aanvraag- of bestelflow en beheer van opties en prijzen. Gebouwd in eigen code, ook als onderdeel van je website.",
         title:
-          "Een 3D-configurator waarin klanten hun product samenstellen en direct de prijs zien.",
+          "Een 3D-configurator laten maken waarin klanten hun product samenstellen en de prijs zien.",
         intro:
           "Voor producten met opties, maten en materialen waarvan de prijs afhangt van de samenstelling. De klant doet zelf wat nu een offerte op aanvraag is, binnen de grenzen die jij vastlegt.",
         summary: "Samenstellen, 3D-beeld, prijs en aanvraag.",
+        sections: [
+          {
+            heading: "Wanneer een configurator zinvol is",
+            paragraphs: [
+              "Er zijn producten waarbij elke variant nu een aparte prijsopgave vraagt. De klant belt of mailt, jij rekent iets uit, er komt een offerte terug, en daarna volgt een ronde waarin blijkt dat een maat of materiaal toch anders moet. Bij tien varianten is dat te doen; bij honderden combinaties wordt het een baan op zich.",
+              "Een configurator draait die volgorde om. De klant stelt zelf samen, ziet meteen wat het wordt en wat het kost, en stuurt een complete samenstelling door in plaats van een vraag. Wat je daarmee wint, zit minder in de 3D dan in wat er binnenkomt: aanvragen die niet meer onvolledig zijn en geen navraag kosten.",
+              "Bij Flexora Bouw is dat een aanbouwconfigurator waarin de klant afmetingen, gevelbekleding, kozijnen, dak en binnenafwerking kiest. De prijsopbouw inclusief btw beweegt direct mee, en de samenstelling gaat als offerteaanvraag door. De configurator staat live; hij is te bekijken vanaf de [projectenpagina](/nl/projecten).",
+            ],
+          },
+          {
+            heading: "Keuzes, grenzen en 3D-beeld",
+            paragraphs: [
+              "Het traject begint niet bij het 3D-beeld maar bij het product. We brengen in kaart welke keuzes een klant maakt, welke combinaties wel en niet mogen, en hoe de prijs precies wordt opgebouwd. Dat is meestal het lastigste deel, omdat veel van die regels nu in het hoofd van een verkoper zitten en nergens op papier staan.",
+              "Zodra die regels vastliggen, bepalen ze wat de configurator toelaat. Een klant krijgt alleen combinaties te zien die je ook echt kunt leveren, zodat er geen samenstelling binnenkomt die je moet afwijzen. Elke keuze is direct zichtbaar in 3D, ook op een telefoon, zodat iemand ziet wat hij kiest in plaats van het te moeten lezen.",
+            ],
+          },
+          {
+            heading: "Van prijs naar aanvraag",
+            paragraphs: [
+              "De prijs beweegt mee met de samenstelling, opgebouwd uit regels die jij bepaalt: per optie, per meter of per combinatie. Hoe precies die prijs is, hangt af van de regels die je aanlevert. Je kunt starten met een prijsindicatie en overstappen op een exacte prijs zodra alles is vastgelegd, of meteen exact rekenen als de regels er al zijn.",
+              "Aan het eind gaat de samenstelling compleet door als offerteaanvraag of als order met betaling, met een bevestiging per e-mail. Configuraties kunnen worden opgeslagen, zodat een klant later verder gaat waar hij gebleven was. Moet de aanvraag daarna automatisch in een CRM, ERP of ordersysteem terechtkomen, dan is dat een [koppeling](/nl/diensten/koppelingen-automatisering) met een eigen scope.",
+              "Opties, prijzen en teksten beheer je zelf, zonder ontwikkelaar. Dat is bewust: prijsregels veranderen vaker dan de configurator zelf.",
+            ],
+          },
+          {
+            heading: "Wat de scope bepaalt, en wat er na livegang gebeurt",
+            paragraphs: [
+              "De omvang wordt bepaald door een paar keuzes. Of de 3D-modellen uit je bestaande tekeningen komen of nieuw gemaakt moeten worden. Of de prijsregels eenvoudig per optie werken of afhangen van maten en combinaties. Of er in de configurator betaald wordt of dat er een offerte achteraf volgt. En hoeveel producttypes er in de eerste versie zitten. Daarom is dit een project met een prijs op basis van scope; op de [tarievenpagina](/nl/tarieven) staat het maatwerkplatform als het type waar een configurator onder valt.",
+              "Na livegang stemmen we de regels bij op basis van echte aanvragen, want pas dan blijkt welke combinaties klanten daadwerkelijk kiezen. Nieuwe opties en prijzen voeg je zelf toe in het beheer; nieuwe producttypes of andere 3D-modellen zijn een uitbreiding met een eigen voorstel. De omgeving draait daarbij onder technisch beheer, net als de andere producten die we opleveren. Hoe een traject loopt, staat op de pagina [werkwijze](/nl/werkwijze).",
+            ],
+          },
+        ],
         fitTitle: "Past wanneer",
         fit: [
           "Elke variant vraagt nu een aparte prijsopgave",
@@ -1003,13 +1150,45 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
       nl: {
         slug: "koppelingen-automatisering",
         navLabel: "Koppelingen en automatisering",
-        metaTitle: "Koppelingen en automatisering",
+        metaTitle: "API-koppeling laten maken en processen automatiseren",
         metaDescription:
-          "API-koppelingen en automatisering voor je website of applicatie: betalingen, e-mailflows, CRM en ERP, externe API's en interne systemen, zodat gegevens automatisch doorgaan.",
-        title: "Koppelingen en automatisering tussen de systemen waar je mee werkt.",
+          "Een API-koppeling laten maken tussen je website of applicatie en de systemen die je al gebruikt: betalingen, e-mailflows, CRM en ERP, met foutafhandeling en een logboek van wat er is verstuurd.",
+        title: "Een API-koppeling laten maken en processen automatiseren tussen je systemen.",
         intro:
           "Een aanvraag die in je CRM belandt, een betaling die een bevestiging en een factuurregel oplevert, een order die in je planning verschijnt. We koppelen je website of applicatie aan de systemen die je al gebruikt en automatiseren de stappen daartussen.",
         summary: "Betalingen, e-mail, CRM/ERP en API's.",
+        sections: [
+          {
+            heading: "Wat een koppeling oplevert",
+            paragraphs: [
+              "De meeste bedrijven hebben geen tekort aan systemen maar aan verbindingen ertussen. Een aanvraag komt binnen op de website, iemand typt hem over in het CRM. Een betaling komt binnen bij de provider, iemand maakt er handmatig een factuurregel van. Een order staat in de shop, iemand zet hem in de planning. Elke stap is klein, en juist daardoor blijft het bestaan.",
+              "Een koppeling haalt dat overtypen weg en maakt van die stappen iets dat vanzelf gebeurt. Dat scheelt niet alleen tijd: gegevens die maar één keer worden ingevoerd, gaan minder vaak mis. Bevestigingen, herinneringen en notificaties die aan een status hangen, gaan bovendien altijd uit, ook op een drukke dag.",
+              "Dit is los af te nemen. Een koppeling of automatisering is een eigen traject en kan naast een bestaande website of applicatie draaien, ook als die niet door ons is gebouwd; hoe eenvoudig dat is, hangt af van het platform.",
+            ],
+          },
+          {
+            heading: "Gegevensstromen en systeemgrenzen",
+            paragraphs: [
+              "Een koppeling begint bij de vraag wat het andere systeem toelaat. Alles met een bruikbare API of export is te koppelen, maar wat die API precies biedt, verschilt per systeem: welke velden je mag lezen, welke je mag schrijven, hoe vaak je mag bevragen. We noemen daarom vooraf geen lijst met merken, maar controleren in de inventarisatie per systeem wat mogelijk is. Toegang en accounts bij externe partijen vraag jij aan, want die staan op jouw naam.",
+              "Daarna gaat het om de vertaling. Velden en statussen van het ene systeem zijn zelden identiek aan die van het andere, dus leggen we vast wat waarmee overeenkomt en valideren we wat er doorgaat. Ook de richting is een keuze: gaat informatie één kant op, of moeten beide systemen elkaar bijwerken? Dat laatste is zwaarder, omdat er dan bepaald moet worden welk systeem gelijk heeft als ze van elkaar afwijken.",
+              "Tot slot bepaalt de trigger wanneer het gebeurt: een aanvraag, een betaling, een statuswijziging, of een vast tijdstip voor exports, rapportages en controles.",
+            ],
+          },
+          {
+            heading: "Foutafhandeling en inzicht",
+            paragraphs: [
+              "Een koppeling die alleen werkt als alles goed gaat, is niet af. Systemen zijn af en toe onbereikbaar, een API geeft een onverwacht antwoord, of een veld blijkt leeg. Daarom hoort in de scope wat er dán gebeurt: opnieuw proberen, melden, of het bericht vastleggen zodat het niet verdwijnt. Dat wordt gebouwd en getest, niet achteraf bedacht.",
+              "Om dat te kunnen controleren, hoort er een logboek bij waarin je ziet wat er is verstuurd en wat is mislukt. We testen de koppeling met echte gegevens in een testomgeving, inclusief wat er mis kan gaan, en dragen bij de ingebruikname dat logboek over samen met een controle op de eerste echte gegevens.",
+            ],
+          },
+          {
+            heading: "Onderhoud en wat de prijs bepaalt",
+            paragraphs: [
+              "Een koppeling is onderhoud dat nooit helemaal ophoudt, omdat de andere kant niet van jou is. Verandert een externe API, dan moet de koppeling mee. Dat is een scopeonderdeel waar we vooraf afspraken over maken, geen aanname. De omgeving zelf draait onder technisch beheer: hosting en deployment binnen de afgesproken basis, SSL, updates en controle. Betaalde diensten of infrastructuur van derden die de koppeling nodig heeft, vallen daarbuiten en worden apart doorberekend.",
+              "De prijs volgt uit de scope: het aantal systemen en de richting van de uitwisseling bepalen de omvang, meer dan het soort systeem. Loopt de automatisering uit op een proces met eigen schermen, rollen en statussen, dan is dat geen koppeling meer maar een [webapplicatie](/nl/diensten/webapplicatie-laten-maken). De vanafprijzen per projecttype staan op de [tarievenpagina](/nl/tarieven), en hoe een traject loopt op de pagina [werkwijze](/nl/werkwijze).",
+            ],
+          },
+        ],
         fitTitle: "Past wanneer",
         fit: [
           "Gegevens worden nu overgetypt van het ene systeem naar het andere",

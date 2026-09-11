@@ -53,6 +53,7 @@ export default async function HomePage({
           organizationSchema(),
           websiteSchema(),
           webPageSchema({
+            locale,
             name:
               locale === "nl"
                 ? "YM Creations, digitale producten op maat"

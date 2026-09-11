@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getPublishedArticles } from "@/lib/content/articles";
+import { getCaseStudyPath, getPublishedCaseStudyPaths } from "@/lib/content/cases";
 import {
   getLocalizedPath,
   legalRoutes,
@@ -59,6 +60,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return [withAlternates(nl, en, nl), withAlternates(en, en, nl)];
   });
 
+  /*
+    Cases, per locale and only where one is written. A case that exists in
+    Dutch alone is listed once, without alternates: there is no counterpart to
+    point at and no placeholder to invent. No lastModified either -- nothing
+    in the case records when it was written, and a date made up here would say
+    "fresh" without meaning it.
+  */
+  const caseEntries: MetadataRoute.Sitemap = locales.flatMap((locale) =>
+    getPublishedCaseStudyPaths(locale).map((slug) => ({
+      url: absolute(getCaseStudyPath(locale, slug)),
+    })),
+  );
+
   // Published articles only: the database hands out no other kind, so a
   // draft cannot reach the sitemap.
   const articlesPerLocale = await Promise.all(locales.map((locale) => getPublishedArticles(locale)));
@@ -73,5 +87,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ? [{ url: absolute(legalRoutes.terms) }]
     : [];
 
-  return [...staticEntries, ...serviceEntries, ...articleEntries, ...legalEntries];
+  return [
+    ...staticEntries,
+    ...serviceEntries,
+    ...caseEntries,
+    ...articleEntries,
+    ...legalEntries,
+  ];
 }

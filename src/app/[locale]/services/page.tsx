@@ -64,6 +64,7 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
     <>
       <JsonLd
         data={collectionPageSchema({
+          locale,
           name: overview.label,
           description: serviceCollectionSchemaDescription[locale],
           url: getCanonicalUrl(path),

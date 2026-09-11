@@ -60,12 +60,26 @@ export function buildMetadata({
   };
 }
 
+/**
+ * The brand suffix the title template adds to every other page.
+ *
+ * A `title.template` applies to child segments, not to the segment that
+ * declares it, and the home page sits in the same segment as the layout that
+ * declares ours. So the home page never receives the suffix and has to carry
+ * it itself, as an absolute title -- which is also why it is added here and
+ * nowhere else: any other route would end up with it twice.
+ */
+function homeTitle(subject: string) {
+  return `${subject} | ${businessInfo.name}`;
+}
+
 export function getHomeMetadata(locale: Locale) {
   if (locale === "nl") {
     return buildMetadata({
       locale,
       pathname: getLocalizedPath("nl", "home"),
-      title: "Maatwerk websites, webshops en webapplicaties",
+      title: homeTitle("Maatwerk websites, webshops en webapplicaties"),
+      absoluteTitle: true,
       description:
         "YM Creations is een Nederlands IT- en webbedrijf. We ontwerpen en bouwen maatwerk websites, webshops, webapplicaties, apps en 3D-configurators in eigen code.",
       alternates: getRouteAlternates("home"),
@@ -75,7 +89,8 @@ export function getHomeMetadata(locale: Locale) {
   return buildMetadata({
     locale,
     pathname: getLocalizedPath("en", "home"),
-    title: "Custom websites, webshops and web applications",
+    title: homeTitle("Custom websites, webshops and web applications"),
+    absoluteTitle: true,
     description:
       "YM Creations is a Dutch IT and web company. We design and build custom websites, webshops, web applications, apps and 3D configurators in custom code.",
     alternates: getRouteAlternates("home"),

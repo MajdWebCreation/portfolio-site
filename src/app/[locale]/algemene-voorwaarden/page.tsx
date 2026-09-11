@@ -70,6 +70,7 @@ export default async function TermsPage({
     <>
       <JsonLd
         data={webPageSchema({
+          locale: "nl",
           name: meta.title,
           description: meta.description,
           url: getCanonicalUrl(legalRoutes.terms),

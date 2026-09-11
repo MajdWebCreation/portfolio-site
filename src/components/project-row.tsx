@@ -10,6 +10,13 @@ type ProjectRowProps = {
   builtLabel: string;
   /** Show the full list of what was built instead of a compact inline list. */
   detailed?: boolean;
+  /**
+   * The case for this project in this locale, when one is written. It sits
+   * next to the link to the live site rather than replacing it: the case is
+   * the story, the domain is the proof.
+   */
+  casePath?: string | null;
+  caseLabel?: string;
 };
 
 /**
@@ -22,6 +29,8 @@ export default function ProjectRow({
   visitLabel,
   builtLabel,
   detailed = false,
+  casePath,
+  caseLabel,
 }: ProjectRowProps) {
   return (
     <article className="group grid gap-5 border-t border-line py-8 lg:grid-cols-12 lg:gap-8 lg:py-10">
@@ -86,7 +95,19 @@ export default function ProjectRow({
           </p>
         )}
 
-        <div className="mt-5">
+        <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+          {casePath && caseLabel ? (
+            <CtaLink
+              href={casePath}
+              variant="text"
+              data-track-event="primary_cta_click"
+              data-track-category="projects"
+              data-track-label={project.name}
+              data-track-location="project-row-case"
+            >
+              {caseLabel}
+            </CtaLink>
+          ) : null}
           <CtaLink
             href={project.url}
             variant="text"

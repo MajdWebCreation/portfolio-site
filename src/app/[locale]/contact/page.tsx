@@ -68,6 +68,7 @@ export default async function ContactPage({
       <JsonLd
         data={[
           webPageSchema({
+            locale,
             name: meta.title,
             description: meta.description,
             url: getCanonicalUrl(path),

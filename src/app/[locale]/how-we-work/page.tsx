@@ -60,6 +60,7 @@ export function ProcessPageContent({ locale }: { locale: Locale }) {
     <>
       <JsonLd
         data={webPageSchema({
+          locale,
           name: page.metaTitle,
           description: page.metaDescription,
           url: getCanonicalUrl(path),

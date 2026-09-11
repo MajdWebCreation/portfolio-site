@@ -64,6 +64,7 @@ export async function ProjectPlannerPageContent({ locale }: { locale: Locale }) 
     <>
       <JsonLd
         data={webPageSchema({
+          locale,
           name: planner.metaTitle,
           description: planner.metaDescription,
           url: getCanonicalUrl(path),

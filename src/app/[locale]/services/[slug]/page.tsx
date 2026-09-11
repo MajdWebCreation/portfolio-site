@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import Breadcrumbs from "@/components/breadcrumbs";
 import CtaLink from "@/components/cta-link";
 import FaqList from "@/components/faq-list";
 import JsonLd from "@/components/json-ld";
@@ -8,7 +9,10 @@ import NextStep from "@/components/next-step";
 import PageHeader from "@/components/page-header";
 import ProcessSteps from "@/components/process-steps";
 import ProjectRow from "@/components/project-row";
+import ProseSections from "@/components/prose-sections";
 import SiteShell from "@/components/site-shell";
+import { getServiceBreadcrumbs } from "@/lib/content/breadcrumbs";
+import { getCaseStudyPathForProject } from "@/lib/content/cases";
 import { getProjectById, type Project } from "@/lib/content/projects";
 import { getLocalizedPath } from "@/lib/content/routes";
 import {
@@ -19,9 +23,10 @@ import {
   serviceKeys,
   type LocalizedService,
   type ServicePart,
+  type ServiceSection,
 } from "@/lib/content/services";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
-import { serviceSchema, webPageSchema } from "@/lib/schema";
+import { breadcrumbListSchema, serviceSchema, webPageSchema } from "@/lib/schema";
 import { isValidLocale, siteContent, type Locale } from "@/lib/content/site-content";
 
 export async function generateStaticParams() {
@@ -79,6 +84,7 @@ const labels = {
     built: "Gebouwd",
     related: "Andere diensten",
     allProjects: "Alle projecten",
+    readCase: "Lees de case",
     contact: "Neem contact op",
     planner: "Gebruik de projectplanner",
     pricing: "Bekijk tarieven",
@@ -90,11 +96,25 @@ const labels = {
     built: "Built",
     related: "Other services",
     allProjects: "All projects",
+    readCase: "Read the case",
     contact: "Get in touch",
     planner: "Use the project planner",
     pricing: "View pricing",
   },
 } as const;
+
+/* The buying explanation, in the shared prose column. */
+function ServiceProse({ sections }: { sections: ServiceSection[] }) {
+  return (
+    <section className="container-x pt-6 lg:pt-10">
+      <div className="grid lg:grid-cols-12 lg:gap-8">
+        <div className="lg:col-span-8">
+          <ProseSections sections={sections} />
+        </div>
+      </div>
+    </section>
+  );
+}
 
 /* A short list with an accent dash in front of each item. */
 function DashList({ items, className = "" }: { items: string[]; className?: string }) {
@@ -191,26 +211,39 @@ export function ServiceDetailContent({
     .filter((project): project is Project => Boolean(project));
   const supportsPlanner =
     service.kind === "package" || service.key === "web-app-development";
+  const pageUrl = getCanonicalUrl(service.path);
+  const crumbs = getServiceBreadcrumbs(locale, service);
 
   return (
     <>
       <JsonLd
         data={[
           webPageSchema({
+            locale,
             name: service.metaTitle,
             description: service.metaDescription,
-            url: getCanonicalUrl(service.path),
+            url: pageUrl,
+            hasBreadcrumb: true,
           }),
           serviceSchema({
+            locale,
             name: service.navLabel,
             description: service.metaDescription,
-            url: getCanonicalUrl(service.path),
+            url: pageUrl,
+          }),
+          breadcrumbListSchema({
+            url: pageUrl,
+            items: crumbs.map((crumb) => ({
+              name: crumb.name,
+              url: getCanonicalUrl(crumb.path),
+            })),
           }),
         ]}
       />
       <SiteShell locale={locale} content={content} currentPath={service.path}>
         <PageHeader
-          label={`${text.services} · ${service.familyTitle}`}
+          breadcrumb={<Breadcrumbs locale={locale} items={crumbs} />}
+          label={service.familyTitle}
           title={service.title}
           intro={service.intro}
         >
@@ -243,6 +276,11 @@ export function ServiceDetailContent({
             ) : null}
           </div>
         </PageHeader>
+
+        {/* The buying question, answered in running text before the lists. */}
+        {service.sections && service.sections.length > 0 ? (
+          <ServiceProse sections={service.sections} />
+        ) : null}
 
         {/* When it fits, and what we build or change. */}
         <section className="container-x pt-12 lg:pt-16">
@@ -285,6 +323,8 @@ export function ServiceDetailContent({
                   locale={locale}
                   visitLabel={text.visit}
                   builtLabel={text.built}
+                  casePath={getCaseStudyPathForProject(locale, project.id)}
+                  caseLabel={text.readCase}
                 />
               ))}
             </div>

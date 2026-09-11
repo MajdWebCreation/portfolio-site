@@ -9,7 +9,7 @@ import { getPublishedArticles } from "@/lib/content/articles";
 import { blogOverviewContent } from "@/lib/content/blog";
 import { getLocalizedPath, getRouteAlternates } from "@/lib/content/routes";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
-import { blogSchema } from "@/lib/schema";
+import { blogSchema, collectionPageSchema } from "@/lib/schema";
 import { isValidLocale, siteContent } from "@/lib/content/site-content";
 
 export async function generateMetadata({
@@ -58,11 +58,22 @@ export default async function BlogPage({
   return (
     <>
       <JsonLd
-        data={blogSchema({
-          name: overview.title,
-          description: overview.intro,
-          url: getCanonicalUrl(path),
-        })}
+        data={[
+          // The page, and the Blog it shows: the Blog points back at the page
+          // entity, so that reference has something to resolve to.
+          collectionPageSchema({
+            locale,
+            name: overview.title,
+            description: overview.intro,
+            url: getCanonicalUrl(path),
+          }),
+          blogSchema({
+            locale,
+            name: overview.title,
+            description: overview.intro,
+            url: getCanonicalUrl(path),
+          }),
+        ]}
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
         <PageHeader title={overview.title} intro={overview.intro} />

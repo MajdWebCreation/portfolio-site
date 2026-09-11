@@ -128,6 +128,10 @@ export const siteContent = {
           short: "Voor presentatie, aanvragen en verkoop.",
           serviceKey: "business-websites",
           size: "xl",
+          more: [
+            { label: "Webshop laten maken", serviceKey: "ecommerce-development" },
+            { label: "Landingspagina", serviceKey: "landing-pages" },
+          ],
         },
         {
           key: "applications",

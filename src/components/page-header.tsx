@@ -2,6 +2,13 @@ import type { ReactNode } from "react";
 
 type PageHeaderProps = {
   label?: string;
+  /**
+   * A breadcrumb trail, shown above the title. With a `label` it keeps its
+   * own line and the label becomes the context under it -- the family a
+   * service belongs to, the sector a case is in -- so the trail stays the
+   * only path on the page.
+   */
+  breadcrumb?: ReactNode;
   title: string;
   intro?: string;
   children?: ReactNode;
@@ -16,6 +23,7 @@ type PageHeaderProps = {
  */
 export default function PageHeader({
   label,
+  breadcrumb,
   title,
   intro,
   children,
@@ -27,7 +35,7 @@ export default function PageHeader({
         <div className="container-x pb-10 pt-10 sm:pt-14 lg:pb-12 lg:pt-14">
           <div className="grid gap-10 lg:grid-cols-12 lg:items-center lg:gap-8">
             <div className="lg:col-span-7 xl:col-span-6">
-              {label ? <p className="label-mono mb-4">{label}</p> : null}
+              <HeaderLabels breadcrumb={breadcrumb} label={label} />
               <h1 className="display-lg">{title}</h1>
               {intro ? <p className="lede mt-5 max-w-[28rem]">{intro}</p> : null}
               {children ? <div className="mt-6">{children}</div> : null}
@@ -46,7 +54,7 @@ export default function PageHeader({
       <div className="container-x pb-12 pt-12 sm:pt-16 lg:pb-16 lg:pt-20">
         <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-7">
-            {label ? <p className="label-mono mb-4">{label}</p> : null}
+            <HeaderLabels breadcrumb={breadcrumb} label={label} />
             <h1 className="display-lg">{title}</h1>
           </div>
           {intro || children ? (
@@ -57,6 +65,31 @@ export default function PageHeader({
           ) : null}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The lines above the title: the trail, and under it the short context the
+ * page sits in. The context is plain text, never a link -- "Websites en
+ * webshops" and "Aanbouw en renovatie" are groupings, not pages -- so it is
+ * set a shade lighter than the trail and stays outside its navigation.
+ */
+function HeaderLabels({
+  breadcrumb,
+  label,
+}: {
+  breadcrumb?: ReactNode;
+  label?: string;
+}) {
+  if (!breadcrumb) {
+    return label ? <p className="label-mono mb-4">{label}</p> : null;
+  }
+
+  return (
+    <div className="mb-4">
+      {breadcrumb}
+      {label ? <p className="label-mono mt-1.5 text-faint">{label}</p> : null}
     </div>
   );
 }

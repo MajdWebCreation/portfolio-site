@@ -119,6 +119,7 @@ export async function PricingPageContent({ locale }: { locale: Locale }) {
     <>
       <JsonLd
         data={webPageSchema({
+          locale,
           name: pricing.metaTitle,
           description: `${pricing.metaDescription} ${lowest}`,
           url: getCanonicalUrl(path),

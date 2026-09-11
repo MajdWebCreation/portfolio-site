@@ -5,6 +5,7 @@ import NextStep from "@/components/next-step";
 import PageHeader from "@/components/page-header";
 import ProjectRow from "@/components/project-row";
 import SiteShell from "@/components/site-shell";
+import { getCaseStudyPathForProject } from "@/lib/content/cases";
 import { getProjects, projectsOverviewContent } from "@/lib/content/projects";
 import { getLocalizedPath, getRouteAlternates } from "@/lib/content/routes";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
@@ -59,6 +60,7 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
     <>
       <JsonLd
         data={collectionPageSchema({
+          locale,
           name: overview.metaTitle,
           description: overview.metaDescription,
           url: getCanonicalUrl(path),
@@ -76,6 +78,8 @@ export function ProjectsPageContent({ locale }: { locale: Locale }) {
                 locale={locale}
                 visitLabel={overview.visitLabel}
                 builtLabel={overview.builtLabel}
+                casePath={getCaseStudyPathForProject(locale, project.id)}
+                caseLabel={overview.caseLabel}
                 detailed
               />
             ))}

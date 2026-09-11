@@ -267,6 +267,7 @@ export const projectsOverviewContent = {
       "Vijf websites en applicaties die nu in productie draaien, elk met een link naar de live site. Uitgebreide casebeschrijvingen volgen; wat hieronder staat, is direct te controleren.",
     builtLabel: "Gebouwd",
     visitLabel: "Bekijk live",
+    caseLabel: "Lees de case",
   },
   en: {
     metaTitle: "Projects",
@@ -277,5 +278,6 @@ export const projectsOverviewContent = {
       "Five websites and applications currently in production, each linking to the live site. Detailed case studies will follow; everything below can be checked directly.",
     builtLabel: "Built",
     visitLabel: "View live",
+    caseLabel: "Read the case",
   },
 } as const;

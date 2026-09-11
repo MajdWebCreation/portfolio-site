@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ArticleRichText from "@/components/article-rich-text";
+import Breadcrumbs from "@/components/breadcrumbs";
 import JsonLd from "@/components/json-ld";
 import NextStep from "@/components/next-step";
 import SiteShell from "@/components/site-shell";
@@ -18,9 +19,10 @@ import {
   getRelatedLinkLabel,
 } from "@/lib/content/blog";
 import { articleImageUrl } from "@/lib/admin/articles/media";
+import { getArticleBreadcrumbs } from "@/lib/content/breadcrumbs";
 import { getLocalizedPath } from "@/lib/content/routes";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
-import { blogPostingSchema, webPageSchema } from "@/lib/schema";
+import { blogPostingSchema, breadcrumbListSchema, webPageSchema } from "@/lib/schema";
 import { isValidLocale, siteContent } from "@/lib/content/site-content";
 
 /*
@@ -110,17 +112,21 @@ export default async function BlogArticlePage({
   // body is the stored document as it is.
   const bodyBlocks = article.bodyBlocks;
   const publishedArticlePaths = await getPublishedArticlePathSet(locale);
+  const crumbs = getArticleBreadcrumbs(locale, article);
 
   return (
     <>
       <JsonLd
         data={[
           webPageSchema({
+            locale,
             name: article.title,
             description: article.metaDescription,
             url: pageUrl,
+            hasBreadcrumb: true,
           }),
           blogPostingSchema({
+            locale,
             headline: article.title,
             description: article.metaDescription,
             url: pageUrl,
@@ -130,15 +136,20 @@ export default async function BlogArticlePage({
               ? { image: getCanonicalUrl(articleImageUrl(article.featuredImage.path)) }
               : {}),
           }),
+          breadcrumbListSchema({
+            url: pageUrl,
+            items: crumbs.map((crumb) => ({
+              name: crumb.name,
+              url: getCanonicalUrl(crumb.path),
+            })),
+          }),
         ]}
       />
       <SiteShell locale={locale} content={content} currentPath={article.path}>
         <article className="container-x pt-12 sm:pt-16 lg:pt-20">
+          <Breadcrumbs locale={locale} items={crumbs} className="mb-8 lg:mb-10" />
           <header className="grid gap-6 lg:grid-cols-12 lg:gap-8">
             <div className="label-mono flex flex-wrap gap-x-3 gap-y-1 lg:col-span-3 lg:flex-col">
-              <Link href={blogPath} className="transition-colors hover:text-ink">
-                {content.nav.blog}
-              </Link>
               <span>{getBlogCategoryLabel(locale, article.category)}</span>
               {article.publishedAt ? (
                 <time dateTime={article.publishedAt}>
