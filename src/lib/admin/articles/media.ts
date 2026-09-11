@@ -54,8 +54,19 @@ export function articleImageObjectPath(contentType: string): string {
   return `featured/${crypto.randomUUID()}.${extension}`;
 }
 
-/** Public CDN URL of a stored object. */
+/**
+ * Where a featured image is served from.
+ *
+ * Two kinds of path exist. An image uploaded through the admin is an object
+ * in the bucket and gets its public CDN URL. An image that ships with the
+ * repository -- the cover art of the imported library articles, under
+ * /images/artikelen -- is already a path on this site and is returned as it
+ * is. The leading slash is what tells the two apart, and a bucket object path
+ * never has one.
+ */
 export function articleImageUrl(path: string): string {
+  if (path.startsWith("/")) return path;
+
   const { url } = getSupabaseEnv();
   return `${url}/storage/v1/object/public/${articleMediaBucket}/${path}`;
 }

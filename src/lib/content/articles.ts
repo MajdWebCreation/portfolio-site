@@ -126,6 +126,16 @@ export async function getPublishedArticlePaths(locale: Locale): Promise<string[]
   return (await getPublishedArticles(locale)).map((article) => article.path);
 }
 
+/**
+ * The article paths that are live right now, for the renderer to check its
+ * internal links against. An article may reference a sibling that is written
+ * and scheduled but not published yet; that reference renders as plain text
+ * until the sibling appears, so the library never links to a 404.
+ */
+export async function getPublishedArticlePathSet(locale: Locale): Promise<ReadonlySet<string>> {
+  return new Set(await getPublishedArticlePaths(locale));
+}
+
 export function getArticleMetadataInput(locale: Locale, article: PublicArticle) {
   return {
     title: article.metaTitle,

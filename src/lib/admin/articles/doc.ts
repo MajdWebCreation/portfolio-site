@@ -19,44 +19,113 @@ export type DocNode =
   | { type: "heading"; attrs: { level: number }; content?: DocInline[] }
   | { type: "bulletList"; content?: DocListItem[] }
   | { type: "orderedList"; attrs?: { start?: number }; content?: DocListItem[] }
-  | { type: "blockquote"; content?: DocNode[] };
+  | { type: "blockquote"; content?: DocNode[] }
+  | { type: "codeBlock"; attrs?: { language?: string | null }; content?: DocText[] }
+  | { type: "table"; content?: DocTableRow[] };
 
 export type DocInline = DocText | { type: "hardBreak" };
 export type DocListItem = { type: "listItem"; content?: DocNode[] };
+export type DocTableCell = {
+  type: "tableHeader" | "tableCell";
+  attrs?: { colspan?: number; rowspan?: number; colwidth?: number[] | null };
+  content?: DocNode[];
+};
+export type DocTableRow = { type: "tableRow"; content?: DocTableCell[] };
+
+/** A table cell as ProseMirror stores it: a cell holding one paragraph. */
+function cell(kind: DocTableCell["type"], text: string): DocTableCell {
+  return {
+    type: kind,
+    attrs: { colspan: 1, rowspan: 1, colwidth: null },
+    content: [{ type: "paragraph", content: inlineFromMarkdownish(text) }],
+  };
+}
 
 export type ArticleDoc = { type: "doc"; content: DocNode[] };
 
 export const emptyDoc: ArticleDoc = { type: "doc", content: [{ type: "paragraph" }] };
 
-/** Text of an inline run, splitting the public "[label](href)" link syntax into marks. */
+/**
+ * The small inline syntax the public block model carries inside its strings:
+ * `[label](href)` for a link, `**bold**`, `*italic*`, and a bold link written
+ * as `**[label](href)**`. It is deliberately tiny -- it is not markdown, it is
+ * the exact set of marks the editor can produce -- so that a document and its
+ * blocks are two spellings of the same thing.
+ */
+export const inlinePattern =
+  /(\*\*\[[^\]]+\]\([^)]+\)\*\*|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\)|\*[^*\n]+\*)/g;
+
 function inlineFromMarkdownish(text: string): DocInline[] {
-  const parts = text.split(/(\[[^\]]+\]\([^)]+\))/g);
+  const parts = text.split(inlinePattern);
   const inline: DocInline[] = [];
+
   parts.forEach((part) => {
     if (!part) return;
+
+    const boldLink = part.match(/^\*\*\[([^\]]+)\]\(([^)]+)\)\*\*$/);
+    if (boldLink) {
+      inline.push({
+        type: "text",
+        text: boldLink[1],
+        marks: [{ type: "bold" }, { type: "link", attrs: { href: boldLink[2] } }],
+      });
+      return;
+    }
+
     const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (link) {
       inline.push({ type: "text", text: link[1], marks: [{ type: "link", attrs: { href: link[2] } }] });
       return;
     }
+
+    const bold = part.match(/^\*\*([^*]+)\*\*$/);
+    if (bold) {
+      inline.push({ type: "text", text: bold[1], marks: [{ type: "bold" }] });
+      return;
+    }
+
+    const italic = part.match(/^\*([^*\n]+)\*$/);
+    if (italic) {
+      inline.push({ type: "text", text: italic[1], marks: [{ type: "italic" }] });
+      return;
+    }
+
     part.split("\n").forEach((line, index) => {
       if (index > 0) inline.push({ type: "hardBreak" });
       if (line) inline.push({ type: "text", text: line });
     });
   });
+
   return inline;
 }
 
 /** The public site's parsed blocks as an editor document. */
 export function docFromBlocks(blocks: ArticleBlock[]): ArticleDoc {
-  const content: DocNode[] = blocks.map((block) => {
+  const content: DocNode[] = blocks.map((block): DocNode => {
     if (block.type === "heading") {
       return { type: "heading", attrs: { level: block.level }, content: inlineFromMarkdownish(block.content) };
     }
     if (block.type === "list") {
+      const items: DocListItem[] = block.items.map((item) => ({
+        type: "listItem",
+        content: [{ type: "paragraph", content: inlineFromMarkdownish(item) }],
+      }));
+      return block.ordered ? { type: "orderedList", content: items } : { type: "bulletList", content: items };
+    }
+    if (block.type === "quote") {
+      return { type: "blockquote", content: [{ type: "paragraph", content: inlineFromMarkdownish(block.content) }] };
+    }
+    if (block.type === "code") {
+      // Code is literal: no link syntax is parsed inside it.
+      return { type: "codeBlock", attrs: { language: null }, content: block.content ? [{ type: "text", text: block.content }] : [] };
+    }
+    if (block.type === "table") {
       return {
-        type: "bulletList",
-        content: block.items.map((item) => ({ type: "listItem", content: [{ type: "paragraph", content: inlineFromMarkdownish(item) }] })),
+        type: "table",
+        content: [
+          { type: "tableRow", content: block.head.map((text) => cell("tableHeader", text)) },
+          ...block.rows.map((row): DocTableRow => ({ type: "tableRow", content: row.map((text) => cell("tableCell", text)) })),
+        ],
       };
     }
     return { type: "paragraph", content: inlineFromMarkdownish(block.content) };
@@ -69,8 +138,15 @@ function markdownishFromInline(content: DocInline[] | undefined): string {
   return (content ?? [])
     .map((node) => {
       if (node.type === "hardBreak") return "\n";
+
       const link = node.marks?.find((mark) => mark.type === "link");
-      return link && link.type === "link" ? `[${node.text}](${link.attrs.href})` : node.text;
+      const bold = node.marks?.some((mark) => mark.type === "bold");
+      const italic = node.marks?.some((mark) => mark.type === "italic");
+
+      let text = link && link.type === "link" ? `[${node.text}](${link.attrs.href})` : node.text;
+      if (bold) text = `**${text}**`;
+      else if (italic) text = `*${text}*`;
+      return text;
     })
     .join("");
 }
@@ -84,14 +160,22 @@ function listItemsFromNodes(items: DocListItem[] | undefined): string[] {
   );
 }
 
+/** The plain text of a table cell, link syntax included. */
+function cellText(item: DocTableCell): string {
+  return (item.content ?? [])
+    .map((node) => (node.type === "paragraph" || node.type === "heading" ? markdownishFromInline(node.content) : ""))
+    .filter(Boolean)
+    .join("\n");
+}
+
 /**
  * An editor document as the blocks the public article renderer takes. The
- * inverse of `docFromBlocks`, so an article that was seeded from the old
- * file-based content renders byte for byte the same as it did before.
+ * inverse of `docFromBlocks`, so an article that was seeded from markdown
+ * renders exactly what was imported.
  *
- * The public model knows paragraphs, two heading levels and one kind of
- * list, so an ordered list renders as a list and a blockquote as its own
- * paragraphs. Anything else is dropped rather than guessed at.
+ * Every node type the editor can produce has a block here; anything else is
+ * dropped rather than guessed at. A table without a header row keeps an empty
+ * head, which the renderer reads as "no thead".
  */
 export function blocksFromDoc(doc: ArticleDoc | undefined): ArticleBlock[] {
   const walk = (nodes: DocNode[]): ArticleBlock[] =>
@@ -108,10 +192,27 @@ export function blocksFromDoc(doc: ArticleDoc | undefined): ArticleBlock[] {
             },
           ];
         case "bulletList":
-        case "orderedList":
           return [{ type: "list", items: listItemsFromNodes(node.content) }];
+        case "orderedList":
+          return [{ type: "list", items: listItemsFromNodes(node.content), ordered: true }];
         case "blockquote":
-          return walk(node.content ?? []);
+          return walk(node.content ?? []).map((block) =>
+            block.type === "paragraph" ? { type: "quote", content: block.content } : block,
+          );
+        case "codeBlock":
+          return [{ type: "code", content: (node.content ?? []).map((text) => text.text).join("") }];
+        case "table": {
+          const rows = node.content ?? [];
+          const first = rows[0]?.content ?? [];
+          const headed = first.length > 0 && first.every((item) => item.type === "tableHeader");
+          return [
+            {
+              type: "table",
+              head: headed ? first.map(cellText) : [],
+              rows: (headed ? rows.slice(1) : rows).map((row) => (row.content ?? []).map(cellText)),
+            },
+          ];
+        }
       }
     });
 
@@ -137,6 +238,12 @@ export function docToPlainText(doc: ArticleDoc | undefined): string {
             return (node.content ?? []).map((item) => walk(item.content ?? [])).join("\n");
           case "blockquote":
             return walk(node.content ?? []);
+          case "codeBlock":
+            return (node.content ?? []).map((text) => text.text).join("");
+          case "table":
+            return (node.content ?? [])
+              .flatMap((row) => (row.content ?? []).map((item) => walk(item.content ?? [])))
+              .join("\n");
         }
       })
       .join("\n");

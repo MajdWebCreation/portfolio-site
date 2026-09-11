@@ -36,6 +36,9 @@ export async function generateStaticParams() {
   return [{ locale: "nl" }, { locale: "en" }];
 }
 
+/* Scheduled articles appear on their date; see the article page for why. */
+export const revalidate = 3600;
+
 export default async function BlogPage({
   params,
 }: {

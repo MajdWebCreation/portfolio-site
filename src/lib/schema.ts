@@ -105,6 +105,7 @@ export function blogPostingSchema(input: {
   url: string;
   datePublished?: string;
   authorName?: string;
+  image?: string;
 }) {
   return {
     "@context": "https://schema.org",
@@ -112,6 +113,7 @@ export function blogPostingSchema(input: {
     headline: input.headline,
     description: input.description,
     url: input.url,
+    ...(input.image ? { image: input.image } : {}),
     ...(input.datePublished ? { datePublished: input.datePublished } : {}),
     ...(input.authorName
       ? {

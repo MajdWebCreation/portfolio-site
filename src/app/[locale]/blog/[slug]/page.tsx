@@ -9,6 +9,7 @@ import SiteShell from "@/components/site-shell";
 import {
   getArticleBySlug,
   getArticleMetadataInput,
+  getPublishedArticlePathSet,
   getPublishedArticlePaths,
 } from "@/lib/content/articles";
 import {
@@ -30,6 +31,15 @@ import { isValidLocale, siteContent } from "@/lib/content/site-content";
   because the database returns nothing for it.
 */
 export const dynamicParams = true;
+
+/*
+  Articles are scheduled by date: a row may be published with a date that has
+  not arrived, and the database starts handing it out on that day. A prerender
+  from last week knows nothing about that, so the blog pages re-render on a
+  timer. Publishing from the admin still revalidates immediately; this is what
+  makes a scheduled article appear without anyone touching the admin.
+*/
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
   return (await getPublishedArticlePaths("nl")).map((path) => ({
@@ -68,6 +78,11 @@ export async function generateMetadata({
     title: metadataInput.title,
     description: metadataInput.description,
     absoluteTitle: true,
+    // The cover image doubles as the share image, so a shared article is not
+    // a bare link.
+    ...(article.featuredImage
+      ? { image: getCanonicalUrl(articleImageUrl(article.featuredImage.path)) }
+      : {}),
   });
 }
 
@@ -94,6 +109,7 @@ export default async function BlogArticlePage({
   // The lede is the article's excerpt and is rendered in the header, so the
   // body is the stored document as it is.
   const bodyBlocks = article.bodyBlocks;
+  const publishedArticlePaths = await getPublishedArticlePathSet(locale);
 
   return (
     <>
@@ -110,6 +126,9 @@ export default async function BlogArticlePage({
             url: pageUrl,
             datePublished: article.publishedAt,
             authorName: article.author,
+            ...(article.featuredImage
+              ? { image: getCanonicalUrl(articleImageUrl(article.featuredImage.path)) }
+              : {}),
           }),
         ]}
       />
@@ -151,7 +170,7 @@ export default async function BlogArticlePage({
 
           <div className="mt-12 grid lg:grid-cols-12 lg:gap-8">
             <div className="border-t border-line pt-8 lg:col-span-8 lg:col-start-4">
-              <ArticleRichText blocks={bodyBlocks} />
+              <ArticleRichText blocks={bodyBlocks} publishedArticlePaths={publishedArticlePaths} />
 
               {article.relatedServices.length > 0 ? (
                 <nav

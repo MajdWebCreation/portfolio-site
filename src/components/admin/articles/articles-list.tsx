@@ -6,24 +6,36 @@ import CtaLink from "@/components/cta-link";
 import { FilterBar, FilterSelect, SearchField } from "@/components/admin/filter-bar";
 import StatusBadge from "@/components/admin/status-badge";
 import { docToPlainText } from "@/lib/admin/articles/doc";
-import { articleStatusLabels, articleStatusOrder, articleStatusTone, type Article } from "@/lib/admin/articles/types";
+import {
+  articleStateLabel,
+  articleStateTone,
+  articleStatusLabels,
+  articleStatusOrder,
+  isScheduled,
+  type Article,
+} from "@/lib/admin/articles/types";
 import { formatDate, formatDateTime } from "@/lib/admin/format";
 import { getBlogCategoryLabel } from "@/lib/content/blog";
 
-export default function ArticlesList({ articles }: { articles: Article[] }) {
+export default function ArticlesList({ articles, todayKey }: { articles: Article[]; todayKey: string }) {
   const [status, setStatus] = useState("all");
   const [query, setQuery] = useState("");
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return articles
-      .filter((article) => status === "all" || article.status === status)
+      .filter((article) => {
+        if (status === "all") return true;
+        if (status === "scheduled") return isScheduled(article, todayKey);
+        if (status === "published") return article.status === "published" && !isScheduled(article, todayKey);
+        return article.status === status;
+      })
       .filter(
         (article) =>
           !needle || [article.title, article.slug, article.excerpt, docToPlainText(article.content)].join(" ").toLowerCase().includes(needle),
       )
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [articles, status, query]);
+  }, [articles, status, query, todayKey]);
 
 
   return (
@@ -37,6 +49,7 @@ export default function ArticlesList({ articles }: { articles: Article[] }) {
                 {articleStatusLabels[value]}
               </option>
             ))}
+            <option value="scheduled">Ingepland</option>
           </FilterSelect>
           <SearchField id="article-search" label="Zoeken" value={query} onChange={setQuery} placeholder="Titel, slug of tekst" />
         </FilterBar>
@@ -74,7 +87,7 @@ export default function ArticlesList({ articles }: { articles: Article[] }) {
                   <span className="adm-wrap block font-mono text-[0.78rem] text-muted">/nl/blog/{article.slug || "…"}</span>
                 </td>
                 <td data-label="Status">
-                  <StatusBadge tone={articleStatusTone[article.status]}>{articleStatusLabels[article.status]}</StatusBadge>
+                  <StatusBadge tone={articleStateTone(article, todayKey)}>{articleStateLabel(article, todayKey)}</StatusBadge>
                 </td>
                 <td data-label="Gepubliceerd">
                   {article.publishedAt ? formatDate(`${article.publishedAt}T12:00:00+02:00`) : <span className="text-muted">—</span>}

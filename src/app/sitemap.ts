@@ -20,6 +20,9 @@ const staticRoutes: StaticRouteKey[] = [
   "contact",
 ];
 
+/* A scheduled article belongs in the sitemap from its publication date on. */
+export const revalidate = 3600;
+
 function absolute(path: string) {
   return `${businessInfo.websiteUrl}${path}`;
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { TableKit } from "@tiptap/extension-table";
 import AdminButton from "@/components/admin/admin-button";
 import ArticleDocView from "@/components/admin/articles/article-doc-view";
 import { SelectField, TextField, TextareaField, inputClass } from "@/components/admin/form-field";
@@ -12,18 +13,18 @@ import StatusBadge from "@/components/admin/status-badge";
 import { saveArticle } from "@/lib/admin/articles/actions";
 import { emptyDoc, isDocEmpty, readingTimeLabel, slugify, type ArticleDoc } from "@/lib/admin/articles/doc";
 import {
+  articleStateLabel,
+  articleStateTone,
   articleStatusLabels,
   articleStatusOrder,
-  articleStatusTone,
   isArticleStatus,
+  isScheduled,
   seoGuidance,
   type Article,
 } from "@/lib/admin/articles/types";
 import { formatDateTime, isDateKey } from "@/lib/admin/format";
 import FeaturedImageField from "@/components/admin/articles/featured-image-field";
-import { getArticleDateLabel, getBlogCategoryLabel, type BlogCategory } from "@/lib/content/blog";
-
-const categories: readonly BlogCategory[] = ["kosten", "seo", "webapplicaties", "performance"];
+import { blogCategories, getArticleDateLabel, getBlogCategoryLabel, type BlogCategory } from "@/lib/content/blog";
 
 type Errors = Partial<Record<"title" | "slug" | "content" | "publishedAt" | "metaDescription", string>>;
 
@@ -35,7 +36,7 @@ function blank(): Article {
     excerpt: "",
     content: emptyDoc,
     status: "draft",
-    category: "kosten",
+    category: "websites",
     updatedAt: new Date().toISOString(),
     seoTitle: "",
     metaDescription: "",
@@ -43,14 +44,14 @@ function blank(): Article {
   };
 }
 
-function validate(article: Article, todayKey: string): Errors {
+function validate(article: Article): Errors {
   const errors: Errors = {};
   if (article.title.trim().length < 3) errors.title = "Vul een titel in.";
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(article.slug)) errors.slug = "Alleen kleine letters, cijfers en koppeltekens.";
   if (isDocEmpty(article.content)) errors.content = "Het artikel heeft nog geen tekst.";
   if (article.publishedAt && !isDateKey(article.publishedAt)) errors.publishedAt = "Dit is geen geldige datum.";
   if (article.status === "published" && !article.publishedAt) errors.publishedAt = "Een gepubliceerd artikel heeft een publicatiedatum.";
-  if (article.status === "published" && article.publishedAt && article.publishedAt > todayKey) errors.publishedAt = "De publicatiedatum ligt in de toekomst.";
+  // A date in the future is deliberate: it schedules the article.
   return errors;
 }
 
@@ -186,8 +187,9 @@ type ArticleEditorProps = {
  * "Gepubliceerd" puts the article on the public site, so the button may not
  * keep calling it a concept.
  */
-function saveLabel(id: string | null | undefined, status: string): string {
+function saveLabel(id: string | null | undefined, status: string, scheduled: boolean): string {
   if (status === "published") {
+    if (scheduled) return id ? "Planning bijwerken" : "Inplannen";
     return id ? "Publicatie bijwerken" : "Publiceren";
   }
   return id ? "Concept bijwerken" : "Concept aanmaken";
@@ -210,11 +212,17 @@ export default function ArticleEditor({ stored, todayKey }: ArticleEditorProps) 
         link: { openOnClick: false, autolink: true, defaultProtocol: "https" },
         // Not part of the article model: keep the document to what the site renders.
         code: false,
-        codeBlock: false,
         strike: false,
         underline: false,
         horizontalRule: false,
       }),
+      /*
+        Tables are not authored here -- there are no table buttons in the
+        toolbar -- but the schema has to know them, otherwise opening an
+        imported article would silently drop its comparison tables on the
+        next save.
+      */
+      TableKit,
     ],
     content: article.content,
     immediatelyRender: false,
@@ -240,7 +248,7 @@ export default function ArticleEditor({ stored, todayKey }: ArticleEditorProps) 
       seoTitle: article.seoTitle.trim() || `${article.title.trim()} | YM Creations`,
       updatedAt: new Date().toISOString(),
     };
-    const nextErrors = validate(next, todayKey);
+    const nextErrors = validate(next);
     setErrors(nextErrors);
     const first = Object.keys(nextErrors)[0];
     if (first) {
@@ -272,6 +280,7 @@ export default function ArticleEditor({ stored, todayKey }: ArticleEditorProps) 
   }
 
   const words = article.content ? readingTimeLabel(article.content) : "1 min";
+  const scheduled = isScheduled(article, todayKey);
 
   return (
     <div className="space-y-6">
@@ -293,10 +302,10 @@ export default function ArticleEditor({ stored, todayKey }: ArticleEditorProps) 
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <StatusBadge tone={articleStatusTone[article.status]}>{articleStatusLabels[article.status]}</StatusBadge>
+          <StatusBadge tone={articleStateTone(article, todayKey)}>{articleStateLabel(article, todayKey)}</StatusBadge>
           {savedAt ? <span className="text-[0.85rem] text-muted">Opgeslagen {formatDateTime(savedAt)}</span> : null}
           <AdminButton onClick={save} disabled={pending}>
-            {pending ? "Opslaan…" : saveLabel(article.id, article.status)}
+            {pending ? "Opslaan…" : saveLabel(article.id, article.status, scheduled)}
           </AdminButton>
         </div>
       </div>
@@ -395,7 +404,7 @@ export default function ArticleEditor({ stored, todayKey }: ArticleEditorProps) 
               </SelectField>
               <TextField id="publishedAt" label="Publicatiedatum" optional type="date" min="2000-01-01" max="2100-12-31" value={article.publishedAt ?? ""} onChange={(event) => update("publishedAt", event.target.value || undefined)} error={errors.publishedAt} />
               <SelectField id="category" label="Categorie" value={article.category} onChange={(event) => update("category", event.target.value as BlogCategory)}>
-                {categories.map((value) => (
+                {blogCategories.map((value) => (
                   <option key={value} value={value}>
                     {getBlogCategoryLabel("nl", value)}
                   </option>
@@ -405,6 +414,12 @@ export default function ArticleEditor({ stored, todayKey }: ArticleEditorProps) 
               <p className="text-[0.82rem] leading-snug text-muted">
                 Status en artikel worden opgeslagen in de database, en de website leest ze daar. Gepubliceerd betekent zichtbaar op /nl/blog; concept betekent nergens publiek te vinden.
               </p>
+              {scheduled ? (
+                <p className="border-l-2 border-accent pl-3 text-[0.82rem] leading-snug text-muted">
+                  Dit artikel staat ingepland voor {getArticleDateLabel("nl", article.publishedAt!)}. Tot die datum geeft de
+                  database het aan niemand: niet in het overzicht, niet op de eigen URL en niet in de sitemap.
+                </p>
+              ) : null}
             </section>
 
             <section aria-labelledby="seo-heading" className="space-y-4 border-t border-line pt-6">

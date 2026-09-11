@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blocksFromDoc, docFromBlocks } from "@/lib/admin/articles/doc";
+import { blocksFromDoc, docFromBlocks, docToPlainText } from "@/lib/admin/articles/doc";
 import type { ArticleBlock } from "@/lib/content/blog";
 
 /**
@@ -16,27 +16,53 @@ describe("blocksFromDoc", () => {
     { type: "paragraph", content: "Met een [link naar diensten](/nl/diensten) erin." },
     { type: "paragraph", content: "Eerste regel\nTweede regel" },
     { type: "list", items: ["Eerste punt", "Tweede punt met [link](/nl/contact)"] },
+    { type: "list", items: ["Stap een", "Stap twee"], ordered: true },
+    { type: "quote", content: "Welke data is leidend?" },
+    { type: "paragraph", content: "Dit is **vet**, dit *schuin* en dit een **[vette link](/nl/contact)**." },
+    { type: "code", content: "formulier\n→ validatie\n→ CRM" },
+    {
+      type: "table",
+      head: ["Onderdeel", "Eenvoudig", "Complexer"],
+      rows: [
+        ["Rollen", "admin + gebruiker", "overlappende rechten"],
+        ["API's", "read-only", "two-way met [retries](/nl/blog/api-koppeling-laten-maken)"],
+      ],
+    },
   ];
 
   it("is the exact inverse of docFromBlocks", () => {
     expect(blocksFromDoc(docFromBlocks(blocks))).toEqual(blocks);
   });
 
-  it("renders an ordered list as the one list kind the public model has", () => {
+  it("keeps a code block literal, link syntax included", () => {
+    const doc = docFromBlocks([{ type: "code", content: "zie [niet](/nl/contact)" }]);
+    expect(doc.content[0]).toEqual({
+      type: "codeBlock",
+      attrs: { language: null },
+      content: [{ type: "text", text: "zie [niet](/nl/contact)" }],
+    });
+  });
+
+  it("reads a table without a header row as rows only", () => {
     expect(
       blocksFromDoc({
         type: "doc",
         content: [
           {
-            type: "orderedList",
-            content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Stap" }] }] }],
+            type: "table",
+            content: [
+              {
+                type: "tableRow",
+                content: [{ type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "A" }] }] }],
+              },
+            ],
           },
         ],
       }),
-    ).toEqual([{ type: "list", items: ["Stap"] }]);
+    ).toEqual([{ type: "table", head: [], rows: [["A"]] }]);
   });
 
-  it("flattens a blockquote into its own paragraphs", () => {
+  it("reads a blockquote as a quote block", () => {
     expect(
       blocksFromDoc({
         type: "doc",
@@ -44,7 +70,7 @@ describe("blocksFromDoc", () => {
           { type: "blockquote", content: [{ type: "paragraph", content: [{ type: "text", text: "Citaat" }] }] },
         ],
       }),
-    ).toEqual([{ type: "paragraph", content: "Citaat" }]);
+    ).toEqual([{ type: "quote", content: "Citaat" }]);
   });
 
   it("clamps a heading level the public model does not have", () => {
@@ -58,5 +84,15 @@ describe("blocksFromDoc", () => {
 
   it("reads an empty document as no blocks at all", () => {
     expect(blocksFromDoc(undefined)).toEqual([]);
+  });
+});
+
+describe("docToPlainText", () => {
+  it("counts tables and code towards the article text", () => {
+    const doc = docFromBlocks([
+      { type: "code", content: "een twee" },
+      { type: "table", head: ["Kop"], rows: [["Cel"]] },
+    ]);
+    expect(docToPlainText(doc)).toBe("een twee Kop Cel");
   });
 });

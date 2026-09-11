@@ -64,6 +64,44 @@ function Block({ node }: { node: DocNode }) {
           ))}
         </blockquote>
       );
+    case "codeBlock":
+      return (
+        <div className="overflow-x-auto rounded-sm border border-line bg-paper-deep/60 px-4 py-3.5">
+          <pre className="whitespace-pre font-mono text-[0.88rem] leading-relaxed text-ink">
+            {(node.content ?? []).map((text) => text.text).join("")}
+          </pre>
+        </div>
+      );
+    case "table":
+      return (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[30rem] border-collapse text-left text-[0.95rem]">
+            <tbody>
+              {(node.content ?? []).map((row, rowIndex) => (
+                <tr key={rowIndex} className="border-b border-line align-top">
+                  {(row.content ?? []).map((item, itemIndex) => {
+                    const Tag = item.type === "tableHeader" ? "th" : "td";
+                    return (
+                      <Tag
+                        key={itemIndex}
+                        className={
+                          item.type === "tableHeader"
+                            ? "label-mono border-b border-line-strong pb-2 pr-5 align-bottom text-ink last:pr-0"
+                            : "py-2.5 pr-5 leading-relaxed text-body last:pr-0"
+                        }
+                      >
+                        {(item.content ?? []).map((child, childIndex) => (
+                          <Block key={childIndex} node={child} />
+                        ))}
+                      </Tag>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
     default:
       return (
         <p className="text-[1.05rem] leading-relaxed text-body">

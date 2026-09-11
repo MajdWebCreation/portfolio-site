@@ -8,7 +8,7 @@ import { articleMediaBucket, featuredImageFromJson, type FeaturedImage } from "@
 import { isArticleStatus } from "@/lib/admin/articles/types";
 import { adminDb, orNull } from "@/lib/admin/db";
 import { isDateKey } from "@/lib/admin/format";
-import { getArticlePath, getBlogOverviewPath } from "@/lib/content/blog";
+import { getArticlePath, getBlogOverviewPath, isBlogCategory } from "@/lib/content/blog";
 import { locales } from "@/lib/content/site-content";
 import type { Json } from "@/lib/supabase/database.types";
 
@@ -27,13 +27,11 @@ export type ArticleInput = {
   featuredImage?: FeaturedImage | null;
 };
 
-const categories = ["kosten", "seo", "webapplicaties", "performance"];
-
 function validate(input: ArticleInput): string | null {
   if (!input.title.trim()) return "Vul een titel in.";
   if (!slugify(input.slug)) return "De slug is leeg of bevat geen bruikbare tekens.";
   if (!isArticleStatus(input.status)) return "Kies een geldige status.";
-  if (!categories.includes(input.category)) return "Kies een geldige categorie.";
+  if (!isBlogCategory(input.category)) return "Kies een geldige categorie.";
   if (input.publishedAt && !isDateKey(input.publishedAt)) return "Publicatiedatum is geen geldige datum.";
   if (input.status === "published" && !input.publishedAt) return "Een gepubliceerd artikel heeft een publicatiedatum nodig.";
   if (input.featuredImage) {

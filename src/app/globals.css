@@ -1206,6 +1206,47 @@ select {
   color: var(--color-ink);
 }
 
+.adm-editor pre {
+  overflow-x: auto;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-paper-deep) 60%, transparent);
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.adm-editor table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.adm-editor th,
+.adm-editor td {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--color-line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.adm-editor th {
+  background: var(--color-paper-deep);
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.adm-editor .selectedCell::after {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  content: "";
+  pointer-events: none;
+}
+
 .adm-editor a {
   color: var(--color-ink);
   text-decoration: underline;

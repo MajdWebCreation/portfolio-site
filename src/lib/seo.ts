@@ -51,6 +51,7 @@ export function buildMetadata({
       card: "summary_large_image",
       title,
       description,
+      ...(image ? { images: [image] } : {}),
     },
     robots: {
       index: !noindex,

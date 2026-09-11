@@ -47,6 +47,28 @@ export function isArticleStatus(value: string): value is ArticleStatus {
   return (articleStatusOrder as readonly string[]).includes(value);
 }
 
+/**
+ * A published article whose date has not arrived yet is scheduled: the row
+ * says `published`, and the row level security policy on `public.articles`
+ * keeps handing it out to nobody until `published_at` is today. Scheduling is
+ * therefore not a fourth status to store -- it is what "published" plus a
+ * future date already means, and the admin only has to name it.
+ */
+export function isScheduled(article: Pick<Article, "status" | "publishedAt">, todayKey: string): boolean {
+  return article.status === "published" && Boolean(article.publishedAt) && article.publishedAt! > todayKey;
+}
+
+export function articleStateLabel(article: Pick<Article, "status" | "publishedAt">, todayKey: string): string {
+  return isScheduled(article, todayKey) ? "Ingepland" : articleStatusLabels[article.status];
+}
+
+export function articleStateTone(
+  article: Pick<Article, "status" | "publishedAt">,
+  todayKey: string,
+): "neutral" | "accent" | "success" {
+  return isScheduled(article, todayKey) ? "accent" : articleStatusTone[article.status];
+}
+
 /** Guidance for the SEO fields, as ranges rather than hard limits. */
 export const seoGuidance = {
   title: { min: 30, max: 60 },
