@@ -25,7 +25,7 @@
  * Re-running is safe: the migration is keyed on slug and updates in place.
  */
 
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const sourceDir = process.argv[2] ?? "/Users/mh/Desktop/YM Creations/articles";
@@ -172,6 +172,86 @@ const covers = {
    links point at articles that are already published on that date, so the
    library reads as finished from the first week on.
 */
+/* --------------------------------------------------------- metadata --
+   Snippet copy, where the frontmatter's own wording is not the best thing to
+   put in a search result.
+
+   The markdown files stay the editorial source; this only overrides
+   `seo_title` and `meta_description`, which are not article text but the two
+   lines a reader sees before deciding to click. Three reasons appear here:
+   a description that runs past what a result shows and loses its point in
+   the truncation, a title whose hook repeats the first clause of its own
+   description, and a wording that is simply wrong -- "rebuild" among four
+   Dutch terms, "portal" where the rest of the site writes "portaal",
+   "website onderhoud" where Dutch writes one word.
+
+   Nothing here changes the article, its excerpt, its slug or its date.
+*/
+const metadata = {
+  "website-of-webshop": {
+    metaDescription:
+      "Website of webshop? Wanneer een bedrijfswebsite met aanvraagflow volstaat, wanneer een catalogus past en wanneer je echt een checkout nodig hebt.",
+  },
+  "van-excel-naar-maatwerksoftware": {
+    seoTitle: "Wanneer vervang je Excel door maatwerksoftware? | YM Creations",
+    metaDescription:
+      "Wanneer is een spreadsheet nog prima en wanneer wordt het een procesprobleem? Herken het omslagpunt naar een koppeling of naar maatwerksoftware.",
+  },
+  "welke-bedrijfsprocessen-moet-je-automatiseren": {
+    metaDescription:
+      "Niet elk repetitief proces is een goede kandidaat. Beoordeel processtabiliteit, brondata, waarde en herstelpad \u2014 en wanneer je beter niet automatiseert.",
+  },
+  "technische-kwaliteit-website-webapp-beoordelen": {
+    metaDescription:
+      "Je kunt de code meestal niet zelf lezen. Toets een website of webapp dan op architectuur, security, tests, herstelbaarheid en overdraagbaarheid.",
+  },
+  "maatwerksoftware-of-standaardsoftware": {
+    metaDescription:
+      "SaaS, WordPress, low-code, maatwerk of hybride? Vergelijk op procesfit, snelheid, integraties en eigenaarschap \u2014 de beste oplossing is vaak kleiner.",
+  },
+  "wanneer-is-een-3d-productconfigurator-zinvol": {
+    metaDescription:
+      "Wanneer loont een 3D-productconfigurator? Toets productvariatie, visualisatiebehoefte, saleswerk en productregels \u2014 inclusief wanneer 2D beter past.",
+  },
+  "zapier-make-of-maatwerk": {
+    metaDescription:
+      "Zapier, Make of eigen code? Kies per proces op kritikaliteit, herstelbaarheid en beheerlast, niet op welke oplossing het professioneelst klinkt.",
+  },
+  "website-vernieuwen-optimaliseren-redesign-herbouwen-replatformen": {
+    seoTitle: "Website vernieuwen: wat is de juiste ingreep? | YM Creations",
+  },
+  "wat-kost-een-webapplicatie": {
+    metaDescription:
+      "De prijs van een webapplicatie zit niet in het aantal schermen, maar in rollen, workflows, integraties en migratie. Zo bepaal je een scope die klopt.",
+  },
+  "technische-schuld-software": {
+    seoTitle: "Technische schuld in software: wanneer wordt het duur? | YM Creations",
+    metaDescription:
+      "Technische schuld is niet hetzelfde als slechte code. Wanneer een snelle keuze verstandig is, wanneer de rente oploopt en hoe je het als ondernemer herkent.",
+  },
+  "api-koppeling-laten-maken": {
+    metaDescription:
+      "Een API-koppeling laten maken? Wat een integratie betrouwbaar maakt zit niet in de API-call, maar in eigenaarschap, retries, monitoring en herstel.",
+  },
+  "core-web-vitals-websiteperformance": {
+    metaDescription:
+      "Wat LCP, INP en CLS meten, hoe je ze meet en wanneer optimaliseren loont. Zonder de mythe dat een groene score vanzelf rankings of conversie oplevert.",
+  },
+  "klantportaal-laten-maken": {
+    metaDescription:
+      "Een klantportaal laten maken? Wanneer selfservice waarde toevoegt, welke data en koppelingen daarvoor nodig zijn, en wanneer een portaal te zwaar is.",
+  },
+  "technisch-onderhoud-website-webapp-na-livegang": {
+    seoTitle: "Websiteonderhoud na livegang: wat moet er gebeuren? | YM Creations",
+    metaDescription:
+      "Onderhoud is meer dan updates installeren. Wat updates, backups, monitoring en herstel na livegang betekenen, en wie waarvoor verantwoordelijk is.",
+  },
+  "website-code-data-eigendom-vendor-lock-in": {
+    metaDescription:
+      "Betalen voor een website maakt je nog niet onafhankelijk. Wat je rond code, data, domein, accounts en overdracht regelt v\u00f3\u00f3r je begint.",
+  },
+};
+
 /* ------------------------------------------------------- service links --
    One contextual link per article to the service it belongs to, placed in the
    closing argument rather than pasted underneath it. The related-services
@@ -915,6 +995,8 @@ for (const [slug, date] of schedule) {
   checkLinks(slug, blocks);
   blocksBySlug[slug] = blocks;
 
+  const snippet = metadata[slug] ?? {};
+
   rows.push({
     slug,
     title: meta.title,
@@ -922,8 +1004,8 @@ for (const [slug, date] of schedule) {
     content: JSON.stringify(docFromBlocks(blocks)),
     category,
     published_at: date,
-    seo_title: meta.meta_title,
-    meta_description: meta.meta_description,
+    seo_title: snippet.seoTitle ?? meta.meta_title,
+    meta_description: snippet.metaDescription ?? meta.meta_description,
     featured_image: JSON.stringify({ path: `/images/artikelen/${slug}.webp`, alt: cover }),
   });
 }
@@ -975,7 +1057,26 @@ on conflict (slug) do update set
   featured_image   = excluded.featured_image;
 `;
 
-const target = "supabase/migrations/20260911094500_articles_library_seed.sql";
+/*
+  A migration that has been applied is history: the repository has to keep
+  showing what actually ran. So this refuses to overwrite a file that exists.
+  To import a new library, pass `--out supabase/migrations/<new>.sql`; to
+  regenerate a seed that was never applied, delete it first.
+
+  Editorial changes to articles that are already seeded belong in their own
+  migration, not in this one -- see 20260911100500_article_metadata_polish.sql.
+*/
+const outIndex = process.argv.indexOf("--out");
+const target =
+  outIndex > -1 ? process.argv[outIndex + 1] : "supabase/migrations/20260911094500_articles_library_seed.sql";
+
+if (existsSync(target)) {
+  throw new Error(
+    `${target} already exists and may already be applied; applied migrations are immutable. ` +
+      `Pass --out <file> to write a new one.`,
+  );
+}
+
 writeFileSync(target, header + values + footer);
 
 if (blocksOut) {
