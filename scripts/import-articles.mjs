@@ -4,6 +4,7 @@
  *
  *   node scripts/import-articles.mjs [source-dir] [--blocks <file>]
  *   node scripts/import-articles.mjs <source-dir> --content-only --out <file>
+ *   node scripts/import-articles.mjs <source-dir> --schedule-only --out <file>
  *
  * The markdown files are the editorial source. They are not content the site
  * reads: the site reads `public.articles`, so this turns each file into one
@@ -31,6 +32,11 @@
  * not applied -- but the link set they describe is still required, article by
  * article, and every internal link is still checked against the real routes.
  * The migration it writes updates `content` and touches no other column.
+ *
+ * `--schedule-only` writes the `schedule` array above to a migration and
+ * nothing else, for when the plan moves but the articles do not. Same idea:
+ * the array stays the one place a publication date is decided, so repository
+ * and database cannot drift apart.
  */
 
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -40,35 +46,40 @@ const sourceDir = process.argv[2] ?? "/Users/mh/Desktop/YM Creations/articles";
 const blocksOutIndex = process.argv.indexOf("--blocks");
 const blocksOut = blocksOutIndex > -1 ? process.argv[blocksOutIndex + 1] : null;
 const contentOnly = process.argv.includes("--content-only");
+const scheduleOnly = process.argv.includes("--schedule-only");
 
 /* ------------------------------------------------------------------ plan --
-   The publication plan. Three articles a week on Monday, Wednesday and
-   Friday, starting Monday 14 September 2026. The order is editorial, not
-   alphabetical and not cluster by cluster: every week mixes three different
-   clusters, and within a cluster the foundational article always precedes the
-   deep dive that leans on it.
+   The publication plan. One article every two days, starting Friday 11
+   September 2026 and ending Monday 19 October 2026. The order is editorial,
+   not alphabetical and not cluster by cluster: consecutive articles come from
+   different clusters, and within a cluster the foundational article always
+   precedes the deep dive that leans on it.
+
+   This array is the plan. The rows in the database are generated from it, so
+   changing a date here and regenerating is the way to move an article -- see
+   `--schedule-only` at the bottom of this file.
 */
 const schedule = [
-  ["website-of-webshop", "2026-09-14"],
-  ["van-excel-naar-maatwerksoftware", "2026-09-16"],
-  ["wat-is-een-3d-productconfigurator", "2026-09-18"],
-  ["welke-bedrijfsprocessen-moet-je-automatiseren", "2026-09-21"],
-  ["wat-kost-een-website-of-webshop", "2026-09-23"],
-  ["technische-kwaliteit-website-webapp-beoordelen", "2026-09-25"],
-  ["maatwerksoftware-of-standaardsoftware", "2026-09-28"],
-  ["wanneer-is-een-3d-productconfigurator-zinvol", "2026-09-30"],
-  ["zapier-make-of-maatwerk", "2026-10-02"],
-  ["website-vernieuwen-optimaliseren-redesign-herbouwen-replatformen", "2026-10-05"],
-  ["wat-kost-een-webapplicatie", "2026-10-07"],
-  ["technische-schuld-software", "2026-10-09"],
-  ["api-koppeling-laten-maken", "2026-10-12"],
-  ["wat-kost-een-3d-productconfigurator", "2026-10-14"],
-  ["core-web-vitals-websiteperformance", "2026-10-16"],
-  ["klantportaal-laten-maken", "2026-10-19"],
-  ["website-koppelen-aan-crm", "2026-10-21"],
-  ["technisch-onderhoud-website-webapp-na-livegang", "2026-10-23"],
-  ["hoe-werkt-een-3d-productconfigurator-technisch", "2026-10-26"],
-  ["website-code-data-eigendom-vendor-lock-in", "2026-10-28"],
+  ["website-of-webshop", "2026-09-11"],
+  ["van-excel-naar-maatwerksoftware", "2026-09-13"],
+  ["wat-is-een-3d-productconfigurator", "2026-09-15"],
+  ["welke-bedrijfsprocessen-moet-je-automatiseren", "2026-09-17"],
+  ["wat-kost-een-website-of-webshop", "2026-09-19"],
+  ["technische-kwaliteit-website-webapp-beoordelen", "2026-09-21"],
+  ["maatwerksoftware-of-standaardsoftware", "2026-09-23"],
+  ["wanneer-is-een-3d-productconfigurator-zinvol", "2026-09-25"],
+  ["zapier-make-of-maatwerk", "2026-09-27"],
+  ["website-vernieuwen-optimaliseren-redesign-herbouwen-replatformen", "2026-09-29"],
+  ["wat-kost-een-webapplicatie", "2026-10-01"],
+  ["technische-schuld-software", "2026-10-03"],
+  ["api-koppeling-laten-maken", "2026-10-05"],
+  ["wat-kost-een-3d-productconfigurator", "2026-10-07"],
+  ["core-web-vitals-websiteperformance", "2026-10-09"],
+  ["klantportaal-laten-maken", "2026-10-11"],
+  ["website-koppelen-aan-crm", "2026-10-13"],
+  ["technisch-onderhoud-website-webapp-na-livegang", "2026-10-15"],
+  ["hoe-werkt-een-3d-productconfigurator-technisch", "2026-10-17"],
+  ["website-code-data-eigendom-vendor-lock-in", "2026-10-19"],
 ];
 
 /** The cluster each source file declares, as the category the site stores. */
@@ -1038,10 +1049,18 @@ for (const [slug, date] of schedule) {
   const cover = covers[slug];
   if (!cover) throw new Error(`${slug}: no cover alt text`);
 
-  const blocks = parseBlocks(rewrite(slug, body));
-  checkLinks(slug, blocks);
-  if (contentOnly) checkRequiredLinks(slug, blocks);
-  blocksBySlug[slug] = blocks;
+  /*
+    A schedule-only run moves dates; it never looks at the prose, so it does
+    not parse it either. That keeps it working against either source -- the
+    markdown originals or the rewritten set -- since the link tables below
+    only apply to one of them.
+  */
+  const blocks = scheduleOnly ? [] : parseBlocks(rewrite(slug, body));
+  if (!scheduleOnly) {
+    checkLinks(slug, blocks);
+    if (contentOnly) checkRequiredLinks(slug, blocks);
+    blocksBySlug[slug] = blocks;
+  }
 
   const snippet = metadata[slug] ?? {};
 
@@ -1049,7 +1068,7 @@ for (const [slug, date] of schedule) {
     slug,
     title: meta.title,
     excerpt: meta.excerpt,
-    content: JSON.stringify(docFromBlocks(blocks)),
+    content: scheduleOnly ? null : JSON.stringify(docFromBlocks(blocks)),
     category,
     published_at: date,
     seo_title: snippet.seoTitle ?? meta.meta_title,
@@ -1066,9 +1085,9 @@ const header = `-- The twenty-article knowledge library, with its publication pl
 --
 -- Publication is the database's job: the RLS policy on public.articles hands
 -- out a row only once published_at has arrived, so these rows are published
--- and dated, three a week on Monday, Wednesday and Friday from 14 September
--- 2026, and each appears on the site, in the sitemap and in the overview on
--- its own date without anyone touching the admin.
+-- and dated, one every two days from 11 September 2026, and each appears on
+-- the site, in the sitemap and in the overview on its own date without
+-- anyone touching the admin.
 --
 -- Keyed on slug, so re-running updates the same twenty rows.
 
@@ -1142,6 +1161,54 @@ const contentFooter = `
 where a.slug = v.slug;
 `;
 
+/*
+  The schedule-only migration. Same shape as the content one: assert the
+  twenty rows are there, then set a single column. Every date is written out
+  next to its slug rather than computed in SQL, so the migration says what it
+  does and a later reader does not have to run it to find out.
+*/
+const scheduleHeader = `-- The publication plan for the twenty library articles.
+--
+-- Generated by scripts/import-articles.mjs --schedule-only from the
+-- \`schedule\` array in that file, which is where the plan is decided.
+--
+-- One article every two days, from 11 September 2026 to 19 October 2026, in
+-- the editorial order the library was built in. That order does not change
+-- here; only the dates do.
+--
+-- \`published_at\` is a date, and the RLS policy on public.articles compares
+-- it against the current UTC date, so a row becomes public on its own day
+-- without a deploy. Nothing else about an article is touched: not the text,
+-- the title, the slug, the excerpt, the SEO fields, the category or the
+-- cover.
+
+do $$
+declare
+  found integer;
+begin
+  select count(*) into found from public.articles where slug in (
+${rows.map((row) => `    ${quote(row.slug)}`).join(",\n")}
+  );
+  if found <> ${rows.length} then
+    raise exception 'expected ${rows.length} library articles to reschedule, found %', found;
+  end if;
+end
+$$;
+
+update public.articles as a
+set published_at = v.published_at
+from (values
+`;
+
+const scheduleValues = rows
+  .map((row) => `  (${quote(row.slug)}, ${quote(row.published_at)}::date)`)
+  .join(",\n");
+
+const scheduleFooter = `
+) as v(slug, published_at)
+where a.slug = v.slug;
+`;
+
 const footer = `
 on conflict (slug) do update set
   title            = excluded.title,
@@ -1168,8 +1235,8 @@ const outIndex = process.argv.indexOf("--out");
 const target =
   outIndex > -1 ? process.argv[outIndex + 1] : "supabase/migrations/20260911094500_articles_library_seed.sql";
 
-if (contentOnly && outIndex === -1) {
-  throw new Error("--content-only writes a new migration; pass --out supabase/migrations/<new>.sql");
+if ((contentOnly || scheduleOnly) && outIndex === -1) {
+  throw new Error("--content-only and --schedule-only write a new migration; pass --out supabase/migrations/<new>.sql");
 }
 
 if (existsSync(target)) {
@@ -1179,12 +1246,19 @@ if (existsSync(target)) {
   );
 }
 
-writeFileSync(target, contentOnly ? contentHeader + contentValues + contentFooter : header + values + footer);
+const sql = scheduleOnly
+  ? scheduleHeader + scheduleValues + scheduleFooter
+  : contentOnly
+    ? contentHeader + contentValues + contentFooter
+    : header + values + footer;
+
+writeFileSync(target, sql);
 
 if (blocksOut) {
   writeFileSync(blocksOut, JSON.stringify(blocksBySlug, null, 2));
 }
 
 const counts = rows.reduce((all, row) => ({ ...all, [row.category]: (all[row.category] ?? 0) + 1 }), {});
-console.log(`${rows.length} articles -> ${target}${contentOnly ? " (content only)" : ""}`);
+const mode = scheduleOnly ? " (schedule only)" : contentOnly ? " (content only)" : "";
+console.log(`${rows.length} articles -> ${target}${mode}`);
 console.log(counts);
