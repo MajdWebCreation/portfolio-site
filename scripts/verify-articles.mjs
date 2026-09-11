@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /**
- * Checks an applied article seed against the migration that produced it.
+ * Checks applied article documents against the migration that produced them.
+ *
+ * Reads both shapes the importer writes: the seed's full row and the
+ * content-only rewrite's `(slug, content)` pair.
  *
  *   node scripts/verify-articles.mjs [migration-file]
  *
@@ -44,7 +47,7 @@ const rows = sql
   .slice(1)
   .map((part) => {
     const slug = part.match(/^'([a-z0-9-]+)'/)[1];
-    const document = part.match(/'(\{"type":"doc".*?\})'::jsonb,\n {3}'published'/s)[1];
+    const document = part.match(/'(\{"type":"doc".*?\})'::jsonb(?=,\n {3}'published'|\)(?:,|\n))/s)[1];
     return [slug, document];
   });
 
