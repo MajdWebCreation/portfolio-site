@@ -10,6 +10,7 @@ import { getInvoice } from "@/lib/admin/invoices/repository";
 import { documentFileName, renderInvoicePdf, renderQuotePdf } from "@/lib/admin/pdf/to-buffer";
 import { getQuote } from "@/lib/admin/quotes/repository";
 import { calculateTotals, formatCents } from "@/lib/money";
+import { invoicePayLink } from "@/lib/payments/pay-link";
 
 /**
  * Sending a document to its customer.
@@ -135,6 +136,30 @@ export async function sendInvoiceToCustomer(id: string): Promise<ActionResult<st
   const numbered = { ...invoice, number: { value: assigned.data, provisional: false } };
   const recipient = numbered.customer.email.trim();
 
+  /*
+    A pay-by-link is part of sending a normal invoice, not a bonus. If Mollie
+    is configured and cannot produce one, the mail does not go out: an invoice
+    whose only promised way to pay is a button that is not there is worse than
+    no mail at all. The admin gets the provider's reason and the invoice stays
+    exactly as it was, so a retry sends it properly.
+
+    Two cases are not failures. Mollie not being configured at all is a
+    deployment without it, and an invoice collected by direct debit gets no
+    button on purpose -- a button beside an active mandate invites paying the
+    same debt twice. Both send the mail without a CTA.
+
+    `invoicePayLink` reuses an attempt that is still running rather than
+    creating a second one, so resending keeps handing out the same link.
+  */
+  const payLink = await invoicePayLink(numbered);
+  if (payLink.kind === "failed") {
+    return {
+      ok: false,
+      error: `De betaallink kon niet worden gemaakt, dus de factuur is niet verstuurd: ${payLink.reason}`,
+    };
+  }
+  const payUrl = payLink.kind === "link" ? payLink.url : undefined;
+
   let pdf: Buffer;
   try {
     pdf = await renderInvoicePdf(numbered);
@@ -153,6 +178,7 @@ export async function sendInvoiceToCustomer(id: string): Promise<ActionResult<st
     totalLabel: formatCents(calculateTotals(numbered.lines).totalCents),
     pdf,
     fileName: documentFileName(numbered.number.value),
+    ...(payUrl ? { payUrl } : {}),
   });
 
   if (!mail.sent) return { ok: false, error: `Versturen mislukt: ${mail.reason}` };

@@ -2,7 +2,9 @@ import Link from "next/link";
 import AdminSection from "@/components/admin/admin-section";
 import CustomerDocuments from "@/components/admin/customers/customer-documents";
 import CustomerEdit from "@/components/admin/customers/customer-edit";
+import CustomerFinance from "@/components/admin/customers/customer-finance";
 import CustomerProjects from "@/components/admin/customers/customer-projects";
+import CustomerRecurring from "@/components/admin/customers/customer-recurring";
 import { DetailList, DetailRow } from "@/components/admin/detail-list";
 import StatusBadge from "@/components/admin/status-badge";
 import { customerStatusLabels, customerStatusTone, type Customer } from "@/lib/admin/customers/types";
@@ -11,6 +13,8 @@ import { inquiryOriginLabels, type Inquiry } from "@/lib/admin/inquiries/types";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import type { Lead } from "@/lib/admin/leads/types";
 import type { Project } from "@/lib/admin/projects/types";
+import type { CustomerFinancials } from "@/lib/payments/customer-status";
+import type { RecurringService } from "@/lib/payments/types";
 import type { Quote } from "@/lib/admin/quotes/types";
 
 type CustomerDetailProps = {
@@ -22,6 +26,9 @@ type CustomerDetailProps = {
   quotes: Quote[];
   invoices: Invoice[];
   projects: Project[];
+  /** Derived from this customer's invoices and payments; never a stored field. */
+  financials: CustomerFinancials;
+  recurringServices: RecurringService[];
   /** Today in Amsterdam, for the deadline states. */
   todayKey: string;
 };
@@ -38,6 +45,8 @@ export default function CustomerDetail({
   quotes,
   invoices,
   projects,
+  financials,
+  recurringServices,
   todayKey,
 }: CustomerDetailProps) {
   const { address } = customer;
@@ -116,7 +125,11 @@ export default function CustomerDetail({
           )}
         </div>
 
+        <CustomerFinance financials={financials} />
+
         <CustomerProjects customerId={customer.id} projects={projects} todayKey={todayKey} />
+
+        <CustomerRecurring customerId={customer.id} services={recurringServices} />
 
         <CustomerDocuments customerId={customer.id} quotes={quotes} invoices={invoices} />
       </aside>

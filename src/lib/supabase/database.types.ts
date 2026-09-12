@@ -97,6 +97,44 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_payment_providers: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          provider: string
+          provider_customer_id: string
+          provider_mandate_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          provider: string
+          provider_customer_id: string
+          provider_mandate_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          provider?: string
+          provider_customer_id?: string
+          provider_mandate_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_payment_providers_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           city: string
@@ -281,6 +319,8 @@ export type Database = {
       }
       invoices: {
         Row: {
+          billing_period_end: string | null
+          billing_period_start: string | null
           created_at: string
           customer_city: string
           customer_company_name: string
@@ -302,11 +342,14 @@ export type Database = {
           project_id: string | null
           quote_id: string | null
           recipient_email: string | null
+          recurring_service_id: string | null
           sent_at: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          billing_period_end?: string | null
+          billing_period_start?: string | null
           created_at?: string
           customer_city: string
           customer_company_name: string
@@ -328,11 +371,14 @@ export type Database = {
           project_id?: string | null
           quote_id?: string | null
           recipient_email?: string | null
+          recurring_service_id?: string | null
           sent_at?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          billing_period_end?: string | null
+          billing_period_start?: string | null
           created_at?: string
           customer_city?: string
           customer_company_name?: string
@@ -354,6 +400,7 @@ export type Database = {
           project_id?: string | null
           quote_id?: string | null
           recipient_email?: string | null
+          recurring_service_id?: string | null
           sent_at?: string | null
           status?: string
           updated_at?: string
@@ -386,6 +433,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "quotes"
             referencedColumns: ["id", "project_id"]
+          },
+          {
+            foreignKeyName: "invoices_recurring_same_customer"
+            columns: ["recurring_service_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_services"
+            referencedColumns: ["id", "customer_id"]
           },
         ]
       }
@@ -436,6 +490,76 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          customer_id: string
+          description: string
+          id: string
+          invoice_id: string
+          method: string | null
+          paid_at: string | null
+          provider_payment_id: string | null
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          customer_id: string
+          description?: string
+          id?: string
+          invoice_id: string
+          method?: string | null
+          paid_at?: string | null
+          provider_payment_id?: string | null
+          source: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          customer_id?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          method?: string | null
+          paid_at?: string | null
+          provider_payment_id?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_invoice_same_customer"
+            columns: ["invoice_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id", "customer_id"]
+          },
+        ]
       }
       pricing_addons: {
         Row: {
@@ -707,6 +831,100 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id", "customer_id"]
+          },
+        ]
+      }
+      recurring_activations: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          mollie_payment_id: string | null
+          recurring_service_id: string
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          mollie_payment_id?: string | null
+          recurring_service_id: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          mollie_payment_id?: string | null
+          recurring_service_id?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_activations_recurring_service_id_fkey"
+            columns: ["recurring_service_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_services: {
+        Row: {
+          amount_cents: number
+          billing_interval: string
+          created_at: string
+          currency: string
+          customer_id: string
+          description: string
+          id: string
+          mollie_subscription_id: string | null
+          name: string
+          starts_on: string | null
+          status: string
+          updated_at: string
+          vat_rate: number
+        }
+        Insert: {
+          amount_cents: number
+          billing_interval?: string
+          created_at?: string
+          currency?: string
+          customer_id: string
+          description?: string
+          id?: string
+          mollie_subscription_id?: string | null
+          name: string
+          starts_on?: string | null
+          status?: string
+          updated_at?: string
+          vat_rate?: number
+        }
+        Update: {
+          amount_cents?: number
+          billing_interval?: string
+          created_at?: string
+          currency?: string
+          customer_id?: string
+          description?: string
+          id?: string
+          mollie_subscription_id?: string | null
+          name?: string
+          starts_on?: string | null
+          status?: string
+          updated_at?: string
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_services_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
           },
         ]
       }

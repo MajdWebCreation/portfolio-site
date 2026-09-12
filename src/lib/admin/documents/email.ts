@@ -28,6 +28,12 @@ export type DocumentMailInput = {
   totalLabel: string;
   pdf: Uint8Array;
   fileName: string;
+  /**
+   * Pay-by-link for this invoice, when one applies. Absent for a quote, and
+   * absent for an invoice collected by direct debit -- offering a button
+   * there would invite a second payment for a debt already being collected.
+   */
+  payUrl?: string;
 };
 
 export type SendMailResult = { sent: true; sentAt: string } | { sent: false; reason: string };
@@ -43,6 +49,16 @@ export function documentDateLabel(dateKey: string): string {
 }
 
 type MailBody = { html: string; text: string };
+
+/**
+ * The one call to action a document mail carries. A table rather than a
+ * styled anchor, because that is what survives Outlook; the colours are the
+ * ink and paper of the rest of the mail.
+ */
+function payButton(url: string): string {
+  const href = escapeEmailHtml(url);
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 4px;"><tr><td style="border-radius:3px;background:#14161a;"><a href="${href}" style="display:inline-block;padding:13px 22px;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:3px;">Factuur betalen</a></td></tr></table>`;
+}
 
 /**
  * The body, as lines. Both renderings come from the same list, so the plain
@@ -72,7 +88,9 @@ function body(input: DocumentMailInput): MailBody {
       ];
 
   const attachment = isInvoice
-    ? "De factuur vind je als PDF in de bijlage. De betaalgegevens staan op de factuur zelf."
+    ? input.payUrl
+      ? "De factuur vind je als PDF in de bijlage. Betalen kan met de knop hierboven, of met de gegevens op de factuur zelf."
+      : "De factuur vind je als PDF in de bijlage. De betaalgegevens staan op de factuur zelf."
     : "De offerte vind je als PDF in de bijlage.";
 
   const closing = isInvoice
@@ -90,6 +108,7 @@ function body(input: DocumentMailInput): MailBody {
         facts.map(([label, value]) => ({ label, value })),
         { label: isInvoice ? "Factuurgegevens" : "Offertegegevens" },
       ),
+      ...(input.payUrl ? [payButton(input.payUrl)] : []),
       emailSection({ label: "Bijlage", html: escapeEmailHtml(attachment) }),
       emailText(escapeEmailHtml(closing), { top: 26 }),
     ].join(""),
@@ -102,6 +121,7 @@ function body(input: DocumentMailInput): MailBody {
     "",
     ...facts.map(([label, value]) => `${label}: ${value}`),
     "",
+    ...(input.payUrl ? [`Factuur betalen: ${input.payUrl}`, ""] : []),
     attachment,
     closing,
     "",

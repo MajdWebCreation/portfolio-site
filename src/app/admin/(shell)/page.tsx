@@ -11,6 +11,8 @@ import { listInvoices } from "@/lib/admin/invoices/repository";
 import { listLeads } from "@/lib/admin/leads/repository";
 import { listProjects } from "@/lib/admin/projects/repository";
 import { listQuotes } from "@/lib/admin/quotes/repository";
+import { customerFinancials } from "@/lib/payments/customer-status";
+import { listPayments } from "@/lib/payments/repository";
 import { getFollowUpState } from "@/lib/admin/leads/types";
 import { getDeadlineState, isOpenProject } from "@/lib/admin/projects/types";
 import { adminModules, getAdminModulePath } from "@/lib/admin/modules";
@@ -40,6 +42,18 @@ export default async function AdminDashboardPage() {
   const quotes = await listQuotes();
   const invoices = await listInvoices();
   const projects = await listProjects();
+  const payments = await listPayments();
+
+  /* Derived from the invoices and payments, the same way the customer page
+     and the payments module derive it. One computation, three readers. */
+  const balances = customers.map((customer) =>
+    customerFinancials(
+      invoices.filter((invoice) => invoice.customer.customerId === customer.id),
+      payments.filter((payment) => payment.customerId === customer.id),
+      todayKey,
+    ),
+  );
+  const overdueCustomers = balances.filter((item) => item.status === "overdue" || item.status === "payment_failed").length;
 
   const openProjects = projects.filter(isOpenProject).length;
   const overdueProjects = projects.filter((project) => getDeadlineState(project, todayKey) === "overdue").length;
@@ -100,6 +114,14 @@ export default async function AdminDashboardPage() {
       count: quotes.filter((quote) => quote.status === "draft" || quote.status === "sent").length,
       tone: "neutral",
       href: "/admin/offertes",
+    },
+    {
+      key: "payments-attention",
+      label: "Betalingen",
+      state: "Klanten achterstallig of mislukt",
+      count: overdueCustomers,
+      tone: "danger",
+      href: "/admin/betalingen",
     },
     {
       key: "invoices-open",

@@ -12,7 +12,8 @@ export type AdminModuleKey =
   | "projects"
   | "pricing"
   | "quotes"
-  | "invoices";
+  | "invoices"
+  | "payments";
 
 export type AdminModuleStatus = "available" | "planned";
 
@@ -88,6 +89,13 @@ export const adminModules: readonly AdminModule[] = [
     slug: "facturen",
     label: "Facturen",
     description: "Facturen opstellen en de betaalstatus bijhouden.",
+    status: "available",
+  },
+  {
+    key: "payments",
+    slug: "betalingen",
+    label: "Betalingen",
+    description: "Ontvangen betalingen, openstaand per klant en lopende incasso's.",
     status: "available",
   },
 ];

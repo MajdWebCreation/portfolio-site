@@ -23,6 +23,12 @@ export type Invoice = {
   recipientEmail?: string;
   /** Quote this invoice follows from, when known. */
   quoteId?: string;
+  /** The recurring service this invoice bills, for a monthly charge. */
+  recurringServiceId?: string;
+  /** First day of the period billed; set exactly when recurringServiceId is. */
+  billingPeriodStart?: string;
+  /** Last day of that period. */
+  billingPeriodEnd?: string;
   /** ISO timestamp. */
   updatedAt: string;
 };

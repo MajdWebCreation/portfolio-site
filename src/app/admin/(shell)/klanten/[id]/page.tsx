@@ -11,6 +11,8 @@ import { listInvoices } from "@/lib/admin/invoices/repository";
 import { getLead } from "@/lib/admin/leads/repository";
 import { listProjectsForCustomer } from "@/lib/admin/projects/repository";
 import { listQuotes } from "@/lib/admin/quotes/repository";
+import { customerFinancials } from "@/lib/payments/customer-status";
+import { listPaymentsForCustomer, listRecurringServicesForCustomer } from "@/lib/payments/repository";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -30,13 +32,23 @@ export default async function CustomerPage({ params }: PageProps) {
     notFound();
   }
 
-  const [sourceInquiry, sourceLead, quotes, invoices, projects] = await Promise.all([
+  const [sourceInquiry, sourceLead, quotes, invoices, projects, payments, recurringServices] = await Promise.all([
     customer.sourceInquiryId ? getInquiry(customer.sourceInquiryId) : undefined,
     customer.sourceLeadId ? getLead(customer.sourceLeadId) : undefined,
     listQuotes(),
     listInvoices(),
     listProjectsForCustomer(customer.id),
+    listPaymentsForCustomer(customer.id),
+    listRecurringServicesForCustomer(customer.id),
   ]);
+
+  const todayKey = toDateKey(new Date());
+  // Read from the financial data itself, every time the page renders.
+  const financials = customerFinancials(
+    invoices.filter((invoice) => invoice.customer.customerId === customer.id),
+    payments,
+    todayKey,
+  );
 
   return (
     <div className="space-y-8">
@@ -57,7 +69,9 @@ export default async function CustomerPage({ params }: PageProps) {
         quotes={quotes}
         invoices={invoices}
         projects={projects}
-        todayKey={toDateKey(new Date())}
+        financials={financials}
+        recurringServices={recurringServices}
+        todayKey={todayKey}
       />
     </div>
   );
