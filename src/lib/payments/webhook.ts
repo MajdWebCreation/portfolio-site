@@ -124,6 +124,21 @@ function metadataString(payment: MolliePayment, key: string): string | undefined
 }
 
 /**
+ * The marker the admin integration check puts on the payments it creates.
+ *
+ * Such a payment exists only to prove that the API key works. It belongs to no
+ * customer, no invoice and no service, and must never become part of the
+ * financial administration -- so it is recognised by name and dropped before
+ * anything is read or written.
+ */
+export const integrationTestMarker = "integration_test";
+
+export function isIntegrationTestPayment(payment: Pick<MolliePayment, "metadata">): boolean {
+  const marked = payment.metadata?.[integrationTestMarker];
+  return marked === true || marked === "true" || payment.metadata?.kind === "integration_test";
+}
+
+/**
  * The whole of webhook handling. Safe to run a hundred times for the same
  * payment: every step is either an upsert keyed on the provider id, or a
  * recomputation from stored facts.
@@ -133,6 +148,16 @@ export async function processMolliePayment(
   store: WebhookStore,
   todayKey: string,
 ): Promise<WebhookOutcome> {
+  /*
+    First, before the store is touched at all. A payment from the integration
+    check is not administration and never becomes any: no read, no write, no
+    invoice, no customer status. Returning `handled` keeps Mollie from
+    retrying something we have deliberately decided about.
+  */
+  if (isIntegrationTestPayment(payment)) {
+    return { handled: true, note: "integration test payment ignored" };
+  }
+
   const activation = await store.findActivationByPaymentId(payment.id);
   if (activation) return processActivation(payment, activation, store, todayKey);
 

@@ -1,4 +1,4 @@
-import { getPayment } from "@/lib/mollie/client";
+import { getPayment, MollieError } from "@/lib/mollie/client";
 import { isMollieConfigured } from "@/lib/mollie/config";
 import { toDateKey } from "@/lib/admin/format";
 import { rateLimit, requestKey } from "@/lib/payments/rate-limit";
@@ -55,6 +55,17 @@ export async function POST(request: Request) {
     console.info("Mollie webhook handled", { paymentId, handled: outcome.handled, note: outcome.note });
     return new Response("OK", { status: 200 });
   } catch (error) {
+    /*
+      A payment this account cannot see is not ours to handle: that is what a
+      test-mode callback looks like to a deployment holding a live key, and
+      the other way round. Retrying would never succeed, so it is answered and
+      forgotten rather than queued forever.
+    */
+    if (error instanceof MollieError && error.status === 404) {
+      console.info("Mollie webhook for an unknown payment ignored", { paymentId });
+      return new Response("OK", { status: 200 });
+    }
+
     console.error("Mollie webhook failed", { paymentId, error });
     // Ask Mollie to try again; the processing is idempotent, so a repeat is safe.
     return new Response("Retry", { status: 500 });

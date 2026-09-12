@@ -45,6 +45,30 @@ export function isMollieConfigured(): boolean {
   return Boolean(process.env.MOLLIE_API_KEY);
 }
 
+/**
+ * Which Mollie account this deployment talks to.
+ *
+ * Mollie's key itself says it: a key beginning with `test_` reaches the test
+ * account, where no real money can move. That distinction is the safety catch
+ * for the integration check, which may only ever run against `test`.
+ */
+export type MollieMode = "not_configured" | "test" | "live";
+
+export function mollieMode(): MollieMode {
+  const apiKey = process.env.MOLLIE_API_KEY;
+  if (!apiKey) return "not_configured";
+  return apiKey.startsWith("test_") ? "test" : "live";
+}
+
+/**
+ * Where the integration check sends a visitor who would open its checkout.
+ * Nobody ever does -- the check never opens the page -- but Mollie requires
+ * the field, so it points at the site rather than anything payment-shaped.
+ */
+export function integrationCheckRedirectUrl(config: MollieConfig): string {
+  return `${config.siteUrl}/nl`;
+}
+
 export function mollieWebhookUrl(config: MollieConfig): string {
   return `${config.siteUrl}/api/mollie/webhook`;
 }

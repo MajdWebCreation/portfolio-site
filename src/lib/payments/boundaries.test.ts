@@ -55,10 +55,20 @@ describe("the Mollie key", () => {
     expect(readers.map(({ path }) => path.replace(root, "src"))).toEqual(["src/lib/mollie/config.ts"]);
   });
 
+  /*
+    The payments page reads the mode on the server and passes the word down,
+    so a client component may name the type but never the module that reads
+    the key.
+  */
   it("is not reachable from a client component", () => {
-    const offenders = clientFiles.filter(
-      ({ source }) => source.includes("lib/mollie/client") || source.includes("lib/mollie/config"),
-    );
+    const offenders = clientFiles.filter(({ source }) => source.includes("lib/mollie/client"));
+    expect(offenders.map(({ path }) => path.replace(root, "src"))).toEqual([]);
+  });
+
+  it("is only ever type-imported by a client component, never called", () => {
+    const offenders = clientFiles
+      .filter(({ source }) => source.includes("lib/mollie/config"))
+      .filter(({ source }) => !/import type \{[^}]*\} from "@\/lib\/mollie\/config"/.test(source));
     expect(offenders.map(({ path }) => path.replace(root, "src"))).toEqual([]);
   });
 

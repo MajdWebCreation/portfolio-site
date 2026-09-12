@@ -4,7 +4,15 @@ import type { MolliePayment } from "@/lib/mollie/client";
 import { calculateTotals } from "@/lib/money";
 import { invoiceFixture, recurringFixture } from "@/lib/payments/fixtures";
 import type { Payment, RecurringService } from "@/lib/payments/types";
-import { nextInvoiceStatus, processMolliePayment, type PaymentRecord, type WebhookStore } from "@/lib/payments/webhook";
+import {
+  isIntegrationTestPayment,
+  nextInvoiceStatus,
+  processMolliePayment,
+  type PaymentRecord,
+  type WebhookStore,
+} from "@/lib/payments/webhook";
+import { calculateTotals as totalsOf } from "@/lib/money";
+import { customerFinancials } from "@/lib/payments/customer-status";
 
 /**
  * An in-memory stand-in for the database, keyed the way the real schema is
@@ -463,5 +471,86 @@ describe("invoices without any Mollie involvement", () => {
     const untouched = invoices.get("plain");
     expect(untouched?.status).toBe("sent");
     expect(await store.listPaymentsForInvoice("plain")).toEqual([]);
+  });
+});
+
+describe("a callback for the admin integration check", () => {
+  function checkPayment(overrides: Partial<MolliePayment> = {}): MolliePayment {
+    return molliePayment({
+      id: "tr_check",
+      amount: { currency: "EUR", value: "0.01" },
+      description: "YM Creations integratietest (testmodus)",
+      metadata: { integration_test: "true", kind: "integration_test", source: "admin-integration-check" },
+      ...overrides,
+    });
+  }
+
+  it("is recognised by its marker", () => {
+    expect(isIntegrationTestPayment(checkPayment())).toBe(true);
+    expect(isIntegrationTestPayment({ metadata: { integration_test: true } })).toBe(true);
+    expect(isIntegrationTestPayment({ metadata: { kind: "integration_test" } })).toBe(true);
+    expect(isIntegrationTestPayment(molliePayment())).toBe(false);
+    expect(isIntegrationTestPayment({ metadata: null })).toBe(false);
+  });
+
+  /*
+    The strongest form of "changes nothing": the store is a proxy that throws
+    on any access, so the test fails if a single read or write is attempted.
+  */
+  it("never touches the database at all", async () => {
+    const neverStore = new Proxy({} as WebhookStore, {
+      get(_target, property) {
+        return () => {
+          throw new Error(`The webhook called store.${String(property)} for an integration test payment`);
+        };
+      },
+    });
+
+    const outcome = await processMolliePayment(checkPayment(), neverStore, "2026-09-20");
+    expect(outcome).toEqual({ handled: true, note: "integration test payment ignored" });
+  });
+
+  it("leaves invoices, payments, services and customer status exactly as they were", async () => {
+    const service = recurringFixture({ status: "active", startsOn: "2026-09-12", mollie: { subscriptionId: "sub_1" } });
+    const { store, invoices, payments, services, createdInvoices, subscriptionCalls } = makeStore({
+      invoices: [invoiceFixture({ dueDate: "2026-09-30" })],
+      services: [service],
+    });
+
+    const today = "2026-09-20";
+    const before = customerFinancials([...invoices.values()], payments, today);
+
+    // Paid, failed and open: none of them may mean anything here.
+    for (const status of ["paid", "failed", "open"] as const) {
+      await processMolliePayment(
+        checkPayment({ status, ...(status === "paid" ? {} : { paidAt: undefined }) }),
+        store,
+        today,
+      );
+    }
+
+    expect(payments).toEqual([]);
+    expect(createdInvoices).toEqual([]);
+    expect(subscriptionCalls).toEqual([]);
+    expect(invoices.get("inv-1")?.status).toBe("sent");
+    expect(services.get("svc-1")).toEqual(service);
+
+    const after = customerFinancials([...invoices.values()], payments, today);
+    expect(after).toEqual(before);
+    expect(after.status).toBe("open");
+    expect(after.outstandingCents).toBe(totalsOf(invoiceFixture().lines).totalCents);
+  });
+
+  /* An ordinary payment that happens to carry extra metadata is not a test. */
+  it("does not mistake a real payment for one", async () => {
+    const { store, payments, invoices } = makeStore();
+    await processMolliePayment(
+      molliePayment({ metadata: { kind: "invoice", invoiceId: "inv-1", customerId: "cust-1", note: "integration" } }),
+      store,
+      "2026-09-20",
+    );
+
+    expect(payments).toHaveLength(1);
+    expect(invoices.get("inv-1")?.status).toBe("paid");
   });
 });

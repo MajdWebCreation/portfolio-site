@@ -3,9 +3,11 @@ import AdminPageHeader from "@/components/admin/admin-page-header";
 import AdminSection from "@/components/admin/admin-section";
 import StatusBadge from "@/components/admin/status-badge";
 import CustomerBalances, { type CustomerBalance } from "@/components/admin/payments/customer-balances";
+import MollieCheck from "@/components/admin/payments/mollie-check";
 import PaymentsList from "@/components/admin/payments/payments-list";
 import { requireAdminAccess } from "@/lib/admin/access";
 import { listCustomers } from "@/lib/admin/customers/repository";
+import { mollieMode } from "@/lib/mollie/config";
 import { toDateKey } from "@/lib/admin/format";
 import { listInvoices } from "@/lib/admin/invoices/repository";
 import { customerFinancials } from "@/lib/payments/customer-status";
@@ -81,6 +83,11 @@ export default async function PaymentsPage() {
 
       <AdminSection id="payments" title="Betalingen">
         <PaymentsList payments={payments} customers={customers} />
+      </AdminSection>
+
+      {/* The key itself never leaves the server; only which mode it is in. */}
+      <AdminSection id="mollie" title="Mollie-koppeling">
+        <MollieCheck mode={mollieMode()} />
       </AdminSection>
     </div>
   );
