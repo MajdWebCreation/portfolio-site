@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import CtaLink from "@/components/cta-link";
 import { FilterBar, FilterSelect, SearchField } from "@/components/admin/filter-bar";
 import StatusBadge from "@/components/admin/status-badge";
 import { customerStatusLabels, customerStatusTone, type Customer } from "@/lib/admin/customers/types";
@@ -24,14 +25,19 @@ export default function CustomersList({ customers }: { customers: Customer[] }) 
 
   return (
     <div className="space-y-5">
-      <FilterBar label="Klanten filteren">
-        <FilterSelect id="customer-status" label="Status" value={status} onChange={setStatus}>
-          <option value="all">Alle</option>
-          <option value="active">{customerStatusLabels.active}</option>
-          <option value="inactive">{customerStatusLabels.inactive}</option>
-        </FilterSelect>
-        <SearchField id="customer-search" label="Zoeken" value={query} onChange={setQuery} placeholder="Bedrijf, contactpersoon, plaats" />
-      </FilterBar>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <FilterBar label="Klanten filteren">
+          <FilterSelect id="customer-status" label="Status" value={status} onChange={setStatus}>
+            <option value="all">Alle</option>
+            <option value="active">{customerStatusLabels.active}</option>
+            <option value="inactive">{customerStatusLabels.inactive}</option>
+          </FilterSelect>
+          <SearchField id="customer-search" label="Zoeken" value={query} onChange={setQuery} placeholder="Bedrijf, contactpersoon, plaats" />
+        </FilterBar>
+        <CtaLink href="/admin/klanten/nieuw" className="max-sm:w-full">
+          Nieuwe klant
+        </CtaLink>
+      </div>
 
       <p className="text-[0.85rem] text-muted" aria-live="polite">
         {rows.length} van {customers.length} klanten

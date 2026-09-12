@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { actionFailed, type ActionResult } from "@/lib/admin/action-result";
-import { adminDb } from "@/lib/admin/db";
+import { actionFailed, referenceFailed, type ActionResult } from "@/lib/admin/action-result";
+import { adminDb, orNull } from "@/lib/admin/db";
 import { snapshotToColumns } from "@/lib/admin/documents/mapper";
 import type { CustomerSnapshot, DocumentLine } from "@/lib/admin/documents/types";
 import { hasLineErrors, validateDates, validateLine } from "@/lib/admin/documents/validation";
@@ -12,6 +12,8 @@ import type { Json } from "@/lib/supabase/database.types";
 export type QuoteInput = {
   status: string;
   customer: CustomerSnapshot;
+  /** Project to file this quote under; always one of the customer's own. */
+  projectId?: string;
   issueDate: string;
   validUntil: string;
   subject: string;
@@ -65,6 +67,9 @@ export async function saveQuote(
   const db = await adminDb();
   const row = {
     ...snapshotToColumns(input.customer),
+    // Which project this belongs to is a reference, not a copy: the database
+    // checks it against (id, customer_id) on projects.
+    project_id: orNull(input.projectId),
     status: input.status,
     issue_date: input.issueDate,
     valid_until: input.validUntil,
@@ -77,7 +82,13 @@ export async function saveQuote(
     ? await db.from("quotes").update(row).eq("id", id).select("id").single()
     : await db.from("quotes").insert({ ...row, number_value: numberValue, number_provisional: true }).select("id").single();
 
-  if (saved.error || !saved.data) return actionFailed(saved.error, "Offerte opslaan mislukt.");
+  if (saved.error || !saved.data) {
+    return referenceFailed(
+      saved.error,
+      "Het gekozen project bestaat niet meer of hoort niet bij deze klant.",
+      "Offerte opslaan mislukt.",
+    );
+  }
 
   const { error: linesError } = await db.rpc("save_quote_lines", {
     p_quote_id: saved.data.id,

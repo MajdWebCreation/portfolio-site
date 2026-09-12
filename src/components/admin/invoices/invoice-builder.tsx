@@ -8,6 +8,7 @@ import CustomerSelect from "@/components/admin/documents/customer-select";
 import DocumentStatus from "@/components/admin/documents/document-status";
 import DocumentTotalsView from "@/components/admin/documents/document-totals";
 import LineItemsEditor, { newLine } from "@/components/admin/documents/line-items-editor";
+import ProjectSelect from "@/components/admin/documents/project-select";
 import { TextField, TextareaField } from "@/components/admin/form-field";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import type { Customer } from "@/lib/admin/customers/types";
@@ -16,6 +17,7 @@ import { provisionalDocumentNumber } from "@/lib/admin/documents/numbering";
 import { snapshotCustomer } from "@/lib/admin/documents/types";
 import { addDays, hasLineErrors, validateDates, validateLine, type LineErrors } from "@/lib/admin/documents/validation";
 import { saveInvoice } from "@/lib/admin/invoices/actions";
+import type { Project } from "@/lib/admin/projects/types";
 import { invoiceStatusLabels, invoiceStatusOrder, invoiceStatusTone, isInvoiceStatus, type Invoice } from "@/lib/admin/invoices/types";
 import { calculateTotals } from "@/lib/money";
 
@@ -56,9 +58,16 @@ function validate(invoice: Invoice): { errors: Errors; lineErrors: Record<string
   return { errors, lineErrors };
 }
 
-type InvoiceBuilderProps = { stored: Invoice | null; customers: Customer[]; todayKey: string };
+type InvoiceBuilderProps = {
+  stored: Invoice | null;
+  customers: Customer[];
+  projects: Project[];
+  /** The project of the quote this invoice follows from, when it has one. */
+  quoteProjectId?: string;
+  todayKey: string;
+};
 
-export default function InvoiceBuilder({ stored, customers, todayKey }: InvoiceBuilderProps) {
+export default function InvoiceBuilder({ stored, customers, projects, quoteProjectId, todayKey }: InvoiceBuilderProps) {
   const router = useRouter();
   // "NIEUW" until the record is created; both server and client render the same number.
   const [invoice, setInvoice] = useState<Invoice>(() => stored ?? blank(todayKey, "nieuw", "factuur-regel-1"));
@@ -67,6 +76,18 @@ export default function InvoiceBuilder({ stored, customers, todayKey }: InvoiceB
   const { save: runSave, pending, error: saveError, savedAt } = useSave();
   const totals = useMemo(() => calculateTotals(invoice.lines.filter((line) => !hasLineErrors(validateLine(line)))), [invoice.lines]);
   const ready = Boolean(invoice.customer.customerId) && invoice.lines.length > 0 && invoice.lines.every((line) => !hasLineErrors(validateLine(line)));
+  /*
+    Which projects this invoice may name. Always the customer's own; and when
+    the invoice follows from a quote, only that quote's project, because the
+    database will not let the two say different things. A quote that is itself
+    unfiled leaves nothing to agree with, so the invoice cannot be filed either
+    until the quote is -- the select says so rather than failing on save.
+  */
+  const linkedToQuote = Boolean(invoice.quoteId);
+  const customerProjects = useMemo(() => {
+    const own = projects.filter((project) => project.customerId === invoice.customer.customerId);
+    return linkedToQuote ? own.filter((project) => project.id === quoteProjectId) : own;
+  }, [projects, invoice.customer.customerId, linkedToQuote, quoteProjectId]);
 
   const update = <K extends keyof Invoice>(field: K, value: Invoice[K]) => {
     setInvoice((previous) => ({ ...previous, [field]: value }));
@@ -93,6 +114,7 @@ export default function InvoiceBuilder({ stored, customers, todayKey }: InvoiceB
         saveInvoice(invoice.id || null, {
           status: invoice.status,
           customer: invoice.customer,
+          projectId: invoice.projectId,
           issueDate: invoice.issueDate,
           dueDate: invoice.dueDate,
           paymentReference,
@@ -122,7 +144,31 @@ export default function InvoiceBuilder({ stored, customers, todayKey }: InvoiceB
               <TextField id="dueDate" label="Vervaldatum" type="date" value={invoice.dueDate} onChange={(event) => update("dueDate", event.target.value)} error={errors.dueDate} hint={`Voorstel: ${companyProfile.paymentTermDays} dagen, uit de voorwaarden.`} />
             </div>
             <div className="sm:col-span-2">
-              <CustomerSelect customers={customers} value={invoice.customer.customerId ? invoice.customer : null} onSelect={(customer) => update("customer", customer ? snapshotCustomer(customer) : blank(todayKey, "x", "x").customer)} error={errors.customer} />
+              <CustomerSelect
+                customers={customers}
+                value={invoice.customer.customerId ? invoice.customer : null}
+                onSelect={(customer) => {
+                  update("customer", customer ? snapshotCustomer(customer) : blank(todayKey, "x", "x").customer);
+                  // A project of the previous customer would not survive the save.
+                  update("projectId", undefined);
+                }}
+                error={errors.customer}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <ProjectSelect
+                projects={customerProjects}
+                value={invoice.projectId ?? ""}
+                onChange={(projectId) => update("projectId", projectId || undefined)}
+                disabled={!invoice.customer.customerId}
+                hint={
+                  linkedToQuote
+                    ? quoteProjectId
+                      ? "Deze factuur volgt uit een offerte; alleen het project van die offerte kan hier staan."
+                      : "De offerte waar deze factuur uit volgt staat nog niet onder een project. Koppel die eerst."
+                    : undefined
+                }
+              />
             </div>
             <div className="sm:col-span-2">
               <TextField id="paymentReference" label="Betalingskenmerk" value={invoice.paymentReference} onChange={(event) => update("paymentReference", event.target.value)} hint="Wat de klant bij de betaling vermeldt; standaard het factuurnummer." className="font-mono text-[0.9rem]" />

@@ -5,12 +5,13 @@ import QuoteBuilder from "@/components/admin/quotes/quote-builder";
 import { requireAdminAccess } from "@/lib/admin/access";
 import { listCustomers } from "@/lib/admin/customers/repository";
 import { toDateKey } from "@/lib/admin/format";
+import { listProjects } from "@/lib/admin/projects/repository";
 
 export const metadata: Metadata = { title: "Nieuwe offerte" };
 
 export default async function NewQuotesPage() {
   await requireAdminAccess();
-  const customers = await listCustomers();
+  const [customers, projects] = await Promise.all([listCustomers(), listProjects()]);
 
   return (
     <div className="space-y-8">
@@ -23,7 +24,7 @@ export default async function NewQuotesPage() {
           </Link>
         }
       />
-      <QuoteBuilder stored={null} customers={customers} todayKey={toDateKey(new Date())} />
+      <QuoteBuilder stored={null} customers={customers} projects={projects} todayKey={toDateKey(new Date())} />
     </div>
   );
 }

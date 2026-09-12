@@ -8,12 +8,14 @@ import CustomerSelect from "@/components/admin/documents/customer-select";
 import DocumentStatus from "@/components/admin/documents/document-status";
 import DocumentTotalsView from "@/components/admin/documents/document-totals";
 import LineItemsEditor, { newLine } from "@/components/admin/documents/line-items-editor";
+import ProjectSelect from "@/components/admin/documents/project-select";
 import { TextField, TextareaField } from "@/components/admin/form-field";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import type { Customer } from "@/lib/admin/customers/types";
 import { provisionalDocumentNumber } from "@/lib/admin/documents/numbering";
 import { snapshotCustomer } from "@/lib/admin/documents/types";
 import { addDays, hasLineErrors, validateDates, validateLine, type LineErrors } from "@/lib/admin/documents/validation";
+import type { Project } from "@/lib/admin/projects/types";
 import { saveQuote } from "@/lib/admin/quotes/actions";
 import { isQuoteStatus, quoteStatusLabels, quoteStatusOrder, quoteStatusTone, type Quote } from "@/lib/admin/quotes/types";
 import { calculateTotals } from "@/lib/money";
@@ -55,9 +57,9 @@ function validate(quote: Quote): { errors: Errors; lineErrors: Record<string, Li
   return { errors, lineErrors };
 }
 
-type QuoteBuilderProps = { stored: Quote | null; customers: Customer[]; todayKey: string };
+type QuoteBuilderProps = { stored: Quote | null; customers: Customer[]; projects: Project[]; todayKey: string };
 
-export default function QuoteBuilder({ stored, customers, todayKey }: QuoteBuilderProps) {
+export default function QuoteBuilder({ stored, customers, projects, todayKey }: QuoteBuilderProps) {
   const router = useRouter();
   // "NIEUW" until the record is created; both server and client render the same number.
   const [quote, setQuote] = useState<Quote>(() => stored ?? blank(todayKey, "nieuw", "offerte-regel-1"));
@@ -66,6 +68,12 @@ export default function QuoteBuilder({ stored, customers, todayKey }: QuoteBuild
   const { save: runSave, pending, error: saveError, savedAt } = useSave();
   const totals = useMemo(() => calculateTotals(quote.lines.filter((line) => !hasLineErrors(validateLine(line)))), [quote.lines]);
   const ready = Boolean(quote.customer.customerId) && quote.lines.length > 0 && quote.lines.every((line) => !hasLineErrors(validateLine(line)));
+  // Only the customer on the document has projects to offer; a project of
+  // another customer has no row for the composite key to match.
+  const customerProjects = useMemo(
+    () => projects.filter((project) => project.customerId === quote.customer.customerId),
+    [projects, quote.customer.customerId],
+  );
 
   const update = <K extends keyof Quote>(field: K, value: Quote[K]) => {
     setQuote((previous) => ({ ...previous, [field]: value }));
@@ -89,6 +97,7 @@ export default function QuoteBuilder({ stored, customers, todayKey }: QuoteBuild
         saveQuote(quote.id || null, {
           status: quote.status,
           customer: quote.customer,
+          projectId: quote.projectId,
           issueDate: quote.issueDate,
           validUntil: quote.validUntil,
           subject: quote.subject,
@@ -119,7 +128,24 @@ export default function QuoteBuilder({ stored, customers, todayKey }: QuoteBuild
               <TextField id="validUntil" label="Geldig tot" type="date" value={quote.validUntil} onChange={(event) => update("validUntil", event.target.value)} error={errors.validUntil} />
             </div>
             <div className="sm:col-span-2">
-              <CustomerSelect customers={customers} value={quote.customer.customerId ? quote.customer : null} onSelect={(customer) => update("customer", customer ? snapshotCustomer(customer) : blank(todayKey, "x", "x").customer)} error={errors.customer} />
+              <CustomerSelect
+                customers={customers}
+                value={quote.customer.customerId ? quote.customer : null}
+                onSelect={(customer) => {
+                  update("customer", customer ? snapshotCustomer(customer) : blank(todayKey, "x", "x").customer);
+                  // A project of the previous customer would not survive the save.
+                  update("projectId", undefined);
+                }}
+                error={errors.customer}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <ProjectSelect
+                projects={customerProjects}
+                value={quote.projectId ?? ""}
+                onChange={(projectId) => update("projectId", projectId || undefined)}
+                disabled={!quote.customer.customerId}
+              />
             </div>
             <div className="sm:col-span-2">
               <TextField id="subject" label="Onderwerp" value={quote.subject} onChange={(event) => update("subject", event.target.value)} error={errors.subject} placeholder="Bijvoorbeeld: Website met online afspraken" />

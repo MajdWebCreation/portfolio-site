@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { actionFailed, type ActionResult } from "@/lib/admin/action-result";
-import { adminDb } from "@/lib/admin/db";
+import { actionFailed, referenceFailed, type ActionResult } from "@/lib/admin/action-result";
+import { adminDb, orNull } from "@/lib/admin/db";
 import { snapshotToColumns } from "@/lib/admin/documents/mapper";
 import type { CustomerSnapshot, DocumentLine } from "@/lib/admin/documents/types";
 import { hasLineErrors, validateDates, validateLine } from "@/lib/admin/documents/validation";
@@ -12,6 +12,8 @@ import type { Json } from "@/lib/supabase/database.types";
 export type InvoiceInput = {
   status: string;
   customer: CustomerSnapshot;
+  /** Project to file this invoice under; always one of the customer's own. */
+  projectId?: string;
   issueDate: string;
   dueDate: string;
   paymentReference: string;
@@ -53,6 +55,10 @@ export async function saveInvoice(
   const db = await adminDb();
   const row = {
     ...snapshotToColumns(input.customer),
+    // A reference, not a copy. The database checks it against the customer's
+    // projects and, when the invoice also names a quote, against that quote's
+    // project as well.
+    project_id: orNull(input.projectId),
     status: input.status,
     issue_date: input.issueDate,
     due_date: input.dueDate,
@@ -64,7 +70,13 @@ export async function saveInvoice(
     ? await db.from("invoices").update(row).eq("id", id).select("id").single()
     : await db.from("invoices").insert({ ...row, number_value: numberValue, number_provisional: true }).select("id").single();
 
-  if (saved.error || !saved.data) return actionFailed(saved.error, "Factuur opslaan mislukt.");
+  if (saved.error || !saved.data) {
+    return referenceFailed(
+      saved.error,
+      "Het gekozen project bestaat niet meer, hoort niet bij deze klant, of spreekt de gekoppelde offerte tegen.",
+      "Factuur opslaan mislukt.",
+    );
+  }
 
   const { error: linesError } = await db.rpc("save_invoice_lines", {
     p_invoice_id: saved.data.id,

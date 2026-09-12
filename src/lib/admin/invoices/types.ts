@@ -7,6 +7,8 @@ export type Invoice = {
   number: DocumentNumber;
   status: InvoiceStatus;
   customer: CustomerSnapshot;
+  /** Project this invoice belongs to, when it was filed under one. */
+  projectId?: string;
   /** YYYY-MM-DD */
   issueDate: string;
   /** YYYY-MM-DD */

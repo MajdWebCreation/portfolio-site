@@ -9,6 +9,7 @@ export type AdminModuleKey =
   | "inquiries"
   | "leads"
   | "customers"
+  | "projects"
   | "pricing"
   | "quotes"
   | "invoices";
@@ -59,6 +60,13 @@ export const adminModules: readonly AdminModule[] = [
     slug: "klanten",
     label: "Klanten",
     description: "Opdrachtgevers, contactpersonen en hun projecten.",
+    status: "available",
+  },
+  {
+    key: "projects",
+    slug: "projecten",
+    label: "Projecten",
+    description: "Het werk per klant, met status en deadline.",
     status: "available",
   },
   {

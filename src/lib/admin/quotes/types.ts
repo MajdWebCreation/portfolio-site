@@ -7,6 +7,8 @@ export type Quote = {
   number: DocumentNumber;
   status: QuoteStatus;
   customer: CustomerSnapshot;
+  /** Project this quote belongs to, when it was filed under one. */
+  projectId?: string;
   /** YYYY-MM-DD */
   issueDate: string;
   /** YYYY-MM-DD */

@@ -299,6 +299,7 @@ export type Database = {
           number_provisional: boolean
           number_value: string
           payment_reference: string
+          project_id: string | null
           quote_id: string | null
           recipient_email: string | null
           sent_at: string | null
@@ -324,6 +325,7 @@ export type Database = {
           number_provisional?: boolean
           number_value: string
           payment_reference?: string
+          project_id?: string | null
           quote_id?: string | null
           recipient_email?: string | null
           sent_at?: string | null
@@ -349,6 +351,7 @@ export type Database = {
           number_provisional?: boolean
           number_value?: string
           payment_reference?: string
+          project_id?: string | null
           quote_id?: string | null
           recipient_email?: string | null
           sent_at?: string | null
@@ -364,11 +367,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invoices_project_same_customer"
+            columns: ["project_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "customer_id"]
+          },
+          {
             foreignKeyName: "invoices_quote_id_fkey"
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_quote_same_project"
+            columns: ["quote_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id", "project_id"]
           },
         ]
       }
@@ -515,6 +532,50 @@ export type Database = {
         }
         Relationships: []
       }
+      projects: {
+        Row: {
+          created_at: string
+          customer_id: string
+          deadline: string | null
+          id: string
+          name: string
+          notes: string
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          deadline?: string | null
+          id?: string
+          name: string
+          notes?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          deadline?: string | null
+          id?: string
+          name?: string
+          notes?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_lines: {
         Row: {
           description: string
@@ -572,6 +633,7 @@ export type Database = {
           notes: string
           number_provisional: boolean
           number_value: string
+          project_id: string | null
           recipient_email: string | null
           sent_at: string | null
           status: string
@@ -597,6 +659,7 @@ export type Database = {
           notes?: string
           number_provisional?: boolean
           number_value: string
+          project_id?: string | null
           recipient_email?: string | null
           sent_at?: string | null
           status?: string
@@ -622,6 +685,7 @@ export type Database = {
           notes?: string
           number_provisional?: boolean
           number_value?: string
+          project_id?: string | null
           recipient_email?: string | null
           sent_at?: string | null
           status?: string
@@ -636,6 +700,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_project_same_customer"
+            columns: ["project_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "customer_id"]
           },
         ]
       }

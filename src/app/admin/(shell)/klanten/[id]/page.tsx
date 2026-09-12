@@ -5,9 +5,11 @@ import AdminPageHeader from "@/components/admin/admin-page-header";
 import CustomerDetail from "@/components/admin/customers/customer-detail";
 import { requireAdminAccess } from "@/lib/admin/access";
 import { getCustomer } from "@/lib/admin/customers/repository";
+import { toDateKey } from "@/lib/admin/format";
 import { getInquiry } from "@/lib/admin/inquiries/repository";
 import { listInvoices } from "@/lib/admin/invoices/repository";
 import { getLead } from "@/lib/admin/leads/repository";
+import { listProjectsForCustomer } from "@/lib/admin/projects/repository";
 import { listQuotes } from "@/lib/admin/quotes/repository";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -28,11 +30,12 @@ export default async function CustomerPage({ params }: PageProps) {
     notFound();
   }
 
-  const [sourceInquiry, sourceLead, quotes, invoices] = await Promise.all([
+  const [sourceInquiry, sourceLead, quotes, invoices, projects] = await Promise.all([
     customer.sourceInquiryId ? getInquiry(customer.sourceInquiryId) : undefined,
     customer.sourceLeadId ? getLead(customer.sourceLeadId) : undefined,
     listQuotes(),
     listInvoices(),
+    listProjectsForCustomer(customer.id),
   ]);
 
   return (
@@ -53,6 +56,8 @@ export default async function CustomerPage({ params }: PageProps) {
         sourceLead={sourceLead}
         quotes={quotes}
         invoices={invoices}
+        projects={projects}
+        todayKey={toDateKey(new Date())}
       />
     </div>
   );

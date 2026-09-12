@@ -9,8 +9,10 @@ import { toDateKey } from "@/lib/admin/format";
 import { listInquiries } from "@/lib/admin/inquiries/repository";
 import { listInvoices } from "@/lib/admin/invoices/repository";
 import { listLeads } from "@/lib/admin/leads/repository";
+import { listProjects } from "@/lib/admin/projects/repository";
 import { listQuotes } from "@/lib/admin/quotes/repository";
 import { getFollowUpState } from "@/lib/admin/leads/types";
+import { getDeadlineState, isOpenProject } from "@/lib/admin/projects/types";
 import { adminModules, getAdminModulePath } from "@/lib/admin/modules";
 
 export const metadata: Metadata = {
@@ -37,6 +39,10 @@ export default async function AdminDashboardPage() {
   const customers = await listCustomers();
   const quotes = await listQuotes();
   const invoices = await listInvoices();
+  const projects = await listProjects();
+
+  const openProjects = projects.filter(isOpenProject).length;
+  const overdueProjects = projects.filter((project) => getDeadlineState(project, todayKey) === "overdue").length;
 
   const queue: QueueRow[] = [
     {
@@ -72,6 +78,22 @@ export default async function AdminDashboardPage() {
       href: "/admin/leads",
     },
     {
+      key: "projects-active",
+      label: "Projecten",
+      state: "Lopend",
+      count: projects.filter((project) => project.status === "active").length,
+      tone: "accent",
+      href: "/admin/projecten",
+    },
+    {
+      key: "projects-overdue",
+      label: "Projecten",
+      state: "Deadline verstreken",
+      count: overdueProjects,
+      tone: "danger",
+      href: "/admin/projecten",
+    },
+    {
       key: "quotes-open",
       label: "Offertes",
       state: "Concept of verzonden",
@@ -100,8 +122,8 @@ export default async function AdminDashboardPage() {
       />
 
       <AdminSection id="work-queue" title="Werkvoorraad">
-        {inquiries.length + leads.length + quotes.length + invoices.length === 0 ? (
-          <p className="border-b border-line pb-4 text-[0.95rem] text-muted">Geen werkvoorraad: er zijn nog geen aanvragen of leads.</p>
+        {inquiries.length + leads.length + projects.length + quotes.length + invoices.length === 0 ? (
+          <p className="border-b border-line pb-4 text-[0.95rem] text-muted">Geen werkvoorraad: er zijn nog geen aanvragen, leads of projecten.</p>
         ) : (
           <ul>
             {queue.map((row) => (
@@ -127,6 +149,9 @@ export default async function AdminDashboardPage() {
                     {module.label}
                     {module.key === "customers" && customers.length > 0 ? (
                       <span className="ml-2 text-[0.85rem] font-normal text-muted">{customers.length}</span>
+                    ) : null}
+                    {module.key === "projects" && openProjects > 0 ? (
+                      <span className="ml-2 text-[0.85rem] font-normal text-muted">{openProjects}</span>
                     ) : null}
                   </span>
                   <span className="mt-0.5 block text-[0.9rem] text-muted">{module.description}</span>

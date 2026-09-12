@@ -6,6 +6,7 @@ import QuoteBuilder from "@/components/admin/quotes/quote-builder";
 import { requireAdminAccess } from "@/lib/admin/access";
 import { listCustomers } from "@/lib/admin/customers/repository";
 import { toDateKey } from "@/lib/admin/format";
+import { listProjects } from "@/lib/admin/projects/repository";
 import { getQuote } from "@/lib/admin/quotes/repository";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -21,7 +22,7 @@ export default async function QuotesDetailPage({ params }: PageProps) {
   await requireAdminAccess();
   const { id } = await params;
   const item = await getQuote(id);
-  const customers = await listCustomers();
+  const [customers, projects] = await Promise.all([listCustomers(), listProjects()]);
 
   if (!item) {
     notFound();
@@ -48,6 +49,7 @@ export default async function QuotesDetailPage({ params }: PageProps) {
         key={`${item.number.value}-${item.status}`}
         stored={item}
         customers={customers}
+        projects={projects}
         todayKey={toDateKey(new Date())}
       />
     </div>

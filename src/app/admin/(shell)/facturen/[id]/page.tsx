@@ -7,6 +7,8 @@ import { requireAdminAccess } from "@/lib/admin/access";
 import { listCustomers } from "@/lib/admin/customers/repository";
 import { toDateKey } from "@/lib/admin/format";
 import { getInvoice } from "@/lib/admin/invoices/repository";
+import { listProjects } from "@/lib/admin/projects/repository";
+import { getQuote } from "@/lib/admin/quotes/repository";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -21,11 +23,18 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
   await requireAdminAccess();
   const { id } = await params;
   const item = await getInvoice(id);
-  const customers = await listCustomers();
+  const [customers, projects] = await Promise.all([listCustomers(), listProjects()]);
 
   if (!item) {
     notFound();
   }
+
+  /*
+    An invoice that follows from a quote may only sit in that quote's project;
+    the database refuses any other pair. The builder needs to know which one
+    that is, so it can offer that project and nothing else.
+  */
+  const quote = item.quoteId ? await getQuote(item.quoteId) : undefined;
 
   return (
     <div className="space-y-8">
@@ -44,6 +53,8 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
         key={`${item.number.value}-${item.status}`}
         stored={item}
         customers={customers}
+        projects={projects}
+        quoteProjectId={quote?.projectId}
         todayKey={toDateKey(new Date())}
       />
     </div>

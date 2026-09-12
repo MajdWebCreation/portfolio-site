@@ -2,14 +2,15 @@ import Link from "next/link";
 import AdminSection from "@/components/admin/admin-section";
 import CustomerDocuments from "@/components/admin/customers/customer-documents";
 import CustomerEdit from "@/components/admin/customers/customer-edit";
+import CustomerProjects from "@/components/admin/customers/customer-projects";
 import { DetailList, DetailRow } from "@/components/admin/detail-list";
-import EmptyState from "@/components/admin/empty-state";
 import StatusBadge from "@/components/admin/status-badge";
 import { customerStatusLabels, customerStatusTone, type Customer } from "@/lib/admin/customers/types";
 import { formatDateTime } from "@/lib/admin/format";
 import { inquiryOriginLabels, type Inquiry } from "@/lib/admin/inquiries/types";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import type { Lead } from "@/lib/admin/leads/types";
+import type { Project } from "@/lib/admin/projects/types";
 import type { Quote } from "@/lib/admin/quotes/types";
 
 type CustomerDetailProps = {
@@ -20,17 +21,25 @@ type CustomerDetailProps = {
   sourceLead?: Lead;
   quotes: Quote[];
   invoices: Invoice[];
+  projects: Project[];
+  /** Today in Amsterdam, for the deadline states. */
+  todayKey: string;
 };
 
 function Dash() {
   return <span className="text-muted">—</span>;
 }
 
-/**
- * Customer record with its quotes and invoices; projects are not built yet
- * and show an honest empty state.
- */
-export default function CustomerDetail({ customer, sourceInquiry, sourceLead, quotes, invoices }: CustomerDetailProps) {
+/** Customer record with its projects, quotes and invoices. */
+export default function CustomerDetail({
+  customer,
+  sourceInquiry,
+  sourceLead,
+  quotes,
+  invoices,
+  projects,
+  todayKey,
+}: CustomerDetailProps) {
   const { address } = customer;
 
   return (
@@ -107,14 +116,9 @@ export default function CustomerDetail({ customer, sourceInquiry, sourceLead, qu
           )}
         </div>
 
-        <CustomerDocuments customerId={customer.id} quotes={quotes} invoices={invoices} />
+        <CustomerProjects customerId={customer.id} projects={projects} todayKey={todayKey} />
 
-        <div className="border-t border-line pt-6">
-          <h2 className="label-mono text-ink">Projecten</h2>
-          <div className="mt-3">
-            <EmptyState title="Nog niet beschikbaar" text="Projecten worden in een latere fase aan klanten gekoppeld." />
-          </div>
-        </div>
+        <CustomerDocuments customerId={customer.id} quotes={quotes} invoices={invoices} />
       </aside>
     </div>
   );
