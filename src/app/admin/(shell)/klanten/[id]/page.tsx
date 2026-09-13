@@ -11,6 +11,7 @@ import { listInvoices } from "@/lib/admin/invoices/repository";
 import { getLead } from "@/lib/admin/leads/repository";
 import { listProjectsForCustomer } from "@/lib/admin/projects/repository";
 import { listQuotes } from "@/lib/admin/quotes/repository";
+import { activationSummaries } from "@/lib/payments/activation-view";
 import { customerFinancials } from "@/lib/payments/customer-status";
 import { recurringOverview, type RecurringOverview } from "@/lib/payments/prenotification";
 import {
@@ -71,6 +72,8 @@ export default async function CustomerPage({ params }: PageProps) {
     ]),
   );
 
+  const activations = await activationSummaries(recurringServices);
+
   const financials = customerFinancials(
     invoices.filter((invoice) => invoice.customer.customerId === customer.id),
     payments,
@@ -99,6 +102,7 @@ export default async function CustomerPage({ params }: PageProps) {
         financials={financials}
         recurringServices={recurringServices}
         recurringOverviews={recurringOverviews}
+        recurringActivations={activations}
         todayKey={todayKey}
       />
     </div>

@@ -3,10 +3,12 @@
 import { useState } from "react";
 import AdminButton from "@/components/admin/admin-button";
 import { SelectField, TextField } from "@/components/admin/form-field";
+import ActivationLines from "@/components/admin/payments/activation-lines";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import StatusBadge from "@/components/admin/status-badge";
 import { formatDate } from "@/lib/admin/format";
 import { createRecurringService, sendRecurringActivation } from "@/lib/payments/actions";
+import type { ActivationSummary } from "@/lib/payments/activation-view";
 import {
   prenotificationStateLabels,
   prenotificationStateTone,
@@ -29,11 +31,14 @@ export default function CustomerRecurring({
   customerId,
   services,
   overviews,
+  activations,
 }: {
   customerId: string;
   services: RecurringService[];
   /** Next collection and announcement state per service, derived on the server. */
   overviews: Record<string, RecurringOverview>;
+  /** How far the one-off invoice and the mandate have got, per service. */
+  activations: Record<string, ActivationSummary>;
 }) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -85,9 +90,10 @@ export default function CustomerRecurring({
                 </span>
                 <StatusBadge tone={recurringStatusTone[service.status]}>{recurringStatusLabels[service.status]}</StatusBadge>
               </div>
+              <ActivationLines summary={activations[service.id]} />
               {service.mollie.subscriptionId ? (
                 <Schedule overview={overviews[service.id]} />
-              ) : service.status === "canceled" ? null : (
+              ) : service.status === "canceled" || activations[service.id]?.invoice ? null : (
                 <AdminButton
                   variant="secondary"
                   className="mt-2 min-h-8 px-3 text-[0.85rem]"

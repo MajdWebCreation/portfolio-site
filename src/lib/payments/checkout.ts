@@ -2,56 +2,62 @@ import { calculateTotals } from "@/lib/money";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import { companyProfile } from "@/lib/admin/documents/company";
 import {
-  createPayment,
-  getPayment,
-  paymentStatusFromMollie,
-  type MolliePayment,
+  createPaymentLink,
+  getPaymentLink,
+  payableLink,
+  type MolliePaymentLink,
 } from "@/lib/mollie/client";
 import { getMollieConfig, invoiceRedirectUrl, isMollieConfigured, mollieWebhookUrl } from "@/lib/mollie/config";
 import { settleInvoice } from "@/lib/payments/settlement";
 import type { Payment } from "@/lib/payments/types";
 
 /**
- * Getting a pay-by-link for an invoice, without ever making a second one by
- * accident.
+ * The pay-by-link for an invoice mail.
  *
- * Resending an invoice is a normal thing to do, and every resend creating a
- * fresh Mollie payment would leave a customer holding several live links for
- * one debt. So an attempt that is still running is reused: the stored payment
- * row names the Mollie payment, Mollie is asked for its current state, and if
- * it is still payable its own checkout link is handed back.
+ * A Mollie *payment link* rather than the checkout URL of a Payments-API
+ * payment. The difference matters for a mail: a checkout URL is short-lived
+ * and belongs to one attempt, so a customer opening the mail a week later
+ * would find a dead button, while a payment link stays valid until it is paid.
+ * The link is also where the sequence lives -- `oneoff`, or `first` when
+ * paying the invoice has to establish a direct debit mandate as well.
  *
- * Only when there is nothing usable is a new payment created, and that call
- * carries an idempotency key derived from the invoice and the attempt number,
- * so a double click cannot create two either.
+ * Sending the same invoice twice must not hand out two live links for one
+ * debt, so the link that already exists is reused: our own row names it,
+ * Mollie is asked for its current state, and if it is still payable its own
+ * URL is handed back. A new link is created only when there is nothing usable
+ * -- the old one was paid, expired or archived, the outstanding amount
+ * changed, or the sequence has to change because a mandate is now needed.
  */
 export type CheckoutResult =
-  | { ok: true; checkoutUrl: string; molliePaymentId: string; reused: boolean }
+  | { ok: true; checkoutUrl: string; paymentLinkId: string; reused: boolean }
   | { ok: false; reason: string };
 
 export function checkoutDescription(invoice: Pick<Invoice, "number">): string {
   return `${companyProfile.name} factuur ${invoice.number.value}`;
 }
 
-/** A payment row that may still lead to money arriving. */
-function reusableAttempt(payments: readonly Payment[]): Payment | undefined {
-  return payments.find(
-    (payment) =>
-      payment.source === "mollie" &&
-      Boolean(payment.providerPaymentId) &&
-      (payment.status === "open" || payment.status === "pending"),
-  );
-}
-
-function checkoutLink(payment: MolliePayment): string | undefined {
-  return payment._links?.checkout?.href;
-}
+/** The link we already handed out for this invoice, as we recorded it. */
+export type StoredPaymentLink = {
+  providerPaymentLinkId: string;
+  checkoutUrl: string;
+  sequenceType: "oneoff" | "first";
+  amountCents: number;
+};
 
 export type CheckoutDependencies = {
   /** Payments already recorded against this invoice. */
   existing: readonly Payment[];
-  /** Records or refreshes the row for a Mollie payment. */
-  persist: (payment: MolliePayment) => Promise<void>;
+  /** The link recorded for this invoice, if one was ever made. */
+  storedLink?: StoredPaymentLink;
+  /** Records the link that is now the invoice's; replaces any earlier one. */
+  persistLink: (link: StoredPaymentLink) => Promise<void>;
+  /**
+   * "first" turns this into a link that also establishes a mandate, for an
+   * invoice that switches a monthly service on. It needs the customer's
+   * identity at the provider; "oneoff" needs neither.
+   */
+  sequence?: "oneoff" | "first";
+  providerCustomerId?: string;
 };
 
 /**
@@ -72,37 +78,61 @@ export async function ensureInvoiceCheckout(
   if (settlement.settled) return { ok: false, reason: "Deze factuur is al betaald." };
 
   const config = getMollieConfig();
-
-  const reusable = reusableAttempt(deps.existing);
-  if (reusable?.providerPaymentId) {
-    const current = await getPayment(reusable.providerPaymentId, config);
-    await deps.persist(current);
-
-    const href = checkoutLink(current);
-    const status = paymentStatusFromMollie(current.status);
-    if (href && (status === "open" || status === "pending")) {
-      return { ok: true, checkoutUrl: href, molliePaymentId: current.id, reused: true };
-    }
-    // Otherwise it is finished or dead, and a new attempt is the right answer.
+  const sequence = deps.sequence ?? "oneoff";
+  if (sequence === "first" && !deps.providerCustomerId) {
+    return { ok: false, reason: "Er is geen Mollie-klant om de machtiging aan te koppelen." };
   }
 
-  const created = await createPayment({
+  const stored = deps.storedLink;
+  /*
+    Only a link that asks the same question for the same amount may be reused.
+    A link made before a monthly service was attached asks `oneoff` and would
+    never produce a mandate; one made before a part payment asks too much.
+  */
+  if (stored && stored.sequenceType === sequence && stored.amountCents === settlement.outstandingCents) {
+    const current: MolliePaymentLink = await getPaymentLink(stored.providerPaymentLinkId, config);
+    const href = payableLink(current);
+    if (href) {
+      return { ok: true, checkoutUrl: href, paymentLinkId: current.id, reused: true };
+    }
+    // Otherwise it is spent or dead, and a new link is the right answer.
+  }
+
+  /*
+    The amount is the invoice's outstanding gross total, whichever sequence
+    this is. A monthly price is never added here: that is collected later by
+    the subscription, and adding it would charge the customer twice for the
+    first month.
+  */
+  const created = await createPaymentLink({
     amountCents: settlement.outstandingCents,
     description: checkoutDescription(invoice),
     redirectUrl: invoiceRedirectUrl(config, invoice.number.value),
-    webhookUrl: mollieWebhookUrl(config),
-    metadata: { kind: "invoice", invoiceId: invoice.id, customerId: invoice.customer.customerId },
-    sequenceType: "oneoff",
-    // Same invoice and same attempt number means the same key, so a retried
-    // request returns the payment the first one made.
-    idempotencyKey: `invoice-${invoice.id}-${deps.existing.length}`,
+    /*
+      Mollie sends the status of the payments a link produces here. The
+      invoice is named in the query string because the Payment Links API has
+      no metadata field -- and it is only a hint: the route verifies with
+      Mollie that the payment really belongs to this invoice's link before
+      anything is written.
+    */
+    webhookUrl: `${mollieWebhookUrl(config)}?invoice=${encodeURIComponent(invoice.id)}`,
+    sequenceType: sequence,
+    ...(sequence === "first" ? { customerId: deps.providerCustomerId } : {}),
+    // Same invoice, same sequence and same amount means the same key, so a
+    // retried request returns the link the first one made.
+    idempotencyKey: `invoice-link-${invoice.id}-${sequence}-${settlement.outstandingCents}`,
     config,
   });
 
-  await deps.persist(created);
-
-  const href = checkoutLink(created);
+  const href = created._links?.paymentLink?.href;
   if (!href) return { ok: false, reason: "Mollie gaf geen betaallink terug." };
 
-  return { ok: true, checkoutUrl: href, molliePaymentId: created.id, reused: false };
+  await deps.persistLink({
+    providerPaymentLinkId: created.id,
+    checkoutUrl: href,
+    sequenceType: sequence,
+    amountCents: settlement.outstandingCents,
+  });
+
+  return { ok: true, checkoutUrl: href, paymentLinkId: created.id, reused: false };
 }

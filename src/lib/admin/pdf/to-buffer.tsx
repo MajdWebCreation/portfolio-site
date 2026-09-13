@@ -1,6 +1,6 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import type { Invoice } from "@/lib/admin/invoices/types";
-import InvoicePdf from "@/lib/admin/pdf/invoice-pdf";
+import InvoicePdf, { type InvoiceActivation } from "@/lib/admin/pdf/invoice-pdf";
 import QuotePdf from "@/lib/admin/pdf/quote-pdf";
 import type { Quote } from "@/lib/admin/quotes/types";
 
@@ -17,8 +17,8 @@ export function renderQuotePdf(quote: Quote): Promise<Buffer> {
   return renderToBuffer(<QuotePdf quote={quote} />);
 }
 
-export function renderInvoicePdf(invoice: Invoice): Promise<Buffer> {
-  return renderToBuffer(<InvoicePdf invoice={invoice} />);
+export function renderInvoicePdf(invoice: Invoice, activates?: InvoiceActivation): Promise<Buffer> {
+  return renderToBuffer(<InvoicePdf invoice={invoice} activates={activates} />);
 }
 
 /** File name a customer sees on the attachment: the number, nothing else. */

@@ -6,6 +6,7 @@ import AdminButton from "@/components/admin/admin-button";
 import AdminSection from "@/components/admin/admin-section";
 import { DetailList, DetailRow } from "@/components/admin/detail-list";
 import { SelectField, TextField, TextareaField } from "@/components/admin/form-field";
+import ActivationLines from "@/components/admin/payments/activation-lines";
 import ProjectDocuments from "@/components/admin/projects/project-documents";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import StatusBadge from "@/components/admin/status-badge";
@@ -23,6 +24,9 @@ import {
 } from "@/lib/admin/projects/types";
 import { hasProjectErrors, validateProject, type ProjectErrors } from "@/lib/admin/projects/validation";
 import type { Quote } from "@/lib/admin/quotes/types";
+import type { ActivationSummary } from "@/lib/payments/activation-view";
+import { recurringChargeCents, recurringStatusLabels, recurringStatusTone, type RecurringService } from "@/lib/payments/types";
+import { formatCents } from "@/lib/money";
 
 function dateOnly(value: string | undefined) {
   return value ? formatDate(`${value}T12:00:00+02:00`) : <span className="text-muted">—</span>;
@@ -43,6 +47,8 @@ export default function ProjectDetail({
   customer,
   quotes,
   invoices,
+  recurringServices,
+  recurringActivations,
   todayKey,
 }: {
   project: Project;
@@ -51,6 +57,10 @@ export default function ProjectDetail({
   quotes: Quote[];
   /** Invoices filed under this project. */
   invoices: Invoice[];
+  /** Monthly services that belong to this project. */
+  recurringServices: RecurringService[];
+  /** How far the one-off invoice and the mandate have got, per service. */
+  recurringActivations: Record<string, ActivationSummary>;
   todayKey: string;
 }) {
   const stored = toForm(project);
@@ -136,6 +146,36 @@ export default function ProjectDetail({
               ) : null}
             </div>
           </div>
+        </AdminSection>
+
+        {/*
+          The monthly work on this project, beside the one-off documents. The
+          services carry the project themselves, so the monthly invoices they
+          generate land on this page too.
+        */}
+        <AdminSection id="project-recurring" title="Maandelijkse diensten">
+          {recurringServices.length === 0 ? (
+            <p className="text-[0.9rem] text-muted">Dit project heeft geen maandelijkse dienst.</p>
+          ) : (
+            <ul className="divide-y divide-line border-y border-line">
+              {recurringServices.map((service) => (
+                <li key={service.id} className="py-2.5 text-[0.9rem]">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-ink">{service.name}</span>
+                      <span className="block text-[0.82rem] text-muted">
+                        {formatCents(recurringChargeCents(service))} per maand, incl. btw
+                      </span>
+                    </span>
+                    <StatusBadge tone={recurringStatusTone[service.status]}>
+                      {recurringStatusLabels[service.status]}
+                    </StatusBadge>
+                  </div>
+                  <ActivationLines summary={recurringActivations[service.id]} />
+                </li>
+              ))}
+            </ul>
+          )}
         </AdminSection>
       </div>
 

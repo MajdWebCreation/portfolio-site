@@ -137,8 +137,16 @@ export type RecurringService = {
   currency: "EUR";
   vatRate: number;
   interval: "monthly";
-  /** ISO date (YYYY-MM-DD). */
+  /** ISO date (YYYY-MM-DD): the day the first monthly collection is due. */
   startsOn?: string;
+  /** The project this service is part of, when it belongs to one. */
+  projectId?: string;
+  /**
+   * The one-off invoice whose payment establishes the mandate for this
+   * service. Stored rather than remembered, so a webhook retry hours later
+   * still knows which service that payment was meant to switch on.
+   */
+  activationInvoiceId?: string;
   status: RecurringStatus;
   /**
    * Only what belongs to this service. The provider's customer and the

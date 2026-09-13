@@ -51,6 +51,8 @@ export function recurringServiceFromRow(row: RecurringServiceRow): RecurringServ
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...(row.starts_on ? { startsOn: row.starts_on } : {}),
+    ...(row.project_id ? { projectId: row.project_id } : {}),
+    ...(row.activation_invoice_id ? { activationInvoiceId: row.activation_invoice_id } : {}),
   };
 }
 

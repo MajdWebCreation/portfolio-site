@@ -84,6 +84,8 @@ const uniques: Unique[] = [
   { table: "customer_payment_providers", columns: ["customer_id", "provider"] },
   { table: "customer_payment_providers", columns: ["provider", "provider_customer_id"] },
   { table: "payments", columns: ["source", "provider_payment_id"], where: (row) => row.provider_payment_id != null },
+  { table: "invoice_payment_links", columns: ["invoice_id", "customer_id"] },
+  { table: "invoice_payment_links", columns: ["provider", "provider_payment_link_id"] },
   {
     table: "invoices",
     columns: ["recurring_service_id", "billing_period_start"],

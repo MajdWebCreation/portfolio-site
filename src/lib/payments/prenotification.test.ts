@@ -38,8 +38,12 @@ describe("when the next collection falls", () => {
     expect(schedule).toMatchObject({ debitOn: "2026-12-12" });
   });
 
-  it("falls back to the anchor when nothing has been billed yet", () => {
-    expect(nextDebitSchedule(collecting())).toMatchObject({ debitOn: "2026-10-12" });
+  /*
+    A service switched on by a one-off project invoice has billed no term yet,
+    so the first collection is the start date itself -- not a month later.
+  */
+  it("collects on the start date when nothing has been billed yet", () => {
+    expect(nextDebitSchedule(collecting({}, []))).toMatchObject({ debitOn: "2026-09-12" });
   });
 
   it("names the period the collection pays for", () => {

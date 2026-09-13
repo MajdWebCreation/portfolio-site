@@ -4,11 +4,12 @@ import { documentFileName, renderInvoicePdf } from "@/lib/admin/pdf/to-buffer";
 import { calculateTotals, formatCents } from "@/lib/money";
 import { invoiceColumns, invoiceFromRow, type InvoiceRow } from "@/lib/admin/invoices/mapper";
 import type { Invoice, InvoiceStatus } from "@/lib/admin/invoices/types";
-import { createSubscription as createMollieSubscription } from "@/lib/mollie/client";
+import { createSubscription as createMollieSubscription, listPaymentLinkPayments } from "@/lib/mollie/client";
 import { getMollieConfig, mollieWebhookUrl } from "@/lib/mollie/config";
 import { paymentFromRow, recurringServiceFromRow } from "@/lib/payments/mapper";
 import { paymentsAdminClient } from "@/lib/payments/admin-client";
 import type { BillingPeriod } from "@/lib/payments/billing-period";
+import { hasUsableMandate } from "@/lib/payments/provider-customer";
 import { ensureRecurringInvoice, markInvoiceMailed } from "@/lib/payments/recurring-invoice";
 import type { PaymentRecord, WebhookStore } from "@/lib/payments/webhook";
 import { nextPaymentStatus } from "@/lib/payments/webhook";
@@ -22,7 +23,7 @@ import { recurringChargeCents, type Payment, type RecurringService } from "@/lib
 const paymentColumns =
   "id, invoice_id, customer_id, amount_cents, currency, status, source, provider_payment_id, method, paid_at, description, created_at, updated_at";
 const recurringColumns =
-  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, mollie_subscription_id, created_at, updated_at";
+  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, project_id, activation_invoice_id, mollie_subscription_id, created_at, updated_at";
 
 function fail(operation: string, error: { message: string } | null): void {
   if (error) throw new Error(`${operation}: ${error.message}`);
@@ -165,11 +166,16 @@ export function createWebhookStore(): WebhookStore {
 
     /* Fixes the billing anchor the first time, and never moves it after. */
     async activateService(serviceId: string, startsOn: string): Promise<RecurringService | undefined> {
+      /*
+        The anchor is what every later date is derived from, so it is the date
+        the subscription is actually being created with -- which is the chosen
+        one, unless a late payment moved it forward. Writing it unconditionally
+        keeps the announcements and the collections on the same calendar.
+      */
       const { error: anchorError } = await db
         .from("recurring_services")
         .update({ starts_on: startsOn })
-        .eq("id", serviceId)
-        .is("starts_on", null);
+        .eq("id", serviceId);
       fail("Startdatum vastleggen", anchorError);
 
       const { data, error } = await db
@@ -272,9 +278,58 @@ export function createWebhookStore(): WebhookStore {
       return { sent: true };
     },
 
+    async findServiceActivatedByInvoice(invoiceId: string): Promise<RecurringService | undefined> {
+      const { data, error } = await db
+        .from("recurring_services")
+        .select(recurringColumns)
+        .eq("activation_invoice_id", invoiceId)
+        .maybeSingle();
+      fail("Gekoppelde dienst laden", error);
+      return data ? recurringServiceFromRow(data) : undefined;
+    },
+
+    /* Asked of Mollie, so a mandate revoked at the bank is never used. */
+    async findUsableMandate(customerId: string) {
+      const found = await hasUsableMandate(db, customerId);
+      return found.has && found.providerCustomerId && found.mandateId
+        ? { providerCustomerId: found.providerCustomerId, mandateId: found.mandateId }
+        : undefined;
+    },
+
     async findInvoiceIdForProviderPayment(molliePaymentId: string): Promise<string | undefined> {
       const existing = await findByProviderId(molliePaymentId);
       return existing?.invoiceId;
+    },
+
+    async findInvoiceIdForPaymentLink(providerPaymentLinkId: string): Promise<string | undefined> {
+      const { data, error } = await db
+        .from("invoice_payment_links")
+        .select("invoice_id")
+        .eq("provider", "mollie")
+        .eq("provider_payment_link_id", providerPaymentLinkId)
+        .maybeSingle();
+      fail("Betaallink opzoeken", error);
+      return data?.invoice_id;
+    },
+
+    /*
+      Our row says which link belongs to this invoice; Mollie says which
+      payments that link produced. Only a payment that appears in both is
+      allowed to settle the invoice, so the invoice id in the webhook URL can
+      never be used to attach someone else's payment to it.
+    */
+    async confirmLinkPayment(molliePaymentId: string, invoiceId: string): Promise<boolean> {
+      const { data, error } = await db
+        .from("invoice_payment_links")
+        .select("provider_payment_link_id")
+        .eq("provider", "mollie")
+        .eq("invoice_id", invoiceId)
+        .maybeSingle();
+      fail("Betaallink van factuur laden", error);
+      if (!data) return false;
+
+      const payments = await listPaymentLinkPayments(data.provider_payment_link_id, getMollieConfig());
+      return payments.some((payment) => payment.id === molliePaymentId);
     },
 
     async findServiceBySubscriptionId(subscriptionId: string): Promise<RecurringService | undefined> {

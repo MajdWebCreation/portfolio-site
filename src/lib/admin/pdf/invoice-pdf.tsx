@@ -3,6 +3,14 @@ import { companyProfile } from "@/lib/admin/documents/company";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import DocumentLayout, { formatDocumentDate } from "@/lib/admin/pdf/document-layout";
 import { styles } from "@/lib/admin/pdf/theme";
+import { formatCents } from "@/lib/money";
+
+/**
+ * A monthly service this invoice switches on, for the note under the totals.
+ * The PDF stays the formal record of what is due now, so this is the only
+ * place the monthly figure appears -- never as a line, never in a total.
+ */
+export type InvoiceActivation = { serviceName: string; monthlyGrossCents: number; firstDebitOn: string };
 
 /** One bank detail: label left, value right, like the metadata at the top. */
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -78,6 +86,34 @@ function Settled({ invoice }: { invoice: Invoice }) {
   );
 }
 
+/**
+ * The note for a one-off invoice that also authorises a monthly collection.
+ *
+ * Paying this invoice does two things, and the customer is owed both in
+ * writing. The danger is arithmetic: a monthly amount printed near a total
+ * invites the reader to add it in. So it is kept out of the lines and out of
+ * the totals, and this paragraph says in as many words that the amount below
+ * the totals is what is due now, with the monthly amount collected separately
+ * from a date that is named.
+ */
+export function activationNote(activates: InvoiceActivation): string {
+  return (
+    `Door deze factuur te betalen machtigt u ${companyProfile.legalName} om ${activates.serviceName} maandelijks ` +
+    `automatisch te incasseren: ${formatCents(activates.monthlyGrossCents)} per maand inclusief btw, voor het eerst op ` +
+    `${formatDocumentDate(activates.firstDebitOn)}. Dat maandbedrag maakt geen deel uit van het totaal van deze factuur ` +
+    `en wordt apart in rekening gebracht; u ontvangt daarvoor elke maand een eigen factuur.`
+  );
+}
+
+function Activation({ activates }: { activates: InvoiceActivation }) {
+  return (
+    <View style={{ marginTop: 14 }} wrap={false}>
+      <Text style={[styles.mono, { marginBottom: 5 }]}>Maandelijkse dienst</Text>
+      <Text style={[styles.prose, { maxWidth: "88%" }]}>{activationNote(activates)}</Text>
+    </View>
+  );
+}
+
 /** A monthly term of a recurring service, rather than a one-off invoice. */
 export function isRecurringTerm(invoice: Invoice): boolean {
   return Boolean(invoice.recurringServiceId && invoice.billingPeriodStart && invoice.billingPeriodEnd);
@@ -119,7 +155,7 @@ export function invoiceMetaRows(invoice: Invoice): { label: string; value: strin
   ];
 }
 
-export default function InvoicePdf({ invoice }: { invoice: Invoice }) {
+export default function InvoicePdf({ invoice, activates }: { invoice: Invoice; activates?: InvoiceActivation }) {
   const recurring = isRecurringTerm(invoice);
 
   return (
@@ -136,7 +172,10 @@ export default function InvoicePdf({ invoice }: { invoice: Invoice }) {
         recurring ? (
           invoice.status === "paid" ? <Settled invoice={invoice} /> : <DirectDebit invoice={invoice} />
         ) : (
-          <Payment invoice={invoice} />
+          <>
+            <Payment invoice={invoice} />
+            {activates ? <Activation activates={activates} /> : null}
+          </>
         )
       }
     />

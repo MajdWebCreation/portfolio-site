@@ -13,6 +13,7 @@ import { inquiryOriginLabels, type Inquiry } from "@/lib/admin/inquiries/types";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import type { Lead } from "@/lib/admin/leads/types";
 import type { Project } from "@/lib/admin/projects/types";
+import type { ActivationSummary } from "@/lib/payments/activation-view";
 import type { CustomerFinancials } from "@/lib/payments/customer-status";
 import type { RecurringOverview } from "@/lib/payments/prenotification";
 import type { RecurringService } from "@/lib/payments/types";
@@ -32,6 +33,8 @@ type CustomerDetailProps = {
   recurringServices: RecurringService[];
   /** Next collection and announcement state per service; derived, never stored. */
   recurringOverviews: Record<string, RecurringOverview>;
+  /** How far the one-off invoice and the mandate have got, per service. */
+  recurringActivations: Record<string, ActivationSummary>;
   /** Today in Amsterdam, for the deadline states. */
   todayKey: string;
 };
@@ -51,6 +54,7 @@ export default function CustomerDetail({
   financials,
   recurringServices,
   recurringOverviews,
+  recurringActivations,
   todayKey,
 }: CustomerDetailProps) {
   const { address } = customer;
@@ -133,7 +137,12 @@ export default function CustomerDetail({
 
         <CustomerProjects customerId={customer.id} projects={projects} todayKey={todayKey} />
 
-        <CustomerRecurring customerId={customer.id} services={recurringServices} overviews={recurringOverviews} />
+        <CustomerRecurring
+          customerId={customer.id}
+          services={recurringServices}
+          overviews={recurringOverviews}
+          activations={recurringActivations}
+        />
 
         <CustomerDocuments customerId={customer.id} quotes={quotes} invoices={invoices} />
       </aside>

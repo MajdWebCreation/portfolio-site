@@ -1,7 +1,8 @@
-import { createCustomer, createPayment, getPayment } from "@/lib/mollie/client";
+import { createPayment, getPayment } from "@/lib/mollie/client";
 import { activationRedirectUrl, getMollieConfig, isMollieConfigured, mollieWebhookUrl } from "@/lib/mollie/config";
 import { paymentsAdminClient } from "@/lib/payments/admin-client";
 import { recurringServiceFromRow } from "@/lib/payments/mapper";
+import { ensureProviderCustomer } from "@/lib/payments/provider-customer";
 import { hashActivationToken, isActivationTokenShape, isExpired } from "@/lib/payments/tokens";
 import { recurringChargeCents } from "@/lib/payments/types";
 
@@ -28,7 +29,7 @@ export type ActivationProblem = "unknown" | "expired" | "used" | "unavailable";
 export type ActivationStart = { ok: true; checkoutUrl: string } | { ok: false; reason: ActivationProblem };
 
 const recurringColumns =
-  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, mollie_subscription_id, created_at, updated_at";
+  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, project_id, activation_invoice_id, mollie_subscription_id, created_at, updated_at";
 
 type ActivationRow = {
   id: string;
@@ -102,55 +103,6 @@ export async function readActivation(token: string): Promise<ActivationView> {
     amountCents: recurringChargeCents(service),
     contactName: customer?.contact_name ?? "",
   };
-}
-
-/**
- * One Mollie customer per YM customer, whatever the service.
- *
- * The link row is the rule; the idempotency key is keyed on the YM customer
- * for the same reason, so two services activating at once cannot create two
- * customers at the provider. A lost race is resolved by reading the row the
- * winner wrote.
- */
-async function ensureProviderCustomer(
-  db: ReturnType<typeof paymentsAdminClient>,
-  customerId: string,
-  identity: { name: string; email: string },
-): Promise<string> {
-  const { data: existing, error } = await db
-    .from("customer_payment_providers")
-    .select("provider_customer_id")
-    .eq("customer_id", customerId)
-    .eq("provider", "mollie")
-    .maybeSingle();
-  if (error) throw new Error(`Providerkoppeling laden: ${error.message}`);
-  if (existing) return existing.provider_customer_id;
-
-  const created = await createCustomer({
-    name: identity.name,
-    email: identity.email,
-    idempotencyKey: `customer-${customerId}`,
-    config: getMollieConfig(),
-  });
-
-  const { error: insertError } = await db.from("customer_payment_providers").insert({
-    customer_id: customerId,
-    provider: "mollie",
-    provider_customer_id: created.id,
-  });
-
-  if (insertError) {
-    if (insertError.code !== "23505") throw new Error(`Providerkoppeling vastleggen: ${insertError.message}`);
-    const { data: raced } = await db
-      .from("customer_payment_providers")
-      .select("provider_customer_id")
-      .eq("customer_id", customerId)
-      .eq("provider", "mollie")
-      .maybeSingle();
-    if (raced) return raced.provider_customer_id;
-  }
-
-  return created.id;
 }
 
 /** What the customer's own POST does. */

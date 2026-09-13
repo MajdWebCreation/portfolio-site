@@ -7,7 +7,7 @@ const paymentColumns =
   "id, invoice_id, customer_id, amount_cents, currency, status, source, provider_payment_id, method, paid_at, description, created_at, updated_at";
 
 const recurringColumns =
-  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, mollie_subscription_id, created_at, updated_at";
+  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, project_id, activation_invoice_id, mollie_subscription_id, created_at, updated_at";
 
 export async function listPayments(): Promise<Payment[]> {
   const db = await adminDb();
@@ -53,6 +53,24 @@ export async function listRecurringServicesForCustomer(customerId: string): Prom
     .eq("customer_id", customerId)
     .order("created_at");
   failed("Terugkerende diensten van klant laden", error);
+  return (data ?? []).map(recurringServiceFromRow);
+}
+
+/**
+ * The monthly services that belong to one project.
+ *
+ * Read by the project link itself rather than by filtering the customer's
+ * services on a name, so a customer with two projects sees each project's own
+ * services on its own page.
+ */
+export async function listRecurringServicesForProject(projectId: string): Promise<RecurringService[]> {
+  const db = await adminDb();
+  const { data, error } = await db
+    .from("recurring_services")
+    .select(recurringColumns)
+    .eq("project_id", projectId)
+    .order("created_at");
+  failed("Terugkerende diensten van project laden", error);
   return (data ?? []).map(recurringServiceFromRow);
 }
 

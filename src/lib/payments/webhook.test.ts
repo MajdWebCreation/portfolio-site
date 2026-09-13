@@ -27,6 +27,12 @@ function makeStore(
     activations?: { id: string; recurringServiceId: string; molliePaymentId: string; usedAt?: string }[];
     /** Widens the window between checking for an invoice and inserting it. */
     raceWindow?: boolean;
+    /** A mandate the customer gave earlier, as Mollie would report it. */
+    mandate?: { providerCustomerId: string; mandateId: string };
+    /** Payment links we recorded: pl_ id -> invoice id. */
+    links?: Record<string, string>;
+    /** The payment ids Mollie says those links produced. */
+    linkPayments?: string[];
   } = {},
 ) {
   const invoices = new Map((initial.invoices ?? [invoiceFixture()]).map((invoice) => [invoice.id, { ...invoice }]));
@@ -36,6 +42,9 @@ function makeStore(
   const providerLinks: { customerId: string; providerCustomerId: string; providerMandateId: string }[] = [];
   const subscriptionCalls: { serviceId: string; startDate: string }[] = [];
   const invoiceMails: { invoiceId: string; number: string; status: string }[] = [];
+  const mandateLookups: string[] = [];
+  const paymentLinks = new Map(Object.entries(initial.links ?? {}));
+  const linkConfirmations: { molliePaymentId: string; invoiceId: string }[] = [];
   let mailFails = false;
   const createdInvoices: string[] = [];
   /* Stands in for the unique index on (recurring_service_id, billing_period_start). */
@@ -107,7 +116,9 @@ function makeStore(
     async activateService(serviceId, startsOn) {
       const service = services.get(serviceId);
       if (!service) return undefined;
-      if (!service.startsOn) service.startsOn = startsOn;
+      // The anchor is whatever the subscription is actually created with, so
+      // announcements and collections stay on the same calendar.
+      service.startsOn = startsOn;
       if (service.status !== "canceled") service.status = "active";
       return service;
     },
@@ -170,6 +181,24 @@ function makeStore(
     async findServiceBySubscriptionId(subscriptionId) {
       return [...services.values()].find((service) => service.mollie.subscriptionId === subscriptionId);
     },
+    /* The partial unique index on activation_invoice_id: at most one service. */
+    async findServiceActivatedByInvoice(invoiceId) {
+      return [...services.values()].find((service) => service.activationInvoiceId === invoiceId);
+    },
+    async findUsableMandate(customerId) {
+      mandateLookups.push(customerId);
+      return initial.mandate;
+    },
+    async findInvoiceIdForPaymentLink(providerPaymentLinkId) {
+      return paymentLinks.get(providerPaymentLinkId);
+    },
+    /* Mollie's own list of the link's payments, stubbed. */
+    async confirmLinkPayment(molliePaymentId, invoiceId) {
+      linkConfirmations.push({ molliePaymentId, invoiceId });
+      return [...paymentLinks.entries()].some(
+        ([, linkedInvoice]) => linkedInvoice === invoiceId && (initial.linkPayments ?? []).includes(molliePaymentId),
+      );
+    },
   };
 
   return {
@@ -179,6 +208,8 @@ function makeStore(
     payments,
     providerLinks,
     subscriptionCalls,
+    mandateLookups,
+    linkConfirmations,
     createdInvoices,
     invoiceMails,
     failMail: (value: boolean) => {
@@ -662,5 +693,285 @@ describe("the invoice for the first term", () => {
 
     expect(createdInvoices).toEqual([]);
     expect(invoiceMails).toEqual([]);
+  });
+});
+
+/*
+  One payment, two effects: the project invoice is settled and the monthly
+  service it was linked to starts collecting. The link is the service's own
+  `activation_invoice_id`, so a webhook that arrives hours later still knows
+  what this payment was for.
+*/
+describe("a first payment that switches a monthly service on", () => {
+  const linked = () =>
+    recurringFixture({
+      id: "svc-1",
+      status: "draft",
+      activationInvoiceId: "inv-1",
+      // Today is 2026-09-20 in these tests, so this leaves the full
+      // fourteen days' notice the announcement term requires.
+      startsOn: "2026-10-15",
+      amountCents: 2500,
+    });
+
+  it("settles the invoice and creates exactly one subscription", async () => {
+    const { store, invoices, services, subscriptionCalls, providerLinks } = makeStore({ services: [linked()] });
+
+    const outcome = await processMolliePayment(
+      molliePayment({ customerId: "cst_1", mandateId: "mdt_1", sequenceType: "first" }),
+      store,
+      today,
+    );
+
+    expect(outcome.handled).toBe(true);
+    expect(invoices.get("inv-1")!.status).toBe("paid");
+    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-10-15" }]);
+    expect(services.get("svc-1")!.status).toBe("active");
+    // The mandate is recorded on the customer, not on the service.
+    expect(providerLinks).toEqual([{ customerId: "cust-1", providerCustomerId: "cst_1", providerMandateId: "mdt_1" }]);
+  });
+
+  /* Mollie retries a webhook it did not get a 200 for; twice must not mean two. */
+  it("creates one subscription however often the webhook arrives", async () => {
+    const { store, subscriptionCalls } = makeStore({ services: [linked()] });
+    const payment = molliePayment({ customerId: "cst_1", mandateId: "mdt_1", sequenceType: "first" });
+
+    await processMolliePayment(payment, store, today);
+    await processMolliePayment(payment, store, today);
+    await processMolliePayment(payment, store, today);
+
+    expect(subscriptionCalls).toHaveLength(1);
+  });
+
+  /* Simultaneous deliveries, which is what a retry storm actually looks like. */
+  it("creates one subscription for webhooks that arrive at the same moment", async () => {
+    const { store, subscriptionCalls } = makeStore({ services: [linked()], raceWindow: true });
+    const payment = molliePayment({ customerId: "cst_1", mandateId: "mdt_1", sequenceType: "first" });
+
+    await Promise.all([
+      processMolliePayment(payment, store, today),
+      processMolliePayment(payment, store, today),
+    ]);
+
+    expect(subscriptionCalls).toHaveLength(1);
+  });
+
+  /*
+    The provider's list of mandates decides, not what the payment happens to
+    carry: a mandate revoked at the bank must not become a subscription.
+  */
+  it("asks the provider for a usable mandate before subscribing", async () => {
+    const { store, subscriptionCalls, providerLinks, mandateLookups } = makeStore({
+      services: [linked()],
+      mandate: { providerCustomerId: "cst_known", mandateId: "mdt_known" },
+    });
+
+    await processMolliePayment(molliePayment(), store, today);
+
+    expect(mandateLookups).toEqual(["cust-1"]);
+    expect(providerLinks[0]).toMatchObject({ providerMandateId: "mdt_known" });
+    expect(subscriptionCalls).toHaveLength(1);
+  });
+
+  /* Money in, authorisation not. Reported, never retried into a subscription. */
+  it("does not subscribe when no mandate can be found", async () => {
+    const { store, invoices, subscriptionCalls } = makeStore({ services: [linked()] });
+
+    const outcome = await processMolliePayment(molliePayment(), store, today);
+
+    expect(invoices.get("inv-1")!.status).toBe("paid");
+    expect(subscriptionCalls).toEqual([]);
+    expect(outcome.note).toContain("no usable mandate");
+  });
+
+  /* A service without a chosen first collection date has nothing to start on. */
+  it("does not subscribe without a start date", async () => {
+    const service = linked();
+    delete service.startsOn;
+    const { store, subscriptionCalls } = makeStore({ services: [service] });
+
+    const outcome = await processMolliePayment(
+      molliePayment({ customerId: "cst_1", mandateId: "mdt_1" }),
+      store,
+      today,
+    );
+
+    expect(subscriptionCalls).toEqual([]);
+    expect(outcome.note).toContain("no start date");
+  });
+
+  /* An ordinary invoice with nothing linked keeps behaving as it always did. */
+  it("leaves an invoice with no linked service alone", async () => {
+    const { store, invoices, subscriptionCalls } = makeStore();
+
+    const outcome = await processMolliePayment(molliePayment(), store, today);
+
+    expect(invoices.get("inv-1")!.status).toBe("paid");
+    expect(subscriptionCalls).toEqual([]);
+    expect(outcome.note).toBe("invoice settled");
+  });
+
+  /* A cancelled service is not resurrected by a payment arriving late. */
+  it("does not switch a cancelled service on", async () => {
+    const { store, subscriptionCalls } = makeStore({
+      services: [recurringFixture({ status: "canceled", activationInvoiceId: "inv-1", startsOn: "2026-10-15" })],
+    });
+
+    const outcome = await processMolliePayment(
+      molliePayment({ customerId: "cst_1", mandateId: "mdt_1" }),
+      store,
+      today,
+    );
+
+    expect(subscriptionCalls).toEqual([]);
+    expect(outcome.note).toContain("cancelled");
+  });
+});
+
+/*
+  A payment link carries no metadata, so a link payment reaches the webhook
+  with nothing on it that names an invoice. The invoice comes from our own row
+  -- reached through the hint in the link's webhook URL -- and Mollie has to
+  confirm the payment really came from that link.
+*/
+describe("a payment that came from a payment link", () => {
+  const linkPayment = () => {
+    const payment = molliePayment();
+    delete payment.metadata;
+    return payment;
+  };
+
+  it("settles the invoice its link belongs to", async () => {
+    const { store, invoices, payments, linkConfirmations } = makeStore({
+      links: { pl_1: "inv-1" },
+      linkPayments: ["tr_1"],
+    });
+
+    const outcome = await processMolliePayment(linkPayment(), store, today, { invoiceIdHint: "inv-1" });
+
+    expect(outcome.handled).toBe(true);
+    expect(invoices.get("inv-1")!.status).toBe("paid");
+    expect(payments).toHaveLength(1);
+    // The hint was checked against the provider before anything was written.
+    expect(linkConfirmations).toEqual([{ molliePaymentId: "tr_1", invoiceId: "inv-1" }]);
+  });
+
+  /* A hint nobody can confirm writes nothing at all. */
+  it("refuses a hint the provider does not confirm", async () => {
+    const { store, invoices, payments } = makeStore({ links: { pl_1: "inv-1" }, linkPayments: [] });
+
+    const outcome = await processMolliePayment(linkPayment(), store, today, { invoiceIdHint: "inv-1" });
+
+    expect(outcome).toMatchObject({ handled: false, note: "payment cannot be traced to an invoice" });
+    expect(invoices.get("inv-1")!.status).toBe("sent");
+    expect(payments).toHaveLength(0);
+  });
+
+  it("refuses a link payment with no hint at all", async () => {
+    const { store, payments } = makeStore({ links: { pl_1: "inv-1" }, linkPayments: ["tr_1"] });
+
+    const outcome = await processMolliePayment(linkPayment(), store, today);
+
+    expect(outcome.handled).toBe(false);
+    expect(payments).toHaveLength(0);
+  });
+
+  /* A retry finds the payment already recorded and needs no second lookup. */
+  it("routes a repeated delivery from the payment it already recorded", async () => {
+    const { store, payments, linkConfirmations } = makeStore({
+      links: { pl_1: "inv-1" },
+      linkPayments: ["tr_1"],
+    });
+
+    await processMolliePayment(linkPayment(), store, today, { invoiceIdHint: "inv-1" });
+    await processMolliePayment(linkPayment(), store, today, { invoiceIdHint: "inv-1" });
+
+    expect(payments).toHaveLength(1);
+    expect(linkConfirmations).toHaveLength(1);
+  });
+
+  it("switches the monthly service on from a link payment too", async () => {
+    const { store, subscriptionCalls } = makeStore({
+      services: [
+        recurringFixture({ status: "draft", activationInvoiceId: "inv-1", startsOn: "2026-10-15" }),
+      ],
+      links: { pl_1: "inv-1" },
+      linkPayments: ["tr_1"],
+    });
+    const payment = linkPayment();
+    payment.customerId = "cst_1";
+    payment.mandateId = "mdt_1";
+    payment.sequenceType = "first";
+
+    await processMolliePayment(payment, store, today, { invoiceIdHint: "inv-1" });
+
+    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-10-15" }]);
+  });
+});
+
+/*
+  A customer may pay the one-off invoice long after the date the mail
+  announced. Collecting on a date that has gone by -- or is now too close to
+  announce -- would be collecting without notice, so the start moves on by
+  whole months and the ordinary monthly invoice announces the new date.
+*/
+describe("a first payment that arrives late", () => {
+  const late = (startsOn: string) =>
+    makeStore({
+      services: [recurringFixture({ status: "draft", activationInvoiceId: "inv-1", startsOn })],
+    });
+  const paid = () => molliePayment({ customerId: "cst_1", mandateId: "mdt_1", sequenceType: "first" });
+
+  it("never starts a subscription on a date that has passed", async () => {
+    const { store, subscriptionCalls, services } = late("2026-08-15");
+
+    const outcome = await processMolliePayment(paid(), store, today);
+
+    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-10-15" }]);
+    expect(subscriptionCalls[0].startDate > today).toBe(true);
+    // The anchor follows, so every later collection is counted from it.
+    expect(services.get("svc-1")!.startsOn).toBe("2026-10-15");
+    expect(outcome.note).toContain("moved forward");
+  });
+
+  /*
+    Not yet past, but too close: 2026-10-01 is eleven days after 2026-09-20,
+    and fourteen are needed to announce it.
+  */
+  it("moves a date that can no longer be announced in time", async () => {
+    const { store, subscriptionCalls } = late("2026-10-01");
+
+    await processMolliePayment(paid(), store, today);
+
+    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-11-01" }]);
+  });
+
+  it("keeps the day of the month the customer was told about", async () => {
+    const { store, subscriptionCalls } = late("2026-01-31");
+
+    await processMolliePayment(paid(), store, today);
+
+    // February is short, but the anchor does not creep backwards.
+    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-10-31" }]);
+  });
+
+  it("leaves a date that still has the full notice alone", async () => {
+    const { store, subscriptionCalls, services } = late("2026-10-04");
+
+    const outcome = await processMolliePayment(paid(), store, today);
+
+    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-10-04" }]);
+    expect(services.get("svc-1")!.startsOn).toBe("2026-10-04");
+    expect(outcome.note).not.toContain("moved forward");
+  });
+
+  it("still creates only one subscription when the webhook repeats", async () => {
+    const { store, subscriptionCalls } = late("2026-08-15");
+    const payment = paid();
+
+    await processMolliePayment(payment, store, today);
+    await processMolliePayment(payment, store, today);
+
+    expect(subscriptionCalls).toHaveLength(1);
   });
 });

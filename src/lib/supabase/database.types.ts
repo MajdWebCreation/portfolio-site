@@ -413,6 +413,60 @@ export type Database = {
           },
         ]
       }
+      invoice_payment_links: {
+        Row: {
+          amount_cents: number
+          checkout_url: string
+          created_at: string
+          customer_id: string
+          id: string
+          invoice_id: string
+          provider: string
+          provider_payment_link_id: string
+          sequence_type: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          checkout_url: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          invoice_id: string
+          provider?: string
+          provider_payment_link_id: string
+          sequence_type: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          checkout_url?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          invoice_id?: string
+          provider?: string
+          provider_payment_link_id?: string
+          sequence_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_payment_links_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_payment_links_invoice_same_customer"
+            columns: ["invoice_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id", "customer_id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           billing_period_end: string | null
@@ -970,6 +1024,7 @@ export type Database = {
       }
       recurring_services: {
         Row: {
+          activation_invoice_id: string | null
           amount_cents: number
           billing_interval: string
           created_at: string
@@ -979,12 +1034,14 @@ export type Database = {
           id: string
           mollie_subscription_id: string | null
           name: string
+          project_id: string | null
           starts_on: string | null
           status: string
           updated_at: string
           vat_rate: number
         }
         Insert: {
+          activation_invoice_id?: string | null
           amount_cents: number
           billing_interval?: string
           created_at?: string
@@ -994,12 +1051,14 @@ export type Database = {
           id?: string
           mollie_subscription_id?: string | null
           name: string
+          project_id?: string | null
           starts_on?: string | null
           status?: string
           updated_at?: string
           vat_rate?: number
         }
         Update: {
+          activation_invoice_id?: string | null
           amount_cents?: number
           billing_interval?: string
           created_at?: string
@@ -1009,6 +1068,7 @@ export type Database = {
           id?: string
           mollie_subscription_id?: string | null
           name?: string
+          project_id?: string | null
           starts_on?: string | null
           status?: string
           updated_at?: string
@@ -1016,11 +1076,25 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "recurring_services_activation_same_customer"
+            columns: ["activation_invoice_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id", "customer_id"]
+          },
+          {
             foreignKeyName: "recurring_services_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_services_project_same_customer"
+            columns: ["project_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "customer_id"]
           },
         ]
       }

@@ -10,6 +10,7 @@ import DocumentTotalsView from "@/components/admin/documents/document-totals";
 import LineItemsEditor, { newLine } from "@/components/admin/documents/line-items-editor";
 import ProjectSelect from "@/components/admin/documents/project-select";
 import { TextField, TextareaField } from "@/components/admin/form-field";
+import InvoiceRecurring from "@/components/admin/invoices/invoice-recurring";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import type { Customer } from "@/lib/admin/customers/types";
 import { companyProfile } from "@/lib/admin/documents/company";
@@ -19,6 +20,7 @@ import { addDays, hasLineErrors, validateDates, validateLine, type LineErrors } 
 import { saveInvoice } from "@/lib/admin/invoices/actions";
 import type { Project } from "@/lib/admin/projects/types";
 import { invoiceStatusLabels, invoiceStatusOrder, invoiceStatusTone, isInvoiceStatus, type Invoice } from "@/lib/admin/invoices/types";
+import type { InvoiceActivationView } from "@/lib/payments/activation-view";
 import { calculateTotals } from "@/lib/money";
 
 const PdfPanel = dynamic(() => import("@/components/admin/documents/pdf-panel"), { ssr: false, loading: () => <p className="text-[0.85rem] text-muted">PDF-module laden…</p> });
@@ -64,10 +66,12 @@ type InvoiceBuilderProps = {
   projects: Project[];
   /** The project of the quote this invoice follows from, when it has one. */
   quoteProjectId?: string;
+  /** The monthly service this invoice switches on, and what may be linked. */
+  activation?: InvoiceActivationView;
   todayKey: string;
 };
 
-export default function InvoiceBuilder({ stored, customers, projects, quoteProjectId, todayKey }: InvoiceBuilderProps) {
+export default function InvoiceBuilder({ stored, customers, projects, quoteProjectId, activation, todayKey }: InvoiceBuilderProps) {
   const router = useRouter();
   // "NIEUW" until the record is created; both server and client render the same number.
   const [invoice, setInvoice] = useState<Invoice>(() => stored ?? blank(todayKey, "nieuw", "factuur-regel-1"));
@@ -182,6 +186,31 @@ export default function InvoiceBuilder({ stored, customers, projects, quoteProje
             <DocumentTotalsView totals={totals} />
           </div>
         </AdminSection>
+
+        {/*
+          Only for an invoice that exists: the link is stored on the service and
+          needs an invoice to point at. A new invoice is saved first, which is
+          also the order the admin works in.
+        */}
+        {activation && invoice.id ? (
+          <AdminSection
+            id="recurring"
+            title="Maandelijkse service"
+            note="Wordt geactiveerd door de betaling van deze factuur"
+          >
+            <InvoiceRecurring
+              invoiceId={invoice.id}
+              services={activation.candidates}
+              attached={activation.attached}
+              status={activation.status}
+              invoicePaid={invoice.status === "paid"}
+              todayKey={todayKey}
+              projects={customerProjects}
+              defaultProjectId={invoice.projectId}
+              sent={Boolean(stored?.sentAt)}
+            />
+          </AdminSection>
+        ) : null}
 
         <AdminSection id="notes" title="Opmerkingen">
           <TextareaField id="invoice-notes" label="Opmerkingen" optional value={invoice.notes} onChange={(event) => update("notes", event.target.value)} hint="Staat onder de betaalinformatie op de factuur." />

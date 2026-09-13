@@ -24,7 +24,7 @@ import type { RecurringService } from "@/lib/payments/types";
  * re-checks nothing.
  */
 const recurringColumns =
-  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, mollie_subscription_id, created_at, updated_at";
+  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, project_id, activation_invoice_id, mollie_subscription_id, created_at, updated_at";
 
 function fail(operation: string, error: { message: string } | null): void {
   if (error) throw new Error(`${operation}: ${error.message}`);

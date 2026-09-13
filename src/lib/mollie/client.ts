@@ -102,7 +102,37 @@ export type MolliePayment = {
   _links?: { checkout?: { href: string } };
 };
 
+/**
+ * A payment link: a URL that stays valid until it is paid, which is what an
+ * invoice mail needs. The checkout URL of a Payments-API payment is
+ * short-lived, so a customer opening the mail a week later would find a dead
+ * button.
+ *
+ * `sequenceType: "first"` establishes a mandate once the link is paid, and
+ * `customerId` is what that mandate is attached to. The link itself carries no
+ * metadata -- the API has no such field -- so which invoice a link belongs to
+ * is recorded in our own database, never inferred from the link object.
+ */
+export type MolliePaymentLink = {
+  id: string;
+  description: string;
+  amount?: { currency: string; value: string } | null;
+  sequenceType?: "oneoff" | "first";
+  customerId?: string | null;
+  archived?: boolean;
+  paidAt?: string | null;
+  expiresAt?: string | null;
+  _links?: { paymentLink?: { href: string } };
+};
+
 export type MollieCustomer = { id: string };
+
+/**
+ * A mandate is the customer's standing authorisation to collect. "valid" is
+ * the only status that may be used; "pending" is still being verified and
+ * "invalid" has been revoked or failed.
+ */
+export type MollieMandate = { id: string; status: "valid" | "pending" | "invalid"; method: string };
 export type MollieSubscription = { id: string; status: string };
 
 export type CreatePaymentInput = {
@@ -143,6 +173,65 @@ export async function getPayment(id: string, config?: MollieConfig): Promise<Mol
   return request<MolliePayment>({ method: "GET", path: `/payments/${encodeURIComponent(id)}`, config });
 }
 
+export type CreatePaymentLinkInput = {
+  amountCents: number;
+  description: string;
+  redirectUrl: string;
+  webhookUrl: string;
+  sequenceType?: "oneoff" | "first";
+  customerId?: string;
+  idempotencyKey: string;
+  config?: MollieConfig;
+};
+
+export async function createPaymentLink(input: CreatePaymentLinkInput): Promise<MolliePaymentLink> {
+  return request<MolliePaymentLink>({
+    method: "POST",
+    path: "/payment-links",
+    idempotencyKey: input.idempotencyKey,
+    config: input.config,
+    body: {
+      amount: mollieAmount(input.amountCents),
+      description: input.description,
+      redirectUrl: input.redirectUrl,
+      webhookUrl: input.webhookUrl,
+      // One customer, one payment: a link that could be paid twice would
+      // settle an invoice twice.
+      reusable: false,
+      ...(input.sequenceType ? { sequenceType: input.sequenceType } : {}),
+      // Only meaningful with "first"; the API says so and so does this.
+      ...(input.sequenceType === "first" && input.customerId ? { customerId: input.customerId } : {}),
+    },
+  });
+}
+
+export async function getPaymentLink(id: string, config?: MollieConfig): Promise<MolliePaymentLink> {
+  return request<MolliePaymentLink>({ method: "GET", path: `/payment-links/${encodeURIComponent(id)}`, config });
+}
+
+/**
+ * The payments a link actually produced.
+ *
+ * This is the documented way to get at what a paid link really did -- the
+ * payment, its status, and for a `first` link the mandate it established.
+ * Nothing about the money or the mandate is read off the link object itself.
+ */
+export async function listPaymentLinkPayments(id: string, config?: MollieConfig): Promise<MolliePayment[]> {
+  const response = await request<{ _embedded?: { payments?: MolliePayment[] } }>({
+    method: "GET",
+    path: `/payment-links/${encodeURIComponent(id)}/payments?limit=250`,
+    config,
+  });
+  return response._embedded?.payments ?? [];
+}
+
+/** A link that can still be handed to a customer as a way to pay. */
+export function payableLink(link: MolliePaymentLink): string | undefined {
+  if (link.archived || link.paidAt) return undefined;
+  if (link.expiresAt && Date.parse(link.expiresAt) <= Date.now()) return undefined;
+  return link._links?.paymentLink?.href;
+}
+
 export async function createCustomer(
   input: { name: string; email: string; idempotencyKey: string; config?: MollieConfig },
 ): Promise<MollieCustomer> {
@@ -153,6 +242,26 @@ export async function createCustomer(
     config: input.config,
     body: { name: input.name, email: input.email },
   });
+}
+
+/**
+ * The mandates Mollie holds for a customer. Asked for rather than assumed:
+ * our own record of a mandate can be stale -- a customer can revoke one at
+ * their bank -- and switching on a subscription against a dead mandate would
+ * fail every month in silence.
+ */
+export async function listMandates(customerId: string, config?: MollieConfig): Promise<MollieMandate[]> {
+  const response = await request<{ _embedded?: { mandates?: MollieMandate[] } }>({
+    method: "GET",
+    path: `/customers/${encodeURIComponent(customerId)}/mandates?limit=250`,
+    config,
+  });
+  return response._embedded?.mandates ?? [];
+}
+
+/** The first mandate that may actually be collected against. */
+export function usableMandate(mandates: readonly MollieMandate[]): MollieMandate | undefined {
+  return mandates.find((mandate) => mandate.status === "valid");
 }
 
 export async function createSubscription(

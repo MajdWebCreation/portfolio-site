@@ -9,6 +9,7 @@ import { toDateKey } from "@/lib/admin/format";
 import { getInvoice } from "@/lib/admin/invoices/repository";
 import { listProjects } from "@/lib/admin/projects/repository";
 import { getQuote } from "@/lib/admin/quotes/repository";
+import { invoiceActivation } from "@/lib/payments/activation-view";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -35,6 +36,7 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
     that is, so it can offer that project and nothing else.
   */
   const quote = item.quoteId ? await getQuote(item.quoteId) : undefined;
+  const activation = await invoiceActivation({ id: item.id, customerId: item.customer.customerId, status: item.status });
 
   return (
     <div className="space-y-8">
@@ -55,6 +57,7 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
         customers={customers}
         projects={projects}
         quoteProjectId={quote?.projectId}
+        activation={activation}
         todayKey={toDateKey(new Date())}
       />
     </div>

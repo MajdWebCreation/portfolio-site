@@ -2,7 +2,8 @@ import { Resend } from "resend";
 import { companyProfile } from "@/lib/admin/documents/company";
 import { documentKindLabels, type DocumentKind } from "@/lib/admin/documents/types";
 import { formatDate } from "@/lib/admin/format";
-import { emailMeta, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
+import { formatCents } from "@/lib/money";
+import { emailLink, emailMeta, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
 
 /**
  * Sending a quote or an invoice to its customer.
@@ -49,6 +50,26 @@ export type DocumentMailInput = {
     serviceName: string;
     collection: { kind: "scheduled"; debitOn: string } | { kind: "settled" };
   };
+  /** The project this invoice is for; names the mail instead of the company. */
+  projectName?: string;
+  /**
+   * Present when paying this one-off invoice also switches a monthly service
+   * on. The monthly amounts are shown so the customer knows what they are
+   * authorising -- they are not part of what is collected now.
+   */
+  activates?: {
+    serviceName: string;
+    /** Monthly price excluding VAT, in cents. */
+    monthlyNetCents: number;
+    /** Monthly price including VAT: what will actually be collected. */
+    monthlyGrossCents: number;
+    /** Net total of this invoice, for the summary. */
+    invoiceNetCents: number;
+    /** YYYY-MM-DD of the first monthly collection. */
+    firstDebitOn: string;
+    /** Short description of the work, for the opening line. */
+    projectSummary: string;
+  };
 };
 
 export type SendMailResult =
@@ -65,6 +86,21 @@ export function documentSubject(kind: DocumentKind, number: string, serviceName?
   return `${documentKindLabels[kind]} ${number} — ${serviceName ?? companyProfile.name}`;
 }
 
+/**
+ * The subject of an invoice mail.
+ *
+ * Named after the project, because that is what the customer recognises; the
+ * invoice number belongs on the document, not in an inbox. When an invoice
+ * also switches a monthly service on the subject says so, so nobody pays it
+ * thinking it is only a one-off.
+ */
+export function invoiceSubject(input: Pick<DocumentMailInput, "number" | "projectName" | "activates">): string {
+  const subject = input.projectName ?? companyProfile.name;
+  return input.activates
+    ? `Factuur en maandelijkse service voor ${subject}`
+    : `Factuur voor ${subject}`;
+}
+
 /** A calendar date (YYYY-MM-DD) in the same wording the PDF uses. */
 export function documentDateLabel(dateKey: string): string {
   return formatDate(`${dateKey}T12:00:00+02:00`);
@@ -77,10 +113,13 @@ type MailBody = { html: string; text: string };
  * styled anchor, because that is what survives Outlook; the colours are the
  * ink and paper of the rest of the mail.
  */
-function payButton(url: string): string {
+function payButton(url: string, label = "Factuur betalen"): string {
   const href = escapeEmailHtml(url);
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 4px;"><tr><td style="border-radius:3px;background:#14161a;"><a href="${href}" style="display:inline-block;padding:13px 22px;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:3px;">Factuur betalen</a></td></tr></table>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 4px;"><tr><td style="border-radius:3px;background:#14161a;"><a href="${href}" style="display:inline-block;padding:13px 22px;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:3px;">${escapeEmailHtml(label)}</a></td></tr></table>`;
 }
+
+/** WhatsApp Business, from the one place the phone number is written down. */
+const whatsappUrl = `https://wa.me/${companyProfile.phone.replace(/\D/g, "")}`;
 
 /**
  * The body, as lines. Both renderings come from the same list, so the plain
@@ -142,7 +181,83 @@ function recurringBody(input: DocumentMailInput & { recurring: NonNullable<Docum
   return { html, text };
 }
 
+/**
+ * The cover note for a one-off invoice that also switches a monthly service
+ * on. Both amounts are shown net and gross, but the gross ones lead: those
+ * are what actually leaves the customer's account. The monthly figures sit in
+ * their own block, so nobody reads them as part of what is due now.
+ */
+function activationBody(
+  input: DocumentMailInput & { activates: NonNullable<DocumentMailInput["activates"]> },
+): MailBody {
+  const a = input.activates;
+  const firstDebit = documentDateLabel(a.firstDebitOn);
+  const opening = `Hierbij ontvangt u de factuur voor ${a.projectSummary}.`;
+
+  const oneOff: [string, string][] = [
+    ["Excl. btw", formatCents(a.invoiceNetCents)],
+    ["Incl. btw", `${input.totalLabel} — nu te betalen`],
+  ];
+  const monthly: [string, string][] = [
+    ["Excl. btw", `${formatCents(a.monthlyNetCents)} per maand`],
+    ["Incl. btw", `${formatCents(a.monthlyGrossCents)} per maand`],
+    ["Eerste automatische incasso", firstDebit],
+  ];
+
+  const consent = `Door de eenmalige factuur via onderstaande knop te betalen, activeert u tevens de automatische incasso voor de maandelijkse ${a.serviceName}. Vanaf ${firstDebit} wordt maandelijks ${formatCents(a.monthlyGrossCents)} automatisch geïncasseerd.`;
+  const attachment = "De volledige specificatie van de eenmalige factuur vindt u in de bijgevoegde PDF-factuur.";
+  const contact = "Heeft u een vraag of klopt er iets niet? Neem gerust contact met ons op via WhatsApp of e-mail.";
+
+  const html = emailShell({
+    locale: "nl",
+    title: `Factuur en maandelijkse ${a.serviceName}`,
+    preheader: `${input.totalLabel} nu te betalen, daarna ${formatCents(a.monthlyGrossCents)} per maand vanaf ${firstDebit}`,
+    content: [
+      emailText(`Beste ${escapeEmailHtml(input.contactName)},`, { top: 18 }),
+      emailText(escapeEmailHtml(opening)),
+      emailMeta(oneOff.map(([label, value]) => ({ label, value })), { label: "Eenmalige betaling" }),
+      emailMeta(monthly.map(([label, value]) => ({ label, value })), { label: `Maandelijkse ${a.serviceName}` }),
+      emailSection({ label: "Wat u met deze betaling activeert", html: escapeEmailHtml(consent) }),
+      ...(input.payUrl ? [payButton(input.payUrl, "Factuur betalen & automatische incasso activeren")] : []),
+      emailSection({ label: "Bijlage", html: escapeEmailHtml(attachment) }),
+      emailSection({
+        label: "Vragen?",
+        html: `${escapeEmailHtml(contact)}<br /><br />WhatsApp Business: ${emailLink(whatsappUrl, whatsappUrl)}<br />E-mail: ${emailLink(`mailto:${companyProfile.email}`, companyProfile.email)}`,
+      }),
+      emailText("Met vriendelijke groet,", { top: 26 }),
+      emailText(escapeEmailHtml(companyProfile.legalName)),
+    ].join(""),
+  });
+
+  const text = [
+    `Beste ${input.contactName},`,
+    "",
+    opening,
+    "",
+    "Eenmalige betaling",
+    ...oneOff.map(([label, value]) => `  ${label}: ${value}`),
+    "",
+    `Maandelijkse ${a.serviceName}`,
+    ...monthly.map(([label, value]) => `  ${label}: ${value}`),
+    "",
+    consent,
+    "",
+    ...(input.payUrl ? [`Factuur betalen & automatische incasso activeren: ${input.payUrl}`, ""] : []),
+    attachment,
+    "",
+    contact,
+    `WhatsApp Business: ${whatsappUrl}`,
+    `E-mail: ${companyProfile.email}`,
+    "",
+    "Met vriendelijke groet,",
+    companyProfile.legalName,
+  ].join("\n");
+
+  return { html, text };
+}
+
 export function buildDocumentMailBody(input: DocumentMailInput): MailBody {
+  if (input.activates) return activationBody({ ...input, activates: input.activates });
   if (input.recurring) return recurringBody({ ...input, recurring: input.recurring });
 
   const isInvoice = input.kind === "invoice";
@@ -247,7 +362,13 @@ export async function sendDocumentMail(input: DocumentMailInput): Promise<SendMa
       from: config.from,
       to: input.recipientEmail,
       replyTo: companyProfile.email,
-      subject: documentSubject(input.kind, input.number, input.recurring?.serviceName),
+      /* A monthly term keeps the document subject; a one-off invoice is named
+         after its project, and says so when it also starts a subscription. */
+      subject: input.recurring
+        ? documentSubject(input.kind, input.number, input.recurring.serviceName)
+        : input.kind === "invoice"
+          ? invoiceSubject(input)
+          : documentSubject(input.kind, input.number),
       html,
       text,
       attachments: [{ filename: input.fileName, content: Buffer.from(input.pdf) }],

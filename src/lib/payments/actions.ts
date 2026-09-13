@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { actionFailed, referenceFailed, type ActionResult } from "@/lib/admin/action-result";
 import { adminDb, orNull } from "@/lib/admin/db";
-import { isDateKey } from "@/lib/admin/format";
+import { isDateKey, toDateKey } from "@/lib/admin/format";
 import { sendActivationMail } from "@/lib/payments/activation-email";
 import { getRecurringService } from "@/lib/payments/repository";
+import { earliestDebitDate, prenotificationDays } from "@/lib/payments/prenotification";
 import { activationExpiry, createActivationToken } from "@/lib/payments/tokens";
 import { isRecurringStatus, recurringChargeCents } from "@/lib/payments/types";
 
@@ -149,4 +150,169 @@ export async function sendRecurringActivation(serviceId: string): Promise<Action
   revalidatePath(`/admin/klanten/${service.customerId}`);
   revalidatePath("/admin/betalingen");
   return { ok: true, value: customer.email };
+}
+
+/**
+ * Linking a monthly service to the invoice whose payment switches it on.
+ *
+ * The relation is stored on the service (`activation_invoice_id`), not kept in
+ * the page, because everything that has to read it happens later and
+ * elsewhere: the send flow deciding between a one-off and a first payment, and
+ * a webhook that may arrive hours after the admin closed the tab. A partial
+ * unique index makes one invoice activate at most one service.
+ *
+ * Either an existing service of this customer is picked -- so a second invoice
+ * does not create a second copy of the same monthly service -- or one is
+ * created here. In both cases the figures the admin typed win, because the
+ * mail and the PDF are about to quote them.
+ */
+export type InvoiceActivationInput = {
+  /** An existing service of this customer, or empty to create one. */
+  serviceId?: string;
+  name: string;
+  /** Excluding VAT, like every other amount in the administration. */
+  amountCents: number;
+  vatRate: number;
+  /** The day of the first automatic collection. */
+  startsOn: string;
+  projectId?: string;
+};
+
+const invoiceGone = "Deze factuur bestaat niet (meer).";
+
+/** The invoice, as far as attaching a service is allowed to care about it. */
+async function activatableInvoice(db: Awaited<ReturnType<typeof adminDb>>, invoiceId: string) {
+  const { data, error } = await db
+    .from("invoices")
+    .select("id, customer_id, project_id, sent_at, number_value")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (error) return { error: actionFailed(error, "Factuur laden mislukt.") };
+  if (!data) return { error: { ok: false as const, error: invoiceGone } };
+  /*
+    Once the invoice is out, its mail has already told the customer what
+    paying it authorises. Changing that afterwards would leave the customer
+    holding one promise and the administration another.
+  */
+  if (data.sent_at) {
+    return {
+      error: {
+        ok: false as const,
+        error: `Factuur ${data.number_value} is al verstuurd. Koppel de maandelijkse service aan een nieuwe factuur, of activeer de incasso apart.`,
+      },
+    };
+  }
+  return { invoice: data };
+}
+
+export async function attachRecurringToInvoice(
+  invoiceId: string,
+  input: InvoiceActivationInput,
+): Promise<ActionResult<string>> {
+  if (!input.name.trim()) return { ok: false, error: "Vul een naam voor de maandelijkse service in." };
+  if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
+    return { ok: false, error: "Vul een maandbedrag hoger dan nul in." };
+  }
+  if (![0, 9, 21].includes(input.vatRate)) return { ok: false, error: "Kies een geldig btw-percentage." };
+  if (!isDateKey(input.startsOn)) return { ok: false, error: "Kies een geldige datum voor de eerste incasso." };
+  /*
+    A collection is announced fourteen calendar days in advance, and the
+    invoice mail is that announcement. A date sooner than that could not be
+    announced in time, so it is refused here rather than warned about -- the
+    same rule the send flow checks again on the day it actually goes out.
+  */
+  const earliest = earliestDebitDate(toDateKey(new Date()));
+  if (input.startsOn < earliest) {
+    return {
+      ok: false,
+      error: `De eerste automatische incasso moet minstens ${prenotificationDays} dagen na vandaag liggen, dus op ${earliest} of later. De factuurmail is tegelijk de vooraankondiging.`,
+    };
+  }
+
+  const db = await adminDb();
+  const found = await activatableInvoice(db, invoiceId);
+  if (found.error) return found.error;
+  const invoice = found.invoice;
+
+  // The service is filed under the same project as the invoice unless the
+  // admin said otherwise; the composite key refuses a project of someone else.
+  const projectId = input.projectId ?? invoice.project_id ?? null;
+  const fields = {
+    name: input.name.trim(),
+    amount_cents: input.amountCents,
+    vat_rate: input.vatRate,
+    starts_on: input.startsOn,
+    project_id: projectId,
+    activation_invoice_id: invoiceId,
+  };
+
+  let serviceId = input.serviceId;
+
+  if (serviceId) {
+    const existing = await getRecurringService(serviceId);
+    if (!existing) return { ok: false, error: "Deze dienst bestaat niet (meer)." };
+    if (existing.customerId !== invoice.customer_id) {
+      return { ok: false, error: "Deze dienst hoort bij een andere klant." };
+    }
+    if (existing.mollie.subscriptionId) {
+      return { ok: false, error: "Voor deze dienst loopt de incasso al; die hoeft niet opnieuw geactiveerd te worden." };
+    }
+    if (existing.status === "canceled") return { ok: false, error: "Deze dienst is gestopt." };
+
+    const { error } = await db.from("recurring_services").update(fields).eq("id", serviceId);
+    if (error) return linkFailed(error);
+  } else {
+    const { data, error } = await db
+      .from("recurring_services")
+      .insert({
+        customer_id: invoice.customer_id,
+        description: "",
+        currency: "EUR",
+        billing_interval: "monthly",
+        // Draft until money and a mandate actually arrive; the webhook is what
+        // makes a service collect, never a status chosen by hand.
+        status: "draft",
+        ...fields,
+      })
+      .select("id")
+      .single();
+    if (error || !data) return linkFailed(error);
+    serviceId = data.id;
+  }
+
+  revalidatePath(`/admin/facturen/${invoiceId}`);
+  revalidatePath(`/admin/klanten/${invoice.customer_id}`);
+  if (projectId) revalidatePath(`/admin/projecten/${projectId}`);
+  revalidatePath("/admin/betalingen");
+  return { ok: true, value: serviceId };
+}
+
+/** Either composite key, or the one-service-per-invoice index. */
+function linkFailed(error: { code?: string; message: string } | null): { ok: false; error: string } {
+  if (error?.code === "23505") {
+    return { ok: false, error: "Deze factuur activeert al een andere maandelijkse service." };
+  }
+  return referenceFailed(error, "Het gekozen project hoort niet bij deze klant.", "Koppelen mislukt.");
+}
+
+/**
+ * Unlinking. The service itself stays -- it may have been created for this
+ * customer on purpose -- but this invoice stops being what switches it on, so
+ * the next send asks for an ordinary one-off payment again.
+ */
+export async function detachRecurringFromInvoice(invoiceId: string): Promise<ActionResult> {
+  const db = await adminDb();
+  const found = await activatableInvoice(db, invoiceId);
+  if (found.error) return found.error;
+
+  const { error } = await db
+    .from("recurring_services")
+    .update({ activation_invoice_id: null })
+    .eq("activation_invoice_id", invoiceId);
+  if (error) return actionFailed(error, "Ontkoppelen mislukt.");
+
+  revalidatePath(`/admin/facturen/${invoiceId}`);
+  revalidatePath(`/admin/klanten/${found.invoice.customer_id}`);
+  revalidatePath("/admin/betalingen");
+  return { ok: true };
 }

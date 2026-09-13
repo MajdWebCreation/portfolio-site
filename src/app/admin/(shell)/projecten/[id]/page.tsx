@@ -9,6 +9,8 @@ import { toDateKey } from "@/lib/admin/format";
 import { listInvoicesForProject } from "@/lib/admin/invoices/repository";
 import { getProject } from "@/lib/admin/projects/repository";
 import { listQuotesForProject } from "@/lib/admin/quotes/repository";
+import { activationSummaries } from "@/lib/payments/activation-view";
+import { listRecurringServicesForProject } from "@/lib/payments/repository";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -30,11 +32,13 @@ export default async function ProjectPage({ params }: PageProps) {
 
   // The documents that name this project, read by that link rather than by
   // filtering every document in the database.
-  const [customer, quotes, invoices] = await Promise.all([
+  const [customer, quotes, invoices, recurringServices] = await Promise.all([
     getCustomer(project.customerId),
     listQuotesForProject(project.id),
     listInvoicesForProject(project.id),
+    listRecurringServicesForProject(project.id),
   ]);
+  const recurringActivations = await activationSummaries(recurringServices);
 
   return (
     <div className="space-y-8">
@@ -52,6 +56,8 @@ export default async function ProjectPage({ params }: PageProps) {
         customer={customer}
         quotes={quotes}
         invoices={invoices}
+        recurringServices={recurringServices}
+        recurringActivations={recurringActivations}
         todayKey={toDateKey(new Date())}
       />
     </div>

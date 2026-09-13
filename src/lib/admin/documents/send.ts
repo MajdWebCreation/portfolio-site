@@ -4,13 +4,17 @@ import { revalidatePath } from "next/cache";
 import { actionFailed, type ActionResult } from "@/lib/admin/action-result";
 import { adminDb } from "@/lib/admin/db";
 import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email";
+import { toDateKey } from "@/lib/admin/format";
 import type { DocumentLine } from "@/lib/admin/documents/types";
 import { hasLineErrors, validateLine } from "@/lib/admin/documents/validation";
 import { getInvoice } from "@/lib/admin/invoices/repository";
 import { documentFileName, renderInvoicePdf, renderQuotePdf } from "@/lib/admin/pdf/to-buffer";
 import { getQuote } from "@/lib/admin/quotes/repository";
 import { calculateTotals, formatCents } from "@/lib/money";
-import { invoicePayLink } from "@/lib/payments/pay-link";
+import { getProject } from "@/lib/admin/projects/repository";
+import { recurringChargeCents } from "@/lib/payments/types";
+import { earliestDebitDate, prenotificationDays } from "@/lib/payments/prenotification";
+import { invoicePayLink, serviceActivatedBy } from "@/lib/payments/pay-link";
 
 /**
  * Sending a document to its customer.
@@ -151,6 +155,24 @@ export async function sendInvoiceToCustomer(id: string): Promise<ActionResult<st
     `invoicePayLink` reuses an attempt that is still running rather than
     creating a second one, so resending keeps handing out the same link.
   */
+  /*
+    The fourteen days are counted from the day the invoice actually goes out,
+    not from the day the admin filled the form in. A date that was far enough
+    away last week may be too close today, and this mail is the announcement
+    for that first collection -- so it is refused rather than sent with a
+    promise that cannot be kept.
+  */
+  const activating = await serviceActivatedBy(numbered.id);
+  if (activating?.startsOn) {
+    const earliest = earliestDebitDate(toDateKey(new Date()));
+    if (activating.startsOn < earliest) {
+      return {
+        ok: false,
+        error: `De eerste automatische incasso staat op ${activating.startsOn}, en dat is minder dan ${prenotificationDays} dagen na vandaag. Zet de datum op ${earliest} of later; deze factuurmail is de vooraankondiging.`,
+      };
+    }
+  }
+
   const payLink = await invoicePayLink(numbered);
   if (payLink.kind === "failed") {
     return {
@@ -160,9 +182,35 @@ export async function sendInvoiceToCustomer(id: string): Promise<ActionResult<st
   }
   const payUrl = payLink.kind === "link" ? payLink.url : undefined;
 
+  /*
+    The mail is named after the project, and says what paying it starts. The
+    monthly figures only appear when this payment genuinely establishes the
+    mandate -- a customer who already authorised us is not asked again, and
+    their mail stays an ordinary invoice.
+  */
+  const project = numbered.projectId ? await getProject(numbered.projectId) : undefined;
+  const starting = payLink.kind === "link" && payLink.decision.sequence === "first" ? payLink.decision.service : undefined;
+  const totals = calculateTotals(numbered.lines);
+
+  const activates = starting?.startsOn
+    ? {
+        serviceName: starting.name,
+        monthlyNetCents: starting.amountCents,
+        monthlyGrossCents: recurringChargeCents(starting),
+        invoiceNetCents: totals.subtotalCents,
+        firstDebitOn: starting.startsOn,
+        projectSummary: project?.name ?? numbered.lines[0]?.description ?? "de geleverde werkzaamheden",
+      }
+    : undefined;
+
   let pdf: Buffer;
   try {
-    pdf = await renderInvoicePdf(numbered);
+    pdf = await renderInvoicePdf(
+      numbered,
+      activates
+        ? { serviceName: activates.serviceName, monthlyGrossCents: activates.monthlyGrossCents, firstDebitOn: activates.firstDebitOn }
+        : undefined,
+    );
   } catch (error) {
     console.error("Invoice PDF render failed", { id, error });
     return { ok: false, error: "De PDF kon niet worden gemaakt. Controleer de regels en probeer opnieuw." };
@@ -175,10 +223,12 @@ export async function sendInvoiceToCustomer(id: string): Promise<ActionResult<st
     contactName: numbered.customer.contactName,
     issueDateLabel: documentDateLabel(numbered.issueDate),
     deadlineLabel: documentDateLabel(numbered.dueDate),
-    totalLabel: formatCents(calculateTotals(numbered.lines).totalCents),
+    totalLabel: formatCents(totals.totalCents),
     pdf,
     fileName: documentFileName(numbered.number.value),
     ...(payUrl ? { payUrl } : {}),
+    ...(project ? { projectName: project.name } : {}),
+    ...(activates ? { activates } : {}),
   });
 
   if (!mail.sent) return { ok: false, error: `Versturen mislukt: ${mail.reason}` };

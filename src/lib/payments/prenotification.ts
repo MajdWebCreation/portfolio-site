@@ -49,6 +49,44 @@ function anchorDayOf(dateKey: string): number {
 }
 
 /**
+ * The earliest day a collection may fall, counted from a given day.
+ *
+ * Fourteen calendar days, the same term the announcements use, because a
+ * collection that cannot be announced in time may not be taken at all.
+ */
+export function earliestDebitDate(fromDateKey: string): string {
+  return addDays(fromDateKey, prenotificationDays);
+}
+
+/** Whether a chosen first collection date leaves room to announce it. */
+export function isAnnouncableStart(startsOn: string, fromDateKey: string): boolean {
+  return startsOn >= earliestDebitDate(fromDateKey);
+}
+
+/**
+ * The first collection date that can still be announced in time.
+ *
+ * The admin picks a date at least fourteen days out and the invoice mail
+ * announces it. If the customer then pays late -- after that date has already
+ * passed -- starting the subscription on it would mean collecting for a day
+ * that is gone, without notice. So the series is walked forward by whole
+ * months, keeping the anchor day the customer was told about, until a date is
+ * reached that still leaves the full announcement term. The ordinary monthly
+ * invoice for that period is then what announces it, exactly as for every
+ * other term.
+ */
+export function announceableStart(startsOn: string, todayKey: string): string {
+  const earliest = earliestDebitDate(todayKey);
+  const anchorDay = anchorDayOf(startsOn);
+  let date = startsOn;
+  // Monthly steps; the guard is a decade, far past any real late payment.
+  for (let guard = 0; date < earliest && guard < 120; guard += 1) {
+    date = nextPeriodStart(date, anchorDay);
+  }
+  return date;
+}
+
+/**
  * The next expected collection, or the reason there is none.
  *
  * A paused or cancelled service collects nothing. A service without a
@@ -64,10 +102,17 @@ export function nextDebitSchedule(input: ServiceSchedule): DebitSchedule | { rea
   if (!service.startsOn) return { reason: "missing_anchor" };
 
   const anchorDay = anchorDayOf(service.startsOn);
-  // The latest period already billed; before the first charge that is the
-  // anchor itself, which the activation invoice covers.
-  const latestBilled = [...billedPeriodStarts].sort().at(-1) ?? service.startsOn;
-  const debitOn = nextPeriodStart(latestBilled, anchorDay);
+  const latestBilled = [...billedPeriodStarts].sort().at(-1);
+  /*
+    Nothing billed yet means the anchor itself is the next collection. That is
+    the case for a service switched on by a one-off project invoice: the
+    customer paid that invoice, not a monthly term, so the first monthly
+    collection is the start date the admin chose.
+
+    When a term has been billed -- the activation flow bills period one on the
+    spot -- the next collection is the month after the latest one.
+  */
+  const debitOn = latestBilled ? nextPeriodStart(latestBilled, anchorDay) : service.startsOn;
 
   return {
     debitOn,

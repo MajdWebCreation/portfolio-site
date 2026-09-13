@@ -96,6 +96,9 @@ export async function ensureRecurringInvoice(
       customer_kvk_number: customer!.kvk_number,
       customer_vat_number: customer!.vat_number,
       recurring_service_id: service.id,
+      // Inherited, so the one-off project invoice and every month after it
+      // sit on the same project page.
+      project_id: service.projectId ?? null,
       billing_period_start: period.start,
       billing_period_end: period.end,
       issue_date: issueDate,
