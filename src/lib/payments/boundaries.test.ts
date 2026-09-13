@@ -81,7 +81,43 @@ describe("the Mollie key", () => {
 
 describe("payment tables", () => {
   it("are never written by a client component", () => {
-    const offenders = clientFiles.filter(({ source }) => source.includes("payments/webhook-store"));
+    const offenders = clientFiles.filter(
+      ({ source }) => source.includes("payments/webhook-store") || source.includes("payments/prenotification-store"),
+    );
     expect(offenders.map(({ path }) => path)).toEqual([]);
+  });
+});
+
+describe("the pre-notification job", () => {
+  it("keeps its cron secret on the server", () => {
+    const readers = files.filter(({ source }) => source.includes("process.env.CRON_SECRET"));
+    expect(readers.map(({ path }) => path.replace(root, "src"))).toEqual([
+      "src/app/api/cron/debit-prenotifications/route.ts",
+    ]);
+  });
+
+  it("is never reachable from a client component", () => {
+    const offenders = clientFiles.filter(
+      ({ source }) =>
+        source.includes("payments/prenotification-runner") || source.includes("payments/prenotification-store"),
+    );
+    expect(offenders.map(({ path }) => path.replace(root, "src"))).toEqual([]);
+  });
+
+  /*
+    The Resend key travels no further than the modules that send. The monthly
+    term has no mailer of its own: it goes out through the document mail, so
+    there is no fourth place a key could end up.
+  */
+  it("reads the mail key only where mail is sent", () => {
+    const readers = files
+      .filter(({ source }) => source.includes("process.env.RESEND_API_KEY"))
+      .map(({ path }) => path.replace(root, "src"))
+      .sort();
+    expect(readers).toEqual([
+      "src/app/api/contact/route.ts",
+      "src/lib/admin/documents/email.ts",
+      "src/lib/payments/activation-email.ts",
+    ]);
   });
 });

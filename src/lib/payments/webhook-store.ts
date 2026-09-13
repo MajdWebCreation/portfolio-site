@@ -1,5 +1,7 @@
-import { companyProfile } from "@/lib/admin/documents/company";
-import { addDays } from "@/lib/admin/documents/validation";
+import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email";
+import { toDateKey } from "@/lib/admin/format";
+import { documentFileName, renderInvoicePdf } from "@/lib/admin/pdf/to-buffer";
+import { calculateTotals, formatCents } from "@/lib/money";
 import { invoiceColumns, invoiceFromRow, type InvoiceRow } from "@/lib/admin/invoices/mapper";
 import type { Invoice, InvoiceStatus } from "@/lib/admin/invoices/types";
 import { createSubscription as createMollieSubscription } from "@/lib/mollie/client";
@@ -7,6 +9,7 @@ import { getMollieConfig, mollieWebhookUrl } from "@/lib/mollie/config";
 import { paymentFromRow, recurringServiceFromRow } from "@/lib/payments/mapper";
 import { paymentsAdminClient } from "@/lib/payments/admin-client";
 import type { BillingPeriod } from "@/lib/payments/billing-period";
+import { ensureRecurringInvoice, markInvoiceMailed } from "@/lib/payments/recurring-invoice";
 import type { PaymentRecord, WebhookStore } from "@/lib/payments/webhook";
 import { nextPaymentStatus } from "@/lib/payments/webhook";
 import { recurringChargeCents, type Payment, type RecurringService } from "@/lib/payments/types";
@@ -233,6 +236,42 @@ export function createWebhookStore(): WebhookStore {
       fail("Abonnement vastleggen", error);
     },
 
+    /*
+      The document for a term the customer already paid. Same renderer and
+      same mailer as every other invoice; only the wording differs, because
+      there is no collection coming. Marked as sent through the same field a
+      manual send writes, which is what keeps the daily job away from it.
+    */
+    async sendSettledInvoice(invoice: Invoice, service: RecurringService) {
+      const recipient = invoice.customer.email.trim();
+      if (!recipient) return { sent: false, reason: "de klant heeft geen e-mailadres" };
+
+      let pdf: Buffer;
+      try {
+        pdf = await renderInvoicePdf(invoice);
+      } catch (error) {
+        return { sent: false, reason: error instanceof Error ? error.message : "de PDF kon niet worden gemaakt" };
+      }
+
+      const mail = await sendDocumentMail({
+        kind: "invoice",
+        number: invoice.number.value,
+        recipientEmail: recipient,
+        contactName: invoice.customer.contactName,
+        issueDateLabel: documentDateLabel(invoice.issueDate),
+        deadlineLabel: documentDateLabel(invoice.dueDate),
+        totalLabel: formatCents(calculateTotals(invoice.lines).totalCents),
+        pdf,
+        fileName: documentFileName(invoice.number.value),
+        recurring: { serviceName: service.name, collection: { kind: "settled" } },
+      });
+
+      if (!mail.sent) return { sent: false, reason: mail.reason };
+
+      await markInvoiceMailed(db, invoice.id, recipient, mail.sentAt);
+      return { sent: true };
+    },
+
     async findInvoiceIdForProviderPayment(molliePaymentId: string): Promise<string | undefined> {
       const existing = await findByProviderId(molliePaymentId);
       return existing?.invoiceId;
@@ -249,108 +288,12 @@ export function createWebhookStore(): WebhookStore {
     },
 
     /*
-      The invoice for one billing period. YM's own administration stays the
-      document of record: Mollie moved the money, this is the bill for it. The
-      number comes from the same yearly sequence every other invoice uses.
-
-      Idempotency is the unique index on (recurring_service_id,
-      billing_period_start), not a check here: a concurrent second writer gets
-      23505 and reads the invoice the first one made. That is what makes this
-      safe under genuinely parallel webhook deliveries and not only retries.
+      The invoice for one billing period, made by the same function the daily
+      pass uses -- so a charge that arrives before the announcement, or after
+      it, always lands on the same document and the same YM-F number.
     */
     async ensureRecurringInvoice(service: RecurringService, period: BillingPeriod): Promise<Invoice> {
-      const readExisting = async () => {
-        const { data, error } = await db
-          .from("invoices")
-          .select(invoiceColumns)
-          .eq("recurring_service_id", service.id)
-          .eq("billing_period_start", period.start)
-          .maybeSingle();
-        fail("Bestaande periodefactuur laden", error);
-        return data ? invoiceFromRow(data as unknown as InvoiceRow) : undefined;
-      };
-
-      const already = await readExisting();
-      if (already) return already;
-
-      const { data: customer, error: customerError } = await db
-        .from("customers")
-        .select("company_name, contact_name, email, street, postal_code, city, country, kvk_number, vat_number")
-        .eq("id", service.customerId)
-        .single();
-      fail("Klant laden", customerError);
-
-      const { data: created, error } = await db
-        .from("invoices")
-        .insert({
-          number_value: `FAC-CONCEPT-${service.id.slice(-4).toUpperCase()}-${period.start}`,
-          number_provisional: true,
-          status: "sent",
-          customer_id: service.customerId,
-          customer_company_name: customer!.company_name,
-          customer_contact_name: customer!.contact_name,
-          customer_email: customer!.email,
-          customer_street: customer!.street,
-          customer_postal_code: customer!.postal_code,
-          customer_city: customer!.city,
-          customer_country: customer!.country,
-          customer_kvk_number: customer!.kvk_number,
-          customer_vat_number: customer!.vat_number,
-          recurring_service_id: service.id,
-          billing_period_start: period.start,
-          billing_period_end: period.end,
-          issue_date: period.start,
-          due_date: addDays(period.start, companyProfile.paymentTermDays),
-          payment_reference: "",
-          notes: "Automatische incasso via Mollie.",
-        })
-        .select("id")
-        .maybeSingle();
-
-      if (error || !created) {
-        // The index refused a second invoice for this period; the first one is
-        // the answer.
-        if (error?.code === "23505") {
-          const raced = await readExisting();
-          if (raced) return raced;
-        }
-        fail("Factuur voor incasso aanmaken", error);
-        throw new Error("Factuur voor incasso aanmaken: geen rij teruggekregen.");
-      }
-
-      const { error: linesError } = await db.rpc("save_invoice_lines", {
-        p_invoice_id: created.id,
-        p_lines: [
-          {
-            description: service.name,
-            quantityHundredths: 100,
-            unitPriceCents: service.amountCents,
-            vatRate: service.vatRate,
-          },
-        ] as never,
-      });
-      fail("Factuurregel aanmaken", linesError);
-
-      // The definitive YM-F number, from the same sequence as every other
-      // invoice; a charge is a real invoice, not a note.
-      const { data: number, error: numberError } = await db.rpc("assign_invoice_number", {
-        p_invoice_id: created.id,
-      });
-      fail("Factuurnummer toekennen", numberError);
-
-      const { error: referenceError } = await db
-        .from("invoices")
-        .update({ payment_reference: number ?? "" })
-        .eq("id", created.id);
-      fail("Betalingskenmerk bijwerken", referenceError);
-
-      const { data, error: readError } = await db
-        .from("invoices")
-        .select(invoiceColumns)
-        .eq("id", created.id)
-        .single();
-      fail("Factuur herlezen", readError);
-      return invoiceFromRow(data as unknown as InvoiceRow);
+      return ensureRecurringInvoice(db, service, period, toDateKey(new Date()));
     },
   };
 }

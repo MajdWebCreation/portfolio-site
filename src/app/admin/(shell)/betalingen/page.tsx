@@ -11,8 +11,10 @@ import { mollieMode } from "@/lib/mollie/config";
 import { toDateKey } from "@/lib/admin/format";
 import { listInvoices } from "@/lib/admin/invoices/repository";
 import { customerFinancials } from "@/lib/payments/customer-status";
-import { listPayments, listRecurringServices } from "@/lib/payments/repository";
+import { prenotificationStateLabels, prenotificationStateTone, recurringOverview } from "@/lib/payments/prenotification";
+import { listPayments, listPrenotifications, listRecurringServices } from "@/lib/payments/repository";
 import { isCollecting, recurringStatusLabels, recurringStatusTone } from "@/lib/payments/types";
+import { formatDate } from "@/lib/admin/format";
 import { formatCents } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Betalingen" };
@@ -20,11 +22,12 @@ export const metadata: Metadata = { title: "Betalingen" };
 export default async function PaymentsPage() {
   await requireAdminAccess();
 
-  const [customers, invoices, payments, services] = await Promise.all([
+  const [customers, invoices, payments, services, prenotifications] = await Promise.all([
     listCustomers(),
     listInvoices(),
     listPayments(),
     listRecurringServices(),
+    listPrenotifications(),
   ]);
 
   const todayKey = toDateKey(new Date());
@@ -45,6 +48,30 @@ export default async function PaymentsPage() {
   const collecting = services.filter(isCollecting);
   const monthly = collecting.reduce((sum, service) => sum + service.amountCents, 0);
   const byCustomer = new Map(customers.map((customer) => [customer.id, customer.companyName]));
+
+  /*
+    What is coming, and whether the customer has been told. Derived here the
+    same way the customer page derives it, from the same two facts.
+  */
+  const upcoming = collecting
+    .map((service) => ({
+      service,
+      overview: recurringOverview(
+        {
+          service,
+          billedPeriodStarts: invoices
+            .filter((invoice) => invoice.recurringServiceId === service.id && invoice.billingPeriodStart)
+            .map((invoice) => invoice.billingPeriodStart!),
+        },
+        prenotifications,
+        todayKey,
+      ),
+    }))
+    .filter((row) => Boolean(row.overview.debitOn))
+    .sort((a, b) => (a.overview.debitOn ?? "").localeCompare(b.overview.debitOn ?? ""));
+
+  const needsAnnouncing = upcoming.filter((row) => row.overview.state === "due" || row.overview.state === "failed").length;
+  const day = (key: string) => formatDate(`${key}T12:00:00+02:00`);
 
   return (
     <div className="space-y-10">
@@ -75,6 +102,33 @@ export default async function PaymentsPage() {
                   </span>
                 </span>
                 <StatusBadge tone={recurringStatusTone[service.status]}>{recurringStatusLabels[service.status]}</StatusBadge>
+              </li>
+            ))}
+          </ul>
+        )}
+      </AdminSection>
+
+      <AdminSection
+        id="upcoming"
+        title="Aankomende incasso's"
+        note={needsAnnouncing > 0 ? `${needsAnnouncing} vragen een vooraankondiging` : undefined}
+      >
+        {upcoming.length === 0 ? (
+          <p className="text-[0.95rem] text-muted">Geen lopende incasso&apos;s.</p>
+        ) : (
+          <ul className="divide-y divide-line border-y border-line">
+            {upcoming.map(({ service, overview }) => (
+              <li key={service.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5 text-[0.92rem]">
+                <span className="min-w-0">
+                  <span className="block truncate font-medium text-ink">{service.name}</span>
+                  <span className="block text-[0.83rem] text-muted">
+                    {byCustomer.get(service.customerId) ?? "Onbekende klant"} · {day(overview.debitOn!)} ·{" "}
+                    {formatCents(overview.amountCents!)} incl. btw
+                  </span>
+                </span>
+                <StatusBadge tone={prenotificationStateTone[overview.state]}>
+                  {prenotificationStateLabels[overview.state]}
+                </StatusBadge>
               </li>
             ))}
           </ul>

@@ -35,22 +35,110 @@ function Payment({ invoice }: { invoice: Invoice }) {
   );
 }
 
+/**
+ * The same block for an invoice that is collected rather than paid.
+ *
+ * A customer on direct debit must not be told to transfer money: they would
+ * pay the same amount twice. So the bank details make way for what actually
+ * happens, and the date is the invoice's own due date, which for a monthly
+ * term is the day the subscription collects.
+ */
+function DirectDebit({ invoice }: { invoice: Invoice }) {
+  return (
+    <View style={{ marginTop: 18 }} wrap={false}>
+      <Text style={[styles.mono, { marginBottom: 5 }]}>Betaling</Text>
+      <Text style={[styles.prose, { maxWidth: "88%" }]}>
+        Dit bedrag wordt op {formatDocumentDate(invoice.dueDate)} automatisch van uw rekening geïncasseerd door{" "}
+        {companyProfile.legalName}, op basis van de afgegeven machtiging. U hoeft zelf niets over te maken.
+      </Text>
+      <View style={{ width: "56%", marginTop: 8 }}>
+        <DetailRow label="Kenmerk" value={invoice.paymentReference || invoice.number.value} />
+        <DetailRow label="Incassant" value={companyProfile.accountHolder} />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * A term the customer already paid, in the activation flow. Nothing is going
+ * to be collected, so naming a future collection date would be wrong; the
+ * document says what it is instead: settled.
+ */
+function Settled({ invoice }: { invoice: Invoice }) {
+  return (
+    <View style={{ marginTop: 18 }} wrap={false}>
+      <Text style={[styles.mono, { marginBottom: 5 }]}>Betaling</Text>
+      <Text style={[styles.prose, { maxWidth: "88%" }]}>
+        Deze factuur is voldaan. U hoeft niets over te maken.
+      </Text>
+      <View style={{ width: "56%", marginTop: 8 }}>
+        <DetailRow label="Kenmerk" value={invoice.paymentReference || invoice.number.value} />
+      </View>
+    </View>
+  );
+}
+
+/** A monthly term of a recurring service, rather than a one-off invoice. */
+export function isRecurringTerm(invoice: Invoice): boolean {
+  return Boolean(invoice.recurringServiceId && invoice.billingPeriodStart && invoice.billingPeriodEnd);
+}
+
+/**
+ * The rows at the top of the document. Exported because what a monthly term
+ * has to show -- the period, and a collection date instead of a due date --
+ * is a decision worth testing on its own; the rendered bytes are compressed
+ * and prove nothing about wording.
+ */
+export function invoiceMetaRows(invoice: Invoice): { label: string; value: string }[] {
+  const recurring = isRecurringTerm(invoice);
+  const settled = recurring && invoice.status === "paid";
+
+  return [
+    { label: "Factuurdatum", value: formatDocumentDate(invoice.issueDate) },
+    /*
+      A collection that is coming gets its date. A term that is already paid
+      gets neither a due date nor a collection date: there is nothing left to
+      happen, and printing one would promise a second debit.
+    */
+    ...(settled
+      ? []
+      : [
+          recurring
+            ? { label: "Incassodatum", value: formatDocumentDate(invoice.dueDate) }
+            : { label: "Vervaldatum", value: formatDocumentDate(invoice.dueDate) },
+        ]),
+    ...(recurring
+      ? [
+          {
+            label: "Periode",
+            value: `${formatDocumentDate(invoice.billingPeriodStart!)} t/m ${formatDocumentDate(invoice.billingPeriodEnd!)}`,
+          },
+        ]
+      : []),
+    { label: "Betalingskenmerk", value: invoice.paymentReference || invoice.number.value },
+  ];
+}
+
 export default function InvoicePdf({ invoice }: { invoice: Invoice }) {
+  const recurring = isRecurringTerm(invoice);
+
   return (
     <DocumentLayout
       kind="FACTUUR"
       title={`Factuur ${invoice.number.value}`}
       number={invoice.number.value}
       provisional={invoice.number.provisional}
-      meta={[
-        { label: "Factuurdatum", value: formatDocumentDate(invoice.issueDate) },
-        { label: "Vervaldatum", value: formatDocumentDate(invoice.dueDate) },
-        { label: "Betalingskenmerk", value: invoice.paymentReference || invoice.number.value },
-      ]}
+      meta={invoiceMetaRows(invoice)}
       customer={invoice.customer}
       lines={invoice.lines}
       notes={invoice.notes || undefined}
-      afterTotals={<Payment invoice={invoice} />}
+      afterTotals={
+        recurring ? (
+          invoice.status === "paid" ? <Settled invoice={invoice} /> : <DirectDebit invoice={invoice} />
+        ) : (
+          <Payment invoice={invoice} />
+        )
+      }
     />
   );
 }

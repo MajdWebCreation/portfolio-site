@@ -66,6 +66,29 @@ export async function saveInvoice(
     notes: input.notes,
   };
 
+  /*
+    An invoice that has been sent is the document the customer holds, and its
+    figures may not move afterwards: two versions of one invoice number is the
+    one thing an administration must never produce. The database refuses such
+    an update outright; this check is here so the admin reads a sentence
+    instead of a constraint. Status is not touched by that rule -- the payment
+    system has to be able to move sent -> paid -> overdue.
+  */
+  if (id) {
+    const { data: existing, error: readError } = await db
+      .from("invoices")
+      .select("sent_at, number_value")
+      .eq("id", id)
+      .maybeSingle();
+    if (readError) return actionFailed(readError, "Factuur laden mislukt.");
+    if (existing?.sent_at) {
+      return {
+        ok: false,
+        error: `Factuur ${existing.number_value} is al verstuurd. De gegevens liggen vast; corrigeren kan alleen met een creditfactuur.`,
+      };
+    }
+  }
+
   const saved = id
     ? await db.from("invoices").update(row).eq("id", id).select("id").single()
     : await db.from("invoices").insert({ ...row, number_value: numberValue, number_provisional: true }).select("id").single();

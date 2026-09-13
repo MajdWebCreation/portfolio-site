@@ -5,7 +5,13 @@ import AdminButton from "@/components/admin/admin-button";
 import { SelectField, TextField } from "@/components/admin/form-field";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import StatusBadge from "@/components/admin/status-badge";
+import { formatDate } from "@/lib/admin/format";
 import { createRecurringService, sendRecurringActivation } from "@/lib/payments/actions";
+import {
+  prenotificationStateLabels,
+  prenotificationStateTone,
+  type RecurringOverview,
+} from "@/lib/payments/prenotification";
 import { recurringStatusLabels, recurringStatusTone, type RecurringService } from "@/lib/payments/types";
 import { formatCents, parseCents } from "@/lib/money";
 
@@ -17,12 +23,17 @@ import { formatCents, parseCents } from "@/lib/money";
  * to open, because only the customer can give a mandate -- so the button here
  * sends that link and the status follows from what actually happened.
  */
+const day = (key: string) => formatDate(`${key}T12:00:00+02:00`);
+
 export default function CustomerRecurring({
   customerId,
   services,
+  overviews,
 }: {
   customerId: string;
   services: RecurringService[];
+  /** Next collection and announcement state per service, derived on the server. */
+  overviews: Record<string, RecurringOverview>;
 }) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -75,7 +86,7 @@ export default function CustomerRecurring({
                 <StatusBadge tone={recurringStatusTone[service.status]}>{recurringStatusLabels[service.status]}</StatusBadge>
               </div>
               {service.mollie.subscriptionId ? (
-                <p className="mt-1.5 text-[0.82rem] text-muted">Incasso loopt.</p>
+                <Schedule overview={overviews[service.id]} />
               ) : service.status === "canceled" ? null : (
                 <AdminButton
                   variant="secondary"
@@ -128,5 +139,50 @@ export default function CustomerRecurring({
         </AdminButton>
       )}
     </div>
+  );
+}
+
+/**
+ * What is coming for one collecting service. Every date here is derived from
+ * the service's own anchor and its invoices; nothing is stored as a plan.
+ */
+function Schedule({ overview }: { overview?: RecurringOverview }) {
+  if (!overview) return <p className="mt-1.5 text-[0.82rem] text-muted">Incasso loopt.</p>;
+
+  if (!overview.debitOn) {
+    return (
+      <p className="mt-1.5 text-[0.82rem] text-danger">
+        {overview.reason === "missing_anchor"
+          ? "Geen startdatum vastgelegd; de incassodatum is niet te bepalen."
+          : "Incasso loopt niet."}
+      </p>
+    );
+  }
+
+  return (
+    <dl className="mt-2 space-y-1 text-[0.82rem]">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <dt className="text-muted">Volgende incasso</dt>
+        <dd className="tabular text-ink">{day(overview.debitOn)}</dd>
+      </div>
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <dt className="text-muted">Vooraankondiging vanaf</dt>
+        <dd className="tabular text-ink">{day(overview.announceFrom!)}</dd>
+      </div>
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <dt className="text-muted">Aankondiging</dt>
+        <dd>
+          <StatusBadge tone={prenotificationStateTone[overview.state]}>
+            {prenotificationStateLabels[overview.state]}
+          </StatusBadge>
+        </dd>
+      </div>
+      {overview.record?.sentAt ? (
+        <p className="text-muted">Verzonden naar {overview.record.recipientEmail}.</p>
+      ) : null}
+      {overview.state === "failed" && overview.record?.error ? (
+        <p className="text-danger">{overview.record.error}</p>
+      ) : null}
+    </dl>
   );
 }

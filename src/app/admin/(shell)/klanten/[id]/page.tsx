@@ -12,7 +12,12 @@ import { getLead } from "@/lib/admin/leads/repository";
 import { listProjectsForCustomer } from "@/lib/admin/projects/repository";
 import { listQuotes } from "@/lib/admin/quotes/repository";
 import { customerFinancials } from "@/lib/payments/customer-status";
-import { listPaymentsForCustomer, listRecurringServicesForCustomer } from "@/lib/payments/repository";
+import { recurringOverview, type RecurringOverview } from "@/lib/payments/prenotification";
+import {
+  listPaymentsForCustomer,
+  listPrenotificationsForCustomer,
+  listRecurringServicesForCustomer,
+} from "@/lib/payments/repository";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -32,18 +37,40 @@ export default async function CustomerPage({ params }: PageProps) {
     notFound();
   }
 
-  const [sourceInquiry, sourceLead, quotes, invoices, projects, payments, recurringServices] = await Promise.all([
-    customer.sourceInquiryId ? getInquiry(customer.sourceInquiryId) : undefined,
-    customer.sourceLeadId ? getLead(customer.sourceLeadId) : undefined,
-    listQuotes(),
-    listInvoices(),
-    listProjectsForCustomer(customer.id),
-    listPaymentsForCustomer(customer.id),
-    listRecurringServicesForCustomer(customer.id),
-  ]);
+  const [sourceInquiry, sourceLead, quotes, invoices, projects, payments, recurringServices, prenotifications] =
+    await Promise.all([
+      customer.sourceInquiryId ? getInquiry(customer.sourceInquiryId) : undefined,
+      customer.sourceLeadId ? getLead(customer.sourceLeadId) : undefined,
+      listQuotes(),
+      listInvoices(),
+      listProjectsForCustomer(customer.id),
+      listPaymentsForCustomer(customer.id),
+      listRecurringServicesForCustomer(customer.id),
+      listPrenotificationsForCustomer(customer.id),
+    ]);
 
   const todayKey = toDateKey(new Date());
   // Read from the financial data itself, every time the page renders.
+  /*
+    The next collection per service, worked out from the service's anchor and
+    the periods its invoices already cover. No second calendar is consulted.
+  */
+  const recurringOverviews: Record<string, RecurringOverview> = Object.fromEntries(
+    recurringServices.map((service) => [
+      service.id,
+      recurringOverview(
+        {
+          service,
+          billedPeriodStarts: invoices
+            .filter((invoice) => invoice.recurringServiceId === service.id && invoice.billingPeriodStart)
+            .map((invoice) => invoice.billingPeriodStart!),
+        },
+        prenotifications,
+        toDateKey(new Date()),
+      ),
+    ]),
+  );
+
   const financials = customerFinancials(
     invoices.filter((invoice) => invoice.customer.customerId === customer.id),
     payments,
@@ -71,6 +98,7 @@ export default async function CustomerPage({ params }: PageProps) {
         projects={projects}
         financials={financials}
         recurringServices={recurringServices}
+        recurringOverviews={recurringOverviews}
         todayKey={todayKey}
       />
     </div>

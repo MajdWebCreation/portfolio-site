@@ -34,13 +34,35 @@ export type DocumentMailInput = {
    * there would invite a second payment for a debt already being collected.
    */
   payUrl?: string;
+  /**
+   * Present when this invoice is a monthly term of a recurring service.
+   *
+   * Two kinds, and they are genuinely different documents to receive:
+   *
+   *   scheduled  a collection is coming. The mail doubles as the SEPA
+   *              pre-notification -- what will be taken, and when.
+   *   settled    the customer paid this term themselves, in the activation
+   *              flow. Nothing is coming; this is the invoice for what has
+   *              already been paid.
+   */
+  recurring?: {
+    serviceName: string;
+    collection: { kind: "scheduled"; debitOn: string } | { kind: "settled" };
+  };
 };
 
-export type SendMailResult = { sent: true; sentAt: string } | { sent: false; reason: string };
+export type SendMailResult =
+  /** `messageId` is Resend's own id, kept for the audit trail where one is wanted. */
+  | { sent: true; sentAt: string; messageId?: string }
+  | { sent: false; reason: string };
 
-/** "Factuur YM-F-2026-000001 — YM Creations" */
-export function documentSubject(kind: DocumentKind, number: string): string {
-  return `${documentKindLabels[kind]} ${number} — ${companyProfile.name}`;
+/**
+ * "Factuur YM-F-2026-000001 — YM Creations", or the service instead of the
+ * company for a monthly term, because that is what the customer recognises in
+ * a list of twelve.
+ */
+export function documentSubject(kind: DocumentKind, number: string, serviceName?: string): string {
+  return `${documentKindLabels[kind]} ${number} — ${serviceName ?? companyProfile.name}`;
 }
 
 /** A calendar date (YYYY-MM-DD) in the same wording the PDF uses. */
@@ -64,7 +86,65 @@ function payButton(url: string): string {
  * The body, as lines. Both renderings come from the same list, so the plain
  * text version can never drift from the HTML one.
  */
-function body(input: DocumentMailInput): MailBody {
+/**
+ * The cover note for a monthly term. Kept short on purpose: the figures, the
+ * VAT and the period are in the PDF, and repeating them here would be a
+ * second specification that can disagree with the first.
+ */
+function recurringBody(input: DocumentMailInput & { recurring: NonNullable<DocumentMailInput["recurring"]> }): MailBody {
+  const { serviceName, collection } = input.recurring;
+  const scheduled = collection.kind === "scheduled" ? documentDateLabel(collection.debitOn) : null;
+
+  const opening = `Hierbij ontvangt u de factuur voor uw maandelijkse ${serviceName}.`;
+  const amount = `Maandbedrag: ${input.totalLabel} incl. btw`;
+  const settlement = scheduled
+    ? `Het bedrag wordt op ${scheduled} automatisch geïncasseerd. U hoeft hiervoor niets te doen.`
+    : "Deze factuur is reeds betaald.";
+  const attachment = "De volledige specificatie vindt u in de bijgevoegde PDF-factuur.";
+  // Only worth saying while something is still going to happen.
+  const objection = scheduled ? `Klopt er iets niet? Neem dan vóór ${scheduled} contact met ons op.` : null;
+
+  const html = emailShell({
+    locale: "nl",
+    title: `Factuur ${input.number}`,
+    preheader: `${serviceName} — ${input.totalLabel} incl. btw${scheduled ? `, incasso ${scheduled}` : ", reeds betaald"}`,
+    content: [
+      emailText(`Beste ${escapeEmailHtml(input.contactName)},`, { top: 18 }),
+      emailText(escapeEmailHtml(opening)),
+      emailText(escapeEmailHtml(amount)),
+      emailSection({
+        label: scheduled ? "Automatische incasso" : "Betaling",
+        html: escapeEmailHtml(settlement),
+      }),
+      emailSection({ label: "Bijlage", html: escapeEmailHtml(attachment) }),
+      ...(objection ? [emailText(escapeEmailHtml(objection), { top: 26 })] : []),
+    ].join(""),
+  });
+
+  const text = [
+    `Beste ${input.contactName},`,
+    "",
+    opening,
+    "",
+    amount,
+    "",
+    settlement,
+    "",
+    attachment,
+    ...(objection ? [objection] : []),
+    "",
+    "Met vriendelijke groet,",
+    companyProfile.legalName,
+    `${companyProfile.email} · ${companyProfile.phone}`,
+    companyProfile.website,
+  ].join("\n");
+
+  return { html, text };
+}
+
+export function buildDocumentMailBody(input: DocumentMailInput): MailBody {
+  if (input.recurring) return recurringBody({ ...input, recurring: input.recurring });
+
   const isInvoice = input.kind === "invoice";
   const title = isInvoice ? "Je factuur" : "Je offerte";
 
@@ -160,14 +240,14 @@ export async function sendDocumentMail(input: DocumentMailInput): Promise<SendMa
   const config = mailConfig();
   if ("error" in config) return { sent: false, reason: config.error };
 
-  const { html, text } = body(input);
+  const { html, text } = buildDocumentMailBody(input);
 
   try {
     const result = await new Resend(config.apiKey).emails.send({
       from: config.from,
       to: input.recipientEmail,
       replyTo: companyProfile.email,
-      subject: documentSubject(input.kind, input.number),
+      subject: documentSubject(input.kind, input.number, input.recurring?.serviceName),
       html,
       text,
       attachments: [{ filename: input.fileName, content: Buffer.from(input.pdf) }],
@@ -178,7 +258,11 @@ export async function sendDocumentMail(input: DocumentMailInput): Promise<SendMa
       return { sent: false, reason: result.error.message };
     }
 
-    return { sent: true, sentAt: new Date().toISOString() };
+    return {
+      sent: true,
+      sentAt: new Date().toISOString(),
+      ...(result.data?.id ? { messageId: result.data.id } : {}),
+    };
   } catch (error) {
     console.error("Document mail threw", { kind: input.kind, number: input.number, error });
     return { sent: false, reason: "De mail kon niet worden verzonden. Probeer het opnieuw." };

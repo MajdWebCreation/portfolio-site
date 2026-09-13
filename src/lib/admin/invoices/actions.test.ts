@@ -15,7 +15,10 @@ const insert = vi.fn((row: Row) => {
   return { select: () => ({ single: insertSingle }) };
 });
 const update = vi.fn(() => ({ eq: () => ({ select: () => ({ single: updateSingle }) }) }));
-const from = vi.fn(() => ({ insert, update }));
+/* The stored invoice, as the guard reads it before touching anything. */
+const storedInvoice = vi.fn();
+const select = vi.fn(() => ({ eq: () => ({ maybeSingle: storedInvoice }) }));
+const from = vi.fn(() => ({ insert, update, select }));
 const rpc = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -52,6 +55,8 @@ const valid = {
 beforeEach(() => {
   vi.clearAllMocks();
   inserted.length = 0;
+  // Not yet sent, so an ordinary edit is allowed.
+  storedInvoice.mockResolvedValue({ data: { sent_at: null, number_value: "FAC-CONCEPT-X" }, error: null });
   insertSingle.mockResolvedValue({ data: { id: "invoice-1" }, error: null });
   updateSingle.mockResolvedValue({ data: { id: "invoice-1" }, error: null });
   rpc.mockResolvedValue({ error: null });
@@ -104,5 +109,43 @@ describe("saveInvoice and its project", () => {
     const result = await saveInvoice(null, { ...valid, projectId: "proj-1", dueDate: "2026-08-01" }, "FAC-CONCEPT-1");
     expect(result).toEqual({ ok: false, error: "De vervaldatum ligt vóór de documentdatum." });
     expect(from).not.toHaveBeenCalled();
+  });
+});
+
+describe("an invoice that has been sent", () => {
+  /*
+    Once the customer holds the document, its figures are a fact. Correcting
+    it is a credit note, which is its own flow; the unsafe edit is blocked
+    rather than quietly applied. The database refuses it too -- this is the
+    readable half of that rule.
+  */
+  it("refuses to change its financial data", async () => {
+    storedInvoice.mockResolvedValue({
+      data: { sent_at: "2026-09-28T07:00:00.000Z", number_value: "YM-F-2026-000001" },
+      error: null,
+    });
+
+    const result = await saveInvoice("invoice-1", { ...valid, lines: [{ ...line, unitPriceCents: 99900 }] }, "YM-F-2026-000001");
+
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "Factuur YM-F-2026-000001 is al verstuurd. De gegevens liggen vast; corrigeren kan alleen met een creditfactuur.",
+    });
+    expect(update).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("still allows an invoice that was never sent to be edited", async () => {
+    const result = await saveInvoice("invoice-1", valid, "FAC-CONCEPT-X");
+
+    expect(result).toEqual({ ok: true, value: "invoice-1" });
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not look for a stored invoice when creating a new one", async () => {
+    await saveInvoice(null, valid, "FAC-CONCEPT-X");
+    expect(select).not.toHaveBeenCalled();
+    expect(insert).toHaveBeenCalledTimes(1);
   });
 });

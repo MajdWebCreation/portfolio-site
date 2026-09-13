@@ -35,6 +35,8 @@ function makeStore(
   const payments: Payment[] = [];
   const providerLinks: { customerId: string; providerCustomerId: string; providerMandateId: string }[] = [];
   const subscriptionCalls: { serviceId: string; startDate: string }[] = [];
+  const invoiceMails: { invoiceId: string; number: string; status: string }[] = [];
+  let mailFails = false;
   const createdInvoices: string[] = [];
   /* Stands in for the unique index on (recurring_service_id, billing_period_start). */
   const periodKeys = new Set<string>();
@@ -148,6 +150,14 @@ function makeStore(
       createdInvoices.push(invoice.id);
       return invoice;
     },
+    /* Idempotent on the document's own `sent_at`, like the real one. */
+    async sendSettledInvoice(invoice) {
+      if (mailFails) return { sent: false, reason: "Resend was onbereikbaar" };
+      invoiceMails.push({ invoiceId: invoice.id, number: invoice.number.value, status: invoice.status });
+      const stored = invoices.get(invoice.id);
+      if (stored) stored.sentAt = "2026-09-12T10:05:00.000Z";
+      return { sent: true };
+    },
     async createSubscription(service, startDate) {
       if (service.mollie.subscriptionId) return;
       subscriptionCalls.push({ serviceId: service.id, startDate });
@@ -162,7 +172,19 @@ function makeStore(
     },
   };
 
-  return { store, invoices, services, payments, providerLinks, subscriptionCalls, createdInvoices };
+  return {
+    store,
+    invoices,
+    services,
+    payments,
+    providerLinks,
+    subscriptionCalls,
+    createdInvoices,
+    invoiceMails,
+    failMail: (value: boolean) => {
+      mailFails = value;
+    },
+  };
 }
 
 const total = calculateTotals(invoiceFixture().lines).totalCents; // 121,00
@@ -552,5 +574,93 @@ describe("a callback for the admin integration check", () => {
 
     expect(payments).toHaveLength(1);
     expect(invoices.get("inv-1")?.status).toBe("paid");
+  });
+});
+
+describe("the invoice for the first term", () => {
+  const activation = { id: "act-1", recurringServiceId: "svc-1", molliePaymentId: "tr_first" };
+
+  function firstPayment(overrides: Partial<MolliePayment> = {}): MolliePayment {
+    return molliePayment({
+      id: "tr_first",
+      amount: { currency: "EUR", value: "30.25" },
+      customerId: "cst_1",
+      mandateId: "mdt_1",
+      sequenceType: "first",
+      paidAt: "2026-09-12T10:00:00.000Z",
+      metadata: { kind: "recurring_activation", recurringServiceId: "svc-1", customerId: "cust-1" },
+      ...overrides,
+    });
+  }
+
+  /*
+    The customer paid this term themselves in the checkout they just left, so
+    the document goes out now -- not tomorrow, and not as an announcement.
+  */
+  it("is mailed straight away, as a paid invoice", async () => {
+    const { store, invoiceMails, createdInvoices, payments } = makeStore({
+      services: [recurringFixture()],
+      activations: [{ ...activation }],
+    });
+
+    const outcome = await processMolliePayment(firstPayment(), store, "2026-09-12");
+
+    expect(outcome).toMatchObject({ handled: true, note: "first term invoiced and mailed" });
+    expect(createdInvoices).toHaveLength(1);
+    expect(payments).toHaveLength(1);
+    expect(invoiceMails).toHaveLength(1);
+    // Mailed as paid, so the document says settled rather than announcing.
+    expect(invoiceMails[0]).toMatchObject({ invoiceId: createdInvoices[0], status: "paid" });
+  });
+
+  it("mails nothing twice however often the webhook arrives", async () => {
+    const { store, invoiceMails, createdInvoices } = makeStore({
+      services: [recurringFixture()],
+      activations: [{ ...activation }],
+    });
+
+    for (let i = 0; i < 20; i += 1) await processMolliePayment(firstPayment(), store, "2026-09-12");
+
+    expect(createdInvoices).toHaveLength(1);
+    expect(invoiceMails).toHaveLength(1);
+  });
+
+  /*
+    A mail that fails is reported as unhandled, so the route answers non-2xx
+    and Mollie delivers again. The retry reuses the same invoice and the same
+    number; only the mail is attempted once more.
+  */
+  it("asks for a redelivery when the mail fails, and reuses the same invoice", async () => {
+    const made = makeStore({ services: [recurringFixture()], activations: [{ ...activation }] });
+    made.failMail(true);
+
+    const failed = await processMolliePayment(firstPayment(), made.store, "2026-09-12");
+    expect(failed.handled).toBe(false);
+    expect(failed.note).toContain("first term invoice mail failed");
+    expect(made.invoiceMails).toHaveLength(0);
+    expect(made.createdInvoices).toHaveLength(1);
+
+    const numberBefore = made.invoices.get(made.createdInvoices[0]!)?.number.value;
+
+    made.failMail(false);
+    const retried = await processMolliePayment(firstPayment(), made.store, "2026-09-12");
+
+    expect(retried.handled).toBe(true);
+    expect(made.createdInvoices).toHaveLength(1);
+    expect(made.invoices.get(made.createdInvoices[0]!)?.number.value).toBe(numberBefore);
+    expect(made.invoiceMails).toHaveLength(1);
+    expect(made.payments).toHaveLength(1);
+  });
+
+  it("does not mail anything when the first payment failed", async () => {
+    const { store, invoiceMails, createdInvoices } = makeStore({
+      services: [recurringFixture()],
+      activations: [{ ...activation }],
+    });
+
+    await processMolliePayment(firstPayment({ status: "failed", paidAt: undefined }), store, "2026-09-12");
+
+    expect(createdInvoices).toEqual([]);
+    expect(invoiceMails).toEqual([]);
   });
 });

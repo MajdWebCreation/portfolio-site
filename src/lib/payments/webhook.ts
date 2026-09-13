@@ -65,6 +65,12 @@ export type WebhookStore = {
   ensureRecurringInvoice: (service: RecurringService, period: BillingPeriod) => Promise<Invoice>;
   /** Creates the provider subscription and stores its id; skipped when one exists. */
   createSubscription: (service: RecurringService, startDate: string) => Promise<void>;
+  /**
+   * Mails the invoice for a term the customer already paid, PDF attached, and
+   * marks the document as sent. Not a pre-notification: nothing is going to
+   * be collected, so there is nothing to announce.
+   */
+  sendSettledInvoice: (invoice: Invoice, service: RecurringService) => Promise<{ sent: boolean; reason?: string }>;
   /** The invoice an already recorded provider payment belongs to. */
   findInvoiceIdForProviderPayment: (molliePaymentId: string) => Promise<string | undefined>;
   findServiceBySubscriptionId: (subscriptionId: string) => Promise<RecurringService | undefined>;
@@ -232,6 +238,10 @@ function chargeDate(payment: MolliePayment): string {
  * payments table. The subscription is created afterwards and starts at the
  * *next* period, so the month just paid is never collected a second time.
  *
+ * The customer paid this term themselves, in the checkout they just left, so
+ * it is not a SEPA pre-notification and gets no announcement row. It gets
+ * what a paid invoice gets: the document, by mail, straight away.
+ *
  * Every step is separately idempotent -- the mandate is an upsert, the invoice
  * is decided by a unique index, the payment by its provider id, the
  * subscription by the service already having one -- so a repeat delivery, or
@@ -277,11 +287,25 @@ async function processActivation(
 
   await store.markActivationUsed(activation.id);
 
-  if (active.mollie.subscriptionId) {
-    return { handled: true, note: "subscription already active", invoiceStatus };
+  if (!active.mollie.subscriptionId) {
+    // The first automatic collection is the second period: the first is paid.
+    await store.createSubscription(active, nextPeriodStart(periodStart));
   }
 
-  // The first automatic collection is the second period: the first is paid.
-  await store.createSubscription(active, nextPeriodStart(periodStart));
-  return { handled: true, note: "subscription created", invoiceStatus };
+  /*
+    The invoice goes out now, not tomorrow. Idempotent on the document's own
+    `sent_at`, so a repeated delivery of this webhook mails nothing twice.
+
+    A mail that fails is reported as unhandled, which makes the route answer
+    non-2xx and Mollie deliver again. Everything above it is idempotent, so a
+    redelivery reuses this invoice and this number and only retries the mail.
+  */
+  if (!invoice.sentAt) {
+    const mailed = await store.sendSettledInvoice({ ...invoice, status: invoiceStatus }, active);
+    if (!mailed.sent) {
+      return { handled: false, note: `first term invoice mail failed: ${mailed.reason ?? "unknown"}`, invoiceStatus };
+    }
+  }
+
+  return { handled: true, note: "first term invoiced and mailed", invoiceStatus };
 }

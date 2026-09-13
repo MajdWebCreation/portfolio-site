@@ -210,6 +210,102 @@ export type Database = {
           },
         ]
       }
+      debit_prenotifications: {
+        Row: {
+          amount_cents: number
+          billing_period_end: string
+          billing_period_start: string
+          claimed_at: string
+          created_at: string
+          currency: string
+          customer_id: string
+          error: string | null
+          id: string
+          invoice_id: string
+          provider_message_id: string | null
+          recipient_email: string
+          recurring_service_id: string
+          scheduled_debit_on: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          billing_period_end: string
+          billing_period_start: string
+          claimed_at?: string
+          created_at?: string
+          currency?: string
+          customer_id: string
+          error?: string | null
+          id?: string
+          invoice_id: string
+          provider_message_id?: string | null
+          recipient_email: string
+          recurring_service_id: string
+          scheduled_debit_on: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          billing_period_end?: string
+          billing_period_start?: string
+          claimed_at?: string
+          created_at?: string
+          currency?: string
+          customer_id?: string
+          error?: string | null
+          id?: string
+          invoice_id?: string
+          provider_message_id?: string | null
+          recipient_email?: string
+          recurring_service_id?: string
+          scheduled_debit_on?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debit_prenotifications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_prenotifications_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_prenotifications_invoice_same_customer"
+            columns: ["invoice_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id", "customer_id"]
+          },
+          {
+            foreignKeyName: "debit_prenotifications_recurring_service_id_fkey"
+            columns: ["recurring_service_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_prenotifications_same_customer"
+            columns: ["recurring_service_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_services"
+            referencedColumns: ["id", "customer_id"]
+          },
+        ]
+      }
       document_counters: {
         Row: {
           kind: string

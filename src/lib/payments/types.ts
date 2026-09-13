@@ -101,6 +101,31 @@ export function isInFlight(payment: Pick<Payment, "status">): boolean {
 
 // ------------------------------------------------------------ recurring
 
+/**
+ * The record that a SEPA pre-notification went out for one collection. What
+ * was announced is stored, not what is planned: the plan is derived.
+ */
+export type PrenotificationStatus = "pending" | "sent" | "failed";
+
+export type DebitPrenotification = {
+  id: string;
+  recurringServiceId: string;
+  customerId: string;
+  /** The invoice that was sent as the announcement. */
+  invoiceId: string;
+  billingPeriodStart: string;
+  billingPeriodEnd: string;
+  scheduledDebitOn: string;
+  amountCents: Cents;
+  /** The address it went to, as it was at the time. */
+  recipientEmail: string;
+  status: PrenotificationStatus;
+  providerMessageId?: string;
+  error?: string;
+  sentAt?: string;
+  createdAt: string;
+};
+
 export type RecurringStatus = "draft" | "awaiting_mandate" | "active" | "paused" | "canceled";
 
 export type RecurringService = {

@@ -1,6 +1,6 @@
 import { adminDb, failed } from "@/lib/admin/db";
-import { paymentFromRow, recurringServiceFromRow } from "@/lib/payments/mapper";
-import type { Payment, RecurringService } from "@/lib/payments/types";
+import { paymentFromRow, prenotificationFromRow, recurringServiceFromRow } from "@/lib/payments/mapper";
+import type { DebitPrenotification, Payment, RecurringService } from "@/lib/payments/types";
 
 /** Read access to payments and recurring services; admins only, as elsewhere. */
 const paymentColumns =
@@ -61,4 +61,29 @@ export async function getRecurringService(id: string): Promise<RecurringService 
   const { data, error } = await db.from("recurring_services").select(recurringColumns).eq("id", id).maybeSingle();
   failed("Terugkerende dienst laden", error);
   return data ? recurringServiceFromRow(data) : undefined;
+}
+
+/** Announcements already made, so the admin can see what was told and when. */
+const prenotificationColumns =
+  "id, recurring_service_id, customer_id, invoice_id, billing_period_start, billing_period_end, scheduled_debit_on, amount_cents, currency, recipient_email, status, provider_message_id, error, claimed_at, sent_at, created_at, updated_at";
+
+export async function listPrenotifications(): Promise<DebitPrenotification[]> {
+  const db = await adminDb();
+  const { data, error } = await db
+    .from("debit_prenotifications")
+    .select(prenotificationColumns)
+    .order("scheduled_debit_on", { ascending: false });
+  failed("Vooraankondigingen laden", error);
+  return (data ?? []).map(prenotificationFromRow);
+}
+
+export async function listPrenotificationsForCustomer(customerId: string): Promise<DebitPrenotification[]> {
+  const db = await adminDb();
+  const { data, error } = await db
+    .from("debit_prenotifications")
+    .select(prenotificationColumns)
+    .eq("customer_id", customerId)
+    .order("scheduled_debit_on", { ascending: false });
+  failed("Vooraankondigingen van klant laden", error);
+  return (data ?? []).map(prenotificationFromRow);
 }

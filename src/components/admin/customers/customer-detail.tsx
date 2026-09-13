@@ -14,6 +14,7 @@ import type { Invoice } from "@/lib/admin/invoices/types";
 import type { Lead } from "@/lib/admin/leads/types";
 import type { Project } from "@/lib/admin/projects/types";
 import type { CustomerFinancials } from "@/lib/payments/customer-status";
+import type { RecurringOverview } from "@/lib/payments/prenotification";
 import type { RecurringService } from "@/lib/payments/types";
 import type { Quote } from "@/lib/admin/quotes/types";
 
@@ -29,6 +30,8 @@ type CustomerDetailProps = {
   /** Derived from this customer's invoices and payments; never a stored field. */
   financials: CustomerFinancials;
   recurringServices: RecurringService[];
+  /** Next collection and announcement state per service; derived, never stored. */
+  recurringOverviews: Record<string, RecurringOverview>;
   /** Today in Amsterdam, for the deadline states. */
   todayKey: string;
 };
@@ -47,6 +50,7 @@ export default function CustomerDetail({
   projects,
   financials,
   recurringServices,
+  recurringOverviews,
   todayKey,
 }: CustomerDetailProps) {
   const { address } = customer;
@@ -129,7 +133,7 @@ export default function CustomerDetail({
 
         <CustomerProjects customerId={customer.id} projects={projects} todayKey={todayKey} />
 
-        <CustomerRecurring customerId={customer.id} services={recurringServices} />
+        <CustomerRecurring customerId={customer.id} services={recurringServices} overviews={recurringOverviews} />
 
         <CustomerDocuments customerId={customer.id} quotes={quotes} invoices={invoices} />
       </aside>
