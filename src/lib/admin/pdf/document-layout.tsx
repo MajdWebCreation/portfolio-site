@@ -32,11 +32,19 @@ type DocumentLayoutProps = {
 
 const columns = { description: "50%", quantity: "10%", price: "15%", vat: "8%", amount: "17%" } as const;
 
+/**
+ * Who the document is addressed to: the business, not a person.
+ *
+ * A quote or an invoice is a document between two companies, and the contact
+ * person is not part of that. Naming an employee on it dates the document the
+ * moment they leave, and puts a name in the customer's own bookkeeping where
+ * only the company belongs. The contact person is still held on the customer
+ * and is still who the accompanying mail greets.
+ */
 function Address({ customer }: { customer: CustomerSnapshot }) {
   return (
     <View style={styles.address}>
       <Text style={styles.bold}>{customer.companyName}</Text>
-      <Text>{customer.contactName}</Text>
       <Text>{customer.street}</Text>
       <Text>
         {customer.postalCode} {customer.city}

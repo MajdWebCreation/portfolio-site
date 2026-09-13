@@ -11,7 +11,6 @@ export default function QuotePdf({ quote }: { quote: Quote }) {
       meta={[
         { label: "Offertedatum", value: formatDocumentDate(quote.issueDate) },
         { label: "Geldig tot", value: formatDocumentDate(quote.validUntil) },
-        { label: "Contactpersoon", value: quote.customer.contactName },
       ]}
       customer={quote.customer}
       subject={quote.subject}
