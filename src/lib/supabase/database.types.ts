@@ -57,6 +57,7 @@ export type Database = {
           id: string
           meta_description: string
           published_at: string | null
+          search_text: string | null
           seo_title: string
           slug: string
           status: string
@@ -73,6 +74,7 @@ export type Database = {
           id?: string
           meta_description?: string
           published_at?: string | null
+          search_text?: string | null
           seo_title?: string
           slug: string
           status?: string
@@ -89,6 +91,7 @@ export type Database = {
           id?: string
           meta_description?: string
           published_at?: string | null
+          search_text?: string | null
           seo_title?: string
           slug?: string
           status?: string

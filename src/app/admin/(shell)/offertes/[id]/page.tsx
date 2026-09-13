@@ -7,22 +7,22 @@ import { requireAdminAccess } from "@/lib/admin/access";
 import { listCustomers } from "@/lib/admin/customers/repository";
 import { toDateKey } from "@/lib/admin/format";
 import { listProjects } from "@/lib/admin/projects/repository";
-import { getQuote } from "@/lib/admin/quotes/repository";
+import { readQuote } from "@/lib/admin/readers";
 
 type PageProps = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   await requireAdminAccess();
   const { id } = await params;
-  const item = await getQuote(id);
+  const item = await readQuote(id);
   return { title: item ? `${item.number.value} · Offertes` : "Offerte" };
 }
 
 export default async function QuotesDetailPage({ params }: PageProps) {
   await requireAdminAccess();
   const { id } = await params;
-  const item = await getQuote(id);
-  const [customers, projects] = await Promise.all([listCustomers(), listProjects()]);
+  /* The quote and the lists the builder offers are independent reads. */
+  const [item, customers, projects] = await Promise.all([readQuote(id), listCustomers(), listProjects()]);
 
   if (!item) {
     notFound();

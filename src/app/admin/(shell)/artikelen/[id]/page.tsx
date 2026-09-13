@@ -4,22 +4,22 @@ import { notFound } from "next/navigation";
 import AdminPageHeader from "@/components/admin/admin-page-header";
 import ArticleEditor from "@/components/admin/articles/article-editor";
 import { requireAdminAccess } from "@/lib/admin/access";
-import { getArticle } from "@/lib/admin/articles/repository";
 import { toDateKey } from "@/lib/admin/format";
+import { readArticle } from "@/lib/admin/readers";
 
 type PageProps = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   await requireAdminAccess();
   const { id } = await params;
-  const article = await getArticle(id);
+  const article = await readArticle(id);
   return { title: article ? `${article.title} · Artikelen` : "Artikel" };
 }
 
 export default async function ArticlePage({ params }: PageProps) {
   await requireAdminAccess();
   const { id } = await params;
-  const article = await getArticle(id);
+  const article = await readArticle(id);
 
   if (!article) {
     notFound();

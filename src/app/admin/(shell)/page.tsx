@@ -36,13 +36,18 @@ export default async function AdminDashboardPage() {
 
   const now = new Date();
   const todayKey = toDateKey(now);
-  const inquiries = await listInquiries();
-  const leads = await listLeads();
-  const customers = await listCustomers();
-  const quotes = await listQuotes();
-  const invoices = await listInvoices();
-  const projects = await listProjects();
-  const payments = await listPayments();
+  /* Seven independent reads. None of them needs an answer from another, so
+     they travel together: sequentially this is seven round trips to Supabase
+     before the first row is counted. */
+  const [inquiries, leads, customers, quotes, invoices, projects, payments] = await Promise.all([
+    listInquiries(),
+    listLeads(),
+    listCustomers(),
+    listQuotes(),
+    listInvoices(),
+    listProjects(),
+    listPayments(),
+  ]);
 
   /* Derived from the invoices and payments, the same way the customer page
      and the payments module derive it. One computation, three readers. */

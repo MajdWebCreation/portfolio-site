@@ -5,22 +5,22 @@ import AdminPageHeader from "@/components/admin/admin-page-header";
 import InquiryDetail from "@/components/admin/inquiries/inquiry-detail";
 import { requireAdminAccess } from "@/lib/admin/access";
 import { getCustomerIdForSource } from "@/lib/admin/customers/repository";
-import { getInquiry } from "@/lib/admin/inquiries/repository";
 import { inquiryOriginLabels } from "@/lib/admin/inquiries/types";
+import { readInquiry } from "@/lib/admin/readers";
 
 type PageProps = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   await requireAdminAccess();
   const { id } = await params;
-  const inquiry = await getInquiry(id);
+  const inquiry = await readInquiry(id);
   return { title: inquiry ? `${inquiry.name} · Aanvragen` : "Aanvraag" };
 }
 
 export default async function InquiryPage({ params }: PageProps) {
   await requireAdminAccess();
   const { id } = await params;
-  const inquiry = await getInquiry(id);
+  const inquiry = await readInquiry(id);
 
   if (!inquiry) {
     notFound();

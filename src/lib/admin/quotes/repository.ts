@@ -69,6 +69,21 @@ export async function listQuotes(): Promise<Quote[]> {
   return ((data ?? []) as unknown as QuoteWithLines[]).map(quoteFromRow);
 }
 
+/**
+ * The quotes of one customer, newest change first. Scoped the same way as
+ * `listInvoicesForCustomer`, and on `quotes_customer_idx`.
+ */
+export async function listQuotesForCustomer(customerId: string): Promise<Quote[]> {
+  const db = await adminDb();
+  const { data, error } = await db
+    .from("quotes")
+    .select(columns)
+    .eq("customer_id", customerId)
+    .order("updated_at", { ascending: false });
+  failed("Offertes van klant laden", error);
+  return ((data ?? []) as unknown as QuoteWithLines[]).map(quoteFromRow);
+}
+
 /** The quotes filed under one project, newest issue date first. */
 export async function listQuotesForProject(projectId: string): Promise<Quote[]> {
   const db = await adminDb();

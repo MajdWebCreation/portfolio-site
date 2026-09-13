@@ -144,7 +144,7 @@ export default function CustomerDetail({
           activations={recurringActivations}
         />
 
-        <CustomerDocuments customerId={customer.id} quotes={quotes} invoices={invoices} />
+        <CustomerDocuments quotes={quotes} invoices={invoices} />
       </aside>
     </div>
   );

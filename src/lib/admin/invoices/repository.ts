@@ -10,6 +10,25 @@ export async function listInvoices(): Promise<Invoice[]> {
   return ((data ?? []) as unknown as InvoiceRow[]).map(invoiceFromRow);
 }
 
+/**
+ * The invoices of one customer, newest change first -- the order the invoice
+ * list uses, so a customer page shows them the way the module does.
+ *
+ * Scoped in the query rather than filtered afterwards: the customer page used
+ * to read every invoice in the database to show the handful that belong to one
+ * customer. `invoices_customer_idx` is the index for it.
+ */
+export async function listInvoicesForCustomer(customerId: string): Promise<Invoice[]> {
+  const db = await adminDb();
+  const { data, error } = await db
+    .from("invoices")
+    .select(invoiceColumns)
+    .eq("customer_id", customerId)
+    .order("updated_at", { ascending: false });
+  failed("Facturen van klant laden", error);
+  return ((data ?? []) as unknown as InvoiceRow[]).map(invoiceFromRow);
+}
+
 /** The invoices filed under one project, newest issue date first. */
 export async function listInvoicesForProject(projectId: string): Promise<Invoice[]> {
   const db = await adminDb();

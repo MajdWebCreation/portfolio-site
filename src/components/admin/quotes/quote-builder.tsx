@@ -1,10 +1,10 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import AdminSection from "@/components/admin/admin-section";
 import CustomerSelect from "@/components/admin/documents/customer-select";
+import DocumentPanel from "@/components/admin/documents/document-panel";
 import DocumentStatus from "@/components/admin/documents/document-status";
 import DocumentTotalsView from "@/components/admin/documents/document-totals";
 import LineItemsEditor, { newLine } from "@/components/admin/documents/line-items-editor";
@@ -19,8 +19,6 @@ import type { Project } from "@/lib/admin/projects/types";
 import { saveQuote } from "@/lib/admin/quotes/actions";
 import { isQuoteStatus, quoteStatusLabels, quoteStatusOrder, quoteStatusTone, type Quote } from "@/lib/admin/quotes/types";
 import { calculateTotals } from "@/lib/money";
-
-const PdfPanel = dynamic(() => import("@/components/admin/documents/pdf-panel"), { ssr: false, loading: () => <p className="text-[0.85rem] text-muted">PDF-module laden…</p> });
 
 type Errors = Partial<Record<"customer" | "issueDate" | "validUntil" | "subject" | "lines", string>>;
 
@@ -180,7 +178,7 @@ export default function QuoteBuilder({ stored, customers, projects, todayKey }: 
           <DocumentStatus value={quote.status} order={quoteStatusOrder} labels={quoteStatusLabels} tones={quoteStatusTone} onChange={(value) => (isQuoteStatus(value) ? update("status", value) : null)} edited={false} />
         </div>
         <div className="border-t border-line pt-6">
-          <PdfPanel document={{ kind: "quote", quote }} fileName={`${quote.number.value}.pdf`} ready={ready} />
+          <DocumentPanel document={{ kind: "quote", quote }} fileName={`${quote.number.value}.pdf`} ready={ready} />
         </div>
       </aside>
     </div>

@@ -1,10 +1,10 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import AdminSection from "@/components/admin/admin-section";
 import CustomerSelect from "@/components/admin/documents/customer-select";
+import DocumentPanel from "@/components/admin/documents/document-panel";
 import DocumentStatus from "@/components/admin/documents/document-status";
 import DocumentTotalsView from "@/components/admin/documents/document-totals";
 import LineItemsEditor, { newLine } from "@/components/admin/documents/line-items-editor";
@@ -22,8 +22,6 @@ import type { Project } from "@/lib/admin/projects/types";
 import { invoiceStatusLabels, invoiceStatusOrder, invoiceStatusTone, isInvoiceStatus, type Invoice } from "@/lib/admin/invoices/types";
 import type { InvoiceActivationView } from "@/lib/payments/activation-view";
 import { calculateTotals } from "@/lib/money";
-
-const PdfPanel = dynamic(() => import("@/components/admin/documents/pdf-panel"), { ssr: false, loading: () => <p className="text-[0.85rem] text-muted">PDF-module laden…</p> });
 
 type Errors = Partial<Record<"customer" | "issueDate" | "dueDate" | "lines", string>>;
 
@@ -229,7 +227,7 @@ export default function InvoiceBuilder({ stored, customers, projects, quoteProje
           <DocumentStatus value={invoice.status} order={invoiceStatusOrder} labels={invoiceStatusLabels} tones={invoiceStatusTone} onChange={(value) => (isInvoiceStatus(value) ? update("status", value) : null)} edited={false} />
         </div>
         <div className="border-t border-line pt-6">
-          <PdfPanel document={{ kind: "invoice", invoice }} fileName={`${invoice.number.value}.pdf`} ready={ready} />
+          <DocumentPanel document={{ kind: "invoice", invoice }} fileName={`${invoice.number.value}.pdf`} ready={ready} />
         </div>
       </aside>
     </div>

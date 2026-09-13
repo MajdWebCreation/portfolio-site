@@ -6,21 +6,21 @@ import LeadDetail from "@/components/admin/leads/lead-detail";
 import { requireAdminAccess } from "@/lib/admin/access";
 import { getCustomerIdForSource } from "@/lib/admin/customers/repository";
 import { toDateKey } from "@/lib/admin/format";
-import { getLead } from "@/lib/admin/leads/repository";
+import { readLead } from "@/lib/admin/readers";
 
 type PageProps = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   await requireAdminAccess();
   const { id } = await params;
-  const lead = await getLead(id);
+  const lead = await readLead(id);
   return { title: lead ? `${lead.companyName} · Leads` : "Lead" };
 }
 
 export default async function LeadPage({ params }: PageProps) {
   await requireAdminAccess();
   const { id } = await params;
-  const lead = await getLead(id);
+  const lead = await readLead(id);
 
   if (!lead) {
     notFound();

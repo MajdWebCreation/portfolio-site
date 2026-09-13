@@ -11,20 +11,31 @@ import type { FeaturedImage } from "@/lib/admin/articles/media";
  */
 export type ArticleStatus = "draft" | "published";
 
-export type Article = {
+/**
+ * What the article list shows, and nothing else.
+ *
+ * The list used to be handed whole articles, which meant every editor document
+ * in the library travelled to the browser -- about half a megabyte of JSON --
+ * so that a search field could look through it. Searching is the database's
+ * job now (see `listArticles`), and this is what is left to render a row.
+ */
+export type ArticleSummary = {
   id: string;
   title: string;
   slug: string;
-  /** Lede under the title on the public page, also the list intro. */
-  excerpt: string;
-  content: ArticleDoc;
   status: ArticleStatus;
   category: BlogCategory;
-  author?: string;
   /** ISO date (YYYY-MM-DD) of publication, when set. */
   publishedAt?: string;
   /** ISO timestamp of the last change. */
   updatedAt: string;
+};
+
+export type Article = ArticleSummary & {
+  /** Lede under the title on the public page, also the list intro. */
+  excerpt: string;
+  content: ArticleDoc;
+  author?: string;
   seoTitle: string;
   metaDescription: string;
   /** Object path in the article-media bucket plus its alt text. */

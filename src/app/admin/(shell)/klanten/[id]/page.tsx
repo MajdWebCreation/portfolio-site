@@ -4,13 +4,11 @@ import { notFound } from "next/navigation";
 import AdminPageHeader from "@/components/admin/admin-page-header";
 import CustomerDetail from "@/components/admin/customers/customer-detail";
 import { requireAdminAccess } from "@/lib/admin/access";
-import { getCustomer } from "@/lib/admin/customers/repository";
 import { toDateKey } from "@/lib/admin/format";
-import { getInquiry } from "@/lib/admin/inquiries/repository";
-import { listInvoices } from "@/lib/admin/invoices/repository";
-import { getLead } from "@/lib/admin/leads/repository";
+import { listInvoicesForCustomer } from "@/lib/admin/invoices/repository";
 import { listProjectsForCustomer } from "@/lib/admin/projects/repository";
-import { listQuotes } from "@/lib/admin/quotes/repository";
+import { listQuotesForCustomer } from "@/lib/admin/quotes/repository";
+import { readCustomer, readInquiry, readLead } from "@/lib/admin/readers";
 import { activationSummaries } from "@/lib/payments/activation-view";
 import { customerFinancials } from "@/lib/payments/customer-status";
 import { recurringOverview, type RecurringOverview } from "@/lib/payments/prenotification";
@@ -25,14 +23,14 @@ type PageProps = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   await requireAdminAccess();
   const { id } = await params;
-  const customer = await getCustomer(id);
+  const customer = await readCustomer(id);
   return { title: customer ? `${customer.companyName} · Klanten` : "Klant" };
 }
 
 export default async function CustomerPage({ params }: PageProps) {
   await requireAdminAccess();
   const { id } = await params;
-  const customer = await getCustomer(id);
+  const customer = await readCustomer(id);
 
   if (!customer) {
     notFound();
@@ -40,10 +38,10 @@ export default async function CustomerPage({ params }: PageProps) {
 
   const [sourceInquiry, sourceLead, quotes, invoices, projects, payments, recurringServices, prenotifications] =
     await Promise.all([
-      customer.sourceInquiryId ? getInquiry(customer.sourceInquiryId) : undefined,
-      customer.sourceLeadId ? getLead(customer.sourceLeadId) : undefined,
-      listQuotes(),
-      listInvoices(),
+      customer.sourceInquiryId ? readInquiry(customer.sourceInquiryId) : undefined,
+      customer.sourceLeadId ? readLead(customer.sourceLeadId) : undefined,
+      listQuotesForCustomer(customer.id),
+      listInvoicesForCustomer(customer.id),
       listProjectsForCustomer(customer.id),
       listPaymentsForCustomer(customer.id),
       listRecurringServicesForCustomer(customer.id),
@@ -74,11 +72,9 @@ export default async function CustomerPage({ params }: PageProps) {
 
   const activations = await activationSummaries(recurringServices);
 
-  const financials = customerFinancials(
-    invoices.filter((invoice) => invoice.customer.customerId === customer.id),
-    payments,
-    todayKey,
-  );
+  // The invoices and payments read above are this customer's already, so
+  // there is nothing left to filter out here.
+  const financials = customerFinancials(invoices, payments, todayKey);
 
   return (
     <div className="space-y-8">

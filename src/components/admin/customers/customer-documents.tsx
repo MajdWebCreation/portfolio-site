@@ -5,15 +5,12 @@ import { invoiceStatusLabels, invoiceStatusTone, type Invoice } from "@/lib/admi
 import { quoteStatusLabels, quoteStatusTone, type Quote } from "@/lib/admin/quotes/types";
 import { calculateTotals, formatCents } from "@/lib/money";
 
-type CustomerDocumentsProps = { customerId: string; quotes: Quote[]; invoices: Invoice[] };
+type CustomerDocumentsProps = { quotes: Quote[]; invoices: Invoice[] };
 
 const day = (key: string) => formatDate(`${key}T12:00:00+02:00`);
 
-/** The stored quotes and invoices of one customer. */
-export default function CustomerDocuments({ customerId, quotes: allQuotes, invoices: allInvoices }: CustomerDocumentsProps) {
-  const quotes = allQuotes.filter((quote) => quote.customer.customerId === customerId);
-  const invoices = allInvoices.filter((invoice) => invoice.customer.customerId === customerId);
-
+/** The stored quotes and invoices of one customer, read by customer already. */
+export default function CustomerDocuments({ quotes, invoices }: CustomerDocumentsProps) {
   const list = <T extends Quote | Invoice>(items: T[], href: string, empty: string, status: (item: T) => React.ReactNode) =>
     items.length === 0 ? (
       <p className="mt-3 text-[0.9rem] text-muted">{empty}</p>

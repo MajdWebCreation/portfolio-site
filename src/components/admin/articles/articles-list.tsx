@@ -1,42 +1,73 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import CtaLink from "@/components/cta-link";
 import { FilterBar, FilterSelect, SearchField } from "@/components/admin/filter-bar";
 import StatusBadge from "@/components/admin/status-badge";
-import { docToPlainText } from "@/lib/admin/articles/doc";
 import {
   articleStateLabel,
   articleStateTone,
   articleStatusLabels,
   articleStatusOrder,
   isScheduled,
-  type Article,
+  type ArticleSummary,
 } from "@/lib/admin/articles/types";
 import { formatDate, formatDateTime } from "@/lib/admin/format";
 import { getBlogCategoryLabel } from "@/lib/content/blog";
 
-export default function ArticlesList({ articles, todayKey }: { articles: Article[]; todayKey: string }) {
+type ArticlesListProps = { articles: ArticleSummary[]; todayKey: string; search: string };
+
+/**
+ * Two filters, answered in two different places on purpose.
+ *
+ * Status is a property of the rows already on screen, so it is decided here
+ * and takes effect as the selection changes. Searching reads the article text,
+ * which lives in the database and stays there -- the term goes into the URL,
+ * the server searches, and the rows come back. The field stays responsive
+ * because what you type is local state; only the query is debounced.
+ */
+export default function ArticlesList({ articles, todayKey, search }: ArticlesListProps) {
+  const router = useRouter();
   const [status, setStatus] = useState("all");
-  const [query, setQuery] = useState("");
+  const [term, setTerm] = useState(search);
+  const [applied, setApplied] = useState(search);
+  const [searching, startSearch] = useTransition();
 
-  const rows = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return articles
-      .filter((article) => {
-        if (status === "all") return true;
-        if (status === "scheduled") return isScheduled(article, todayKey);
-        if (status === "published") return article.status === "published" && !isScheduled(article, todayKey);
-        return article.status === status;
-      })
-      .filter(
-        (article) =>
-          !needle || [article.title, article.slug, article.excerpt, docToPlainText(article.content)].join(" ").toLowerCase().includes(needle),
-      )
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [articles, status, query, todayKey]);
+  // A search that arrives from elsewhere -- the back button, a shared link --
+  // is what the field should show. Adjusted while rendering rather than in an
+  // effect, so the field never paints the old term first.
+  if (search !== applied) {
+    setApplied(search);
+    setTerm(search);
+  }
 
+  useEffect(() => {
+    const next = term.trim();
+    if (next === search) return;
+
+    const timer = setTimeout(() => {
+      startSearch(() => {
+        router.replace(next ? `/admin/artikelen?q=${encodeURIComponent(next)}` : "/admin/artikelen", { scroll: false });
+      });
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [term, search, router]);
+
+  const rows = useMemo(
+    () =>
+      articles
+        .filter((article) => {
+          if (status === "all") return true;
+          if (status === "scheduled") return isScheduled(article, todayKey);
+          if (status === "published") return article.status === "published" && !isScheduled(article, todayKey);
+          return article.status === status;
+        })
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    [articles, status, todayKey],
+  );
 
   return (
     <div className="space-y-5">
@@ -51,7 +82,7 @@ export default function ArticlesList({ articles, todayKey }: { articles: Article
             ))}
             <option value="scheduled">Ingepland</option>
           </FilterSelect>
-          <SearchField id="article-search" label="Zoeken" value={query} onChange={setQuery} placeholder="Titel, slug of tekst" />
+          <SearchField id="article-search" label="Zoeken" value={term} onChange={setTerm} placeholder="Titel, slug of tekst" />
         </FilterBar>
         <CtaLink href="/admin/artikelen/nieuw" className="max-sm:w-full">
           Nieuw artikel
@@ -59,7 +90,7 @@ export default function ArticlesList({ articles, todayKey }: { articles: Article
       </div>
 
       <p className="text-[0.85rem] text-muted" aria-live="polite">
-        {rows.length} van {articles.length} artikelen
+        {searching ? "Zoeken…" : `${rows.length} van ${articles.length} artikelen`}
       </p>
 
       {rows.length === 0 ? (
