@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { isAuthorisedCronRequest } from "@/lib/cron/auth";
 import { toDateKey } from "@/lib/admin/format";
 import { hasPaymentsAdminAccess, paymentsAdminClient } from "@/lib/payments/admin-client";
 import { invoiceLinks } from "@/lib/admin/communications/links";
@@ -24,20 +24,8 @@ import { createPrenotificationStore } from "@/lib/payments/prenotification-store
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-function authorised(request: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-
-  const header = request.headers.get("authorization") ?? "";
-  const expected = `Bearer ${secret}`;
-  const given = Buffer.from(header);
-  const wanted = Buffer.from(expected);
-  // Same length check first: timingSafeEqual throws on a mismatch.
-  return given.length === wanted.length && timingSafeEqual(given, wanted);
-}
-
 async function handle(request: Request): Promise<Response> {
-  if (!authorised(request)) {
+  if (!isAuthorisedCronRequest(request)) {
     // Say nothing about why; an unauthenticated caller learns only that it
     // is not welcome.
     return new Response("Not found", { status: 404 });

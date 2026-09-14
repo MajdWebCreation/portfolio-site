@@ -12,7 +12,10 @@ import { listLeads } from "@/lib/admin/leads/repository";
 import { listProjects } from "@/lib/admin/projects/repository";
 import { listQuotes } from "@/lib/admin/quotes/repository";
 import { customerFinancials } from "@/lib/payments/customer-status";
-import { listPayments } from "@/lib/payments/repository";
+import { listCollectionEvents, listCollectionStates } from "@/lib/payments/collection-repository";
+import { invoiceCollectionViews } from "@/lib/payments/collection-state";
+import { listPayments, listRecurringServices } from "@/lib/payments/repository";
+import { isCollecting } from "@/lib/payments/types";
 import { getFollowUpState } from "@/lib/admin/leads/types";
 import { getDeadlineState, isOpenProject } from "@/lib/admin/projects/types";
 import { adminModules, getAdminModulePath } from "@/lib/admin/modules";
@@ -36,18 +39,22 @@ export default async function AdminDashboardPage() {
 
   const now = new Date();
   const todayKey = toDateKey(now);
-  /* Seven independent reads. None of them needs an answer from another, so
-     they travel together: sequentially this is seven round trips to Supabase
+  /* Ten independent reads. None of them needs an answer from another, so
+     they travel together: sequentially this is ten round trips to Supabase
      before the first row is counted. */
-  const [inquiries, leads, customers, quotes, invoices, projects, payments] = await Promise.all([
-    listInquiries(),
-    listLeads(),
-    listCustomers(),
-    listQuotes(),
-    listInvoices(),
-    listProjects(),
-    listPayments(),
-  ]);
+  const [inquiries, leads, customers, quotes, invoices, projects, payments, services, collectionEvents, collectionStates] =
+    await Promise.all([
+      listInquiries(),
+      listLeads(),
+      listCustomers(),
+      listQuotes(),
+      listInvoices(),
+      listProjects(),
+      listPayments(),
+      listRecurringServices(),
+      listCollectionEvents(),
+      listCollectionStates(),
+    ]);
 
   /* Derived from the invoices and payments, the same way the customer page
      and the payments module derive it. One computation, three readers. */
@@ -59,6 +66,20 @@ export default async function AdminDashboardPage() {
     ),
   );
   const overdueCustomers = balances.filter((item) => item.status === "overdue" || item.status === "payment_failed").length;
+
+  /*
+    Invoices the reminder ladder has run out on. Nothing happens to these
+    automatically -- that is the point of counting them here: they are waiting
+    on a decision only a person makes.
+  */
+  const readyForCollection = invoiceCollectionViews({
+    invoices,
+    payments,
+    events: collectionEvents,
+    states: collectionStates,
+    collectingServiceIds: new Set(services.filter(isCollecting).map((service) => service.id)),
+    todayKey,
+  }).filter((row) => row.view.collectionReady).length;
 
   const openProjects = projects.filter(isOpenProject).length;
   const overdueProjects = projects.filter((project) => getDeadlineState(project, todayKey) === "overdue").length;
@@ -125,6 +146,14 @@ export default async function AdminDashboardPage() {
       label: "Betalingen",
       state: "Klanten achterstallig of mislukt",
       count: overdueCustomers,
+      tone: "danger",
+      href: "/admin/betalingen",
+    },
+    {
+      key: "invoices-collection-ready",
+      label: "Facturen",
+      state: "Incasso gereed",
+      count: readyForCollection,
       tone: "danger",
       href: "/admin/betalingen",
     },

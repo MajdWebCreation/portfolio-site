@@ -30,10 +30,14 @@ const files = sourceFiles(root).map((path) => ({
   source: readFileSync(path, "utf8"),
 }));
 
-const migration = readFileSync(
-  join(process.cwd(), "supabase/migrations/20260914202516_customer_communications.sql"),
-  "utf8",
-);
+const migrationDir = join(process.cwd(), "supabase/migrations");
+/* Every migration, in the order they are applied. */
+const migrationFiles = readdirSync(migrationDir)
+  .filter((name) => name.endsWith(".sql"))
+  .sort()
+  .map((name) => ({ name, source: readFileSync(join(migrationDir, name), "utf8") }));
+
+const migration = readFileSync(join(migrationDir, "20260914202516_customer_communications.sql"), "utf8");
 
 describe("one door out", () => {
   /*
@@ -148,9 +152,21 @@ describe("the table", () => {
     expect(allowed).toEqual(["sent", "failed"]);
   });
 
-  /* The check constraint and the TypeScript union are one list. */
+  /*
+    The check constraint and the TypeScript union are one list.
+
+    Read from whichever migration last defined the constraint, not from the
+    one that created the table: a later migration may widen it, and what
+    matters is the list that is in force.
+  */
   it("allows exactly the categories the application can write", () => {
-    const list = migration.slice(migration.indexOf("category text not null check (category in ("));
+    const marker = "check (category in (";
+    const defining = migrationFiles
+      .filter(({ source }) => source.includes(marker))
+      .at(-1);
+    expect(defining, "no migration defines the category check").toBeDefined();
+
+    const list = defining!.source.slice(defining!.source.lastIndexOf(marker));
     const allowed = [...list.slice(0, list.indexOf("))")).matchAll(/'([a-z_]+)'/g)].map(([, value]) => value);
     expect(allowed.sort()).toEqual([...communicationCategoryOrder].sort());
   });

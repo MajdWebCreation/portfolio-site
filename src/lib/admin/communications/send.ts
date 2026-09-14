@@ -23,14 +23,18 @@ import { deliverEmail, type DeliveryResult, type OutboundEmail } from "@/lib/adm
  * customer received two mails; a log that quietly overwrote the first would
  * be telling the admin something that did not happen.
  */
+export type SendCustomerEmailResult =
+  | { sent: true; sentAt: string; messageId?: string; communicationId?: string }
+  | Extract<DeliveryResult, { sent: false }>;
+
 export async function sendCustomerEmail(
   email: OutboundEmail,
   context: CommunicationContext,
-): Promise<DeliveryResult> {
+): Promise<SendCustomerEmailResult> {
   const delivery = await deliverEmail(email);
   if (!delivery.sent) return delivery;
 
-  await recordCommunication(context, {
+  const communicationId = await recordCommunication(context, {
     recipient: email.to,
     subject: email.subject,
     bodyText: email.text,
@@ -39,7 +43,7 @@ export async function sendCustomerEmail(
     ...(delivery.messageId ? { providerMessageId: delivery.messageId } : {}),
   });
 
-  return delivery;
+  return { ...delivery, ...(communicationId ? { communicationId } : {}) };
 }
 
 export type { CommunicationContext } from "@/lib/admin/communications/log";

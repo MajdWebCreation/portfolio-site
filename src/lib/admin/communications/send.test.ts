@@ -48,8 +48,32 @@ describe("a mail that was accepted", () => {
   it("leaves exactly one communication behind", async () => {
     const result = await sendCustomerEmail(message, context());
 
-    expect(result).toEqual({ sent: true, sentAt: "2026-09-14T09:00:00.000Z", messageId: "resend-1" });
+    expect(result).toMatchObject({ sent: true, sentAt: "2026-09-14T09:00:00.000Z", messageId: "resend-1" });
     expect(rows()).toHaveLength(1);
+  });
+
+  /* The id of the row it wrote, so a caller keeping its own record of the
+     send can point at the same communication instead of describing it twice. */
+  it("reports which communication it wrote", async () => {
+    const result = await sendCustomerEmail(message, context());
+
+    expect(result.sent && result.communicationId).toBe(rows()[0].id);
+  });
+
+  /* A log that could not be written must not invent an id. */
+  it("reports no communication when the log write failed", async () => {
+    const broken = {
+      from: () => ({
+        insert: () => ({ select: () => ({ maybeSingle: async () => ({ data: null, error: { message: "nope" } }) }) }),
+      }),
+    } as unknown as CommunicationClient;
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await sendCustomerEmail(message, context({ db: broken }));
+
+    expect(result.sent).toBe(true);
+    expect(result.sent && result.communicationId).toBeUndefined();
+    error.mockRestore();
   });
 
   it("writes down what was sent, to whom, and what the provider called it", async () => {
@@ -143,7 +167,11 @@ describe("a mail that never left", () => {
 describe("a log that cannot be written", () => {
   it("does not turn a delivered mail into a failure", async () => {
     const broken = {
-      from: () => ({ insert: async () => ({ error: { message: "permission denied" } }) }),
+      from: () => ({
+        insert: () => ({
+          select: () => ({ maybeSingle: async () => ({ data: null, error: { message: "permission denied" } }) }),
+        }),
+      }),
     } as unknown as CommunicationClient;
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
 

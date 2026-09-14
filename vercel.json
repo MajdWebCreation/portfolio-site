@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/debit-prenotifications",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/payment-reminders",
+      "schedule": "0 8 * * *"
     }
   ]
 }

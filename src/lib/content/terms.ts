@@ -1,8 +1,18 @@
 /**
- * Algemene Voorwaarden B2B van YM Creations, versie 1.0 (10 september 2026).
+ * Algemene Voorwaarden B2B van YM Creations, editie 2026.
  *
- * Generated verbatim from the PDF in public/legal; the PDF is the legal source.
- * Do not edit the wording here: replace the PDF and regenerate instead.
+ * This module is the legal source. The page at /nl/algemene-voorwaarden and
+ * the PDF in public/legal are both rendered from it, so the two cannot drift
+ * apart -- run `node scripts/make-terms-pdf.mjs` after editing to rebuild the
+ * PDF. It used to be the other way round, with the PDF as the original and
+ * this file transcribed from it; that made every correction a two-document
+ * job with no way to prove the two still said the same thing.
+ *
+ * Outward the terms are identified by the year, never by a version number:
+ * a customer signs "Algemene Voorwaarden B2B - 2026", not "v1.1". The exact
+ * publication date stays below for the administration, because which set a
+ * customer accepted has to remain provable; it is not a second version name
+ * and a correction does not make a new edition of it.
  */
 
 export type TermsClause = { number: string; text: string };
@@ -23,17 +33,23 @@ export type TermsTable = {
 export type TermsNote = { heading: string; text: string };
 
 export const termsDocument = {
-  version: "1.0",
-  dateIso: "2026-09-10",
-  dateLabel: "10 september 2026",
-  versionLine: "Versie 1.0 - 10 september 2026",
+  /** The outward name of this set: the year, and nothing else. */
+  edition: "2026",
+  /** Internal publication date of this edition, for the administration. */
+  dateIso: "2026-09-14",
+  dateLabel: "14 september 2026",
+  /** Full title, as the page and the PDF show it. */
+  documentTitle: "YM Creations — Algemene Voorwaarden B2B — 2026",
+  /** Short form, for a reference in an offer or a footer. */
+  shortLabel: "Voorwaarden 2026",
+  versionLine: "Algemene Voorwaarden B2B — 2026",
   title: "Algemene Voorwaarden",
   audience: "B2B",
   subtitle: "Websiteontwikkeling, webshops, webapplicaties, portals, 3D-configurators, integraties, hosting en technisch beheer.",
   pdf: {
-  "path": "/legal/YM_Creations_Algemene_Voorwaarden_B2B_v1.0.pdf",
-  "fileName": "YM_Creations_Algemene_Voorwaarden_B2B_v1.0.pdf",
-  "sizeLabel": "200 kB"
+  "path": "/legal/YM_Creations_Algemene_Voorwaarden_B2B_2026.pdf",
+  "fileName": "YM_Creations_Algemene_Voorwaarden_B2B_2026.pdf",
+  "sizeLabel": "PDF"
 },
   colophon: "YM Creations - KvK 96175354 - contact@ymcreations.com - +31 6 53400220 - ymcreations.com",
   contentsHeading: "Inhoud",
@@ -280,7 +296,39 @@ export const termsDocument = {
       },
       {
         "number": "9.7",
-        "text": "Bij te late betaling is de klant na het intreden van verzuim de wettelijke handelsrente en redelijke buitengerechtelijke incassokosten verschuldigd volgens het toepasselijke recht."
+        "text": "Een factuur moet uiterlijk op de vervaldatum zijn voldaan. Omdat sprake is van een handelsovereenkomst treedt het verzuim in zonder dat een ingebrekestelling nodig is: de klant is vanaf de dag na de vervaldatum van rechtswege in verzuim."
+      },
+      {
+        "number": "9.8",
+        "text": "Vanaf de dag na de vervaldatum is over het openstaande bedrag de wettelijke handelsrente verschuldigd, voor zover deze op de overeenkomst van toepassing is. YM Creations hanteert geen eigen rentepercentage; bepalend is het wettelijke percentage zoals dat van tijd tot tijd geldt."
+      },
+      {
+        "number": "9.9",
+        "text": "Naast de in artikel 9.8 bedoelde rente kan YM Creations bij te late betaling aanspraak maken op één vergoeding voor buitengerechtelijke invorderingskosten volgens het toepasselijke recht. YM Creations kiest ervoor eerst kosteloos een of meer betalingsherinneringen te sturen."
+      },
+      {
+        "number": "9.10",
+        "text": "Blijft betaling na die herinnering of herinneringen uit, dan mag YM Creations voor de verdere betalingsopvolging aanvankelijk een bedrag van EUR 20,00 per openstaande factuur in rekening brengen. Dit bedrag is niet verschuldigd door het enkele verstrijken van de vervaldatum; het wordt pas verschuldigd op het moment waarop YM Creations het uitdrukkelijk schriftelijk bij de klant in rekening brengt, onder vermelding van het bedrag."
+      },
+      {
+        "number": "9.11",
+        "text": "In afwijking van artikel 8.1 is het in artikel 9.10 genoemde bedrag het volledige bedrag dat de klant voor die betalingsopvolging in rekening krijgt gebracht; een eventueel daarover verschuldigde btw is daarin begrepen. De fiscale kwalificatie van dit bedrag doet aan de hoogte ervan niet af."
+      },
+      {
+        "number": "9.12",
+        "text": "Het in artikel 9.10 genoemde bedrag is een eerste, gedeeltelijke aanspraak binnen de in artikel 9.9 bedoelde vergoeding en komt daar niet bovenop. Vordert YM Creations op enig moment de volledige vergoeding voor buitengerechtelijke invorderingskosten, dan wordt het reeds in rekening gebrachte bedrag daarop volledig in mindering gebracht, zodat de klant deze kosten nooit dubbel verschuldigd is."
+      },
+      {
+        "number": "9.13",
+        "text": "Door aanvankelijk slechts het in artikel 9.10 genoemde bedrag te verlangen doet YM Creations geen afstand van het meerdere. Blijft betaling uit, dan kan YM Creations alsnog de volledige vergoeding vorderen waarop zij volgens het toepasselijke recht aanspraak heeft, met inachtneming van de verrekening in artikel 9.12."
+      },
+      {
+        "number": "9.14",
+        "text": "Een herinnering, een aanvullende betaaltermijn, tijdelijke coulance of het voorlopig niet innen van rente of kosten wijzigt de oorspronkelijke vervaldatum niet en houdt geen afstand van recht in, tenzij YM Creations dit uitdrukkelijk schriftelijk bevestigt. Het ingetreden verzuim en de daaraan verbonden aanspraken blijven in stand."
+      },
+      {
+        "number": "9.15",
+        "text": "Dit artikel geldt onverkort voor facturen voor doorlopende dienstverlening, waaronder hosting, technisch beheer en andere periodieke diensten. Een mislukte, gestorneerde of niet uitgevoerde automatische incasso laat de onderliggende betalingsverplichting en de oorspronkelijke vervaldatum van de betreffende factuur ongewijzigd."
       }
     ]
   },
@@ -674,19 +722,43 @@ export const termsDocument = {
     "clauses": [
       {
         "number": "24.1",
-        "text": "Bij overschrijding van de betalingstermijn mag YM Creations de klant schriftelijk herinneren en een redelijke hersteltermijn geven."
+        "text": "Bij overschrijding van de vervaldatum mag YM Creations de klant een of meer schriftelijke betalingsherinneringen sturen en daarbij een redelijke aanvullende hersteltermijn geven."
       },
       {
         "number": "24.2",
-        "text": "Indien betaling daarna uitblijft, mag YM Creations verdere projectwerkzaamheden, nieuwe wijzigingen, support of andere samenhangende prestaties proportioneel opschorten voor zover de wet dit toestaat."
+        "text": "Het aantal herinneringen, het moment waarop deze worden verstuurd en de lengte van een aanvullende hersteltermijn bepaalt YM Creations zelf binnen de grenzen van de redelijkheid. Dit is een interne werkwijze die YM Creations mag aanpassen; de klant ontleent daaraan geen recht op een bepaald aantal herinneringen, een bepaalde termijn of uitstel van betaling."
       },
       {
         "number": "24.3",
-        "text": "Een productieomgeving wordt niet lichtvaardig of zonder redelijke waarschuwing uitgeschakeld. Indien doorlopende hosting/infrastructuurkosten of securityrisico's blijven doorlopen en de klant ondanks ingebrekestelling niet betaalt, kan YM Creations na redelijke kennisgeving de betreffende dienstverlening beperken of beëindigen voor zover proportioneel en rechtens toegestaan."
+        "text": "Blijft betaling na de vervaldatum en na een geboden hersteltermijn uit, dan mag YM Creations de wettelijke handelsrente en de toepasselijke vergoeding voor invorderings- en buitengerechtelijke incassokosten vorderen overeenkomstig artikel 9."
       },
       {
         "number": "24.4",
-        "text": "Opschorting laat de betalingsverplichtingen voor reeds geleverde diensten en doorlopende externe kosten onverlet."
+        "text": "Blijft betaling uit, dan mag YM Creations verdere projectwerkzaamheden, nieuwe wijzigingen, support en andere samenhangende prestaties proportioneel opschorten voor zover de wet dit toestaat."
+      },
+      {
+        "number": "24.5",
+        "text": "Een productieomgeving, website of andere operationele dienstverlening wordt niet lichtvaardig en niet zonder redelijke voorafgaande waarschuwing beperkt of uitgeschakeld. Indien doorlopende hosting- of infrastructuurkosten blijven doorlopen of securityrisico's ontstaan en de klant ondanks herinnering en ingebrekestelling niet betaalt, kan YM Creations na redelijke kennisgeving de betreffende dienstverlening beperken of beëindigen voor zover proportioneel en rechtens toegestaan."
+      },
+      {
+        "number": "24.6",
+        "text": "Bij de beoordeling of een beperking of opschorting proportioneel is, worden in ieder geval betrokken: de aard en het operationele belang van de dienstverlening, de hoogte en de ouderdom van de openstaande vordering, de voor YM Creations doorlopende externe kosten en eventuele securityrisico's. Artikel 17.5 blijft van toepassing."
+      },
+      {
+        "number": "24.7",
+        "text": "Opschorting, beperking of beëindiging laat de betalingsverplichting voor reeds geleverde diensten en voor doorlopende externe kosten onverlet. De periodieke vergoeding voor een doorlopende dienst blijft verschuldigd zolang die dienst niet rechtsgeldig is beëindigd, ook wanneer die dienst tijdelijk is beperkt."
+      },
+      {
+        "number": "24.8",
+        "text": "Blijft betaling na een redelijke laatste schriftelijke waarschuwing uit, dan mag YM Creations de vordering ter incasso overdragen aan een incassodienstverlener, gerechtsdeurwaarder, advocaat of andere daartoe bevoegde partij."
+      },
+      {
+        "number": "24.9",
+        "text": "Overdracht ter incasso gebeurt nooit automatisch en nooit uitsluitend op grond van een geautomatiseerd proces. YM Creations beoordeelt per geval of overdracht passend is en neemt dat besluit zelf."
+      },
+      {
+        "number": "24.10",
+        "text": "Dit artikel geldt onverkort voor doorlopende dienstverlening zoals hosting, technisch beheer en andere maandelijkse diensten, en voor facturen waarvan een automatische incasso niet is geslaagd."
       }
     ]
   },
@@ -812,19 +884,23 @@ export const termsDocument = {
     "clauses": [
       {
         "number": "29.1",
-        "text": "Een nieuwe versie van deze voorwaarden wijzigt bestaande overeenkomsten niet automatisch alleen doordat deze online wordt gepubliceerd."
+        "text": "Een nieuwe set van deze voorwaarden wijzigt bestaande overeenkomsten niet automatisch alleen doordat deze online wordt gepubliceerd."
       },
       {
         "number": "29.2",
-        "text": "Voor nieuwe opdrachten geldt de versie die bij de betreffende offerte correct ter beschikking is gesteld en geaccepteerd."
+        "text": "Voor nieuwe opdrachten geldt de set die bij de betreffende offerte correct ter beschikking is gesteld en geaccepteerd."
       },
       {
         "number": "29.3",
-        "text": "Voor doorlopende B2B-diensten kan YM Creations voorwaarden voor de toekomst wijzigen wanneer daarvoor een redelijke grond bestaat, mits de klant tijdig wordt geïnformeerd over de nieuwe versie, reden en ingangsdatum."
+        "text": "Voor doorlopende B2B-diensten kan YM Creations voorwaarden voor de toekomst wijzigen wanneer daarvoor een redelijke grond bestaat, mits de klant tijdig wordt geïnformeerd over de nieuwe set, de reden en de ingangsdatum."
       },
       {
         "number": "29.4",
         "text": "Bij een materieel nadelige wijziging overleggen partijen over redelijke aanpassing of beëindiging/migratie. Dwingend recht en de beperkende werking van redelijkheid en billijkheid blijven van toepassing."
+      },
+      {
+        "number": "29.5",
+        "text": "Deze voorwaarden worden extern aangeduid met het jaartal, bijvoorbeeld: Algemene Voorwaarden B2B - 2026. YM Creations legt intern van iedere set de exacte publicatie- en ingangsdatum vast. Bij iedere offerte en overeenkomst blijft aantoonbaar welke set ter beschikking is gesteld en van toepassing is; die set blijft voor die overeenkomst gelden totdat rechtsgeldig een andere set van toepassing wordt."
       }
     ]
   },
@@ -1003,7 +1079,7 @@ export const termsDocument = {
 ] as TermsClause[],
     },
   },
-  endLine: "Einde document - YM Creations Algemene Voorwaarden B2B - versie 1.0 - 10 september 2026",
+  endLine: "Einde document - YM Creations Algemene Voorwaarden B2B - 2026",
 };
 
 export type TermsDocument = typeof termsDocument;

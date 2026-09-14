@@ -27,7 +27,10 @@ export type CommunicationCategory =
   | "invoice_activation_sent"
   | "recurring_invoice_prenotification"
   | "recurring_invoice_settled"
-  | "direct_debit_activation";
+  | "direct_debit_activation"
+  | "payment_reminder_first"
+  | "payment_reminder_second"
+  | "payment_final_notice";
 
 export const communicationCategoryOrder: readonly CommunicationCategory[] = [
   "quote_sent",
@@ -36,6 +39,9 @@ export const communicationCategoryOrder: readonly CommunicationCategory[] = [
   "recurring_invoice_prenotification",
   "recurring_invoice_settled",
   "direct_debit_activation",
+  "payment_reminder_first",
+  "payment_reminder_second",
+  "payment_final_notice",
 ];
 
 export const communicationCategoryLabels: Record<CommunicationCategory, string> = {
@@ -45,6 +51,9 @@ export const communicationCategoryLabels: Record<CommunicationCategory, string> 
   recurring_invoice_prenotification: "Maandfactuur + vooraankondiging",
   recurring_invoice_settled: "Maandfactuur, reeds betaald",
   direct_debit_activation: "Incasso-activatielink",
+  payment_reminder_first: "Eerste betalingsherinnering",
+  payment_reminder_second: "Tweede betalingsherinnering",
+  payment_final_notice: "Laatste aanmaning",
 };
 
 /**
@@ -128,6 +137,12 @@ const groups: Record<CommunicationCategory, Exclude<CommunicationFilter, "all" |
   recurring_invoice_prenotification: "invoices",
   recurring_invoice_settled: "invoices",
   direct_debit_activation: "payments",
+  /* A reminder carries no document -- the invoice went out once, and this is
+     about getting it paid. That puts it with the mandate link rather than
+     with the mails that delivered a PDF. */
+  payment_reminder_first: "payments",
+  payment_reminder_second: "payments",
+  payment_final_notice: "payments",
 };
 
 /**

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import AdminPageHeader from "@/components/admin/admin-page-header";
 import AdminSection from "@/components/admin/admin-section";
 import StatusBadge from "@/components/admin/status-badge";
+import CollectionFollowUp, { type FollowUpRow } from "@/components/admin/payments/collection-follow-up";
 import CustomerBalances, { type CustomerBalance } from "@/components/admin/payments/customer-balances";
 import MollieCheck from "@/components/admin/payments/mollie-check";
 import PaymentsList from "@/components/admin/payments/payments-list";
@@ -12,6 +13,8 @@ import { toDateKey } from "@/lib/admin/format";
 import { listInvoices } from "@/lib/admin/invoices/repository";
 import { customerFinancials } from "@/lib/payments/customer-status";
 import { prenotificationStateLabels, prenotificationStateTone, recurringOverview } from "@/lib/payments/prenotification";
+import { listCollectionEvents, listCollectionStates } from "@/lib/payments/collection-repository";
+import { invoiceCollectionViews } from "@/lib/payments/collection-state";
 import { listPayments, listPrenotifications, listRecurringServices } from "@/lib/payments/repository";
 import { isCollecting, recurringStatusLabels, recurringStatusTone } from "@/lib/payments/types";
 import { formatDate } from "@/lib/admin/format";
@@ -22,13 +25,16 @@ export const metadata: Metadata = { title: "Betalingen" };
 export default async function PaymentsPage() {
   await requireAdminAccess();
 
-  const [customers, invoices, payments, services, prenotifications] = await Promise.all([
-    listCustomers(),
-    listInvoices(),
-    listPayments(),
-    listRecurringServices(),
-    listPrenotifications(),
-  ]);
+  const [customers, invoices, payments, services, prenotifications, collectionEvents, collectionStates] =
+    await Promise.all([
+      listCustomers(),
+      listInvoices(),
+      listPayments(),
+      listRecurringServices(),
+      listPrenotifications(),
+      listCollectionEvents(),
+      listCollectionStates(),
+    ]);
 
   const todayKey = toDateKey(new Date());
 
@@ -71,6 +77,27 @@ export default async function PaymentsPage() {
     .sort((a, b) => (a.overview.debitOn ?? "").localeCompare(b.overview.debitOn ?? ""));
 
   const needsAnnouncing = upcoming.filter((row) => row.overview.state === "due" || row.overview.state === "failed").length;
+
+  /*
+    Which invoices are being chased, read the same way the daily job reads
+    them. Only invoices that are actually late appear; the ones the automation
+    has run out on come first, because those are the rows that need a person.
+  */
+  const followUp: FollowUpRow[] = invoiceCollectionViews({
+    invoices,
+    payments,
+    events: collectionEvents,
+    states: collectionStates,
+    collectingServiceIds: new Set(collecting.map((service) => service.id)),
+    todayKey,
+  })
+    .filter((row) => row.view.daysOverdue > 0 && row.view.outstandingCents > 0 && row.view.automation !== "inactive")
+    .sort(
+      (a, b) =>
+        Number(b.view.collectionReady) - Number(a.view.collectionReady) ||
+        b.view.daysOverdue - a.view.daysOverdue,
+    );
+  const readyForCollection = followUp.filter((row) => row.view.collectionReady).length;
   const day = (key: string) => formatDate(`${key}T12:00:00+02:00`);
 
   return (
@@ -133,6 +160,14 @@ export default async function PaymentsPage() {
             ))}
           </ul>
         )}
+      </AdminSection>
+
+      <AdminSection
+        id="follow-up"
+        title="Betalingsopvolging"
+        note={readyForCollection > 0 ? `${readyForCollection} incasso gereed` : "Automatische herinneringen"}
+      >
+        <CollectionFollowUp rows={followUp} />
       </AdminSection>
 
       <AdminSection id="payments" title="Betalingen">

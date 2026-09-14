@@ -7,7 +7,7 @@ import { ensureInvoiceCheckout, type StoredPaymentLink } from "@/lib/payments/ch
 import { recurringServiceFromRow } from "@/lib/payments/mapper";
 import { ensureProviderCustomer, hasUsableMandate } from "@/lib/payments/provider-customer";
 import { listPaymentsForInvoice } from "@/lib/payments/repository";
-import { isCollecting, type RecurringService } from "@/lib/payments/types";
+import { isCollecting, type Payment, type RecurringService } from "@/lib/payments/types";
 import type { Database } from "@/lib/supabase/database.types";
 
 /**
@@ -181,5 +181,47 @@ export async function invoicePayLink(invoice: Invoice): Promise<PayLinkResult> {
     const reason = error instanceof Error ? error.message : "onbekende fout";
     console.error("Could not create a payment link", { invoiceId: invoice.id, reason });
     return { kind: "failed", reason };
+  }
+}
+
+/**
+ * The payment button on a reminder.
+ *
+ * Deliberately a separate entry point from `invoicePayLink`. That one runs
+ * inside an admin action, reads through `adminDb()` and refuses to let an
+ * invoice go out without a working button. A reminder is neither: it runs in
+ * the daily job, which carries no session, and a reminder without a button is
+ * still worth far more than no reminder at all -- the customer already has
+ * the invoice, with the bank details on it.
+ *
+ * Always `oneoff`. A reminder chases money that is owed; it must never be the
+ * thing that quietly establishes a direct debit mandate, whatever service may
+ * hang off the invoice.
+ *
+ * The link the invoice already has is reused when it still asks for the same
+ * amount and is still payable, so a customer who kept the original mail and
+ * one who opens the reminder end up at the same place. A part payment, or a
+ * link that was spent or expired, produces a new one for what is left.
+ */
+export async function reminderPayLink(
+  db: SupabaseClient<Database>,
+  invoice: Invoice,
+  payments: readonly Payment[],
+): Promise<string | undefined> {
+  if (!isMollieConfigured()) return undefined;
+
+  try {
+    const result = await ensureInvoiceCheckout(invoice, {
+      existing: payments,
+      sequence: "oneoff",
+      ...((await readPaymentLink(db, invoice.id)) ?? {}),
+      persistLink: (link) => storePaymentLink(db, invoice, link),
+    });
+    return result.ok ? result.checkoutUrl : undefined;
+  } catch (error) {
+    // The reminder still goes out; only the button is missing.
+    const reason = error instanceof Error ? error.message : "onbekende fout";
+    console.error("Could not create a reminder payment link", { invoiceId: invoice.id, reason });
+    return undefined;
   }
 }

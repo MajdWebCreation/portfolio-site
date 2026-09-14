@@ -16,13 +16,18 @@ import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
 */
 
 const meta = {
-  title: termsDocument.title,
+  title: termsDocument.documentTitle,
   description: `${termsDocument.title} (${termsDocument.audience}) van YM Creations voor ${termsDocument.subtitle
     .charAt(0)
     .toLowerCase()}${termsDocument.subtitle.slice(1, -1)}. ${termsDocument.versionLine}, inclusief PDF.`,
   label: "Voor zakelijke opdrachtgevers (B2B)",
-  versionLabel: "Versie",
-  dateLabel: "Datum",
+  /*
+    The edition is the year. The publication date sits beside it because an
+    offer has to remain provably tied to one set of terms, but it is not a
+    second version name and a correction does not produce a new edition.
+  */
+  editionLabel: "Editie",
+  dateLabel: "Gepubliceerd",
   fileLabel: "Document",
   openPdf: "Open de PDF",
   downloadPdf: "Download",
@@ -77,10 +82,10 @@ export default async function TermsPage({
         })}
       />
       <SiteShell locale="nl" content={content} currentPath={legalRoutes.terms}>
-        <PageHeader label={meta.label} title={doc.title} intro={doc.subtitle}>
-          <dl className="grid grid-cols-[6rem_1fr] gap-x-4 gap-y-2.5 border-t border-line pt-5 text-[0.95rem]">
-            <dt className="text-muted">{meta.versionLabel}</dt>
-            <dd className="text-ink">{doc.version}</dd>
+        <PageHeader label={meta.label} title={doc.documentTitle} intro={doc.subtitle}>
+          <dl className="grid grid-cols-[7rem_1fr] gap-x-4 gap-y-2.5 border-t border-line pt-5 text-[0.95rem]">
+            <dt className="text-muted">{meta.editionLabel}</dt>
+            <dd className="text-ink">{doc.edition}</dd>
             <dt className="text-muted">{meta.dateLabel}</dt>
             <dd className="text-ink">
               <time dateTime={doc.dateIso}>{doc.dateLabel}</time>
@@ -99,7 +104,7 @@ export default async function TermsPage({
               <a href={doc.pdf.path} download={doc.pdf.fileName} className="link-static text-ink">
                 {meta.downloadPdf}
               </a>
-              <span className="text-[0.85rem] text-muted">PDF, {doc.pdf.sizeLabel}</span>
+              <span className="text-[0.85rem] text-muted">{doc.pdf.sizeLabel}</span>
             </dd>
           </dl>
         </PageHeader>

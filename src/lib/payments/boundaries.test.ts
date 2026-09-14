@@ -89,11 +89,14 @@ describe("payment tables", () => {
 });
 
 describe("the pre-notification job", () => {
-  it("keeps its cron secret on the server", () => {
+  /*
+    Two scheduled routes now, and one place that decides who may call either.
+    The secret is read there and nowhere else, so widening the gate is a
+    change to one file rather than a thing to remember per route.
+  */
+  it("keeps its cron secret on the server, in one module", () => {
     const readers = files.filter(({ source }) => source.includes("process.env.CRON_SECRET"));
-    expect(readers.map(({ path }) => path.replace(root, "src"))).toEqual([
-      "src/app/api/cron/debit-prenotifications/route.ts",
-    ]);
+    expect(readers.map(({ path }) => path.replace(root, "src"))).toEqual(["src/lib/cron/auth.ts"]);
   });
 
   it("is never reachable from a client component", () => {

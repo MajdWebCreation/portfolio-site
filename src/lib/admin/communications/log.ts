@@ -45,11 +45,15 @@ export type CommunicationDelivery = {
  * mail flow, would turn a bookkeeping problem into a second mail on the next
  * retry. A lost row is logged for the server operator and nothing else
  * changes.
+ *
+ * Returns the id of the row it wrote, so a caller that keeps its own record
+ * of the send -- a reminder event, say -- can point at the same communication
+ * instead of describing it a second time. Absent when nothing was written.
  */
 export async function recordCommunication(
   context: CommunicationContext,
   delivery: CommunicationDelivery,
-): Promise<void> {
+): Promise<string | undefined> {
   const row: CustomerCommunicationInsert = {
     customer_id: context.customerId,
     channel: "email",
@@ -69,7 +73,11 @@ export async function recordCommunication(
   };
 
   try {
-    const { error } = await context.db.from("customer_communications").insert(row);
+    const { data, error } = await context.db
+      .from("customer_communications")
+      .insert(row)
+      .select("id")
+      .maybeSingle();
     if (error) {
       // Identifiers and the category only: never the body, the subject or the
       // address, which is customer data and does not belong in a server log.
@@ -78,12 +86,15 @@ export async function recordCommunication(
         category: context.category,
         error: error.message,
       });
+      return undefined;
     }
+    return data?.id;
   } catch (error) {
     console.error("Communication log write threw", {
       customerId: context.customerId,
       category: context.category,
       error,
     });
+    return undefined;
   }
 }

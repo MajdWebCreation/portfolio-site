@@ -86,6 +86,39 @@ The status column carries only what Resend reports at send time (`sent` /
 `failed`). There is no delivery, open or click tracking anywhere in this
 application, so there are no states here pretending otherwise.
 
+## Betalingsopvolging
+
+Two tables, two jobs, and neither repeats what the invoices already say.
+
+`invoice_collection_events` is what the automation did: one row per reminder
+stage per invoice. The unique index on `(invoice_id, stage)` is what makes the
+daily cron safe to run twice, twice at once, or after a crash — a failed row is
+retried in place, never duplicated. `invoice_collections` is what a human
+decided: `paused`, `disputed`, `payment_plan`, `handed_over`. One row per
+invoice, and no row at all for the ones nobody touched.
+
+Deliberately **not** stored: how far along an invoice is, and whether it is
+ready to hand over. Both follow from the events plus the invoice's own due date
+and settlement, so `invoiceCollectionView()` in
+`lib/payments/collection-state.ts` derives them — the same function the cron and
+the admin screen both ask, which is why the screen cannot promise a step the
+cron would not take. `invoices` gains no column and no new status.
+
+The stage list and `ReminderStage` in `lib/payments/collection-policy.ts` are
+one list, as are the state list and `CollectionState`. Widen both together.
+
+Reminder events are read and append only for `authenticated`; the hold is
+read/write, because withdrawing a decision is part of making one. No anon
+access. The daily job writes through the elevated server-side client.
+
+### The EUR 20
+
+There is no column anywhere in these tables that can hold an amount, and that
+is on purpose. The reminder fee announced in the day-7 mail is copy — one
+sentence, read from `reminderFeeCents` in `collection-policy.ts` — and it is
+never charged, never invoiced, never part of a balance. Nothing may change that
+until the general terms provide for it.
+
 ## Article media
 
 Bucket `article-media`: public to read, writable only by active admins

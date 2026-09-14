@@ -91,6 +91,11 @@ const uniques: Unique[] = [
     columns: ["recurring_service_id", "billing_period_start"],
     where: (row) => row.recurring_service_id != null,
   },
+  /* One reminder stage per invoice: the index that makes the daily run safe
+     to repeat. A test that would send twice fails here, as it would in
+     Postgres. */
+  { table: "invoice_collection_events", columns: ["invoice_id", "stage"] },
+  { table: "invoice_collections", columns: ["invoice_id"] },
 ];
 
 export class UniqueViolation extends Error {
@@ -120,7 +125,7 @@ export function createFakeDb(seed: Record<string, Row[]> = {}) {
 
   function builder(name: string) {
     const filters: ((row: Row) => boolean)[] = [];
-    let mode: "select" | "insert" | "update" = "select";
+    let mode: "select" | "insert" | "update" | "delete" = "select";
     let payload: Row = {};
     let inserted: Row | undefined;
 
@@ -130,6 +135,14 @@ export function createFakeDb(seed: Record<string, Row[]> = {}) {
       },
       eq(column: string, value: unknown) {
         filters.push((row) => row[column] === value);
+        return api;
+      },
+      in(column: string, values: unknown[]) {
+        filters.push((row) => values.includes(row[column]));
+        return api;
+      },
+      not(column: string, operator: string, value: unknown) {
+        filters.push((row) => (operator === "is" ? (row[column] ?? null) !== value : row[column] !== value));
         return api;
       },
       neq(column: string, value: unknown) {
@@ -153,6 +166,23 @@ export function createFakeDb(seed: Record<string, Row[]> = {}) {
         payload = row;
         return api;
       },
+      /* One row per conflict column, the way the real upsert behaves. */
+      upsert(row: Row, options?: { onConflict?: string }) {
+        const key = options?.onConflict;
+        const existing = key ? table(name).find((candidate) => candidate[key] === row[key]) : undefined;
+        if (existing) {
+          Object.assign(existing, row, { updated_at: "2026-09-01T00:00:00.000Z" });
+          mode = "update";
+          payload = {};
+          inserted = existing;
+          return api;
+        }
+        return api.insert(row);
+      },
+      delete() {
+        mode = "delete";
+        return api;
+      },
       run(): { data: Row[]; error: { code?: string; message: string } | null } {
         if (mode === "insert") {
           try {
@@ -167,6 +197,10 @@ export function createFakeDb(seed: Record<string, Row[]> = {}) {
         const matched = table(name).filter((row) => filters.every((test) => test(row)));
         if (mode === "update") {
           for (const row of matched) Object.assign(row, payload);
+        }
+        if (mode === "delete") {
+          const rows = table(name);
+          for (const row of matched) rows.splice(rows.indexOf(row), 1);
         }
         return { data: matched, error: null };
       },

@@ -477,6 +477,110 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_collection_events: {
+        Row: {
+          claimed_at: string
+          communication_id: string | null
+          created_at: string
+          customer_id: string
+          days_overdue: number
+          eligible_on: string
+          error: string | null
+          id: string
+          invoice_id: string
+          provider_message_id: string | null
+          recipient: string
+          sent_at: string | null
+          stage: string
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          claimed_at?: string
+          communication_id?: string | null
+          created_at?: string
+          customer_id: string
+          days_overdue: number
+          eligible_on: string
+          error?: string | null
+          id?: string
+          invoice_id: string
+          provider_message_id?: string | null
+          recipient: string
+          sent_at?: string | null
+          stage: string
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          claimed_at?: string
+          communication_id?: string | null
+          created_at?: string
+          customer_id?: string
+          days_overdue?: number
+          eligible_on?: string
+          error?: string | null
+          id?: string
+          invoice_id?: string
+          provider_message_id?: string | null
+          recipient?: string
+          sent_at?: string | null
+          stage?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_collection_events_communication_id_fkey"
+            columns: ["communication_id"]
+            isOneToOne: false
+            referencedRelation: "customer_communications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_collection_events_invoice_same_customer"
+            columns: ["invoice_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id", "customer_id"]
+          },
+        ]
+      }
+      invoice_collections: {
+        Row: {
+          created_at: string
+          invoice_id: string
+          note: string
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          invoice_id: string
+          note?: string
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          invoice_id?: string
+          note?: string
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_collections_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_lines: {
         Row: {
           description: string

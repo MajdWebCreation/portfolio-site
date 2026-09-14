@@ -32,3 +32,17 @@ export function addDays(dateKey: string, days: number): string {
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
+
+/**
+ * Whole calendar days from one day to another; negative when `to` is earlier.
+ *
+ * Both are read at midday UTC, the same way `addDays` writes them, so a day
+ * that starts or ends on a clock change still counts as one day. The calendar
+ * itself is Amsterdam's: these keys come from `toDateKey`, which is the one
+ * place this system decides what "today" means.
+ */
+export function daysBetween(from: string, to: string): number {
+  const start = Date.parse(`${from}T12:00:00Z`);
+  const end = Date.parse(`${to}T12:00:00Z`);
+  return Math.round((end - start) / 86_400_000);
+}
