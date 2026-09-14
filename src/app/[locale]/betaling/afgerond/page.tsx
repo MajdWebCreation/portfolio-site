@@ -4,9 +4,14 @@ import { notFound } from "next/navigation";
 import { isValidLocale } from "@/lib/content/site-content";
 
 /**
- * Where Mollie sends the customer back to. It deliberately claims nothing
- * about the outcome: the payment is confirmed by the webhook, not by the
- * browser arriving here, and a returning visitor may well have cancelled.
+ * Where a customer lands after paying.
+ *
+ * One page for every kind of payment that ends here -- an ordinary invoice,
+ * and an invoice whose payment also starts a monthly collection -- so the
+ * wording stays general on purpose: it thanks the customer and says they are
+ * done. Nothing about who processes the payment, what is still being
+ * confirmed, or what happens to the invoice afterwards; that is our work, not
+ * theirs, and it happens whether or not this page is ever seen.
  */
 export const metadata: Metadata = {
   title: "Betaling afgerond",
@@ -20,11 +25,11 @@ export default async function PaymentReturnPage({ params }: { params: Promise<{ 
 
   return (
     <main className="container-x flex min-h-[70vh] max-w-[42rem] flex-col justify-center py-20">
-      <h1 className="display-md text-ink">{isNl ? "Bedankt" : "Thank you"}</h1>
+      <h1 className="display-md text-ink">{isNl ? "Bedankt voor je betaling" : "Thank you for your payment"}</h1>
       <p className="lede mt-5 text-body">
         {isNl
-          ? "Je betaling is bij ons aangeboden. Zodra onze betaalprovider de betaling bevestigt, werken we de factuur automatisch bij. Je hoeft verder niets te doen."
-          : "Your payment has been submitted. As soon as our payment provider confirms it, the invoice is updated automatically. Nothing further is needed from you."}
+          ? "Je betaling is succesvol ontvangen. Je hoeft verder niets te doen."
+          : "Your payment has been received successfully. No further action is required."}
       </p>
       <p className="mt-8">
         <Link href={`/${locale}`} className="link-static text-ink">
