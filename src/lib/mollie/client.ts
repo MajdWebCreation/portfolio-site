@@ -295,6 +295,94 @@ export async function createSubscription(
   });
 }
 
+// ----------------------------------------------------- read-only surface
+
+/**
+ * Reads, and only reads.
+ *
+ * `request` can send a POST or a DELETE, because creating payments is its
+ * job. Some callers must provably never do that -- the live connection check
+ * runs against a key that moves real money, and "it only calls GET endpoints"
+ * has to be a property of the code rather than a promise in a comment. They
+ * import from here instead, and the method is not theirs to choose.
+ */
+async function getResource<T>(path: string, config?: MollieConfig): Promise<T> {
+  return request<T>({ method: "GET", path, config });
+}
+
+/**
+ * The profile an API key belongs to. Field names and values are Mollie's own:
+ * `mode` distinguishes the test account from the live one, `status` is the
+ * verification state, and `review` is present while a change is being looked
+ * at. See docs.mollie.com/reference/get-current-profile.
+ */
+export type MollieProfileStatus = "unverified" | "verified" | "blocked";
+
+export type MollieProfile = {
+  id: string;
+  mode: "live" | "test";
+  name: string;
+  website?: string;
+  status: MollieProfileStatus;
+  review?: { status: "pending" | "rejected" } | null;
+};
+
+/** GET /v2/profiles/me — the profile the configured key authenticates as. */
+export async function getCurrentProfile(config?: MollieConfig): Promise<MollieProfile> {
+  return getResource<MollieProfile>("/profiles/me", config);
+}
+
+/**
+ * A payment method as Mollie reports it. `status` is only returned by the
+ * "all methods" endpoint; the enabled-methods list leaves it out, because
+ * everything it returns is by definition usable.
+ * See docs.mollie.com/reference/list-all-methods.
+ */
+export type MollieMethodStatus =
+  | "activated"
+  | "pending-boarding"
+  | "pending-review"
+  | "pending-external"
+  | "rejected";
+
+export type MollieMethod = {
+  id: string;
+  description: string;
+  status?: MollieMethodStatus;
+};
+
+/** The sequence a method has to support, in Mollie's own vocabulary. */
+export type MollieSequenceType = "oneoff" | "first" | "recurring";
+
+/**
+ * GET /v2/methods/all — every method Mollie offers, each with the activation
+ * status for this profile. Deliberately this one rather than `/v2/methods`:
+ * it is the only one that can tell "not activated" apart from "waiting for
+ * review", which is the difference between a blocker and a delay. It is not
+ * paginated.
+ */
+export async function listAllMethods(config?: MollieConfig): Promise<MollieMethod[]> {
+  const response = await getResource<{ _embedded?: { methods?: MollieMethod[] } }>("/methods/all", config);
+  return response._embedded?.methods ?? [];
+}
+
+/**
+ * GET /v2/methods?sequenceType=… — the methods actually usable for one kind
+ * of payment. Activation alone does not mean a method can carry a first
+ * payment or a recurring collection, and those two are exactly what this
+ * integration depends on.
+ */
+export async function listMethodsForSequence(
+  sequenceType: MollieSequenceType,
+  config?: MollieConfig,
+): Promise<MollieMethod[]> {
+  const response = await getResource<{ _embedded?: { methods?: MollieMethod[] } }>(
+    `/methods?sequenceType=${encodeURIComponent(sequenceType)}`,
+    config,
+  );
+  return response._embedded?.methods ?? [];
+}
+
 /** Mollie's payment states mapped onto ours; "authorized" is money promised, not moved. */
 export function paymentStatusFromMollie(status: MolliePaymentStatus) {
   switch (status) {

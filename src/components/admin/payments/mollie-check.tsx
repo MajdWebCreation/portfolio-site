@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import AdminButton from "@/components/admin/admin-button";
 import StatusBadge from "@/components/admin/status-badge";
+import MollieLiveCheck from "@/components/admin/payments/mollie-live-check";
 import type { MollieMode } from "@/lib/mollie/config";
 import { runMollieIntegrationCheck, type IntegrationCheckResult } from "@/lib/payments/integration-check";
 
@@ -31,7 +32,7 @@ const modeText: Record<MollieMode, string> = {
     "Er staat geen MOLLIE_API_KEY ingesteld. Facturen gaan gewoon uit, maar zonder betaalknop, en incasso kan niet worden geactiveerd.",
   test: "Er staat een testsleutel ingesteld. Je kunt de verbinding hier controleren; er beweegt geen echt geld.",
   live:
-    "Er staat een live sleutel ingesteld. De verbindingscontrole is daarmee uitgeschakeld: een betaling die hier wordt aangemaakt zou een echte zijn.",
+    "Er staat een live sleutel ingesteld. De testbetaling is daarmee uitgeschakeld: een betaling die hier wordt aangemaakt zou een echte zijn. De controle hieronder leest alleen.",
 };
 
 export default function MollieCheck({ mode }: { mode: MollieMode }) {
@@ -86,6 +87,13 @@ export default function MollieCheck({ mode }: { mode: MollieMode }) {
           {result.reason}
         </p>
       ) : null}
+
+      {/*
+        Only on a live key, and only for an admin -- this component renders
+        inside a page that already required one. The server action checks both
+        again, because a rendered button is not an authorisation.
+      */}
+      {mode === "live" ? <MollieLiveCheck /> : null}
     </div>
   );
 }
