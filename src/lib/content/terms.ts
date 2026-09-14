@@ -312,7 +312,7 @@ export const termsDocument = {
       },
       {
         "number": "9.11",
-        "text": "In afwijking van artikel 8.1 is het in artikel 9.10 genoemde bedrag het volledige bedrag dat de klant voor die betalingsopvolging in rekening krijgt gebracht; een eventueel daarover verschuldigde btw is daarin begrepen. De fiscale kwalificatie van dit bedrag doet aan de hoogte ervan niet af."
+        "text": "In afwijking van artikel 8.1 is het in artikel 9.10 genoemde bedrag het volledige bedrag dat YM Creations voor die betalingsopvolging in rekening brengt; een eventueel daarover verschuldigde btw is daarin begrepen. De fiscale kwalificatie van dit bedrag doet aan de hoogte ervan niet af."
       },
       {
         "number": "9.12",
@@ -730,7 +730,7 @@ export const termsDocument = {
       },
       {
         "number": "24.3",
-        "text": "Blijft betaling na de vervaldatum en na een geboden hersteltermijn uit, dan mag YM Creations de wettelijke handelsrente en de toepasselijke vergoeding voor invorderings- en buitengerechtelijke incassokosten vorderen overeenkomstig artikel 9."
+        "text": "Blijft betaling na de vervaldatum en na een geboden hersteltermijn uit, dan mag YM Creations de wettelijke handelsrente en de vergoeding voor buitengerechtelijke invorderingskosten vorderen overeenkomstig artikel 9."
       },
       {
         "number": "24.4",

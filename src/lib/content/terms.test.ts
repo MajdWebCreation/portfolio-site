@@ -2,6 +2,8 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { termsDocument } from "@/lib/content/terms";
+import { formatCents } from "@/lib/money";
+import { reminderFeeAnnounced, reminderFeeCents } from "@/lib/payments/collection-policy";
 
 /*
   The terms, as a document rather than as prose.
@@ -13,6 +15,13 @@ import { termsDocument } from "@/lib/content/terms";
   in after we decided the edition is the year.
 */
 const doc = termsDocument;
+
+function sourceFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    return entry.isDirectory() ? sourceFiles(path) : /\.tsx?$/.test(entry.name) ? [path] : [];
+  });
+}
 const allClauses = [
   ...doc.articles.flatMap((article) => article.clauses.map((clause) => ({ article: article.number, ...clause }))),
 ];
@@ -224,6 +233,53 @@ describe("what the payment articles must keep saying", () => {
     expect(twentyFour).toContain("niet lichtvaardig");
     expect(twentyFour).toContain("proportioneel");
     expect(twentyFour).toContain("redelijke voorafgaande waarschuwing");
+  });
+});
+
+/*
+  The terms and the code that acts on them, held against each other.
+
+  The reminder ladder quotes a figure from article 9.10 and relies on rights
+  articles 9.7 to 9.13 grant. Nothing stops the two drifting apart except a
+  test that reads both.
+*/
+describe("the terms and the reminder code", () => {
+  const nine = doc.articles
+    .find((article) => article.number === 9)!
+    .clauses.map((clause) => clause.text)
+    .join(" ");
+
+  it("quotes one and the same amount", () => {
+    expect(reminderFeeCents).toBe(2000);
+    expect(nine).toContain(`EUR ${formatCents(reminderFeeCents).replace(/[^\d.,]/g, "")}`);
+  });
+
+  /*
+    The mail may warn about the amount for as long as nothing charges it. The
+    terms allow the charge (9.10), but only as a deliberate written act, and
+    this code has no flow that performs one.
+  */
+  it("announces the amount without any code that charges it", () => {
+    expect(reminderFeeAnnounced).toBe(true);
+    expect(nine).toContain("niet verschuldigd door het enkele verstrijken van de vervaldatum");
+    expect(nine).toContain("uitdrukkelijk schriftelijk bij de klant in rekening brengt");
+
+    const policy = readFileSync(join(process.cwd(), "src/lib/payments/collection-policy.ts"), "utf8");
+    expect(policy).toContain("Algemene Voorwaarden B2B - 2026");
+    expect(policy).not.toContain("v1.0");
+    expect(policy).not.toMatch(/do not provide for a reminder fee/);
+  });
+
+  /* Read in one expression, and that expression is a sentence in a mail. */
+  it("reads the amount nowhere but in the second reminder", () => {
+    const sources = sourceFiles(join(process.cwd(), "src")).filter(
+      (path) => !path.endsWith("collection-policy.ts") && !/\.test\.tsx?$/.test(path),
+    );
+    const readers = sources.filter((path) => readFileSync(path, "utf8").includes("reminderFeeCents"));
+
+    expect(readers.map((path) => path.replace(join(process.cwd(), "src"), "src"))).toEqual([
+      "src/lib/payments/reminder-email.ts",
+    ]);
   });
 });
 

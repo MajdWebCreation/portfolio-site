@@ -11,7 +11,7 @@ import { collectionStateOrder } from "@/lib/payments/collection-state";
   even if somebody later tried.
 */
 const migration = readFileSync(
-  join(process.cwd(), "supabase/migrations/20260914210500_payment_reminders.sql"),
+  join(process.cwd(), "supabase/migrations/20260914212751_payment_reminders.sql"),
   "utf8",
 );
 
