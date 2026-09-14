@@ -1,3 +1,4 @@
+import { invoiceLinks } from "@/lib/admin/communications/links";
 import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email";
 import { toDateKey } from "@/lib/admin/format";
 import { documentFileName, renderInvoicePdf } from "@/lib/admin/pdf/to-buffer";
@@ -259,9 +260,23 @@ export function createWebhookStore(): WebhookStore {
         return { sent: false, reason: error instanceof Error ? error.message : "de PDF kon niet worden gemaakt" };
       }
 
+      /* The invoice knows its project when it was filed under one; a term
+         created by the activation flow may not, and then the service does. */
+      const projectId = invoice.projectId ?? service.projectId;
+
       const mail = await sendDocumentMail({
         kind: "invoice",
         number: invoice.number.value,
+        /* The elevated client, because a webhook carries no admin session --
+           the same client every other write in this store uses. */
+        log: {
+          db,
+          customerId: invoice.customer.customerId,
+          category: "recurring_invoice_settled",
+          ...invoiceLinks(invoice),
+          recurringServiceId: service.id,
+          ...(projectId ? { projectId } : {}),
+        },
         recipientEmail: recipient,
         contactName: invoice.customer.contactName,
         issueDateLabel: documentDateLabel(invoice.issueDate),

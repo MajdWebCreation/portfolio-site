@@ -100,6 +100,105 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_communications: {
+        Row: {
+          body_html: string | null
+          body_text: string
+          category: string
+          channel: string
+          created_at: string
+          customer_id: string
+          direction: string
+          error: string | null
+          id: string
+          invoice_id: string | null
+          project_id: string | null
+          provider_message_id: string | null
+          quote_id: string | null
+          recipient: string
+          recurring_service_id: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+        }
+        Insert: {
+          body_html?: string | null
+          body_text: string
+          category: string
+          channel?: string
+          created_at?: string
+          customer_id: string
+          direction?: string
+          error?: string | null
+          id?: string
+          invoice_id?: string | null
+          project_id?: string | null
+          provider_message_id?: string | null
+          quote_id?: string | null
+          recipient: string
+          recurring_service_id?: string | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+        }
+        Update: {
+          body_html?: string | null
+          body_text?: string
+          category?: string
+          channel?: string
+          created_at?: string
+          customer_id?: string
+          direction?: string
+          error?: string | null
+          id?: string
+          invoice_id?: string | null
+          project_id?: string | null
+          provider_message_id?: string | null
+          quote_id?: string | null
+          recipient?: string
+          recurring_service_id?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_communications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_communications_invoice_same_customer"
+            columns: ["invoice_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id", "customer_id"]
+          },
+          {
+            foreignKeyName: "customer_communications_project_same_customer"
+            columns: ["project_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "customer_id"]
+          },
+          {
+            foreignKeyName: "customer_communications_quote_same_customer"
+            columns: ["quote_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id", "customer_id"]
+          },
+          {
+            foreignKeyName: "customer_communications_service_same_customer"
+            columns: ["recurring_service_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_services"
+            referencedColumns: ["id", "customer_id"]
+          },
+        ]
+      }
       customer_payment_providers: {
         Row: {
           created_at: string

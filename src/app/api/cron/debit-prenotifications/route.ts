@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { toDateKey } from "@/lib/admin/format";
-import { hasPaymentsAdminAccess } from "@/lib/payments/admin-client";
+import { hasPaymentsAdminAccess, paymentsAdminClient } from "@/lib/payments/admin-client";
+import { invoiceLinks } from "@/lib/admin/communications/links";
 import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email";
 import { documentFileName, renderInvoicePdf } from "@/lib/admin/pdf/to-buffer";
 import { calculateTotals, formatCents } from "@/lib/money";
@@ -47,6 +48,15 @@ async function handle(request: Request): Promise<Response> {
     return new Response("Not configured", { status: 503 });
   }
 
+  /*
+    The daily job carries no admin session either, so the communication log is
+    written through the same elevated client the store uses. Built on the
+    first mail rather than up front: a run with nothing to announce should not
+    open a database client to discover that.
+  */
+  let logClient: ReturnType<typeof paymentsAdminClient> | undefined;
+  const communicationsDb = () => (logClient ??= paymentsAdminClient());
+
   try {
     const summary = await runPrenotifications(
       createPrenotificationStore(),
@@ -60,6 +70,15 @@ async function handle(request: Request): Promise<Response> {
         sendDocumentMail({
           kind: "invoice",
           number: invoice.number.value,
+          /* This mail *is* the pre-notification, so that is what it is filed
+             as. `debit_prenotifications` stays the record of the announcement
+             itself; this is the record that the customer was written to. */
+          log: {
+            db: communicationsDb(),
+            customerId: invoice.customer.customerId,
+            category: "recurring_invoice_prenotification",
+            ...invoiceLinks(invoice),
+          },
           recipientEmail,
           contactName,
           issueDateLabel: documentDateLabel(invoice.issueDate),

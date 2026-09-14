@@ -56,6 +56,36 @@ only, so the policies decide and anon cannot reach them.
 A document keeps its `OFF-CONCEPT-…` / `FAC-CONCEPT-…` number until it is
 actually sent. Never edit `next_sequence` by hand on a live series.
 
+## Customer communication
+
+`public.customer_communications` is the append-only log of e-mail this system
+sent to a customer: one row per send, written only after Resend accepted the
+message. A second send of the same invoice is a second row, never an update of
+the first.
+
+Everything that mails a customer goes through `sendCustomerEmail()`
+(`lib/admin/communications/send.ts`), which delivers and then records; no mail
+flow writes to the table itself. The category list in the check constraint and
+`CommunicationCategory` in `lib/admin/communications/types.ts` are one list —
+widen both together.
+
+Each optional link (`invoice_id`, `quote_id`, `project_id`,
+`recurring_service_id`) is a *composite* reference against `(id, customer_id)`
+on the target table, so customer A's mail can never be filed against customer
+B's document. Deleting a document clears the link column and nothing else.
+The quote link needs `quotes (id, customer_id)`, which was dropped in
+`20260912201703` when the last reference to it went; the communications
+migration puts that unique key back.
+
+Read and append only: no update and no delete grant, and no anon access at
+all. The two flows without a session — the Mollie webhook and the daily
+pre-notification job — write through the elevated server-side client, as they
+already do for the payment tables.
+
+The status column carries only what Resend reports at send time (`sent` /
+`failed`). There is no delivery, open or click tracking anywhere in this
+application, so there are no states here pretending otherwise.
+
 ## Article media
 
 Bucket `article-media`: public to read, writable only by active admins

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { actionFailed, type ActionResult } from "@/lib/admin/action-result";
+import { invoiceLinks, quoteLinks } from "@/lib/admin/communications/links";
 import { adminDb } from "@/lib/admin/db";
 import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email";
 import { toDateKey } from "@/lib/admin/format";
@@ -91,6 +92,12 @@ export async function sendQuoteToCustomer(id: string): Promise<ActionResult<stri
   const mail = await sendDocumentMail({
     kind: "quote",
     number: numbered.number.value,
+    log: {
+      db,
+      customerId: numbered.customer.customerId,
+      category: "quote_sent",
+      ...quoteLinks(numbered),
+    },
     recipientEmail: recipient,
     contactName: numbered.customer.contactName,
     issueDateLabel: documentDateLabel(numbered.issueDate),
@@ -219,6 +226,19 @@ export async function sendInvoiceToCustomer(id: string): Promise<ActionResult<st
   const mail = await sendDocumentMail({
     kind: "invoice",
     number: numbered.number.value,
+    /*
+      What the customer is about to receive, filed under what it is about. An
+      invoice that also establishes the mandate is its own category: reading
+      the list later, "factuur" and "factuur die de incasso aanzet" are not
+      the same event, and only one of them explains a mandate appearing.
+    */
+    log: {
+      db,
+      customerId: numbered.customer.customerId,
+      category: activates ? "invoice_activation_sent" : "invoice_sent",
+      ...invoiceLinks(numbered),
+      ...(starting ? { recurringServiceId: starting.id } : {}),
+    },
     recipientEmail: recipient,
     contactName: numbered.customer.contactName,
     issueDateLabel: documentDateLabel(numbered.issueDate),

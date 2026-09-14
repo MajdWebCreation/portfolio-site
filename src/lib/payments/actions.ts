@@ -138,6 +138,13 @@ export async function sendRecurringActivation(serviceId: string): Promise<Action
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://ymcreations.com").replace(/\/$/, "");
   const mail = await sendActivationMail({
+    log: {
+      db,
+      customerId: service.customerId,
+      category: "direct_debit_activation",
+      recurringServiceId: service.id,
+      ...(service.projectId ? { projectId: service.projectId } : {}),
+    },
     recipientEmail: customer.email,
     contactName: customer.contact_name,
     serviceName: service.name,

@@ -1,4 +1,4 @@
-import { Resend } from "resend";
+import { sendCustomerEmail, type CommunicationContext } from "@/lib/admin/communications/send";
 import { companyProfile } from "@/lib/admin/documents/company";
 import { documentKindLabels, type DocumentKind } from "@/lib/admin/documents/types";
 import { formatDate } from "@/lib/admin/format";
@@ -13,11 +13,12 @@ import { emailButton, emailMeta, emailSection, emailShell, emailText, escapeEmai
  * says who it is for, which number it carries, the one date that matters and
  * nothing else. No marketing, no repeated line table, no links to click.
  *
- * Everything in this module runs on the server. The Resend key is read here
- * and nowhere else; it is not a NEXT_PUBLIC value and never reaches a bundle
- * that goes to the browser.
+ * Everything in this module runs on the server. It builds the mail and hands
+ * it to `sendCustomerEmail`, which is the single door out: the provider call
+ * and the communication log both live behind it, so a document that reached a
+ * customer is on that customer's record by construction.
  */
-export type DocumentMailInput = {
+export type DocumentMailContent = {
   kind: DocumentKind;
   number: string;
   recipientEmail: string;
@@ -73,6 +74,17 @@ export type DocumentMailInput = {
   };
 };
 
+/**
+ * What `sendDocumentMail` needs: the mail, and who it is for.
+ *
+ * `log` is required rather than optional on purpose. A send nobody registered
+ * is a send nobody can account for, and a field the compiler asks for is
+ * cheaper than remembering. It is kept off `DocumentMailContent` so the body
+ * builders cannot read it: what a mail says has nothing to do with where the
+ * record of it goes.
+ */
+export type DocumentMailInput = DocumentMailContent & { log: CommunicationContext };
+
 export type SendMailResult =
   /** `messageId` is Resend's own id, kept for the audit trail where one is wanted. */
   | { sent: true; sentAt: string; messageId?: string }
@@ -95,7 +107,7 @@ export function documentSubject(kind: DocumentKind, number: string, serviceName?
  * also switches a monthly service on the subject says so, so nobody pays it
  * thinking it is only a one-off.
  */
-export function invoiceSubject(input: Pick<DocumentMailInput, "number" | "projectName" | "activates">): string {
+export function invoiceSubject(input: Pick<DocumentMailContent, "number" | "projectName" | "activates">): string {
   const subject = input.projectName ?? companyProfile.name;
   return input.activates
     ? `Factuur en maandelijkse service voor ${subject}`
@@ -123,7 +135,7 @@ function payButton(url: string, label = "Factuur betalen"): string {
  * VAT and the period are in the PDF, and repeating them here would be a
  * second specification that can disagree with the first.
  */
-function recurringBody(input: DocumentMailInput & { recurring: NonNullable<DocumentMailInput["recurring"]> }): MailBody {
+function recurringBody(input: DocumentMailContent & { recurring: NonNullable<DocumentMailContent["recurring"]> }): MailBody {
   const { serviceName, collection } = input.recurring;
   const scheduled = collection.kind === "scheduled" ? documentDateLabel(collection.debitOn) : null;
 
@@ -183,7 +195,7 @@ function recurringBody(input: DocumentMailInput & { recurring: NonNullable<Docum
  * their own block, so nobody reads them as part of what is due now.
  */
 function activationBody(
-  input: DocumentMailInput & { activates: NonNullable<DocumentMailInput["activates"]> },
+  input: DocumentMailContent & { activates: NonNullable<DocumentMailContent["activates"]> },
 ): MailBody {
   const a = input.activates;
   const firstDebit = documentDateLabel(a.firstDebitOn);
@@ -246,7 +258,7 @@ function activationBody(
   return { html, text };
 }
 
-export function buildDocumentMailBody(input: DocumentMailInput): MailBody {
+export function buildDocumentMailBody(input: DocumentMailContent): MailBody {
   if (input.activates) return activationBody({ ...input, activates: input.activates });
   if (input.recurring) return recurringBody({ ...input, recurring: input.recurring });
 
@@ -319,63 +331,49 @@ export function buildDocumentMailBody(input: DocumentMailInput): MailBody {
 }
 
 /**
- * The mail configuration, read at call time.
+ * The subject of a document mail.
  *
- * Documents go out over the same Resend account and sender as the contact
- * form; there is one mail setup, not two. A missing value is a configuration
- * error the admin should see, not a silent no-op.
+ * A monthly term keeps the document subject; a one-off invoice is named after
+ * its project, and says so when it also starts a subscription.
  */
-function mailConfig(): { apiKey: string; from: string } | { error: string } {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.CONTACT_FROM_EMAIL;
-
-  if (!apiKey || !from) {
-    return { error: "Mailconfiguratie ontbreekt (RESEND_API_KEY of CONTACT_FROM_EMAIL)." };
-  }
-
-  return { apiKey, from };
+export function documentMailSubject(input: DocumentMailContent): string {
+  if (input.recurring) return documentSubject(input.kind, input.number, input.recurring.serviceName);
+  return input.kind === "invoice" ? invoiceSubject(input) : documentSubject(input.kind, input.number);
 }
 
 /**
- * Hands the PDF to Resend. Returns a result rather than throwing, so the
+ * Hands the PDF to the mailer. Returns a result rather than throwing, so the
  * caller can decide what to persist: nothing is written to the document
  * before this says `sent: true`.
  */
 export async function sendDocumentMail(input: DocumentMailInput): Promise<SendMailResult> {
-  const config = mailConfig();
-  if ("error" in config) return { sent: false, reason: config.error };
-
   const { html, text } = buildDocumentMailBody(input);
 
-  try {
-    const result = await new Resend(config.apiKey).emails.send({
-      from: config.from,
+  const result = await sendCustomerEmail(
+    {
       to: input.recipientEmail,
-      replyTo: companyProfile.email,
-      /* A monthly term keeps the document subject; a one-off invoice is named
-         after its project, and says so when it also starts a subscription. */
-      subject: input.recurring
-        ? documentSubject(input.kind, input.number, input.recurring.serviceName)
-        : input.kind === "invoice"
-          ? invoiceSubject(input)
-          : documentSubject(input.kind, input.number),
+      subject: documentMailSubject(input),
       html,
       text,
       attachments: [{ filename: input.fileName, content: Buffer.from(input.pdf) }],
+    },
+    input.log,
+  );
+
+  if (!result.sent) {
+    console.error("Document mail failed", {
+      kind: input.kind,
+      number: input.number,
+      failure: result.failure,
+      reason: result.reason,
     });
-
-    if (result.error) {
-      console.error("Document mail failed", { kind: input.kind, number: input.number, error: result.error });
-      return { sent: false, reason: result.error.message };
-    }
-
+    /* An exception carries an implementation detail, not something an admin
+       can act on; a refusal from the provider says what was wrong. */
     return {
-      sent: true,
-      sentAt: new Date().toISOString(),
-      ...(result.data?.id ? { messageId: result.data.id } : {}),
+      sent: false,
+      reason: result.failure === "error" ? "De mail kon niet worden verzonden. Probeer het opnieuw." : result.reason,
     };
-  } catch (error) {
-    console.error("Document mail threw", { kind: input.kind, number: input.number, error });
-    return { sent: false, reason: "De mail kon niet worden verzonden. Probeer het opnieuw." };
   }
+
+  return result;
 }

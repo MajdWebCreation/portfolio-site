@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AdminSection from "@/components/admin/admin-section";
+import CustomerCommunications, { type CommunicationTargets } from "@/components/admin/customers/customer-communications";
 import CustomerDocuments from "@/components/admin/customers/customer-documents";
 import CustomerEdit from "@/components/admin/customers/customer-edit";
 import CustomerFinance from "@/components/admin/customers/customer-finance";
@@ -7,6 +8,7 @@ import CustomerProjects from "@/components/admin/customers/customer-projects";
 import CustomerRecurring from "@/components/admin/customers/customer-recurring";
 import { DetailList, DetailRow } from "@/components/admin/detail-list";
 import StatusBadge from "@/components/admin/status-badge";
+import type { CustomerCommunication } from "@/lib/admin/communications/types";
 import { customerStatusLabels, customerStatusTone, type Customer } from "@/lib/admin/customers/types";
 import { formatDateTime } from "@/lib/admin/format";
 import { inquiryOriginLabels, type Inquiry } from "@/lib/admin/inquiries/types";
@@ -28,6 +30,8 @@ type CustomerDetailProps = {
   quotes: Quote[];
   invoices: Invoice[];
   projects: Project[];
+  /** Outbound mail this system sent to this customer; newest first already. */
+  communications: CustomerCommunication[];
   /** Derived from this customer's invoices and payments; never a stored field. */
   financials: CustomerFinancials;
   recurringServices: RecurringService[];
@@ -43,6 +47,38 @@ function Dash() {
   return <span className="text-muted">—</span>;
 }
 
+/**
+ * Names for the records a mail points at, from what this page already loaded.
+ *
+ * Built here rather than joined in the query: everything a communication can
+ * link to belongs to this customer and is on the page already, so the list
+ * costs nothing extra and a link can never resolve to another customer's
+ * document. A monthly service has no page of its own, so it gets a name and
+ * no link.
+ */
+function communicationTargets(data: {
+  quotes: Quote[];
+  invoices: Invoice[];
+  projects: Project[];
+  recurringServices: RecurringService[];
+}): CommunicationTargets {
+  return {
+    invoices: Object.fromEntries(
+      data.invoices.map((invoice) => [
+        invoice.id,
+        { label: invoice.number.value, href: `/admin/facturen/${invoice.id}` },
+      ]),
+    ),
+    quotes: Object.fromEntries(
+      data.quotes.map((quote) => [quote.id, { label: quote.number.value, href: `/admin/offertes/${quote.id}` }]),
+    ),
+    projects: Object.fromEntries(
+      data.projects.map((project) => [project.id, { label: project.name, href: `/admin/projecten/${project.id}` }]),
+    ),
+    services: Object.fromEntries(data.recurringServices.map((service) => [service.id, { label: service.name }])),
+  };
+}
+
 /** Customer record with its projects, quotes and invoices. */
 export default function CustomerDetail({
   customer,
@@ -51,6 +87,7 @@ export default function CustomerDetail({
   quotes,
   invoices,
   projects,
+  communications,
   financials,
   recurringServices,
   recurringOverviews,
@@ -99,6 +136,17 @@ export default function CustomerDetail({
             <DetailRow term="KvK-nummer">{customer.kvkNumber ?? <Dash />}</DetailRow>
             <DetailRow term="Btw-nummer">{customer.vatNumber ?? <Dash />}</DetailRow>
           </DetailList>
+        </AdminSection>
+
+        <AdminSection
+          id="communication"
+          title="Communicatie"
+          note="Automatisch verstuurde e-mail"
+        >
+          <CustomerCommunications
+            communications={communications}
+            targets={communicationTargets({ quotes, invoices, projects, recurringServices })}
+          />
         </AdminSection>
 
         <CustomerEdit customer={customer} />

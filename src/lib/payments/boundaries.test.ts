@@ -105,9 +105,11 @@ describe("the pre-notification job", () => {
   });
 
   /*
-    The Resend key travels no further than the modules that send. The monthly
-    term has no mailer of its own: it goes out through the document mail, so
-    there is no fourth place a key could end up.
+    The Resend key travels no further than the modules that send. Customer
+    mail -- the invoice, the monthly term, the activation link -- has one
+    provider module between it and Resend, so there are two places in the
+    whole application where the key is read: that module, and the contact
+    form, which answers a visitor who has no customer record to file under.
   */
   it("reads the mail key only where mail is sent", () => {
     const readers = files
@@ -116,8 +118,7 @@ describe("the pre-notification job", () => {
       .sort();
     expect(readers).toEqual([
       "src/app/api/contact/route.ts",
-      "src/lib/admin/documents/email.ts",
-      "src/lib/payments/activation-email.ts",
+      "src/lib/admin/communications/provider.ts",
     ]);
   });
 });

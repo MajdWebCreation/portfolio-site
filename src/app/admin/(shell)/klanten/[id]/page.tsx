@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import AdminPageHeader from "@/components/admin/admin-page-header";
 import CustomerDetail from "@/components/admin/customers/customer-detail";
 import { requireAdminAccess } from "@/lib/admin/access";
+import { listCommunicationsForCustomer } from "@/lib/admin/communications/repository";
 import { toDateKey } from "@/lib/admin/format";
 import { listInvoicesForCustomer } from "@/lib/admin/invoices/repository";
 import { listProjectsForCustomer } from "@/lib/admin/projects/repository";
@@ -36,17 +37,27 @@ export default async function CustomerPage({ params }: PageProps) {
     notFound();
   }
 
-  const [sourceInquiry, sourceLead, quotes, invoices, projects, payments, recurringServices, prenotifications] =
-    await Promise.all([
-      customer.sourceInquiryId ? readInquiry(customer.sourceInquiryId) : undefined,
-      customer.sourceLeadId ? readLead(customer.sourceLeadId) : undefined,
-      listQuotesForCustomer(customer.id),
-      listInvoicesForCustomer(customer.id),
-      listProjectsForCustomer(customer.id),
-      listPaymentsForCustomer(customer.id),
-      listRecurringServicesForCustomer(customer.id),
-      listPrenotificationsForCustomer(customer.id),
-    ]);
+  const [
+    sourceInquiry,
+    sourceLead,
+    quotes,
+    invoices,
+    projects,
+    payments,
+    recurringServices,
+    prenotifications,
+    communications,
+  ] = await Promise.all([
+    customer.sourceInquiryId ? readInquiry(customer.sourceInquiryId) : undefined,
+    customer.sourceLeadId ? readLead(customer.sourceLeadId) : undefined,
+    listQuotesForCustomer(customer.id),
+    listInvoicesForCustomer(customer.id),
+    listProjectsForCustomer(customer.id),
+    listPaymentsForCustomer(customer.id),
+    listRecurringServicesForCustomer(customer.id),
+    listPrenotificationsForCustomer(customer.id),
+    listCommunicationsForCustomer(customer.id),
+  ]);
 
   const todayKey = toDateKey(new Date());
   // Read from the financial data itself, every time the page renders.
@@ -95,6 +106,7 @@ export default async function CustomerPage({ params }: PageProps) {
         quotes={quotes}
         invoices={invoices}
         projects={projects}
+        communications={communications}
         financials={financials}
         recurringServices={recurringServices}
         recurringOverviews={recurringOverviews}
