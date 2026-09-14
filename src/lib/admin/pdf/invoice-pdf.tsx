@@ -1,16 +1,19 @@
 import { Text, View } from "@react-pdf/renderer";
 import { companyProfile } from "@/lib/admin/documents/company";
+import type { InvoiceActivation } from "@/lib/admin/documents/types";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import DocumentLayout, { formatDocumentDate } from "@/lib/admin/pdf/document-layout";
 import { styles } from "@/lib/admin/pdf/theme";
 import { formatCents } from "@/lib/money";
 
-/**
- * A monthly service this invoice switches on, for the note under the totals.
- * The PDF stays the formal record of what is due now, so this is the only
- * place the monthly figure appears -- never as a line, never in a total.
- */
-export type InvoiceActivation = { serviceName: string; monthlyGrossCents: number; firstDebitOn: string };
+/*
+  A monthly service this invoice switches on, for the note under the totals.
+  The PDF stays the formal record of what is due now, so the monthly figure
+  appears only in that note -- never as a line, never in a total. Re-exported
+  because the shape is the documents module's, shared with the mail and with
+  the admin's preview.
+*/
+export type { InvoiceActivation };
 
 /** One bank detail: label left, value right, like the metadata at the top. */
 function DetailRow({ label, value }: { label: string; value: string }) {

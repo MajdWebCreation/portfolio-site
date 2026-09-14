@@ -5,7 +5,8 @@ import AdminButton from "@/components/admin/admin-button";
 import { useSave } from "@/components/admin/save-controls";
 import { sendInvoiceToCustomer, sendQuoteToCustomer } from "@/lib/admin/documents/send";
 import { documentRecord, type DocumentView } from "@/lib/admin/documents/view";
-import { formatDateTime } from "@/lib/admin/format";
+import { formatDate, formatDateTime } from "@/lib/admin/format";
+import { formatCents } from "@/lib/money";
 
 /**
  * Sending the saved document to its customer.
@@ -29,6 +30,13 @@ export default function SendPanel({ doc }: { doc: DocumentView }) {
   const { save: run, pending, error } = useSave();
 
   const kindLabel = doc.kind === "quote" ? "offerte" : "factuur";
+  /*
+    What this mail asks of the customer. An invoice that switches a monthly
+    service on carries a different button -- paying it authorises the direct
+    debit as well -- and sending is the one step that cannot be taken back, so
+    the confirmation says which of the two is about to go out.
+  */
+  const activates = doc.kind === "invoice" ? doc.activates : undefined;
   const recipient = document.customer.email.trim();
   const saved = Boolean(document.id);
   const blocked = !saved
@@ -72,6 +80,15 @@ export default function SendPanel({ doc }: { doc: DocumentView }) {
               ? " Daarbij wordt het definitieve nummer toegekend."
               : ` Het nummer blijft ${document.number.value}.`}
           </p>
+          {activates ? (
+            <p className="text-[0.85rem] leading-snug text-body">
+              De knop in de mail luidt <span className="text-ink">Factuur betalen &amp; automatische incasso activeren</span>:
+              met die betaling machtigt de klant ons om {activates.serviceName} maandelijks te incasseren,{" "}
+              {formatCents(activates.monthlyGrossCents)} incl. btw, voor het eerst op{" "}
+              {formatDate(`${activates.firstDebitOn}T12:00:00+02:00`)}. Deze mail is tegelijk de vooraankondiging van die
+              incasso.
+            </p>
+          ) : null}
           <div className="flex flex-wrap items-center gap-3">
             <AdminButton onClick={send} disabled={pending}>
               {pending ? "Versturen…" : "Definitief versturen"}

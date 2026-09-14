@@ -58,3 +58,19 @@ export const documentKindLabels: Record<DocumentKind, string> = {
   quote: "Offerte",
   invoice: "Factuur",
 };
+
+/**
+ * A monthly service a one-off invoice switches on.
+ *
+ * Lives here rather than with the PDF because three screens now say the same
+ * sentence about it -- the PDF note, the mail and the admin's own preview --
+ * and they have to be talking about one set of figures. The amount is the
+ * monthly charge including VAT, because that is what actually leaves the
+ * customer's account; it is never part of the invoice's own total.
+ */
+export type InvoiceActivation = {
+  serviceName: string;
+  monthlyGrossCents: Cents;
+  /** YYYY-MM-DD of the first automatic collection. */
+  firstDebitOn: string;
+};

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import AdminButton from "@/components/admin/admin-button";
 import { SelectField, TextField } from "@/components/admin/form-field";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
@@ -39,12 +39,28 @@ type InvoiceRecurringProps = {
   /** Whether the one-off invoice itself has been paid. */
   invoicePaid: boolean;
   projects: Project[];
+  /** The project on the invoice right now, which the service follows. */
   defaultProjectId?: string;
   /** Sent invoices are fixed; what they promised the customer stands. */
   sent: boolean;
   /** Today, from the server, so client and server judge the same calendar. */
   todayKey: string;
 };
+
+/** The name of a project, for the lines that report rather than offer one. */
+function projectName(projects: Project[], id?: string): string | undefined {
+  return projects.find((project) => project.id === id)?.name;
+}
+
+/** Label left, value right: the same two-column line the rest of the admin uses. */
+function Line({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-3">
+      <dt className="text-muted">{label}</dt>
+      <dd className="text-ink">{children}</dd>
+    </div>
+  );
+}
 
 export default function InvoiceRecurring({
   invoiceId,
@@ -69,22 +85,48 @@ export default function InvoiceRecurring({
   const [amount, setAmount] = useState("");
   const [vatRate, setVatRate] = useState("21");
   const [startsOn, setStartsOn] = useState("");
-  const [projectId, setProjectId] = useState(defaultProjectId ?? "");
+  /*
+    Null means "whatever the invoice says". The project is the invoice's until
+    the admin overrules it, so changing the project on the invoice above moves
+    the service with it instead of leaving the value the page opened with.
+  */
+  const [chosenProject, setChosenProject] = useState<string | null>(null);
+  const projectId = chosenProject ?? defaultProjectId ?? "";
   const [error, setError] = useState<string | null>(null);
   const { save, pending, error: saveError, savedAt } = useSave();
   const detach = useSave();
 
+  /*
+    The figure the customer will actually be charged each month, worked out
+    while the admin types rather than after saving. It is the one amount in
+    this block that nobody should have to calculate: the two fields above are
+    excluding VAT, and the collection is not.
+  */
+  const netCents = parseCents(amount);
+  const monthlyGross =
+    netCents !== null && netCents > 0 ? recurringChargeCents({ amountCents: netCents, vatRate: Number(vatRate) }) : null;
+
   // Picking an existing service fills the fields with what it already says, so
-  // the admin corrects figures rather than retypes them.
+  // the admin corrects figures rather than retypes them. Going back to "new"
+  // empties them again -- half of someone else's service is not a new one.
   function pick(id: string) {
     setServiceId(id);
     const chosen = services.find((service) => service.id === id);
-    if (!chosen) return;
+    if (!chosen) {
+      setName("");
+      setAmount("");
+      setVatRate("21");
+      setStartsOn("");
+      setChosenProject(null);
+      return;
+    }
     setName(chosen.name);
     setAmount((chosen.amountCents / 100).toFixed(2).replace(".", ","));
     setVatRate(String(chosen.vatRate));
     if (chosen.startsOn && chosen.startsOn >= earliest) setStartsOn(chosen.startsOn);
-    if (chosen.projectId) setProjectId(chosen.projectId);
+    // A service filed elsewhere keeps its own project; one that is filed
+    // nowhere falls back to the invoice's, like a new service would.
+    setChosenProject(chosen.projectId ?? null);
   }
 
   function submit() {
@@ -114,36 +156,32 @@ export default function InvoiceRecurring({
   }
 
   if (attached) {
+    const project = projectName(projects, attached.projectId);
     return (
       <div className="space-y-3">
         <dl className="space-y-1 text-[0.9rem]">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <dt className="text-muted">Eenmalige factuur</dt>
-            <dd className="text-ink">{invoicePaid ? "betaald" : "open"}</dd>
-          </div>
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <dt className="text-muted">Maandelijkse service</dt>
-            <dd className="text-ink">
-              {attached.name} · {formatCents(recurringChargeCents(attached))} per maand, incl. btw
-            </dd>
-          </div>
+          <Line label="Eenmalige factuur">{invoicePaid ? "betaald" : "open"}</Line>
+          <Line label="Dienst">{attached.name}</Line>
+          <Line label="Maandbedrag excl. btw">
+            <span className="tabular">{formatCents(attached.amountCents)}</span> · btw {attached.vatRate}%
+          </Line>
+          <Line label="Maandbedrag incl. btw">
+            <span className="tabular font-semibold">{formatCents(recurringChargeCents(attached))}</span> per maand
+          </Line>
           {attached.startsOn ? (
-            <div className="flex flex-wrap items-baseline justify-between gap-3">
-              <dt className="text-muted">Eerste automatische incasso</dt>
-              <dd className="tabular text-ink">{day(attached.startsOn)}</dd>
-            </div>
+            <Line label="Eerste automatische incasso">
+              <span className="tabular">{day(attached.startsOn)}</span>
+            </Line>
           ) : null}
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <dt className="text-muted">Incasso</dt>
-            <dd>
-              <StatusBadge tone={activationStatusTone[status]}>{activationStatusLabels[status]}</StatusBadge>
-            </dd>
-          </div>
+          <Line label="Project">{project ?? "geen project"}</Line>
+          <Line label="Incasso">
+            <StatusBadge tone={activationStatusTone[status]}>{activationStatusLabels[status]}</StatusBadge>
+          </Line>
         </dl>
         <p className="text-[0.85rem] text-muted">
           {sent
             ? "De klant heeft deze factuur ontvangen; betalen activeert de maandelijkse incasso."
-            : "Bij het versturen vraagt de betaallink meteen toestemming voor automatische incasso. Het maandbedrag wordt nu niet geïncasseerd."}
+            : "Bij het versturen vraagt de betaallink meteen toestemming voor automatische incasso. Het maandbedrag staat niet in het totaal van deze factuur en wordt nu niet geïncasseerd."}
         </p>
         {sent ? null : (
           <>
@@ -227,6 +265,21 @@ export default function InvoiceRecurring({
         </SelectField>
       </div>
 
+      {/* What the customer is actually charged, next to the two fields it
+          follows from. Never a field: it is calculated, not entered. */}
+      <dl className="rounded-sm border border-line bg-paper-deep px-4 py-3 text-[0.9rem]">
+        <Line label={`Maandbedrag incl. ${vatRate}% btw`}>
+          {monthlyGross === null ? (
+            <span className="text-muted">vul een maandbedrag in</span>
+          ) : (
+            <span className="tabular text-[1.05rem] font-semibold">{formatCents(monthlyGross)}</span>
+          )}
+        </Line>
+        <p className="mt-1.5 text-[0.82rem] text-muted">
+          Dit bedrag wordt maandelijks geïncasseerd en staat los van het totaal van deze factuur.
+        </p>
+      </dl>
+
       <TextField
         id="recurring-service-start"
         label="Eerste automatische incasso"
@@ -242,8 +295,14 @@ export default function InvoiceRecurring({
         label="Project"
         optional
         value={projectId}
-        onChange={(event) => setProjectId(event.target.value)}
-        hint={projects.length === 0 ? "Deze klant heeft nog geen projecten." : "De maandfacturen komen onder hetzelfde project te staan."}
+        onChange={(event) => setChosenProject(event.target.value)}
+        hint={
+          projects.length === 0
+            ? "Deze klant heeft nog geen projecten."
+            : projectId && projectId === defaultProjectId && chosenProject === null
+              ? `Overgenomen van deze factuur: ${projectName(projects, projectId) ?? "onbekend project"}. De maandfacturen komen onder hetzelfde project te staan.`
+              : "De maandfacturen komen onder hetzelfde project te staan."
+        }
       >
         <option value="">Geen project</option>
         {projects.map((project) => (

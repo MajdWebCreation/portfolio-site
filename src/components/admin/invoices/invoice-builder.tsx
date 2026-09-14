@@ -21,6 +21,7 @@ import { saveInvoice } from "@/lib/admin/invoices/actions";
 import type { Project } from "@/lib/admin/projects/types";
 import { invoiceStatusLabels, invoiceStatusOrder, invoiceStatusTone, isInvoiceStatus, type Invoice } from "@/lib/admin/invoices/types";
 import type { InvoiceActivationView } from "@/lib/payments/activation-view";
+import { documentActivation } from "@/lib/payments/activation-decision";
 import { calculateTotals } from "@/lib/money";
 
 type Errors = Partial<Record<"customer" | "issueDate" | "dueDate" | "lines", string>>;
@@ -78,6 +79,14 @@ export default function InvoiceBuilder({ stored, customers, projects, quoteProje
   const { save: runSave, pending, error: saveError, savedAt } = useSave();
   const totals = useMemo(() => calculateTotals(invoice.lines.filter((line) => !hasLineErrors(validateLine(line)))), [invoice.lines]);
   const ready = Boolean(invoice.customer.customerId) && invoice.lines.length > 0 && invoice.lines.every((line) => !hasLineErrors(validateLine(line)));
+  /*
+    What paying this invoice also switches on, by the same rule the send flow
+    uses -- so the PDF the admin previews and the mail the admin confirms say
+    exactly what the customer will read, instead of leaving the note out.
+  */
+  const activates = activation
+    ? documentActivation({ ...(activation.attached ? { service: activation.attached } : {}), status: activation.status })
+    : undefined;
   /*
     Which projects this invoice may name. Always the customer's own; and when
     the invoice follows from a quote, only that quote's project, because the
@@ -186,16 +195,17 @@ export default function InvoiceBuilder({ stored, customers, projects, quoteProje
         </AdminSection>
 
         {/*
-          Only for an invoice that exists: the link is stored on the service and
-          needs an invoice to point at. A new invoice is saved first, which is
-          also the order the admin works in.
+          Always shown, so an admin filling in a first invoice can see that a
+          monthly service is part of this screen. Only an invoice that exists
+          can actually carry one: the link is stored on the service and needs
+          an invoice to point at, which is also the order the admin works in.
         */}
-        {activation && invoice.id ? (
-          <AdminSection
-            id="recurring"
-            title="Maandelijkse service"
-            note="Wordt geactiveerd door de betaling van deze factuur"
-          >
+        <AdminSection
+          id="recurring"
+          title="Maandelijkse service"
+          note="Optioneel; wordt geactiveerd door de betaling van deze factuur"
+        >
+          {activation && invoice.id ? (
             <InvoiceRecurring
               invoiceId={invoice.id}
               services={activation.candidates}
@@ -207,8 +217,14 @@ export default function InvoiceBuilder({ stored, customers, projects, quoteProje
               defaultProjectId={invoice.projectId}
               sent={Boolean(stored?.sentAt)}
             />
-          </AdminSection>
-        ) : null}
+          ) : (
+            <p className="text-[0.9rem] text-muted">
+              Maak deze factuur eerst aan. Daarna kun je hier een maandelijkse service koppelen of aanmaken: de klant
+              betaalt dan deze factuur en machtigt in dezelfde stap de automatische incasso. Het maandbedrag komt niet
+              bij het totaal van deze factuur.
+            </p>
+          )}
+        </AdminSection>
 
         <AdminSection id="notes" title="Opmerkingen">
           <TextareaField id="invoice-notes" label="Opmerkingen" optional value={invoice.notes} onChange={(event) => update("notes", event.target.value)} hint="Staat onder de betaalinformatie op de factuur." />
@@ -227,7 +243,7 @@ export default function InvoiceBuilder({ stored, customers, projects, quoteProje
           <DocumentStatus value={invoice.status} order={invoiceStatusOrder} labels={invoiceStatusLabels} tones={invoiceStatusTone} onChange={(value) => (isInvoiceStatus(value) ? update("status", value) : null)} edited={false} />
         </div>
         <div className="border-t border-line pt-6">
-          <DocumentPanel document={{ kind: "invoice", invoice }} fileName={`${invoice.number.value}.pdf`} ready={ready} />
+          <DocumentPanel document={{ kind: "invoice", invoice, ...(activates ? { activates } : {}) }} fileName={`${invoice.number.value}.pdf`} ready={ready} />
         </div>
       </aside>
     </div>

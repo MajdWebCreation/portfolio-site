@@ -42,7 +42,13 @@ export default function PdfPreview({ document: doc, fileName, ready }: PdfPrevie
   async function generate() {
     setState("busy");
     try {
-      const element = doc.kind === "quote" ? <QuotePdf quote={doc.quote} /> : <InvoicePdf invoice={doc.invoice} />;
+      /* The same document the customer will get, activation note and all. */
+      const element =
+        doc.kind === "quote" ? (
+          <QuotePdf quote={doc.quote} />
+        ) : (
+          <InvoicePdf invoice={doc.invoice} {...(doc.activates ? { activates: doc.activates } : {})} />
+        );
       const blob = await pdf(element).toBlob();
       setUrl((previous) => {
         if (previous) URL.revokeObjectURL(previous);

@@ -1,5 +1,6 @@
+import type { InvoiceActivation } from "@/lib/admin/documents/types";
 import type { Invoice } from "@/lib/admin/invoices/types";
-import type { RecurringService } from "@/lib/payments/types";
+import { recurringChargeCents, type RecurringService } from "@/lib/payments/types";
 
 /**
  * One-off or first: what kind of payment an invoice should ask for.
@@ -100,3 +101,26 @@ export const activationStatusTone: Record<ActivationStatus, "neutral" | "accent"
   subscription_active: "success",
   problem: "danger",
 };
+
+/**
+ * The activation note a document may carry, from what the admin screen knows.
+ *
+ * The send flow derives the same three figures from the payment link it just
+ * made, which is the authoritative moment. This is the screen's version of
+ * that question, and it is deliberately the same rule: the note only appears
+ * while paying this invoice is still what establishes the mandate. A customer
+ * who already authorised us gets an ordinary invoice, and the preview has to
+ * show that ordinary invoice rather than a promise that will not be made.
+ */
+export function documentActivation(input: {
+  service?: RecurringService;
+  status: ActivationStatus;
+}): InvoiceActivation | undefined {
+  const { service, status } = input;
+  if (!service?.startsOn || status !== "awaiting_first_payment") return undefined;
+  return {
+    serviceName: service.name,
+    monthlyGrossCents: recurringChargeCents(service),
+    firstDebitOn: service.startsOn,
+  };
+}

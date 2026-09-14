@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { invoiceFixture, recurringFixture } from "@/lib/payments/fixtures";
-import { activationStatus, decidePaymentSequence } from "@/lib/payments/activation-decision";
+import { activationStatus, decidePaymentSequence, documentActivation } from "@/lib/payments/activation-decision";
 
 /*
   Whether a customer is asked to authorise direct debit is a decision with
@@ -74,5 +74,37 @@ describe("what the admin is told about the collection", () => {
     expect(activationStatus({ service: recurringFixture({ status: "canceled" }), hasUsableMandate: true })).toBe(
       "problem",
     );
+  });
+});
+
+/*
+  The admin's PDF preview and the send confirmation say what the customer is
+  about to read. They may only say it while paying really is what establishes
+  the mandate -- otherwise the screen promises a monthly collection the mail
+  will not mention.
+*/
+describe("the activation note an admin screen may show", () => {
+  const service = recurringFixture({ startsOn: "2026-10-01", amountCents: 2500, vatRate: 21 });
+
+  it("quotes the monthly charge including VAT and the first collection", () => {
+    expect(documentActivation({ service, status: "awaiting_first_payment" })).toEqual({
+      serviceName: "Websitebeheer",
+      monthlyGrossCents: 3025,
+      firstDebitOn: "2026-10-01",
+    });
+  });
+
+  it("says nothing for an invoice with no monthly service", () => {
+    expect(documentActivation({ status: "not_applicable" })).toBeUndefined();
+  });
+
+  /* The customer authorised us earlier, so this mail is an ordinary invoice. */
+  it("says nothing once a mandate exists", () => {
+    expect(documentActivation({ service, status: "mandate_active" })).toBeUndefined();
+  });
+
+  it("says nothing while the service has no first collection date", () => {
+    const undated = recurringFixture();
+    expect(documentActivation({ service: undated, status: "awaiting_first_payment" })).toBeUndefined();
   });
 });
