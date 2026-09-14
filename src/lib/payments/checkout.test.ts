@@ -41,16 +41,26 @@ const stored: StoredPaymentLink = {
   amountCents: 12100,
 };
 
+/** Invoice ids are UUIDs in the database; the return token needs a real one. */
+const invoiceId = "dd847d57-3cb1-4160-b848-2a43a53ac40f";
+
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.MOLLIE_API_KEY = "test_dummy";
   process.env.NEXT_PUBLIC_SITE_URL = "https://example.test";
+  process.env.PAYMENT_RETURN_SECRET = "test-payment-return-secret-value";
   createPaymentLink.mockResolvedValue(link());
 });
 
 afterEach(() => {
   delete process.env.MOLLIE_API_KEY;
+  delete process.env.PAYMENT_RETURN_SECRET;
 });
+
+/** The redirect URL of the single createPaymentLink call. */
+function redirectUrlOf(): string {
+  return (createPaymentLink.mock.calls[0]?.[0] as { redirectUrl: string }).redirectUrl;
+}
 
 describe("a payment link for an invoice", () => {
   it("creates one when there is nothing to reuse", async () => {
@@ -81,14 +91,16 @@ describe("a payment link for an invoice", () => {
   /*
     The page the customer meets straight after paying. It lives under a locale
     segment like every other page here, so a return URL without one is a 404 at
-    the one moment the site may not look broken.
+    the one moment the site may not look broken -- and it names the invoice only
+    through an opaque token, so it is not a list anyone can count through.
   */
-  it("returns the customer to the localised confirmation page", async () => {
-    await ensureInvoiceCheckout(invoiceFixture(), { existing: [], persistLink: vi.fn() });
+  it("returns the customer to the localised confirmation page, with no identifier in it", async () => {
+    await ensureInvoiceCheckout(invoiceFixture({ id: invoiceId }), { existing: [], persistLink: vi.fn() });
 
-    expect(createPaymentLink).toHaveBeenCalledWith(
-      expect.objectContaining({ redirectUrl: "https://example.test/nl/betaling/afgerond?doc=YM-F-2026-000001" }),
-    );
+    const redirectUrl = redirectUrlOf();
+    expect(redirectUrl.startsWith("https://example.test/nl/betaling/afgerond?state=")).toBe(true);
+    expect(redirectUrl).not.toContain(invoiceId);
+    expect(redirectUrl).not.toContain("YM-F");
   });
 
   /* The requirement: resending reuses the link the customer already has. */
@@ -178,7 +190,7 @@ describe("a payment link for an invoice", () => {
     the only thing that changes; the amount stays the invoice's own total.
   */
   it("asks for a first payment link when the invoice has to establish a mandate", async () => {
-    await ensureInvoiceCheckout(invoiceFixture(), {
+    await ensureInvoiceCheckout(invoiceFixture({ id: invoiceId }), {
       existing: [],
       persistLink: vi.fn(),
       sequence: "first",
@@ -189,9 +201,7 @@ describe("a payment link for an invoice", () => {
       expect.objectContaining({ sequenceType: "first", customerId: "cst_1", amountCents: 12100 }),
     );
     // Paying and authorising is one link, so it is the same return page.
-    expect(createPaymentLink).toHaveBeenCalledWith(
-      expect.objectContaining({ redirectUrl: "https://example.test/nl/betaling/afgerond?doc=YM-F-2026-000001" }),
-    );
+    expect(redirectUrlOf().startsWith("https://example.test/nl/betaling/afgerond?state=")).toBe(true);
   });
 
   it("charges only the one-off invoice, never a monthly price on top", async () => {

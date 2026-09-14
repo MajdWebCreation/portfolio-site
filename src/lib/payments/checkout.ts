@@ -107,7 +107,7 @@ export async function ensureInvoiceCheckout(
   const created = await createPaymentLink({
     amountCents: settlement.outstandingCents,
     description: checkoutDescription(invoice),
-    redirectUrl: invoiceRedirectUrl(config, invoice.number.value),
+    redirectUrl: invoiceRedirectUrl(config, invoice.id),
     /*
       Mollie sends the status of the payments a link produces here. The
       invoice is named in the query string because the Payment Links API has

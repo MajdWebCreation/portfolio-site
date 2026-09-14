@@ -1,4 +1,5 @@
 import { defaultLocale, type Locale } from "@/lib/content/site-content";
+import { createPaymentReturnToken, hasPaymentReturnSecret } from "@/lib/payments/return-token";
 
 /**
  * Mollie configuration, read on the server and nowhere else.
@@ -95,14 +96,33 @@ export function mollieWebhookUrl(config: MollieConfig): string {
 /**
  * Where a customer lands after paying an invoice -- an ordinary one-off, and
  * the `first` payment that also establishes a mandate, because both are the
- * same invoice payment link. `doc` names the invoice for the page.
+ * same invoice payment link.
+ *
+ * The invoice travels as an opaque signed token, never as its number: those
+ * run in sequence, and a URL carrying one lets anybody count through the
+ * others and read the answer off the page. See `return-token.ts`.
+ *
+ * A deployment without `PAYMENT_RETURN_SECRET` still gets a working return
+ * page -- it simply shows the message that claims nothing. Refusing to create
+ * the payment link over a missing secret would stop invoices going out for
+ * something the customer's payment does not depend on.
  */
-export function invoiceRedirectUrl(
-  config: MollieConfig,
-  invoiceNumber: string,
-  locale: Locale = defaultLocale,
-): string {
-  return sitePageUrl(config, locale, `/betaling/afgerond?doc=${encodeURIComponent(invoiceNumber)}`);
+export function invoiceRedirectUrl(config: MollieConfig, invoiceId: string, locale: Locale = defaultLocale): string {
+  const page = sitePageUrl(config, locale, "/betaling/afgerond");
+
+  if (!hasPaymentReturnSecret()) {
+    console.warn("PAYMENT_RETURN_SECRET is not set; the payment return page cannot show a status.");
+    return page;
+  }
+
+  try {
+    return `${page}?state=${encodeURIComponent(createPaymentReturnToken(invoiceId))}`;
+  } catch (error) {
+    // A token that cannot be made costs the customer a status message, not a
+    // way to pay. The reason is worth a log line, never a failed send.
+    console.error("Could not sign the payment return URL", { error });
+    return page;
+  }
 }
 
 /** Where a customer lands after authorising direct debit on its own link. */
