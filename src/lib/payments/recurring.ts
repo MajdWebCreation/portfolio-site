@@ -1,5 +1,6 @@
 import { createPayment, getPayment } from "@/lib/mollie/client";
 import { activationRedirectUrl, getMollieConfig, isMollieConfigured, mollieWebhookUrl } from "@/lib/mollie/config";
+import { defaultLocale, type Locale } from "@/lib/content/site-content";
 import { paymentsAdminClient } from "@/lib/payments/admin-client";
 import { recurringServiceFromRow } from "@/lib/payments/mapper";
 import { ensureProviderCustomer } from "@/lib/payments/provider-customer";
@@ -105,8 +106,14 @@ export async function readActivation(token: string): Promise<ActivationView> {
   };
 }
 
-/** What the customer's own POST does. */
-export async function startActivation(token: string): Promise<ActivationStart> {
+/**
+ * What the customer's own POST does.
+ *
+ * `locale` is the language the customer is already reading the activation
+ * page in, and it decides where Mollie sends them back to -- the return page
+ * exists per locale, like every other page on this site.
+ */
+export async function startActivation(token: string, locale: Locale = defaultLocale): Promise<ActivationStart> {
   if (!isMollieConfigured()) return { ok: false, reason: "unavailable" };
 
   const loaded = await loadActivation(token);
@@ -151,7 +158,7 @@ export async function startActivation(token: string): Promise<ActivationStart> {
   const payment = await createPayment({
     amountCents: recurringChargeCents(service),
     description: `${service.name} — eerste termijn en machtiging`,
-    redirectUrl: activationRedirectUrl(config),
+    redirectUrl: activationRedirectUrl(config, locale),
     webhookUrl: mollieWebhookUrl(config),
     metadata: { kind: "recurring_activation", recurringServiceId: service.id, customerId: service.customerId },
     sequenceType: "first",

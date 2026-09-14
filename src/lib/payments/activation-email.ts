@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { companyProfile } from "@/lib/admin/documents/company";
-import { emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
+import { contactSectionHtml, contactTextLines } from "@/lib/email/contact";
+import { emailButton, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
 import { formatCents } from "@/lib/money";
 
 /**
@@ -21,11 +22,6 @@ export type ActivationMailInput = {
 
 export type ActivationMailResult = { sent: true; sentAt: string } | { sent: false; reason: string };
 
-function button(url: string): string {
-  const href = escapeEmailHtml(url);
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 4px;"><tr><td style="border-radius:3px;background:#14161a;"><a href="${href}" style="display:inline-block;padding:13px 22px;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:3px;">Automatische incasso activeren</a></td></tr></table>`;
-}
-
 export async function sendActivationMail(input: ActivationMailInput): Promise<ActivationMailResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.CONTACT_FROM_EMAIL;
@@ -43,8 +39,9 @@ export async function sendActivationMail(input: ActivationMailInput): Promise<Ac
     content: [
       emailText(`Beste ${escapeEmailHtml(input.contactName)},`, { top: 18 }),
       emailText(escapeEmailHtml(opening)),
-      button(input.activationUrl),
+      emailButton(input.activationUrl, "Automatische incasso activeren"),
       emailSection({ label: "Goed om te weten", html: escapeEmailHtml(note) }),
+      contactSectionHtml(),
     ].join(""),
   });
 
@@ -57,8 +54,9 @@ export async function sendActivationMail(input: ActivationMailInput): Promise<Ac
     "",
     note,
     "",
+    ...contactTextLines(),
+    "",
     companyProfile.legalName,
-    `${companyProfile.email} · ${companyProfile.phone}`,
     companyProfile.website,
   ].join("\n");
 

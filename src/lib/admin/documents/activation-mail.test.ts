@@ -105,6 +105,43 @@ describe("the activation mail", () => {
       expect(body).toContain("YM Creations");
     }
   });
+
+  /*
+    Two buttons, and it must stay obvious which one the mail is about. The
+    payment button is filled and dark; WhatsApp is an outline underneath it.
+  */
+  it("keeps paying the primary action and WhatsApp the secondary one", () => {
+    expect(mail.html).toContain(">WhatsApp ons<");
+    // The bare wa.me URL is no longer link text anywhere in the HTML.
+    expect(mail.html).not.toContain(">https://wa.me/31653400220<");
+    expect(mail.html.indexOf("Factuur betalen &amp; automatische incasso activeren")).toBeLessThan(
+      mail.html.indexOf("WhatsApp ons"),
+    );
+    expect(mail.text).toContain("WhatsApp ons: https://wa.me/31653400220");
+  });
+});
+
+/*
+  An ordinary invoice is a transactional mail too, so it carries the same
+  contact block -- one thing the customer recognises across all of them.
+*/
+describe("the contact block across the transactional mails", () => {
+  it("appears on an ordinary invoice, under its payment button", () => {
+    expect(plain.html).toContain(">WhatsApp ons<");
+    expect(plain.html.indexOf("Factuur betalen")).toBeLessThan(plain.html.indexOf("WhatsApp ons"));
+    expect(plain.text).toContain("WhatsApp ons: https://wa.me/31653400220");
+  });
+
+  /* A quote is a proposal, not a payment request; it keeps its own closing. */
+  it("stays off a quote", () => {
+    const quote = buildDocumentMailBody({
+      ...base,
+      kind: "quote",
+      payUrl: undefined,
+    });
+    expect(quote.html).not.toContain("WhatsApp ons");
+    expect(quote.text).toContain("Vragen of aanpassingen? Reageer gerust op deze mail.");
+  });
 });
 
 describe("an invoice that activates nothing", () => {

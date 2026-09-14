@@ -132,6 +132,32 @@ describe("starting direct debit (POST)", () => {
     expect(db.rows("recurring_services")[0]?.status).toBe("awaiting_mandate");
   });
 
+  /*
+    The customer is sent back to a page that exists, in the language of the
+    page they started on -- an unprefixed path is a 404 here.
+  */
+  it("returns the customer to the localised direct debit page", async () => {
+    await startActivation(first.token);
+    expect(createPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ redirectUrl: "https://example.test/nl/betaling/incasso-afgerond" }),
+    );
+
+    vi.clearAllMocks();
+    createPayment.mockResolvedValue({
+      id: "tr_second",
+      status: "open",
+      amount: { currency: "EUR", value: "25.00" },
+      description: "x",
+      method: null,
+      _links: { checkout: { href: "https://pay.mollie.com/tr_second" } },
+    });
+    db = seed();
+    await startActivation(first.token, "en");
+    expect(createPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ redirectUrl: "https://example.test/en/betaling/incasso-afgerond" }),
+    );
+  });
+
   /* Double clicking must not produce a second first-payment. */
   it("resumes the same payment when posted again", async () => {
     await startActivation(first.token);

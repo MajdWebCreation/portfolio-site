@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { defaultLocale, type Locale } from "@/lib/content/site-content";
 import { rateLimit } from "@/lib/payments/rate-limit";
 import { startActivation } from "@/lib/payments/recurring";
 
@@ -24,8 +25,9 @@ const problems = {
 
 export async function beginDirectDebit(formData: FormData): Promise<void> {
   const token = formData.get("token");
-  const locale = formData.get("locale");
-  const path = `/${locale === "en" ? "en" : "nl"}/betaling/incasso-afgerond`;
+  // The page the customer came from; anything else is the default language.
+  const locale: Locale = formData.get("locale") === "en" ? "en" : defaultLocale;
+  const path = `/${locale}/betaling/incasso-afgerond`;
 
   if (typeof token !== "string") redirect(`${path}?status=${problems.unknown}`);
 
@@ -36,7 +38,7 @@ export async function beginDirectDebit(formData: FormData): Promise<void> {
 
   let target: string;
   try {
-    const outcome = await startActivation(token);
+    const outcome = await startActivation(token, locale);
     if (!outcome.ok) redirect(`${path}?status=${problems[outcome.reason]}`);
     target = outcome.checkoutUrl;
   } catch (error) {

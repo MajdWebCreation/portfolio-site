@@ -70,9 +70,20 @@ describe("the monthly term mail", () => {
     for (const body of [upcoming.html, upcoming.text, settled.html, settled.text]) {
       expect(body).not.toContain("Factuur betalen");
       expect(body).not.toContain("pay.mollie.com");
+      expect(body).not.toContain("betaling.mollie.com");
     }
-    expect(upcoming.text).not.toContain("http");
-    expect(settled.text).not.toContain("http");
+  });
+
+  /*
+    The one link it does carry: reaching us. Same block as every other
+    transactional mail, so "klopt er iets niet?" has somewhere to go.
+  */
+  it("offers WhatsApp and e-mail the same way the other mails do", () => {
+    for (const body of [upcoming.html, upcoming.text, settled.html, settled.text]) {
+      expect(body).toContain("WhatsApp ons");
+      expect(body).toContain("https://wa.me/31653400220");
+      expect(body).toContain("contact@ymcreations.com");
+    }
   });
 
   /*

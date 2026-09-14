@@ -1,3 +1,5 @@
+import { defaultLocale, type Locale } from "@/lib/content/site-content";
+
 /**
  * Mollie configuration, read on the server and nowhere else.
  *
@@ -61,22 +63,49 @@ export function mollieMode(): MollieMode {
 }
 
 /**
+ * A page on this site, as an absolute URL Mollie can send someone back to.
+ *
+ * Every public page of this site lives under a locale segment -- there is no
+ * `/betaling/afgerond`, only `/nl/betaling/afgerond` -- and the unprefixed
+ * paths that do work are the handful of redirects in `next.config.ts`. A
+ * return URL built without the segment therefore lands the customer on a 404
+ * at the worst possible moment: just after paying.
+ *
+ * So the locale is part of building the URL rather than something a caller
+ * may forget. It defaults to the site's own default language, which is what
+ * the documents and their mails are written in.
+ */
+function sitePageUrl(config: MollieConfig, locale: Locale, path: string): string {
+  return `${config.siteUrl}/${locale}${path}`;
+}
+
+/**
  * Where the integration check sends a visitor who would open its checkout.
  * Nobody ever does -- the check never opens the page -- but Mollie requires
  * the field, so it points at the site rather than anything payment-shaped.
  */
-export function integrationCheckRedirectUrl(config: MollieConfig): string {
-  return `${config.siteUrl}/nl`;
+export function integrationCheckRedirectUrl(config: MollieConfig, locale: Locale = defaultLocale): string {
+  return sitePageUrl(config, locale, "");
 }
 
 export function mollieWebhookUrl(config: MollieConfig): string {
   return `${config.siteUrl}/api/mollie/webhook`;
 }
 
-export function invoiceRedirectUrl(config: MollieConfig, invoiceNumber: string): string {
-  return `${config.siteUrl}/betaling/afgerond?doc=${encodeURIComponent(invoiceNumber)}`;
+/**
+ * Where a customer lands after paying an invoice -- an ordinary one-off, and
+ * the `first` payment that also establishes a mandate, because both are the
+ * same invoice payment link. `doc` names the invoice for the page.
+ */
+export function invoiceRedirectUrl(
+  config: MollieConfig,
+  invoiceNumber: string,
+  locale: Locale = defaultLocale,
+): string {
+  return sitePageUrl(config, locale, `/betaling/afgerond?doc=${encodeURIComponent(invoiceNumber)}`);
 }
 
-export function activationRedirectUrl(config: MollieConfig): string {
-  return `${config.siteUrl}/betaling/incasso-afgerond`;
+/** Where a customer lands after authorising direct debit on its own link. */
+export function activationRedirectUrl(config: MollieConfig, locale: Locale = defaultLocale): string {
+  return sitePageUrl(config, locale, "/betaling/incasso-afgerond");
 }

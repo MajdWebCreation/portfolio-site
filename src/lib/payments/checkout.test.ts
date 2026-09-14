@@ -78,6 +78,19 @@ describe("a payment link for an invoice", () => {
     );
   });
 
+  /*
+    The page the customer meets straight after paying. It lives under a locale
+    segment like every other page here, so a return URL without one is a 404 at
+    the one moment the site may not look broken.
+  */
+  it("returns the customer to the localised confirmation page", async () => {
+    await ensureInvoiceCheckout(invoiceFixture(), { existing: [], persistLink: vi.fn() });
+
+    expect(createPaymentLink).toHaveBeenCalledWith(
+      expect.objectContaining({ redirectUrl: "https://example.test/nl/betaling/afgerond?doc=YM-F-2026-000001" }),
+    );
+  });
+
   /* The requirement: resending reuses the link the customer already has. */
   it("reuses a link that is still payable instead of making a second one", async () => {
     getPaymentLink.mockResolvedValue(link());
@@ -174,6 +187,10 @@ describe("a payment link for an invoice", () => {
 
     expect(createPaymentLink).toHaveBeenCalledWith(
       expect.objectContaining({ sequenceType: "first", customerId: "cst_1", amountCents: 12100 }),
+    );
+    // Paying and authorising is one link, so it is the same return page.
+    expect(createPaymentLink).toHaveBeenCalledWith(
+      expect.objectContaining({ redirectUrl: "https://example.test/nl/betaling/afgerond?doc=YM-F-2026-000001" }),
     );
   });
 

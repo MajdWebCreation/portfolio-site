@@ -3,7 +3,8 @@ import { companyProfile } from "@/lib/admin/documents/company";
 import { documentKindLabels, type DocumentKind } from "@/lib/admin/documents/types";
 import { formatDate } from "@/lib/admin/format";
 import { formatCents } from "@/lib/money";
-import { emailLink, emailMeta, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
+import { contactSectionHtml, contactTextLines } from "@/lib/email/contact";
+import { emailButton, emailMeta, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
 
 /**
  * Sending a quote or an invoice to its customer.
@@ -108,18 +109,10 @@ export function documentDateLabel(dateKey: string): string {
 
 type MailBody = { html: string; text: string };
 
-/**
- * The one call to action a document mail carries. A table rather than a
- * styled anchor, because that is what survives Outlook; the colours are the
- * ink and paper of the rest of the mail.
- */
+/** The one call to action a document mail carries; see `emailButton`. */
 function payButton(url: string, label = "Factuur betalen"): string {
-  const href = escapeEmailHtml(url);
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 4px;"><tr><td style="border-radius:3px;background:#14161a;"><a href="${href}" style="display:inline-block;padding:13px 22px;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:3px;">${escapeEmailHtml(label)}</a></td></tr></table>`;
+  return emailButton(url, label);
 }
-
-/** WhatsApp Business, from the one place the phone number is written down. */
-const whatsappUrl = `https://wa.me/${companyProfile.phone.replace(/\D/g, "")}`;
 
 /**
  * The body, as lines. Both renderings come from the same list, so the plain
@@ -157,6 +150,7 @@ function recurringBody(input: DocumentMailInput & { recurring: NonNullable<Docum
       }),
       emailSection({ label: "Bijlage", html: escapeEmailHtml(attachment) }),
       ...(objection ? [emailText(escapeEmailHtml(objection), { top: 26 })] : []),
+      contactSectionHtml(),
     ].join(""),
   });
 
@@ -172,9 +166,10 @@ function recurringBody(input: DocumentMailInput & { recurring: NonNullable<Docum
     attachment,
     ...(objection ? [objection] : []),
     "",
+    ...contactTextLines(),
+    "",
     "Met vriendelijke groet,",
     companyProfile.legalName,
-    `${companyProfile.email} · ${companyProfile.phone}`,
     companyProfile.website,
   ].join("\n");
 
@@ -206,7 +201,7 @@ function activationBody(
 
   const consent = `Door de eenmalige factuur via onderstaande knop te betalen, activeert u tevens de automatische incasso voor de maandelijkse ${a.serviceName}. Vanaf ${firstDebit} wordt maandelijks ${formatCents(a.monthlyGrossCents)} automatisch geïncasseerd.`;
   const attachment = "De volledige specificatie van de eenmalige factuur vindt u in de bijgevoegde PDF-factuur.";
-  const contact = "Heeft u een vraag of klopt er iets niet? Neem gerust contact met ons op via WhatsApp of e-mail.";
+  const contact = "Heeft u een vraag of klopt er iets niet? Neem gerust contact met ons op.";
 
   const html = emailShell({
     locale: "nl",
@@ -220,10 +215,7 @@ function activationBody(
       emailSection({ label: "Wat u met deze betaling activeert", html: escapeEmailHtml(consent) }),
       ...(input.payUrl ? [payButton(input.payUrl, "Factuur betalen & automatische incasso activeren")] : []),
       emailSection({ label: "Bijlage", html: escapeEmailHtml(attachment) }),
-      emailSection({
-        label: "Vragen?",
-        html: `${escapeEmailHtml(contact)}<br /><br />WhatsApp Business: ${emailLink(whatsappUrl, whatsappUrl)}<br />E-mail: ${emailLink(`mailto:${companyProfile.email}`, companyProfile.email)}`,
-      }),
+      contactSectionHtml(contact),
       emailText("Met vriendelijke groet,", { top: 26 }),
       emailText(escapeEmailHtml(companyProfile.legalName)),
     ].join(""),
@@ -245,9 +237,7 @@ function activationBody(
     ...(input.payUrl ? [`Factuur betalen & automatische incasso activeren: ${input.payUrl}`, ""] : []),
     attachment,
     "",
-    contact,
-    `WhatsApp Business: ${whatsappUrl}`,
-    `E-mail: ${companyProfile.email}`,
+    ...contactTextLines(contact),
     "",
     "Met vriendelijke groet,",
     companyProfile.legalName,
@@ -289,7 +279,7 @@ export function buildDocumentMailBody(input: DocumentMailInput): MailBody {
     : "De offerte vind je als PDF in de bijlage.";
 
   const closing = isInvoice
-    ? "Vragen over deze factuur? Reageer gerust op deze mail."
+    ? "Vragen over deze factuur? Reageer gerust op deze mail, of bereik ons hieronder."
     : "Vragen of aanpassingen? Reageer gerust op deze mail.";
 
   const html = emailShell({
@@ -305,7 +295,7 @@ export function buildDocumentMailBody(input: DocumentMailInput): MailBody {
       ),
       ...(input.payUrl ? [payButton(input.payUrl)] : []),
       emailSection({ label: "Bijlage", html: escapeEmailHtml(attachment) }),
-      emailText(escapeEmailHtml(closing), { top: 26 }),
+      ...(isInvoice ? [contactSectionHtml(closing)] : [emailText(escapeEmailHtml(closing), { top: 26 })]),
     ].join(""),
   });
 
@@ -318,10 +308,10 @@ export function buildDocumentMailBody(input: DocumentMailInput): MailBody {
     "",
     ...(input.payUrl ? [`Factuur betalen: ${input.payUrl}`, ""] : []),
     attachment,
-    closing,
+    "",
+    ...(isInvoice ? contactTextLines(closing) : [closing]),
     "",
     companyProfile.legalName,
-    `${companyProfile.email} · ${companyProfile.phone}`,
     companyProfile.website,
   ].join("\n");
 

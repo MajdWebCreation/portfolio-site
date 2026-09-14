@@ -86,13 +86,48 @@ function sectionLabel(text: string): string {
   return `<p style="${label}margin:0 0 6px;">${escapeEmailHtml(text)}</p>`;
 }
 
-/** Label plus text. Separated by space, not by a border: this is a letter. */
-export function emailSection(input: { label: string; html: string }): string {
+/**
+ * Label plus text. Separated by space, not by a border: this is a letter.
+ *
+ * `after` is raw HTML placed under the paragraph, inside the same block --
+ * a button, say. It is a separate field rather than part of `html` because a
+ * button is a table, and a table inside a `<p>` is what breaks Outlook.
+ */
+export function emailSection(input: { label: string; html: string; after?: string }): string {
   return `
     <div style="margin-top:${blockGap}px;">
       ${sectionLabel(input.label)}
       <p style="${paragraph}">${input.html}</p>
+      ${input.after ?? ""}
     </div>`;
+}
+
+/**
+ * The one thing a mail asks the reader to do: pay, or authorise.
+ *
+ * A table with a background colour rather than a styled anchor, because that
+ * is what survives Outlook's Word renderer. Dark on light, so it stays the
+ * loudest thing on the sheet whatever else the mail offers.
+ */
+export function emailButton(href: string, label: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 4px;"><tr><td style="border-radius:3px;background:#14161a;"><a href="${escapeEmailHtml(href)}" style="display:inline-block;padding:13px 22px;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:3px;">${escapeEmailHtml(label)}</a></td></tr></table>`;
+}
+
+/**
+ * A second way to act, for the things that are useful but not the point of
+ * the mail -- reaching us, next to a button that asks for money.
+ *
+ * Deliberately the same shape and a quieter surface: an outline on the paper
+ * colour with ink text, and a smaller label. Nobody has to compare the two to
+ * see which one the mail is about.
+ */
+export function emailButtonSecondary(href: string, label: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0 2px;"><tr><td bgcolor="${palette.surface}" style="border-radius:3px;background-color:${palette.surface};border:1px solid ${palette.line};"><a href="${escapeEmailHtml(href)}" style="display:inline-block;padding:10px 18px;font-family:${sans};font-size:14px;font-weight:600;color:${palette.ink};text-decoration:none;border-radius:3px;">${escapeEmailHtml(label)}</a></td></tr></table>`;
+}
+
+/** A quieter line under a block: an alternative, a caveat, an aside. */
+export function emailNote(html: string): string {
+  return `<p style="${paragraph}margin-top:10px;font-size:15px;color:${palette.muted};">${html}</p>`;
 }
 
 /**
