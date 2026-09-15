@@ -16,10 +16,16 @@ function fakeClient(options: {
   profile?: ProfileRow | null;
   profileError?: boolean;
 }) {
-  const calls: { userId?: unknown } = {};
+  const calls: { userId?: unknown; claims?: boolean } = {};
 
   const client = {
     auth: {
+      // Locally verified claims look convincing; the page-side decision must
+      // not read them. Any call here is a bug.
+      getClaims: async () => {
+        calls.claims = true;
+        return { data: { claims: { sub: "user-1", email: "admin@example.com" } }, error: null };
+      },
       getUser: async () => ({
         data: { user: options.userError ? null : (options.user ?? null) },
         error: options.userError ? { message: "invalid token" } : null,
@@ -84,6 +90,12 @@ describe("resolveAdminAccess", () => {
       state: "admin",
       admin: { userId: "user-1", email: "admin@example.com", displayName: "Majd" },
     });
+  });
+
+  it("asks the Auth server, never the token's claims, even when they name an admin", async () => {
+    const { client, calls } = fakeClient({ userError: true, profile: activeProfile });
+    expect(await resolveAdminAccess(client)).toEqual({ state: "anonymous" });
+    expect(calls.claims).toBeUndefined();
   });
 
   it("looks the profile up by the id from the verified session", async () => {

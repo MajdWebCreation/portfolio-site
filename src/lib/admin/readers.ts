@@ -6,9 +6,10 @@ import { getInvoice } from "@/lib/admin/invoices/repository";
 import { getLead } from "@/lib/admin/leads/repository";
 import { getProject } from "@/lib/admin/projects/repository";
 import { getQuote } from "@/lib/admin/quotes/repository";
+import { listRecurringServicesForCustomer } from "@/lib/payments/repository";
 
 /**
- * The single-record reads an admin page does, deduplicated per request.
+ * The reads an admin page does more than once, deduplicated per request.
  *
  * Every detail route asks for the same record twice: once in
  * `generateMetadata` to put the customer or the invoice number in the tab
@@ -16,6 +17,11 @@ import { getQuote } from "@/lib/admin/quotes/repository";
  * second read is a second round trip to Supabase for a row that is already in
  * memory. `cache()` from React holds the promise for the length of one
  * request, which turns the pair back into one query.
+ *
+ * The same goes for a customer's recurring services on the invoice page: the
+ * page needs them to tell whether the invoice is collected by direct debit,
+ * and `invoiceActivation` needs them to offer the services the invoice could
+ * switch on. Two callers, one query.
  *
  * Deliberately a layer on top of the repositories rather than `cache()` around
  * the repository functions themselves. Server actions read the same records --
@@ -36,3 +42,4 @@ export const readInvoice = cache(getInvoice);
 export const readLead = cache(getLead);
 export const readProject = cache(getProject);
 export const readQuote = cache(getQuote);
+export const readRecurringServicesForCustomer = cache(listRecurringServicesForCustomer);

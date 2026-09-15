@@ -10,7 +10,7 @@ import { listInvoicesForCustomer } from "@/lib/admin/invoices/repository";
 import { listProjectsForCustomer } from "@/lib/admin/projects/repository";
 import { listQuotesForCustomer } from "@/lib/admin/quotes/repository";
 import { readCustomer, readInquiry, readLead } from "@/lib/admin/readers";
-import { activationSummaries } from "@/lib/payments/activation-view";
+import { activationSummaries, mandateByCustomer } from "@/lib/payments/activation-view";
 import { customerFinancials } from "@/lib/payments/customer-status";
 import { recurringOverview, type RecurringOverview } from "@/lib/payments/prenotification";
 import {
@@ -37,6 +37,12 @@ export default async function CustomerPage({ params }: PageProps) {
     notFound();
   }
 
+  /*
+    Everything the page shows hangs off this one customer, so once the record
+    is in hand every other read can go out together. The mandate question is
+    asked here as well, alongside the services it will be matched with, rather
+    than after them.
+  */
   const [
     sourceInquiry,
     sourceLead,
@@ -47,6 +53,7 @@ export default async function CustomerPage({ params }: PageProps) {
     recurringServices,
     prenotifications,
     communications,
+    mandates,
   ] = await Promise.all([
     customer.sourceInquiryId ? readInquiry(customer.sourceInquiryId) : undefined,
     customer.sourceLeadId ? readLead(customer.sourceLeadId) : undefined,
@@ -57,6 +64,7 @@ export default async function CustomerPage({ params }: PageProps) {
     listRecurringServicesForCustomer(customer.id),
     listPrenotificationsForCustomer(customer.id),
     listCommunicationsForCustomer(customer.id),
+    mandateByCustomer([customer.id]),
   ]);
 
   const todayKey = toDateKey(new Date());
@@ -81,7 +89,9 @@ export default async function CustomerPage({ params }: PageProps) {
     ]),
   );
 
-  const activations = await activationSummaries(recurringServices);
+  // The customer's own invoices include every activation invoice its services
+  // can name, and the mandates were read above: no further round trip.
+  const activations = await activationSummaries(recurringServices, { customerIds: [customer.id], mandates, invoices });
 
   // The invoices and payments read above are this customer's already, so
   // there is nothing left to filter out here.

@@ -9,11 +9,11 @@ import { requireAdminAccess } from "@/lib/admin/access";
 import { listCustomers } from "@/lib/admin/customers/repository";
 import { toDateKey } from "@/lib/admin/format";
 import { listProjects } from "@/lib/admin/projects/repository";
-import { readInvoice, readQuote } from "@/lib/admin/readers";
+import { readInvoice, readQuote, readRecurringServicesForCustomer } from "@/lib/admin/readers";
 import { invoiceActivation } from "@/lib/payments/activation-view";
 import { getCollectionState, listCollectionEventsForInvoice } from "@/lib/payments/collection-repository";
 import { invoiceCollectionView } from "@/lib/payments/collection-state";
-import { listPaymentsForInvoice, listRecurringServicesForCustomer } from "@/lib/payments/repository";
+import { listPaymentsForInvoice } from "@/lib/payments/repository";
 import { isCollecting } from "@/lib/payments/types";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -41,8 +41,11 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
     the database refuses any other pair. The builder needs to know which one
     that is, so it can offer that project and nothing else.
 
-    That question and the activation state both depend on the invoice and on
-    nothing else, so they are asked at the same time.
+    That question, the activation state, the payments and the reminder ladder
+    all depend on the invoice and on nothing else, so they are asked at the
+    same time. The activation state needs the customer's recurring services,
+    and so does the direct-debit question below; both read them through the
+    request-scoped reader, so the two callers share one query.
   */
   const [quote, activation, payments, events, collectionState, services] = await Promise.all([
     item.quoteId ? readQuote(item.quoteId) : undefined,
@@ -50,7 +53,7 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
     listPaymentsForInvoice(item.id),
     listCollectionEventsForInvoice(item.id),
     getCollectionState(item.id),
-    listRecurringServicesForCustomer(item.customer.customerId),
+    readRecurringServicesForCustomer(item.customer.customerId),
   ]);
 
   /*
