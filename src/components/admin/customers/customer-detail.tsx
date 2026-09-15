@@ -7,9 +7,8 @@ import CustomerFinance from "@/components/admin/customers/customer-finance";
 import CustomerProjects from "@/components/admin/customers/customer-projects";
 import CustomerRecurring from "@/components/admin/customers/customer-recurring";
 import { DetailList, DetailRow } from "@/components/admin/detail-list";
-import StatusBadge from "@/components/admin/status-badge";
 import type { CustomerCommunication } from "@/lib/admin/communications/types";
-import { customerStatusLabels, customerStatusTone, type Customer } from "@/lib/admin/customers/types";
+import type { Customer } from "@/lib/admin/customers/types";
 import { formatDateTime } from "@/lib/admin/format";
 import { inquiryOriginLabels, type Inquiry } from "@/lib/admin/inquiries/types";
 import type { Invoice } from "@/lib/admin/invoices/types";
@@ -116,9 +115,6 @@ export default function CustomerDetail({
               ) : (
                 <Dash />
               )}
-            </DetailRow>
-            <DetailRow term="Status">
-              <StatusBadge tone={customerStatusTone[customer.status]}>{customerStatusLabels[customer.status]}</StatusBadge>
             </DetailRow>
             <DetailRow term="Klant sinds">{formatDateTime(customer.createdAt)}</DetailRow>
           </DetailList>

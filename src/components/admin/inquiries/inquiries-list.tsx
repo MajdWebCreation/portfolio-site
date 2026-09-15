@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { FilterBar, FilterSelect, SearchField, SegmentedField } from "@/components/admin/filter-bar";
+import { FilterBar, FilterSelect, SearchField, SegmentedField, FilterSummary, NoMatches } from "@/components/admin/filter-bar";
 import StatusBadge from "@/components/admin/status-badge";
 import { formatDateTime } from "@/lib/admin/format";
 import {
@@ -28,6 +28,13 @@ export default function InquiriesList({ inquiries }: { inquiries: Inquiry[] }) {
   const [origin, setOrigin] = useState<OriginFilter>("all");
   const [status, setStatus] = useState<string>("all");
   const [query, setQuery] = useState("");
+
+  const filtered = origin !== "all" || status !== "all" || query.trim() !== "";
+  function reset() {
+    setOrigin("all");
+    setStatus("all");
+    setQuery("");
+  }
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -59,16 +66,16 @@ export default function InquiriesList({ inquiries }: { inquiries: Inquiry[] }) {
         <SearchField id="inquiry-search" label="Zoeken" value={query} onChange={setQuery} placeholder="Naam, bedrijf, e-mail of tekst" />
       </FilterBar>
 
-      <p className="text-[0.85rem] text-muted" aria-live="polite">
+      <FilterSummary filtered={filtered} onReset={reset}>
         {rows.length === inquiries.length
           ? `${inquiries.length} aanvragen`
           : `${rows.length} van ${inquiries.length} aanvragen`}
-      </p>
+      </FilterSummary>
 
       {rows.length === 0 ? (
-        <p className="border-y border-line py-8 text-center text-[0.95rem] text-muted">
+        <NoMatches>
           Geen aanvragen die aan deze filters voldoen.
-        </p>
+        </NoMatches>
       ) : (
         <table className="adm-table">
           <thead>

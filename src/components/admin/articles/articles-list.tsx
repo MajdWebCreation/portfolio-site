@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import CtaLink from "@/components/cta-link";
-import { FilterBar, FilterSelect, SearchField } from "@/components/admin/filter-bar";
+import { FilterBar, FilterSelect, SearchField, FilterSummary, NoMatches } from "@/components/admin/filter-bar";
 import StatusBadge from "@/components/admin/status-badge";
 import {
   articleStateLabel,
@@ -56,6 +56,12 @@ export default function ArticlesList({ articles, todayKey, search }: ArticlesLis
     return () => clearTimeout(timer);
   }, [term, search, router]);
 
+  const filtered = status !== "all" || term.trim() !== "";
+  function reset() {
+    setStatus("all");
+    setTerm("");
+  }
+
   const rows = useMemo(
     () =>
       articles
@@ -89,12 +95,12 @@ export default function ArticlesList({ articles, todayKey, search }: ArticlesLis
         </CtaLink>
       </div>
 
-      <p className="text-[0.85rem] text-muted" aria-live="polite">
+      <FilterSummary filtered={filtered} onReset={reset}>
         {searching ? "Zoeken…" : `${rows.length} van ${articles.length} artikelen`}
-      </p>
+      </FilterSummary>
 
       {rows.length === 0 ? (
-        <p className="border-y border-line py-8 text-center text-[0.95rem] text-muted">Geen artikelen die aan deze filters voldoen.</p>
+        <NoMatches>Geen artikelen die aan deze filters voldoen.</NoMatches>
       ) : (
         <table className="adm-table">
           <thead>

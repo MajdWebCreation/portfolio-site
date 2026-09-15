@@ -3,15 +3,18 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import AdminPageHeader from "@/components/admin/admin-page-header";
 import CustomerDetail from "@/components/admin/customers/customer-detail";
+import StatusBadge from "@/components/admin/status-badge";
 import { requireAdminAccess } from "@/lib/admin/access";
 import { listCommunicationsForCustomer } from "@/lib/admin/communications/repository";
+import { customerStatusLabels, customerStatusTone } from "@/lib/admin/customers/types";
 import { toDateKey } from "@/lib/admin/format";
 import { listInvoicesForCustomer } from "@/lib/admin/invoices/repository";
 import { listProjectsForCustomer } from "@/lib/admin/projects/repository";
 import { listQuotesForCustomer } from "@/lib/admin/quotes/repository";
 import { readCustomer, readInquiry, readLead } from "@/lib/admin/readers";
 import { activationSummaries, mandateByCustomer } from "@/lib/payments/activation-view";
-import { customerFinancials } from "@/lib/payments/customer-status";
+import { customerFinancials, customerPaymentStatusLabels, customerPaymentStatusTone } from "@/lib/payments/customer-status";
+import { formatCents } from "@/lib/money";
 import { recurringOverview, type RecurringOverview } from "@/lib/payments/prenotification";
 import {
   listPaymentsForCustomer,
@@ -102,6 +105,17 @@ export default async function CustomerPage({ params }: PageProps) {
       <AdminPageHeader
         label={`Klant · ${customer.id}`}
         title={customer.companyName}
+        meta={
+          <>
+            <StatusBadge tone={customerStatusTone[customer.status]}>{customerStatusLabels[customer.status]}</StatusBadge>
+            <StatusBadge tone={customerPaymentStatusTone[financials.status]}>
+              {customerPaymentStatusLabels[financials.status]}
+            </StatusBadge>
+            {financials.outstandingCents > 0 ? (
+              <span className="tabular text-[0.85rem] text-muted">{formatCents(financials.outstandingCents)} openstaand</span>
+            ) : null}
+          </>
+        }
         text={customer.contactName}
         actions={
           <Link href="/admin/klanten" className="link-static text-[0.92rem] text-ink">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { FilterBar, FilterSelect, SearchField } from "@/components/admin/filter-bar";
+import { FilterBar, FilterSelect, SearchField, FilterSummary, NoMatches } from "@/components/admin/filter-bar";
 import StatusBadge from "@/components/admin/status-badge";
 import type { Customer } from "@/lib/admin/customers/types";
 import { formatDateTime } from "@/lib/admin/format";
@@ -23,6 +23,12 @@ export default function PaymentsList({ payments, customers }: { payments: Paymen
     const byId = new Map(customers.map((customer) => [customer.id, customer.companyName]));
     return (id: string) => byId.get(id) ?? "Onbekende klant";
   }, [customers]);
+
+  const filtered = status !== "all" || query.trim() !== "";
+  function reset() {
+    setStatus("all");
+    setQuery("");
+  }
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -52,12 +58,12 @@ export default function PaymentsList({ payments, customers }: { payments: Paymen
         <SearchField id="payment-search" label="Zoeken" value={query} onChange={setQuery} placeholder="Klant, omschrijving of Mollie-id" />
       </FilterBar>
 
-      <p className="text-[0.85rem] text-muted" aria-live="polite">
+      <FilterSummary filtered={filtered} onReset={reset}>
         {rows.length} van {payments.length} betalingen
-      </p>
+      </FilterSummary>
 
       {rows.length === 0 ? (
-        <p className="border-y border-line py-8 text-center text-[0.95rem] text-muted">Geen betalingen die aan deze filters voldoen.</p>
+        <NoMatches>Geen betalingen die aan deze filters voldoen.</NoMatches>
       ) : (
         <table className="adm-table">
           <thead>

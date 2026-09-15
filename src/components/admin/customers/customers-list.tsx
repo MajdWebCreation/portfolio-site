@@ -3,13 +3,19 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import CtaLink from "@/components/cta-link";
-import { FilterBar, FilterSelect, SearchField } from "@/components/admin/filter-bar";
+import { FilterBar, FilterSelect, SearchField, FilterSummary, NoMatches } from "@/components/admin/filter-bar";
 import StatusBadge from "@/components/admin/status-badge";
 import { customerStatusLabels, customerStatusTone, type Customer } from "@/lib/admin/customers/types";
 
 export default function CustomersList({ customers }: { customers: Customer[] }) {
   const [status, setStatus] = useState("all");
   const [query, setQuery] = useState("");
+
+  const filtered = status !== "all" || query.trim() !== "";
+  function reset() {
+    setStatus("all");
+    setQuery("");
+  }
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -39,12 +45,12 @@ export default function CustomersList({ customers }: { customers: Customer[] }) 
         </CtaLink>
       </div>
 
-      <p className="text-[0.85rem] text-muted" aria-live="polite">
+      <FilterSummary filtered={filtered} onReset={reset}>
         {rows.length} van {customers.length} klanten
-      </p>
+      </FilterSummary>
 
       {rows.length === 0 ? (
-        <p className="border-y border-line py-8 text-center text-[0.95rem] text-muted">Geen klanten die aan deze filters voldoen.</p>
+        <NoMatches>Geen klanten die aan deze filters voldoen.</NoMatches>
       ) : (
         <table className="adm-table">
           <thead>

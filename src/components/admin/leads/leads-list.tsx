@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import CtaLink from "@/components/cta-link";
-import { FilterBar, FilterSelect, SearchField } from "@/components/admin/filter-bar";
+import { FilterBar, FilterSelect, SearchField, FilterSummary, NoMatches } from "@/components/admin/filter-bar";
 import StatusBadge from "@/components/admin/status-badge";
 import { formatDate } from "@/lib/admin/format";
 import {
@@ -36,6 +36,13 @@ export default function LeadsList({ leads, todayKey }: { leads: Lead[]; todayKey
   const [source, setSource] = useState("all");
   const [query, setQuery] = useState("");
 
+
+  const filtered = status !== "open" || source !== "all" || query.trim() !== "";
+  function reset() {
+    setStatus("open");
+    setSource("all");
+    setQuery("");
+  }
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -87,13 +94,13 @@ export default function LeadsList({ leads, todayKey }: { leads: Lead[]; todayKey
         </CtaLink>
       </div>
 
-      <p className="text-[0.85rem] text-muted" aria-live="polite">
+      <FilterSummary filtered={filtered} onReset={reset}>
         {rows.length} van {leads.length} leads
         {due > 0 ? ` · ${due} met opvolging vandaag of eerder` : ""}
-      </p>
+      </FilterSummary>
 
       {rows.length === 0 ? (
-        <p className="border-y border-line py-8 text-center text-[0.95rem] text-muted">Geen leads die aan deze filters voldoen.</p>
+        <NoMatches>Geen leads die aan deze filters voldoen.</NoMatches>
       ) : (
         <table className="adm-table">
           <thead>

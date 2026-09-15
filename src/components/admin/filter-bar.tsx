@@ -108,3 +108,34 @@ export function SegmentedField<T extends string>({
     </fieldset>
   );
 }
+
+/**
+ * The line under a filter bar: how many rows the filters left, and the way
+ * back to the whole list as soon as any filter is set. Every list used to
+ * carry its own copy of this line without the way back.
+ */
+export function FilterSummary({
+  filtered,
+  onReset,
+  children,
+}: {
+  filtered: boolean;
+  onReset: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[0.85rem] text-muted" aria-live="polite">
+      <span>{children}</span>
+      {filtered ? (
+        <button type="button" onClick={onReset} className="link-static text-ink">
+          Filters wissen
+        </button>
+      ) : null}
+    </p>
+  );
+}
+
+/** What a list shows when its filters leave nothing. */
+export function NoMatches({ children }: { children: ReactNode }) {
+  return <p className="border-y border-line py-8 text-center text-[0.95rem] text-muted">{children}</p>;
+}

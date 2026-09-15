@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import CtaLink from "@/components/cta-link";
-import { FilterBar, FilterSelect, SearchField } from "@/components/admin/filter-bar";
+import { FilterBar, FilterSelect, SearchField, FilterSummary, NoMatches } from "@/components/admin/filter-bar";
 import StatusBadge from "@/components/admin/status-badge";
 import { formatDate } from "@/lib/admin/format";
 import { quoteStatusLabels, quoteStatusOrder, quoteStatusTone, type Quote } from "@/lib/admin/quotes/types";
@@ -14,6 +14,12 @@ const day = (key: string) => formatDate(`${key}T12:00:00+02:00`);
 export default function QuotesList({ quotes }: { quotes: Quote[] }) {
   const [status, setStatus] = useState("all");
   const [query, setQuery] = useState("");
+
+  const filtered = status !== "all" || query.trim() !== "";
+  function reset() {
+    setStatus("all");
+    setQuery("");
+  }
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -41,11 +47,11 @@ export default function QuotesList({ quotes }: { quotes: Quote[] }) {
           Nieuwe offerte
         </CtaLink>
       </div>
-      <p className="text-[0.85rem] text-muted" aria-live="polite">
+      <FilterSummary filtered={filtered} onReset={reset}>
         {rows.length} van {quotes.length} offertes
-      </p>
+      </FilterSummary>
       {rows.length === 0 ? (
-        <p className="border-y border-line py-8 text-center text-[0.95rem] text-muted">Geen offertes die aan deze filters voldoen.</p>
+        <NoMatches>Geen offertes die aan deze filters voldoen.</NoMatches>
       ) : (
         <table className="adm-table">
           <thead>

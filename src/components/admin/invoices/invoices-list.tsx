@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import CtaLink from "@/components/cta-link";
-import { FilterBar, FilterSelect, SearchField } from "@/components/admin/filter-bar";
+import { FilterBar, FilterSelect, SearchField, FilterSummary, NoMatches } from "@/components/admin/filter-bar";
 import StatusBadge from "@/components/admin/status-badge";
 import { formatDate } from "@/lib/admin/format";
 import { invoiceStatusLabels, invoiceStatusOrder, invoiceStatusTone, type Invoice } from "@/lib/admin/invoices/types";
@@ -14,6 +14,12 @@ const day = (key: string) => formatDate(`${key}T12:00:00+02:00`);
 export default function InvoicesList({ invoices, todayKey }: { invoices: Invoice[]; todayKey: string }) {
   const [status, setStatus] = useState("all");
   const [query, setQuery] = useState("");
+
+  const filtered = status !== "all" || query.trim() !== "";
+  function reset() {
+    setStatus("all");
+    setQuery("");
+  }
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -44,12 +50,12 @@ export default function InvoicesList({ invoices, todayKey }: { invoices: Invoice
           Nieuwe factuur
         </CtaLink>
       </div>
-      <p className="text-[0.85rem] text-muted" aria-live="polite">
+      <FilterSummary filtered={filtered} onReset={reset}>
         {rows.length} van {invoices.length} facturen
         {open.length > 0 ? ` · ${open.length} openstaand, samen ${formatCents(openCents)}` : ""}
-      </p>
+      </FilterSummary>
       {rows.length === 0 ? (
-        <p className="border-y border-line py-8 text-center text-[0.95rem] text-muted">Geen facturen die aan deze filters voldoen.</p>
+        <NoMatches>Geen facturen die aan deze filters voldoen.</NoMatches>
       ) : (
         <table className="adm-table">
           <thead>
