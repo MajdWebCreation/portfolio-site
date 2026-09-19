@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import AdminPageHeader from "@/components/admin/admin-page-header";
 import AdminSection from "@/components/admin/admin-section";
 import InvoiceBuilder from "@/components/admin/invoices/invoice-builder";
+import InvoiceIssued from "@/components/admin/invoices/invoice-issued";
 import InvoiceCollection from "@/components/admin/payments/invoice-collection";
 import { requireAdminAccess } from "@/lib/admin/access";
 import { listCustomers } from "@/lib/admin/customers/repository";
@@ -15,6 +16,7 @@ import { getCollectionState, listCollectionEventsForInvoice } from "@/lib/paymen
 import { invoiceCollectionView } from "@/lib/payments/collection-state";
 import { listPaymentsForInvoice } from "@/lib/payments/repository";
 import { isCollecting } from "@/lib/payments/types";
+import { invoiceStatusLabels } from "@/lib/admin/invoices/types";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -74,7 +76,7 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
   return (
     <div className="space-y-8">
       <AdminPageHeader
-        label={`Factuur · ${item.number.value}`}
+        label={`${invoiceStatusLabels[item.status]} · ${item.number.value}`}
         title={item.customer.companyName}
         text={item.paymentReference}
         actions={
@@ -83,16 +85,30 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
           </Link>
         }
       />
-      {/* Keyed on what sending changes; see the quote page. */}
-      <InvoiceBuilder
-        key={`${item.number.value}-${item.status}`}
-        stored={item}
-        customers={customers}
-        projects={projects}
-        quoteProjectId={quote?.projectId}
-        activation={activation}
-        todayKey={todayKey}
-      />
+      {/*
+        Two screens, one page. A concept is something to write, so it gets the
+        builder; a numbered invoice is something to check and send, so it
+        gets the document. Which of the two is not a matter of taste: the
+        database refuses every edit from the moment the number is taken, and
+        a form that cannot save is worse than no form. That moment is
+        `finalizingAt`, which is also set on an invoice whose PDF still has
+        to be stored -- that one is shown as unfinished, with the way to
+        finish it.
+      */}
+      {item.finalizingAt ? (
+        <InvoiceIssued invoice={item} />
+      ) : (
+        /* Keyed on what issuing changes; see the quote page. */
+        <InvoiceBuilder
+          key={`${item.number.value}-${item.status}`}
+          stored={item}
+          customers={customers}
+          projects={projects}
+          quoteProjectId={quote?.projectId}
+          activation={activation}
+          todayKey={todayKey}
+        />
+      )}
 
       {/*
         Only for an invoice that actually went out. A concept has not been

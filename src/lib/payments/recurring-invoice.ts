@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { issueInvoiceDocument } from "@/lib/admin/invoices/issue";
 import { invoiceColumns, invoiceFromRow, type InvoiceRow } from "@/lib/admin/invoices/mapper";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import type { BillingPeriod } from "@/lib/payments/billing-period";
@@ -67,8 +68,14 @@ export async function ensureRecurringInvoice(
   period: BillingPeriod,
   todayKey: string,
 ): Promise<Invoice> {
+  /*
+    One of the two callers got here first. Usually it is finished and this is
+    simply its invoice; if its finalization was interrupted -- numbered, no
+    stored PDF -- it is completed now rather than left to be discovered by a
+    mail that cannot attach anything.
+  */
   const already = await findRecurringInvoice(db, service.id, period.start);
-  if (already) return already;
+  if (already) return already.issuedAt && already.document ? already : await issue(db, already);
 
   const { data: customer, error: customerError } = await db
     .from("customers")
@@ -126,22 +133,27 @@ export async function ensureRecurringInvoice(
   });
   fail("Factuurregel aanmaken", linesError);
 
-  // The definitive YM-F number, from the same yearly sequence as every other
-  // invoice; a monthly term is a real invoice, not a note.
-  const { data: number, error: numberError } = await db.rpc("assign_invoice_number", {
-    p_invoice_id: created.id,
-  });
-  fail("Factuurnummer toekennen", numberError);
-
-  const { error: referenceError } = await db
-    .from("invoices")
-    .update({ payment_reference: number ?? "" })
-    .eq("id", created.id);
-  fail("Betalingskenmerk bijwerken", referenceError);
-
+  /*
+    The definitive YM-F number and the one PDF, through exactly the path the
+    admin's own "Definitief maken" takes: numbered from the same yearly
+    sequence, payment reference settled against that number, the document
+    rendered once and stored. A monthly term is a real invoice, and nobody
+    approves one by hand -- so it is issued the moment it is created, and the
+    mails that follow attach the file that was stored here.
+  */
   const invoice = await findRecurringInvoice(db, service.id, period.start);
   if (!invoice) throw new Error("Factuur voor incasso aanmaken: niet terug te lezen.");
-  return invoice;
+  return issue(db, invoice);
+}
+
+/** Issues a term through the shared two-step flow, or says why it could not. */
+async function issue(db: SupabaseClient<Database>, invoice: Invoice): Promise<Invoice> {
+  const issued = await issueInvoiceDocument(db, invoice.id);
+  if (!issued.ok) throw new Error(`Periodefactuur uitgeven: ${issued.error}`);
+
+  const stored = await findRecurringInvoice(db, invoice.recurringServiceId!, invoice.billingPeriodStart!);
+  if (!stored) throw new Error("Periodefactuur uitgeven: niet terug te lezen.");
+  return stored;
 }
 
 /** Marks the document as mailed, the same fields a manual send writes. */

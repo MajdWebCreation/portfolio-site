@@ -10,16 +10,18 @@ import DocumentTotalsView from "@/components/admin/documents/document-totals";
 import LineItemsEditor, { newLine } from "@/components/admin/documents/line-items-editor";
 import ProjectSelect from "@/components/admin/documents/project-select";
 import { TextField, TextareaField } from "@/components/admin/form-field";
+import InvoiceFinalize from "@/components/admin/invoices/invoice-finalize";
 import InvoiceRecurring from "@/components/admin/invoices/invoice-recurring";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import type { Customer } from "@/lib/admin/customers/types";
 import { companyProfile } from "@/lib/admin/documents/company";
 import { provisionalDocumentNumber } from "@/lib/admin/documents/numbering";
+import { invoiceDocument } from "@/lib/admin/documents/document-payload";
 import { snapshotCustomer } from "@/lib/admin/documents/types";
 import { addDays, hasLineErrors, validateDates, validateLine, type LineErrors } from "@/lib/admin/documents/validation";
 import { saveInvoice } from "@/lib/admin/invoices/actions";
 import type { Project } from "@/lib/admin/projects/types";
-import { invoiceStatusLabels, invoiceStatusOrder, invoiceStatusTone, isInvoiceStatus, type Invoice } from "@/lib/admin/invoices/types";
+import { invoiceStatusLabels, invoiceStatusTone, isInvoiceStatus, selectableInvoiceStatuses, type Invoice } from "@/lib/admin/invoices/types";
 import type { InvoiceActivationView } from "@/lib/payments/activation-view";
 import { documentActivation } from "@/lib/payments/activation-decision";
 import { calculateTotals } from "@/lib/money";
@@ -147,9 +149,9 @@ export default function InvoiceBuilder({ stored, customers, projects, quoteProje
           </p>
         ) : null}
 
-        <AdminSection id="document" title="Factuur" note={invoice.number.provisional ? "Conceptnummer; het definitieve YM-F-nummer wordt toegekend bij versturen" : undefined}>
+        <AdminSection id="document" title="Factuur" note="Conceptnummer; het definitieve YM-F-nummer komt er bij Definitief maken">
           <div className="grid gap-5 sm:grid-cols-2">
-            <TextField id="number" label="Factuurnummer" value={invoice.number.value} readOnly className="font-mono text-[0.9rem] text-muted" hint={invoice.number.provisional ? "Voorlopig; het definitieve nummer komt uit de reeks per jaar." : undefined} />
+            <TextField id="number" label="Factuurnummer" value={invoice.number.value} readOnly className="font-mono text-[0.9rem] text-muted" hint="Voorlopig; het definitieve nummer komt uit de reeks per jaar." />
             <div className="grid grid-cols-2 gap-5">
               <TextField id="issueDate" label="Factuurdatum" type="date" value={invoice.issueDate} onChange={(event) => { update("issueDate", event.target.value); if (!invoice.id) update("dueDate", addDays(event.target.value, companyProfile.paymentTermDays)); }} error={errors.issueDate} />
               <TextField id="dueDate" label="Vervaldatum" type="date" value={invoice.dueDate} onChange={(event) => update("dueDate", event.target.value)} error={errors.dueDate} hint={`Voorstel: ${companyProfile.paymentTermDays} dagen, uit de voorwaarden.`} />
@@ -215,7 +217,7 @@ export default function InvoiceBuilder({ stored, customers, projects, quoteProje
               todayKey={todayKey}
               projects={customerProjects}
               defaultProjectId={invoice.projectId}
-              sent={Boolean(stored?.sentAt)}
+              sent={Boolean(stored?.issuedAt)}
             />
           ) : (
             <p className="text-[0.9rem] text-muted">
@@ -240,10 +242,15 @@ export default function InvoiceBuilder({ stored, customers, projects, quoteProje
           onSave={save}
         />
         <div className="border-t border-line pt-6">
-          <DocumentStatus value={invoice.status} order={invoiceStatusOrder} labels={invoiceStatusLabels} tones={invoiceStatusTone} onChange={(value) => (isInvoiceStatus(value) ? update("status", value) : null)} edited={false} />
+          <DocumentStatus value={invoice.status} order={selectableInvoiceStatuses} labels={invoiceStatusLabels} tones={invoiceStatusTone} onChange={(value) => (isInvoiceStatus(value) ? update("status", value) : null)} edited={false} />
         </div>
         <div className="border-t border-line pt-6">
-          <DocumentPanel document={{ kind: "invoice", invoice, ...(activates ? { activates } : {}) }} fileName={`${invoice.number.value}.pdf`} ready={ready} />
+          <DocumentPanel
+            document={{ kind: "invoice", ...invoiceDocument(invoice, activates) }}
+            fileName={`${invoice.number.value}.pdf`}
+            ready={ready}
+            action={<InvoiceFinalize invoice={invoice} ready={ready} />}
+          />
         </div>
       </aside>
     </div>

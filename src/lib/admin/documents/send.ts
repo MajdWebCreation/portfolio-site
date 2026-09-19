@@ -6,15 +6,14 @@ import { invoiceLinks, quoteLinks } from "@/lib/admin/communications/links";
 import { adminDb } from "@/lib/admin/db";
 import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email";
 import { toDateKey } from "@/lib/admin/format";
-import { issuedPaymentReference } from "@/lib/admin/documents/numbering";
-import type { DocumentLine } from "@/lib/admin/documents/types";
-import { hasLineErrors, validateLine } from "@/lib/admin/documents/validation";
+import { documentFingerprint, invoiceDocument } from "@/lib/admin/documents/document-payload";
+import { documentIncompleteReason } from "@/lib/admin/documents/validation";
 import { getInvoice } from "@/lib/admin/invoices/repository";
-import { documentFileName, renderInvoicePdf, renderQuotePdf } from "@/lib/admin/pdf/to-buffer";
+import { documentFileName, renderQuotePdf } from "@/lib/admin/pdf/to-buffer";
+import { readInvoiceArtifact } from "@/lib/admin/invoices/artifact";
 import { getQuote } from "@/lib/admin/quotes/repository";
 import { calculateTotals, formatCents } from "@/lib/money";
 import { getProject } from "@/lib/admin/projects/repository";
-import { recurringChargeCents } from "@/lib/payments/types";
 import { earliestDebitDate, prenotificationDays } from "@/lib/payments/prenotification";
 import { invoicePayLink, serviceActivatedBy } from "@/lib/payments/pay-link";
 
@@ -28,44 +27,20 @@ import { invoicePayLink, serviceActivatedBy } from "@/lib/payments/pay-link";
  *     endpoint here — a server action, reachable only from the admin.
  *  2. The document is validated again on the server: a customer with a real
  *     address, lines that add up, dates that make sense.
- *  3. The database issues the definitive number, once. A retry after a failed
- *     mail returns the number the document already has. An invoice whose
- *     betalingskenmerk was only ever the concept's own gets that number as
- *     its reference here too, for the same reason and at the same moment.
- *  4. The PDF is rendered from that numbered document.
- *  5. Resend accepts the mail — or does not.
- *  6. Only then are status, sent_at and recipient_email written.
+ *  3. For an invoice: the stored PDF is read back and checked against the
+ *     SHA-256 recorded when it was made. Nothing is rendered here — the file
+ *     the admin approved is the file that is attached.
+ *  4. Resend accepts the mail — or does not.
+ *  5. Only then are status, sent_at and recipient_email written.
  *
- * Step 6 after step 5 is what keeps a failed send honest: nothing about the
- * document changes except the number it was always going to get, and the
- * admin sees why it failed instead of a status that lies.
+ * Step 5 after step 4 is what keeps a failed send honest: nothing about the
+ * document changes at all, and the admin sees why it failed instead of a
+ * status that lies.
+ *
+ * An invoice is numbered before any of this, by `finalizeInvoice`. A quote
+ * still takes its number here: there is no second step for quotes, because a
+ * quote is a proposal and nothing is frozen around it.
  */
-function isEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-/** What both kinds need before they may go out. */
-function validateSendable(document: {
-  customer: { email: string; companyName: string; contactName: string; street: string; postalCode: string; city: string };
-  lines: DocumentLine[];
-}): string | null {
-  const { customer, lines } = document;
-
-  if (!customer.email.trim() || !isEmail(customer.email.trim())) {
-    return "De klant heeft geen geldig e-mailadres. Vul dat eerst aan bij de klant.";
-  }
-  if (!customer.companyName.trim() || !customer.contactName.trim()) {
-    return "De klantgegevens zijn onvolledig: bedrijfsnaam en contactpersoon zijn nodig.";
-  }
-  if (!customer.street.trim() || !customer.postalCode.trim() || !customer.city.trim()) {
-    return "Het adres van de klant is onvolledig. Vul dat eerst aan bij de klant.";
-  }
-  if (lines.length === 0) return "Voeg minstens één regel toe voordat je verstuurt.";
-  if (lines.some((line) => hasLineErrors(validateLine(line)))) {
-    return "Er staan ongeldige regels in dit document.";
-  }
-  return null;
-}
 
 export async function sendQuoteToCustomer(id: string): Promise<ActionResult<string>> {
   const db = await adminDb();
@@ -73,7 +48,7 @@ export async function sendQuoteToCustomer(id: string): Promise<ActionResult<stri
   const quote = await getQuote(id);
   if (!quote) return { ok: false, error: "Deze offerte bestaat niet (meer)." };
 
-  const invalid = validateSendable(quote);
+  const invalid = documentIncompleteReason(quote);
   if (invalid) return { ok: false, error: invalid };
 
   const assigned = await db.rpc("assign_quote_number", { p_quote_id: id });
@@ -130,7 +105,7 @@ export async function sendQuoteToCustomer(id: string): Promise<ActionResult<stri
   return { ok: true, value: numbered.number.value };
 }
 
-export async function sendInvoiceToCustomer(id: string): Promise<ActionResult<string>> {
+export async function sendInvoiceToCustomer(id: string, expectedFingerprint?: string): Promise<ActionResult<string>> {
   const db = await adminDb();
 
   const invoice = await getInvoice(id);
@@ -139,35 +114,48 @@ export async function sendInvoiceToCustomer(id: string): Promise<ActionResult<st
     return { ok: false, error: "Een geannuleerde factuur wordt niet verstuurd." };
   }
 
-  const invalid = validateSendable(invoice);
+  /*
+    Sending does not make a document any more. An invoice that was never made
+    definitive has no number of its own, so there is nothing here to send --
+    and quietly issuing one now would be the old flow back again, where the
+    admin never saw what left the building.
+  */
+  if (!invoice.issuedAt) {
+    return {
+      ok: false,
+      error: invoice.finalizingAt
+        ? `Het definitief maken van ${invoice.number.value} is niet afgerond: er is geen opgeslagen PDF. Klik opnieuw op Definitief maken en controleer daarna de PDF.`
+        : "Deze factuur is nog een concept. Maak hem eerst definitief; daarna kun je de PDF controleren en versturen.",
+    };
+  }
+
+  const invalid = documentIncompleteReason(invoice);
   if (invalid) return { ok: false, error: invalid };
 
-  const assigned = await db.rpc("assign_invoice_number", { p_invoice_id: id });
-  if (assigned.error || !assigned.data) {
-    return actionFailed(assigned.error, "Het factuurnummer kon niet worden toegekend.");
-  }
+  /*
+    The document, exactly as the admin's preview built it: one function, one
+    object, both renders. Nothing is derived here that the preview did not
+    also derive -- the note comes out of the invoice, not out of the payment
+    decision, because a note that depended on a provider answer could differ
+    between looking and sending.
+  */
+  const document = invoiceDocument(invoice);
+  const activates = invoice.activationNote;
 
   /*
-    The betalingskenmerk follows the number, unless the admin gave it one of
-    their own; see `issuedPaymentReference`. It is written before the PDF is
-    rendered, so the document the customer receives and the row we keep say
-    the same thing -- and a write that fails stops the send rather than
-    producing a mismatch nobody can correct afterwards.
-
-    A document that has already gone out is left alone in both places. Its
-    reference is part of what the customer holds, the database refuses to
-    change it, and a resend must hand over the same document again.
+    And the proof that it is the same document. The screen sends the
+    fingerprint of what it rendered; this recomputes it from the row. They can
+    only differ if the screen is stale, which after issuing means the invoice
+    was cancelled or replaced under it -- never something to mail.
   */
-  const reference = invoice.sentAt
-    ? invoice.paymentReference
-    : issuedPaymentReference(invoice.paymentReference, assigned.data);
-
-  if (reference !== invoice.paymentReference) {
-    const { error } = await db.from("invoices").update({ payment_reference: reference }).eq("id", id);
-    if (error) return actionFailed(error, "Het betalingskenmerk kon niet worden vastgelegd.");
+  if (expectedFingerprint && expectedFingerprint !== documentFingerprint(document)) {
+    return {
+      ok: false,
+      error: "Het scherm toont een andere versie van deze factuur dan de opgeslagen versie. Laad de pagina opnieuw en controleer de PDF.",
+    };
   }
 
-  const numbered = { ...invoice, number: { value: assigned.data, provisional: false }, paymentReference: reference };
+  const numbered = invoice;
   const recipient = numbered.customer.email.trim();
 
   /*
@@ -213,38 +201,57 @@ export async function sendInvoiceToCustomer(id: string): Promise<ActionResult<st
   const payUrl = payLink.kind === "link" ? payLink.url : undefined;
 
   /*
-    The mail is named after the project, and says what paying it starts. The
-    monthly figures only appear when this payment genuinely establishes the
-    mandate -- a customer who already authorised us is not asked again, and
-    their mail stays an ordinary invoice.
+    The document promises a mandate exactly when the payment establishes one.
+
+    The note was frozen when the invoice was issued, out of our own records;
+    the sequence is decided here, by asking Mollie. They agree in every
+    ordinary case, and when they do not, something changed between making the
+    document and sending it -- the customer authorised us elsewhere, or a
+    service was attached to an invoice that was already definitive. Sending
+    anyway would mean one of the two lies: a customer establishing a direct
+    debit that the invoice never mentions, or an invoice announcing a
+    mandate that this payment does not ask for.
+
+    So it stops, and the admin resolves it deliberately: cancel this invoice
+    and issue a new one that says the right thing.
   */
+  const establishesMandate = payLink.kind === "link" && payLink.decision.sequence === "first";
+  if (payLink.kind === "link" && establishesMandate !== Boolean(activates)) {
+    return {
+      ok: false,
+      error: establishesMandate
+        ? "Deze betaling zou ook een automatische incasso machtigen, maar dat staat niet op de definitieve factuur. Annuleer deze factuur en maak een nieuwe aan."
+        : "Deze factuur kondigt een automatische incasso aan, maar de betaling vraagt daar geen machtiging meer voor. Annuleer deze factuur en maak een nieuwe aan.",
+    };
+  }
+
+  /* The mail is named after the project; the document itself is not. */
   const project = numbered.projectId ? await getProject(numbered.projectId) : undefined;
-  const starting = payLink.kind === "link" && payLink.decision.sequence === "first" ? payLink.decision.service : undefined;
   const totals = calculateTotals(numbered.lines);
 
-  const activates = starting?.startsOn
+  const mailActivation = activates
     ? {
-        serviceName: starting.name,
-        monthlyNetCents: starting.amountCents,
-        monthlyGrossCents: recurringChargeCents(starting),
+        serviceName: activates.serviceName,
+        monthlyNetCents: activates.monthlyNetCents,
+        monthlyGrossCents: activates.monthlyGrossCents,
         invoiceNetCents: totals.subtotalCents,
-        firstDebitOn: starting.startsOn,
+        firstDebitOn: activates.firstDebitOn,
         projectSummary: project?.name ?? numbered.lines[0]?.description ?? "de geleverde werkzaamheden",
       }
     : undefined;
 
-  let pdf: Buffer;
-  try {
-    pdf = await renderInvoicePdf(
-      numbered,
-      activates
-        ? { serviceName: activates.serviceName, monthlyGrossCents: activates.monthlyGrossCents, firstDebitOn: activates.firstDebitOn }
-        : undefined,
-    );
-  } catch (error) {
-    console.error("Invoice PDF render failed", { id, error });
-    return { ok: false, error: "De PDF kon niet worden gemaakt. Controleer de regels en probeer opnieuw." };
+  /*
+    The attachment is the file, read back and verified. Not a render of the
+    same data -- `@react-pdf` stamps a creation date into every document, so
+    a second render is a second file, and "exactly the PDF you approved"
+    would be a figure of speech. A missing or altered file stops the send:
+    the answer to a document we cannot produce is never a new document.
+  */
+  const artifact = await readInvoiceArtifact(db, numbered);
+  if (!artifact.ok) {
+    return { ok: false, error: `${artifact.reason} De factuur is niet verstuurd.` };
   }
+  const pdf = artifact.pdf;
 
   const mail = await sendDocumentMail({
     kind: "invoice",
@@ -260,7 +267,7 @@ export async function sendInvoiceToCustomer(id: string): Promise<ActionResult<st
       customerId: numbered.customer.customerId,
       category: activates ? "invoice_activation_sent" : "invoice_sent",
       ...invoiceLinks(numbered),
-      ...(starting ? { recurringServiceId: starting.id } : {}),
+      ...(activates ? { recurringServiceId: activates.serviceId } : {}),
     },
     recipientEmail: recipient,
     contactName: numbered.customer.contactName,
@@ -272,7 +279,7 @@ export async function sendInvoiceToCustomer(id: string): Promise<ActionResult<st
     ...(payUrl ? { payUrl } : {}),
     ...(project ? { projectName: project.name } : {}),
     paymentReference: numbered.paymentReference,
-    ...(activates ? { activates } : {}),
+    ...(mailActivation ? { activates: mailActivation } : {}),
   });
 
   if (!mail.sent) return { ok: false, error: `Versturen mislukt: ${mail.reason}` };

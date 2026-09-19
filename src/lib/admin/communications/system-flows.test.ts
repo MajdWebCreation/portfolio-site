@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fixtureDocumentPath, fixturePdfBytes } from "@/lib/admin/invoices/storage-fixture";
 import { createFakeDb, invoiceFixture, recurringFixture } from "@/lib/payments/fixtures";
 import type { InvoiceMailer } from "@/lib/payments/prenotification-runner";
 
@@ -56,6 +57,8 @@ beforeEach(() => {
   db = createFakeDb({
     customers: [{ id: "cust-1", company_name: "Alfa BV", contact_name: "A. Alfa", email: "a@example.com" }],
   });
+  /* The stored PDF of the term these flows mail; they attach it, never a new one. */
+  db.bucket.files.set(fixtureDocumentPath, fixturePdfBytes);
   deliverEmail.mockResolvedValue({ sent: true, sentAt: "2026-09-14T09:00:00.000Z", messageId: "resend-1" });
 });
 

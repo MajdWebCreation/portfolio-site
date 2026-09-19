@@ -74,3 +74,24 @@ export type InvoiceActivation = {
   /** YYYY-MM-DD of the first automatic collection. */
   firstDebitOn: string;
 };
+
+/**
+ * The same note, as it is frozen into an invoice the moment it is issued.
+ *
+ * Everything the document and its mail say about the monthly service is
+ * copied here, so neither can change afterwards: the service may be renamed
+ * or repriced the next day, and the invoice the customer holds may not move
+ * with it. The extra two fields are what the mail adds to what the PDF
+ * prints -- the net monthly amount beside the gross one, and which service
+ * this was, for the communication log.
+ */
+export type IssuedActivation = InvoiceActivation & {
+  serviceId: string;
+  /** Monthly price excluding VAT, in cents. */
+  monthlyNetCents: Cents;
+};
+
+/** The three figures the document itself prints, out of the frozen note. */
+export function documentNote(note: IssuedActivation): InvoiceActivation {
+  return { serviceName: note.serviceName, monthlyGrossCents: note.monthlyGrossCents, firstDebitOn: note.firstDebitOn };
+}

@@ -147,6 +147,24 @@ describe("what stops the automation", () => {
     expect(view({ todayKey: day(3), invoice: { ...invoice, sentAt: undefined } }).blocked).toBe("not_sent");
   });
 
+  /*
+    A definitive invoice is a document, not a claim: until it has actually
+    been mailed the customer has never been asked, so nothing may chase them
+    for it. Reading `sentAt` and not the status is what makes that hold --
+    the reminder job filters on both.
+  */
+  it("stops on a definitive invoice that has not been sent", () => {
+    const result = view({
+      todayKey: day(30),
+      invoice: { ...invoice, status: "issued", sentAt: undefined, recipientEmail: undefined },
+    });
+
+    expect(result.blocked).toBe("not_sent");
+    expect(result.automation).toBe("inactive");
+    expect(result.dueStage).toBeUndefined();
+    expect(result.collectionReady).toBe(false);
+  });
+
   it("stops the moment nothing is outstanding, whatever the status says", () => {
     const result = view({ todayKey: day(3), payments: paidInFull });
 

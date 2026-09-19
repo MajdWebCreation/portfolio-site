@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildDocumentMailBody } from "@/lib/admin/documents/email";
-import { issuedPaymentReference } from "@/lib/admin/documents/numbering";
+import { isProvisionalDocumentNumber } from "@/lib/admin/documents/numbering";
 import { invoiceMetaRows, paymentInstruction } from "@/lib/admin/pdf/invoice-pdf";
 import { invoiceFixture } from "@/lib/payments/fixtures";
 
@@ -12,34 +12,27 @@ import { invoiceFixture } from "@/lib/payments/fixtures";
  * guards against is silent: a payment that arrives quoting a reference no
  * invoice carries is money nobody can book.
  */
-describe("which reference an invoice is issued with", () => {
-  const number = "YM-F-2026-000001";
-
-  it("replaces the concept's own reference with the definitive number", () => {
-    expect(issuedPaymentReference("FAC-CONCEPT-QLJB5", number)).toBe(number);
+describe("telling an automatic reference from one the admin typed", () => {
+  /*
+    The screens ask this to say what will happen to the betalingskenmerk when
+    the invoice is made definitive. `finalize_invoice` asks the same question
+    in SQL at the moment it happens, of the same two prefixes; the test in
+    invoices/finalize.test.ts reads the migration to keep the two together.
+  */
+  it("recognises the values a concept is given automatically", () => {
+    expect(isProvisionalDocumentNumber("FAC-CONCEPT-QLJB5")).toBe(true);
     // A concept whose reference came from a different seed than its number;
     // that is still an automatic value, and still may not reach a customer.
-    expect(issuedPaymentReference("FAC-CONCEPT-OUSHO", number)).toBe(number);
-    expect(issuedPaymentReference("OFF-CONCEPT-AB12C", number)).toBe(number);
+    expect(isProvisionalDocumentNumber("FAC-CONCEPT-OUSHO")).toBe(true);
+    expect(isProvisionalDocumentNumber("OFF-CONCEPT-AB12C")).toBe(true);
+    expect(isProvisionalDocumentNumber(" FAC-CONCEPT-X ")).toBe(true);
   });
 
-  it("keeps a reference the admin typed", () => {
-    expect(issuedPaymentReference("PO-4417", number)).toBe("PO-4417");
-    expect(issuedPaymentReference("Inkoopnummer 2026/88", number)).toBe("Inkoopnummer 2026/88");
-    // Not a concept reference, so not ours to overwrite.
-    expect(issuedPaymentReference("YM-F-2025-000123", number)).toBe("YM-F-2025-000123");
-  });
-
-  it("falls back to the number when the field was left empty", () => {
-    expect(issuedPaymentReference("", number)).toBe(number);
-    expect(issuedPaymentReference("   ", number)).toBe(number);
-  });
-
-  /* Running it again on the value it produced has to yield that same value. */
-  it("changes nothing the second time", () => {
-    const once = issuedPaymentReference("FAC-CONCEPT-QLJB5", number);
-    expect(issuedPaymentReference(once, number)).toBe(once);
-    expect(issuedPaymentReference("PO-4417", number)).toBe(issuedPaymentReference(issuedPaymentReference("PO-4417", number), number));
+  it("leaves everything a person would type alone", () => {
+    expect(isProvisionalDocumentNumber("PO-4417")).toBe(false);
+    expect(isProvisionalDocumentNumber("Inkoopnummer 2026/88")).toBe(false);
+    expect(isProvisionalDocumentNumber("YM-F-2025-000123")).toBe(false);
+    expect(isProvisionalDocumentNumber("")).toBe(false);
   });
 });
 

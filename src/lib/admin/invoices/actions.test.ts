@@ -55,8 +55,8 @@ const valid = {
 beforeEach(() => {
   vi.clearAllMocks();
   inserted.length = 0;
-  // Not yet sent, so an ordinary edit is allowed.
-  storedInvoice.mockResolvedValue({ data: { sent_at: null, number_value: "FAC-CONCEPT-X" }, error: null });
+  // Still a concept, so an ordinary edit is allowed.
+  storedInvoice.mockResolvedValue({ data: { issued_at: null, number_value: "FAC-CONCEPT-X" }, error: null });
   insertSingle.mockResolvedValue({ data: { id: "invoice-1" }, error: null });
   updateSingle.mockResolvedValue({ data: { id: "invoice-1" }, error: null });
   rpc.mockResolvedValue({ error: null });
@@ -112,16 +112,18 @@ describe("saveInvoice and its project", () => {
   });
 });
 
-describe("an invoice that has been sent", () => {
+describe("an invoice that has been made definitive", () => {
   /*
-    Once the customer holds the document, its figures are a fact. Correcting
-    it is a credit note, which is its own flow; the unsafe edit is blocked
-    rather than quietly applied. The database refuses it too -- this is the
-    readable half of that rule.
+    From the moment it is issued its figures are a fact -- not from the moment
+    it is mailed. That is the whole point of issuing first: the admin approves
+    a document that then cannot change under them. Correcting it is a credit
+    note, which is its own flow; the unsafe edit is blocked rather than
+    quietly applied. The database refuses it too -- this is the readable half
+    of that rule.
   */
   it("refuses to change its financial data", async () => {
     storedInvoice.mockResolvedValue({
-      data: { sent_at: "2026-09-28T07:00:00.000Z", number_value: "YM-F-2026-000001" },
+      data: { issued_at: "2026-09-28T07:00:00.000Z", number_value: "YM-F-2026-000001" },
       error: null,
     });
 
@@ -130,17 +132,35 @@ describe("an invoice that has been sent", () => {
     expect(result).toEqual({
       ok: false,
       error:
-        "Factuur YM-F-2026-000001 is al verstuurd. De gegevens liggen vast; corrigeren kan alleen met een creditfactuur.",
+        "Factuur YM-F-2026-000001 is al definitief. De gegevens liggen vast; corrigeren kan alleen met een creditfactuur.",
     });
     expect(update).not.toHaveBeenCalled();
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("still allows an invoice that was never sent to be edited", async () => {
+  it("still allows a concept to be edited", async () => {
     const result = await saveInvoice("invoice-1", valid, "FAC-CONCEPT-X");
 
     expect(result).toEqual({ ok: true, value: "invoice-1" });
     expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+    `issued` and `sent` are the flow's to give. A dropdown that could set
+    either would make an invoice claim to exist without a number behind it,
+    so the server refuses them even though the enum knows them.
+  */
+  it.each(["issued", "sent", "paid", "overdue"])("refuses status %s from the form", async (status) => {
+    const result = await saveInvoice("invoice-1", { ...valid, status }, "FAC-CONCEPT-X");
+
+    expect(result).toEqual({ ok: false, error: "Kies een geldige status." });
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("still accepts the two an admin may set by hand", async () => {
+    for (const status of ["draft", "cancelled"]) {
+      expect(await saveInvoice("invoice-1", { ...valid, status }, "FAC-CONCEPT-X")).toEqual({ ok: true, value: "invoice-1" });
+    }
   });
 
   it("does not look for a stored invoice when creating a new one", async () => {

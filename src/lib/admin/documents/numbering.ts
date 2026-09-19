@@ -30,30 +30,15 @@ export function isDefinitiveDocumentNumber(value: string): boolean {
   return /^YM-[OF]-\d{4}-\d{6}$/.test(value);
 }
 
-/** Whether a value is one of the provisional numbers handed out above. */
+/**
+ * Whether a value is one of the provisional numbers handed out above.
+ *
+ * Used by the screens to tell an automatic concept reference from one the
+ * admin typed. The decision that matters is made in SQL, by
+ * `finalize_invoice`, which asks the same question of the same two prefixes
+ * at the moment the number is issued -- see the migration
+ * `invoice_finalization`, and the test that reads it.
+ */
 export function isProvisionalDocumentNumber(value: string): boolean {
   return /^(OFF|FAC)-CONCEPT-/.test(value.trim());
-}
-
-/**
- * The reference the customer quotes when paying, at the moment the invoice is
- * issued.
- *
- * A concept carries the provisional number as its reference, because that is
- * what a concept has. That value may never reach a customer: FAC-CONCEPT-…
- * printed on a document numbered YM-F-2026-000001 is two names for one debt,
- * and the reference is what a bank transfer is matched on. So a reference
- * that was only ever the concept's own follows the number it was always going
- * to become.
- *
- * A reference the admin typed is kept exactly as it is. That is the
- * customer's purchase order or project code, put there on purpose, and
- * overwriting it would defeat the reason it was typed. The two are told apart
- * by shape rather than by comparing with the concept number: an invoice can
- * carry a concept reference from a different seed than its own number, and
- * nobody types a reference that looks like FAC-CONCEPT-….
- */
-export function issuedPaymentReference(current: string, number: string): string {
-  const reference = current.trim();
-  return !reference || isProvisionalDocumentNumber(reference) ? number : reference;
 }

@@ -3,8 +3,13 @@ import { buildDocumentMailBody, documentDateLabel, documentMailSubject } from "@
 import { calculateTotals, formatCents } from "@/lib/money";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import type { Quote } from "@/lib/admin/quotes/types";
+import { fixtureDocumentPath, fixturePdfBytes } from "@/lib/admin/invoices/storage-fixture";
 import { createFakeDb } from "@/lib/payments/fixtures";
 import { invoiceFixture, testCustomer } from "@/lib/payments/fixtures";
+
+/** A definitive invoice that has not gone out yet: what `send` now accepts. */
+const issuedInvoice = (overrides: Parameters<typeof invoiceFixture>[0] = {}) =>
+  invoiceFixture({ status: "issued", sentAt: undefined, recipientEmail: undefined, ...overrides });
 
 /*
   Sending a real document, with the database, the renderer, the payment
@@ -29,6 +34,7 @@ vi.mock("@/lib/admin/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/admin/db")>()),
   adminDb: async () => ({
     from: (table: string) => db.from(table),
+    storage: db.storage,
     rpc: async (name: string) =>
       name === "assign_quote_number"
         ? { data: "YM-O-2026-000001", error: null }
@@ -79,7 +85,9 @@ const rows = () => db.rows("customer_communications");
 beforeEach(() => {
   vi.clearAllMocks();
   db = createFakeDb();
-  storedInvoice = invoiceFixture({ number: { value: "FAC-CONCEPT-X", provisional: true } });
+  /* The document this invoice was issued with, already in its bucket. */
+  db.bucket.files.set(fixtureDocumentPath, fixturePdfBytes);
+  storedInvoice = issuedInvoice();
   storedQuote = quoteFixture();
   project = undefined;
   linkedService = undefined;
@@ -116,11 +124,7 @@ describe("sending a quote", () => {
 
 describe("sending an invoice", () => {
   it("files one communication under the invoice and its customer", async () => {
-    storedInvoice = invoiceFixture({
-      number: { value: "FAC-CONCEPT-X", provisional: true },
-      projectId: "proj-1",
-      quoteId: "quo-1",
-    });
+    storedInvoice = issuedInvoice({ projectId: "proj-1", quoteId: "quo-1" });
     project = { id: "proj-1", name: "Website Alfa BV" };
 
     const result = await sendInvoiceToCustomer("inv-1");
@@ -142,7 +146,20 @@ describe("sending an invoice", () => {
     mandate appearing. It names the service it switches on.
   */
   it("files an invoice that starts a monthly service under its own category", async () => {
-    storedInvoice = invoiceFixture({ number: { value: "FAC-CONCEPT-X", provisional: true }, projectId: "proj-1" });
+    /*
+      The document was issued with the note on it, which is what makes this
+      an activation mail; the payment link agrees, as it must.
+    */
+    storedInvoice = issuedInvoice({
+      projectId: "proj-1",
+      activationNote: {
+        serviceId: "svc-1",
+        serviceName: "Websitebeheer",
+        monthlyNetCents: 2500,
+        monthlyGrossCents: 3025,
+        firstDebitOn: "2026-10-01",
+      },
+    });
     project = { id: "proj-1", name: "Website Alfa BV" };
     invoicePayLink.mockResolvedValue({
       ...oneoffLink,

@@ -1,16 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { addDays } from "@/lib/admin/documents/validation";
 import { toDateKey } from "@/lib/admin/format";
+import { documentFingerprint, invoiceDocument } from "@/lib/admin/documents/document-payload";
+import { sha256Hex } from "@/lib/admin/invoices/artifact";
+import { fakeInvoiceStorage, fixtureDocumentPath, fixturePdfBytes } from "@/lib/admin/invoices/storage-fixture";
 import { invoiceFixture } from "@/lib/payments/fixtures";
 
 /*
   Sending an invoice, with the database, the PDF renderer, the mailer and the
   payment provider all replaced. What is under test is the order of the steps:
   a pay-by-link that cannot be made must stop the mail, not be swallowed.
+
+  Everything here starts from a document that was already made definitive --
+  numbered, issued, not yet sent. That is the only state this action accepts
+  now; issuing is `finalizeInvoice`, and sending composes nothing.
 */
-const invoice = invoiceFixture({ number: { value: "FAC-CONCEPT-X", provisional: true } });
+const invoice = invoiceFixture({ status: "issued", sentAt: undefined, recipientEmail: undefined });
 /* Swapped per test, so one harness serves the plain and the activating case. */
 let stored = invoice;
+/* The bucket this deployment's PDFs live in, in memory. */
+let bucket = fakeInvoiceStorage();
 let project: { id: string; name: string } | undefined;
 
 const rpc = vi.fn();
@@ -27,7 +36,7 @@ let linkedService: { startsOn?: string } | undefined;
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/admin/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/admin/db")>()),
-  adminDb: async () => ({ from, rpc }),
+  adminDb: async () => ({ from, rpc, storage: bucket.storage }),
 }));
 vi.mock("@/lib/admin/invoices/repository", () => ({ getInvoice: async () => stored }));
 vi.mock("@/lib/admin/projects/repository", () => ({ getProject: async () => project }));
@@ -61,7 +70,8 @@ const oneoffLink = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  rpc.mockResolvedValue({ data: "YM-F-2026-000001", error: null });
+  bucket = fakeInvoiceStorage({ [fixtureDocumentPath]: fixturePdfBytes });
+  rpc.mockResolvedValue({ data: null, error: null });
   sendDocumentMail.mockResolvedValue({ sent: true, sentAt: "2026-09-12T10:00:00.000Z" });
   invoicePayLink.mockResolvedValue(oneoffLink);
   stored = invoice;
@@ -146,7 +156,19 @@ describe("sending an invoice that switches a monthly service on", () => {
   };
 
   beforeEach(() => {
-    stored = invoiceFixture({ number: { value: "FAC-CONCEPT-X", provisional: true }, projectId: "proj-1" });
+    stored = invoiceFixture({
+      status: "issued",
+      sentAt: undefined,
+      recipientEmail: undefined,
+      projectId: "proj-1",
+      activationNote: {
+        serviceId: "svc-1",
+        serviceName: "Websitebeheer",
+        monthlyNetCents: 2500,
+        monthlyGrossCents: 3025,
+        firstDebitOn: "2026-10-01",
+      },
+    });
     project = { id: "proj-1", name: "Website Alfa BV" };
   });
 
@@ -172,10 +194,39 @@ describe("sending an invoice that switches a monthly service on", () => {
   });
 
   /*
-    A customer who already authorised us gets an ordinary one-off payment, so
-    the mail must not claim they are authorising anything.
+    A customer who already authorised us gets an ordinary one-off payment --
+    but the document in their hand announces the mandate, because that is what
+    it said when it was issued. Sending one while doing the other is the one
+    thing that may not happen quietly.
   */
-  it("says nothing about a monthly service when the payment is an ordinary one-off", async () => {
+  it("refuses to send when the payment no longer establishes the mandate the document announces", async () => {
+    invoicePayLink.mockResolvedValue({
+      ...firstLink,
+      decision: { ...firstLink.decision, sequence: "oneoff", reason: "mandate-already-given" },
+    });
+
+    const result = await sendInvoiceToCustomer("inv-1");
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toContain("Annuleer deze factuur");
+    expect(sendDocumentMail).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  /* And the other way round: a mandate nobody wrote down. */
+  it("refuses to send when the payment would establish a mandate the document does not mention", async () => {
+    stored = invoiceFixture({ status: "issued", sentAt: undefined, recipientEmail: undefined, projectId: "proj-1" });
+    invoicePayLink.mockResolvedValue(firstLink);
+
+    const result = await sendInvoiceToCustomer("inv-1");
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toContain("staat niet op de definitieve factuur");
+    expect(sendDocumentMail).not.toHaveBeenCalled();
+  });
+
+  it("says nothing about a monthly service on an invoice that was issued without a note", async () => {
+    stored = invoiceFixture({ status: "issued", sentAt: undefined, recipientEmail: undefined, projectId: "proj-1" });
     invoicePayLink.mockResolvedValue({
       ...firstLink,
       decision: { ...firstLink.decision, sequence: "oneoff", reason: "mandate-already-given" },
@@ -230,123 +281,155 @@ describe("the first collection date at the moment of sending", () => {
   });
 });
 
+
 /*
-  The betalingskenmerk at the moment the invoice becomes a real document.
-
-  A concept carries an automatic FAC-CONCEPT-… reference. That string may
-  never reach a customer: it is what a bank transfer is matched on, and an
-  invoice numbered YM-F-2026-000001 that asks for FAC-CONCEPT-OUSHO gives the
-  payment two names. What the admin typed themselves is a different matter --
-  that is the customer's own purchase order, and it stays.
+  What sending is allowed to change about the document: nothing, and that now
+  includes the file. The PDF was rendered once when the invoice was made
+  definitive and stored; sending reads those bytes back, checks them against
+  the recorded SHA-256 and attaches them.
 */
-describe("the betalingskenmerk when an invoice is sent", () => {
-  const concept = (paymentReference: string) =>
-    invoiceFixture({
-      status: "draft",
-      number: { value: "FAC-CONCEPT-QLJB5", provisional: true },
-      paymentReference,
-    });
-
+describe("sending a definitive invoice", () => {
   /** Every column written to `invoices` during the send, in order. */
   const written = () => update.mock.calls.map(([row]) => row);
-  /** The invoice the PDF was rendered from. */
-  const rendered = () => renderInvoicePdf.mock.calls[0]![0] as { paymentReference: string; number: { value: string } };
   /** What the mail was told. */
-  const mailed = () => sendDocumentMail.mock.calls[0]?.[0] as { number: string; paymentReference?: string };
+  const mailed = () =>
+    sendDocumentMail.mock.calls[0]?.[0] as { number: string; paymentReference?: string; pdf: Buffer };
 
-  it("replaces an automatic concept reference with the definitive number", async () => {
-    stored = concept("FAC-CONCEPT-OUSHO");
-
+  it("issues no number and touches nothing but the send fields", async () => {
     const result = await sendInvoiceToCustomer("inv-1");
 
     expect(result).toEqual({ ok: true, value: "YM-F-2026-000001" });
-    expect(from).toHaveBeenCalledWith("invoices");
-    expect(written()[0]).toEqual({ payment_reference: "YM-F-2026-000001" });
-    // The same value in the document, the mail and the row.
-    expect(rendered().paymentReference).toBe("YM-F-2026-000001");
-    expect(mailed().paymentReference).toBe("YM-F-2026-000001");
-    expect(mailed().number).toBe("YM-F-2026-000001");
-  });
-
-  it("gives the number to an invoice whose reference was left empty", async () => {
-    stored = concept("");
-
-    await sendInvoiceToCustomer("inv-1");
-
-    expect(written()[0]).toEqual({ payment_reference: "YM-F-2026-000001" });
-    expect(rendered().paymentReference).toBe("YM-F-2026-000001");
-  });
-
-  it("keeps a reference the admin typed", async () => {
-    stored = concept("PO-4417");
-
-    const result = await sendInvoiceToCustomer("inv-1");
-
-    expect(result).toEqual({ ok: true, value: "YM-F-2026-000001" });
-    // Nothing about the reference is written, because nothing changes.
-    expect(written().some((row) => "payment_reference" in row)).toBe(false);
-    expect(rendered().paymentReference).toBe("PO-4417");
-    expect(rendered().number.value).toBe("YM-F-2026-000001");
-    expect(mailed().paymentReference).toBe("PO-4417");
+    // Neither numbering nor any other RPC is called any more.
+    expect(rpc).not.toHaveBeenCalled();
+    expect(written()).toEqual([
+      { status: "sent", sent_at: "2026-09-12T10:00:00.000Z", recipient_email: "a@example.com" },
+    ]);
   });
 
   /*
-    An invoice that has gone out is the document the customer holds. Its
-    reference is part of it, the database refuses to move it, and a resend
-    hands over the same document again.
+    The claim, as an assertion: the attachment is the stored object, byte for
+    byte, and no renderer ran to produce it.
   */
-  it("leaves an invoice that was already sent exactly as it is", async () => {
-    stored = invoiceFixture({
-      status: "sent",
-      sentAt: "2026-09-18T10:00:00.000Z",
-      paymentReference: "FAC-CONCEPT-OUSHO",
-    });
+  it("attaches the stored file itself and renders nothing", async () => {
+    await sendInvoiceToCustomer("inv-1");
 
-    const result = await sendInvoiceToCustomer("inv-1");
-
-    expect(result.ok).toBe(true);
-    expect(written().some((row) => "payment_reference" in row)).toBe(false);
-    expect(rendered().paymentReference).toBe("FAC-CONCEPT-OUSHO");
+    expect(renderInvoicePdf).not.toHaveBeenCalled();
+    expect(bucket.downloads).toEqual([fixtureDocumentPath]);
+    expect(Buffer.from(mailed().pdf).equals(fixturePdfBytes)).toBe(true);
+    expect(sha256Hex(mailed().pdf)).toBe(stored.document!.sha256);
   });
 
-  /* Sending again after the reference already followed the number. */
-  it("writes nothing the second time", async () => {
-    stored = invoiceFixture({
-      status: "draft",
-      number: { value: "YM-F-2026-000001", provisional: false },
-      paymentReference: "YM-F-2026-000001",
-    });
+  it("mails the reference the document was issued with", async () => {
+    stored = invoiceFixture({ status: "issued", sentAt: undefined, recipientEmail: undefined, paymentReference: "PO-4417" });
 
     await sendInvoiceToCustomer("inv-1");
 
+    expect(mailed().paymentReference).toBe("PO-4417");
+    expect(mailed().number).toBe("YM-F-2026-000001");
     expect(written().some((row) => "payment_reference" in row)).toBe(false);
-    expect(rendered().paymentReference).toBe("YM-F-2026-000001");
   });
 
-  /* A reference that cannot be recorded is not one to print and mail. */
-  it("does not send when the reference could not be written", async () => {
-    stored = concept("FAC-CONCEPT-OUSHO");
-    update.mockReturnValueOnce({ eq: async () => ({ error: { message: "rls" } }) });
+  /* A concept has no document to send; it has a step to take first. */
+  it("refuses a concept outright", async () => {
+    stored = invoiceFixture({
+      status: "draft",
+      number: { value: "FAC-CONCEPT-QLJB5", provisional: true },
+      paymentReference: "FAC-CONCEPT-OUSHO",
+      finalizingAt: undefined,
+      issuedAt: undefined,
+      document: undefined,
+      sentAt: undefined,
+      recipientEmail: undefined,
+    });
 
     const result = await sendInvoiceToCustomer("inv-1");
 
     expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toContain("Maak hem eerst definitief");
     expect(renderInvoicePdf).not.toHaveBeenCalled();
+    expect(invoicePayLink).not.toHaveBeenCalled();
+    expect(sendDocumentMail).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  /* Numbered, but the PDF never got stored: finish that, do not send. */
+  it("refuses an invoice whose finalization never finished", async () => {
+    stored = invoiceFixture({
+      status: "draft",
+      issuedAt: undefined,
+      document: undefined,
+      sentAt: undefined,
+      recipientEmail: undefined,
+    });
+
+    const result = await sendInvoiceToCustomer("inv-1");
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toContain("niet afgerond");
     expect(sendDocumentMail).not.toHaveBeenCalled();
   });
 
+  /* No file behind the record: never a freshly rendered stand-in. */
+  it("refuses when the stored file is gone", async () => {
+    bucket.files.clear();
+
+    const result = await sendInvoiceToCustomer("inv-1");
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toContain("niet worden gelezen");
+    expect(renderInvoicePdf).not.toHaveBeenCalled();
+    expect(sendDocumentMail).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  /* Bytes that no longer hash to what was recorded are not this document. */
+  it("refuses when the stored file does not match its checksum", async () => {
+    bucket.files.set(fixtureDocumentPath, Buffer.from("%PDF-1.7 something else\n"));
+
+    const result = await sendInvoiceToCustomer("inv-1");
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toContain("controlesom");
+    expect(sendDocumentMail).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
   /*
-    Mollie gets no reference field of its own -- a payment link carries a
-    description -- but that description must name the definitive invoice, not
-    the concept it was a minute ago.
+    The fingerprint the screen rendered is handed back with the request. It
+    matching means the row the admin looked at and the row being sent are the
+    same; the artifact hash then says the same of the file.
   */
-  it("hands the payment link the numbered invoice", async () => {
-    stored = concept("FAC-CONCEPT-OUSHO");
+  it("sends when the screen's fingerprint matches the stored document", async () => {
+    const result = await sendInvoiceToCustomer("inv-1", documentFingerprint(invoiceDocument(stored)));
+
+    expect(result.ok).toBe(true);
+    expect(sendDocumentMail).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses when it does not", async () => {
+    const other = invoiceDocument(invoiceFixture({ status: "issued", netCents: 99900 }));
+
+    const result = await sendInvoiceToCustomer("inv-1", documentFingerprint(other));
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.error).toContain("andere versie");
+    expect(sendDocumentMail).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  /* Resending hands over the same file; nothing is made again. */
+  it("resends the identical file", async () => {
+    stored = invoiceFixture({ paymentReference: "YM-F-2026-000001" });
 
     await sendInvoiceToCustomer("inv-1");
+    const first = Buffer.from(mailed().pdf);
+    sendDocumentMail.mockClear();
+    await sendInvoiceToCustomer("inv-1");
+    const second = Buffer.from(mailed().pdf);
 
-    const [forLink] = invoicePayLink.mock.calls[0] as [{ number: { value: string }; paymentReference: string }];
-    expect(forLink.number).toEqual({ value: "YM-F-2026-000001", provisional: false });
-    expect(forLink.paymentReference).toBe("YM-F-2026-000001");
+    expect(first.equals(second)).toBe(true);
+    expect(first.equals(fixturePdfBytes)).toBe(true);
+    expect(renderInvoicePdf).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
   });
 });

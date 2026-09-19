@@ -1,6 +1,16 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
+import { createFinalizationRpc } from "@/lib/admin/invoices/storage-fixture";
 import { createFakeDb, recurringFixture } from "@/lib/payments/fixtures";
-import { ensureRecurringInvoice } from "@/lib/payments/recurring-invoice";
+
+/* The renderer is a megabyte of PDF machinery and decides nothing here. */
+vi.mock("@/lib/admin/pdf/to-buffer", () => ({
+  renderInvoicePdf: async () => Buffer.from("%PDF-1.7 term\n"),
+  renderQuotePdf: async () => Buffer.from("pdf"),
+  documentFileName: (value: string) => `${value}.pdf`,
+}));
+
+const { ensureRecurringInvoice } = await import("@/lib/payments/recurring-invoice");
 
 /*
   A monthly service belongs to the project it is part of, and every invoice it
@@ -26,10 +36,21 @@ function fakeDb() {
     invoices: [],
   });
 
-  // The two stored procedures this path uses; neither decides anything the
-  // test is about.
+  /*
+    The stored procedures this path uses. Numbering and issuing are simulated
+    faithfully enough to matter -- one number per invoice, the artifact and
+    `issued_at` written together -- because this flow now issues a document,
+    not just a row.
+  */
+  let sequence = 9;
+  const finalization = createFinalizationRpc(
+    () => base.rows("invoices"),
+    () => `YM-F-2026-${String(sequence++).padStart(6, "0")}`,
+  );
   return Object.assign(base, {
-    rpc: vi.fn(async (name: string) => (name === "assign_invoice_number" ? { data: "YM-F-2026-000009", error: null } : { data: null, error: null })),
+    rpc: vi.fn(async (name: string, args?: Record<string, unknown>) =>
+      name === "save_invoice_lines" ? { data: null, error: null } : finalization(name, args ?? {}),
+    ),
   });
 }
 
@@ -65,5 +86,33 @@ describe("the invoice a monthly service generates", () => {
     await ensureRecurringInvoice(db as never, service, period, "2026-09-20");
 
     expect(db.rows("invoices")).toHaveLength(1);
+  });
+
+  /*
+    A term is a document like any other: one number, one stored PDF, and the
+    payment reference following that number. The mails that go out afterwards
+    attach this file rather than rendering their own.
+  */
+  it("is issued with exactly one stored PDF", async () => {
+    const db = fakeDb();
+
+    const invoice = await ensureRecurringInvoice(db as never, recurringFixture(), period, "2026-09-20");
+
+    expect(invoice.number.value).toBe("YM-F-2026-000009");
+    expect(invoice.paymentReference).toBe("YM-F-2026-000009");
+    const term = Buffer.from("%PDF-1.7 term\n");
+    expect(invoice.document?.path).toBe(`2026/YM-F-2026-000009-${createHash("sha256").update(term).digest("hex")}.pdf`);
+    expect(db.bucket.uploads).toHaveLength(1);
+    expect(db.bucket.files.get(invoice.document!.path)).toEqual(term);
+  });
+
+  it("does not make a second PDF when it is asked again", async () => {
+    const db = fakeDb();
+    const service = recurringFixture();
+
+    await ensureRecurringInvoice(db as never, service, period, "2026-09-20");
+    await ensureRecurringInvoice(db as never, service, period, "2026-09-20");
+
+    expect(db.bucket.uploads).toHaveLength(1);
   });
 });

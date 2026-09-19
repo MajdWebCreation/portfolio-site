@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import AdminButton from "@/components/admin/admin-button";
 import SendPanel from "@/components/admin/documents/send-panel";
 import type { DocumentView } from "@/lib/admin/documents/view";
@@ -20,10 +20,20 @@ const PdfPreview = dynamic(() => import("@/components/admin/documents/pdf-previe
   loading: () => <p className="text-[0.85rem] text-muted">PDF-module laden…</p>,
 });
 
-type DocumentPanelProps = { document: DocumentView; fileName: string; ready: boolean };
+type DocumentPanelProps = {
+  document: DocumentView;
+  fileName: string;
+  ready: boolean;
+  /**
+   * What this document's next step is, under the PDF. A quote and a sent
+   * invoice offer the mail; a concept invoice offers making it definitive
+   * first, because sending is not what it needs next.
+   */
+  action?: ReactNode;
+};
 
-/** What a quote or invoice can become: a PDF, and an e-mail to its customer. */
-export default function DocumentPanel({ document, fileName, ready }: DocumentPanelProps) {
+/** What a quote or invoice can become: a PDF, and whatever comes after it. */
+export default function DocumentPanel({ document, fileName, ready, action }: DocumentPanelProps) {
   const [wantsPdf, setWantsPdf] = useState(false);
 
   return (
@@ -44,7 +54,7 @@ export default function DocumentPanel({ document, fileName, ready }: DocumentPan
 
       {!ready ? <p className="text-[0.85rem] text-muted">Vul een klant en minstens één volledige regel in om een PDF te maken.</p> : null}
 
-      <SendPanel doc={document} />
+      {action ?? <SendPanel doc={document} />}
     </section>
   );
 }

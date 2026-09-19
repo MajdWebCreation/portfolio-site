@@ -1,3 +1,4 @@
+import { fakeInvoiceStorage, fixtureDocumentPath, fixturePdfBytes, fixturePdfSha256 } from "@/lib/admin/invoices/storage-fixture";
 import type { Invoice, InvoiceStatus } from "@/lib/admin/invoices/types";
 import type { CustomerSnapshot } from "@/lib/admin/documents/types";
 import type { Payment, PaymentStatus, RecurringService } from "@/lib/payments/types";
@@ -17,13 +18,29 @@ export const testCustomer: CustomerSnapshot = {
   country: "Nederland",
 };
 
-/** One line of exactly `netCents` excluding VAT, at 21%. */
+/**
+ * One line of exactly `netCents` excluding VAT, at 21%.
+ *
+ * Definitive by default -- numbered, issued, with a stored document, and
+ * sent -- because that is the state most of the payment side only ever sees.
+ * A concept is built by overriding the number, the status, `finalizingAt`,
+ * `issuedAt` and `document` together, the way the database's own constraints
+ * require them to agree.
+ */
 export function invoiceFixture(overrides: Partial<Invoice> & { netCents?: number } = {}): Invoice {
   const { netCents = 10000, ...rest } = overrides;
   return {
     id: "inv-1",
     number: { value: "YM-F-2026-000001", provisional: false },
     status: "sent" as InvoiceStatus,
+    finalizingAt: "2026-09-01T09:00:00.000Z",
+    issuedAt: "2026-09-01T09:00:00.000Z",
+    document: {
+      path: fixtureDocumentPath,
+      sha256: fixturePdfSha256,
+      bytes: fixturePdfBytes.byteLength,
+      generatedAt: "2026-09-01T09:00:00.000Z",
+    },
     customer: testCustomer,
     issueDate: "2026-09-01",
     dueDate: "2026-09-15",
@@ -220,9 +237,18 @@ export function createFakeDb(seed: Record<string, Row[]> = {}) {
     return api;
   }
 
+  /*
+    Storage rides along with the database, because the code that issues an
+    invoice uses one client for both: the row and the PDF are two halves of
+    one document, and a test that has only one half cannot follow it.
+  */
+  const bucket = fakeInvoiceStorage();
+
   return {
     from: (name: string) => builder(name),
     rows: (name: string) => table(name),
     all: tables,
+    storage: bucket.storage,
+    bucket,
   };
 }

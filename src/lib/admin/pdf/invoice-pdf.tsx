@@ -17,8 +17,9 @@ export type { InvoiceActivation };
 
 /**
  * The reference this document asks for. An invoice that goes out always has
- * one -- `issuedPaymentReference` sees to that when it is issued -- and the
- * fallback to the number covers a concept the admin emptied the field on.
+ * one -- `finalize_invoice` settles it against the number the moment the
+ * document is issued -- and the fallback covers a concept whose preview is
+ * rendered with the field left empty.
  */
 function paymentReferenceOf(invoice: Invoice): string {
   return invoice.paymentReference || invoice.number.value;

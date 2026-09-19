@@ -46,3 +46,38 @@ export function daysBetween(from: string, to: string): number {
   const end = Date.parse(`${to}T12:00:00Z`);
   return Math.round((end - start) / 86_400_000);
 }
+
+/**
+ * Whether a document is complete enough to become real.
+ *
+ * The builder's own rules are about a concept being saveable; these are about
+ * a document being issued or sent: a customer who can actually be written to
+ * and mailed, and lines that hold up. Shared by `finalizeInvoice` and by the
+ * send flow, because the second must never be reachable with something the
+ * first would have refused.
+ */
+export function documentIncompleteReason(document: {
+  customer: { email: string; companyName: string; contactName: string; street: string; postalCode: string; city: string };
+  lines: DocumentLine[];
+}): string | null {
+  const { customer, lines } = document;
+
+  if (!customer.email.trim() || !isEmail(customer.email.trim())) {
+    return "De klant heeft geen geldig e-mailadres. Vul dat eerst aan bij de klant.";
+  }
+  if (!customer.companyName.trim() || !customer.contactName.trim()) {
+    return "De klantgegevens zijn onvolledig: bedrijfsnaam en contactpersoon zijn nodig.";
+  }
+  if (!customer.street.trim() || !customer.postalCode.trim() || !customer.city.trim()) {
+    return "Het adres van de klant is onvolledig. Vul dat eerst aan bij de klant.";
+  }
+  if (lines.length === 0) return "Voeg minstens één regel toe.";
+  if (lines.some((line) => hasLineErrors(validateLine(line)))) {
+    return "Er staan ongeldige regels in dit document.";
+  }
+  return null;
+}
+
+function isEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}

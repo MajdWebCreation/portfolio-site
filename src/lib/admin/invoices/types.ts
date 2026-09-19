@@ -1,6 +1,33 @@
-import type { CustomerSnapshot, DocumentLine, DocumentNumber } from "@/lib/admin/documents/types";
+import type { CustomerSnapshot, DocumentLine, DocumentNumber, IssuedActivation } from "@/lib/admin/documents/types";
 
-export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
+/**
+ * The stored PDF of a definitive invoice.
+ *
+ * The bytes live in Supabase Storage; the row keeps where they are, how big
+ * they are and what they hash to. The hash is the point: it is checked
+ * against the bytes before they are mailed, so "the file the admin approved"
+ * and "the file the customer received" is a claim with an answer rather than
+ * an assumption.
+ */
+export type InvoiceDocumentFile = {
+  /** Object path in the invoice-documents bucket. */
+  path: string;
+  /** SHA-256 of the file, lowercase hex. */
+  sha256: string;
+  bytes: number;
+  /** ISO timestamp. */
+  generatedAt: string;
+};
+
+/**
+ * Where an invoice stands, as one list.
+ *
+ * `issued` is the state this administration used to lack: a document that is
+ * definitive -- numbered, frozen, countable as an invoice -- but that has not
+ * gone to the customer yet. It sits between the concept the admin edits and
+ * the mail that leaves.
+ */
+export type InvoiceStatus = "draft" | "issued" | "sent" | "paid" | "overdue" | "cancelled";
 
 export type Invoice = {
   id: string;
@@ -17,6 +44,26 @@ export type Invoice = {
   paymentReference: string;
   lines: DocumentLine[];
   notes: string;
+  /**
+   * ISO timestamp of the moment the definitive number was taken and the
+   * figures froze. Absent while it is still a concept. Set before
+   * `issuedAt`: between the two the PDF is being made.
+   */
+  finalizingAt?: string;
+  /**
+   * ISO timestamp of the moment this became a document: its PDF was rendered
+   * once, stored and recorded. Absent while it is a concept, and absent on an
+   * invoice whose finalization never finished.
+   */
+  issuedAt?: string;
+  /** What the document says about a monthly service, frozen when it was issued. */
+  activationNote?: IssuedActivation;
+  /**
+   * The one PDF this invoice is. Rendered at the moment it was issued, stored
+   * in the invoice-documents bucket, and read back -- never re-rendered --
+   * for the admin's preview and for the mail attachment.
+   */
+  document?: InvoiceDocumentFile;
   /** ISO timestamp of the moment the mail was accepted; absent until then. */
   sentAt?: string;
   /** The address the PDF was delivered to. */
@@ -33,10 +80,11 @@ export type Invoice = {
   updatedAt: string;
 };
 
-export const invoiceStatusOrder: readonly InvoiceStatus[] = ["draft", "sent", "paid", "overdue", "cancelled"];
+export const invoiceStatusOrder: readonly InvoiceStatus[] = ["draft", "issued", "sent", "paid", "overdue", "cancelled"];
 
 export const invoiceStatusLabels: Record<InvoiceStatus, string> = {
   draft: "Concept",
+  issued: "Definitief",
   sent: "Verzonden",
   paid: "Betaald",
   overdue: "Te laat",
@@ -45,11 +93,22 @@ export const invoiceStatusLabels: Record<InvoiceStatus, string> = {
 
 export const invoiceStatusTone: Record<InvoiceStatus, "neutral" | "accent" | "success" | "danger"> = {
   draft: "neutral",
+  issued: "accent",
   sent: "accent",
   paid: "success",
   overdue: "danger",
   cancelled: "neutral",
 };
+
+/**
+ * The statuses an admin may set by hand on a concept.
+ *
+ * The rest are the flow's to give: `issued` comes from making the document
+ * definitive and `sent` from actually mailing it, and letting either be
+ * picked from a dropdown would produce an invoice that claims to exist
+ * without a number behind it.
+ */
+export const selectableInvoiceStatuses: readonly InvoiceStatus[] = ["draft", "cancelled"];
 
 export function isInvoiceStatus(value: string): value is InvoiceStatus {
   return (invoiceStatusOrder as readonly string[]).includes(value);

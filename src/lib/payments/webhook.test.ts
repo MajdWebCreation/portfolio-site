@@ -342,6 +342,16 @@ describe("invoice status decisions", () => {
     expect(nextInvoiceStatus({ status: "cancelled", dueDate: "2026-01-01" }, true, today)).toBe("cancelled");
   });
 
+  /*
+    A definitive invoice that was never sent is not a claim either: the
+    customer has not been asked, so it cannot fall overdue. It stays where it
+    is until the mail goes out.
+  */
+  it("leaves a definitive invoice that has not been sent where it is", () => {
+    expect(nextInvoiceStatus({ status: "issued", dueDate: "2026-01-01" }, false, today)).toBe("issued");
+    expect(nextInvoiceStatus({ status: "issued", dueDate: "2026-01-01" }, true, today)).toBe("issued");
+  });
+
   it("keeps a paid invoice paid even when the payments no longer add up", () => {
     expect(nextInvoiceStatus({ status: "paid", dueDate: "2026-01-01" }, false, today)).toBe("paid");
   });

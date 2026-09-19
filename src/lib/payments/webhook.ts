@@ -117,9 +117,15 @@ export function nextInvoiceStatus(
   settled: boolean,
   todayKey: string,
 ): InvoiceStatus {
-  // A cancelled invoice is not revived by money arriving, and a draft is not
-  // a claim yet. Both are left exactly as they are.
-  if (invoice.status === "cancelled" || invoice.status === "draft") return invoice.status;
+  /*
+    A cancelled invoice is not revived by money arriving, and neither a
+    concept nor a document that has not been sent is a claim yet -- an issued
+    invoice the customer never received cannot be overdue. All three are left
+    exactly as they are.
+  */
+  if (invoice.status === "cancelled" || invoice.status === "draft" || invoice.status === "issued") {
+    return invoice.status;
+  }
   if (settled) return "paid";
   // Not settled. An invoice already marked paid keeps that: it may have been
   // settled by something this administration does not know about, and a

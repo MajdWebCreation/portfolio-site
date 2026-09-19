@@ -6,7 +6,7 @@ import { adminDb, orNull } from "@/lib/admin/db";
 import { snapshotToColumns } from "@/lib/admin/documents/mapper";
 import type { CustomerSnapshot, DocumentLine } from "@/lib/admin/documents/types";
 import { hasLineErrors, validateDates, validateLine } from "@/lib/admin/documents/validation";
-import { isInvoiceStatus } from "@/lib/admin/invoices/types";
+import { isInvoiceStatus, selectableInvoiceStatuses } from "@/lib/admin/invoices/types";
 import type { Json } from "@/lib/supabase/database.types";
 
 export type InvoiceInput = {
@@ -23,7 +23,15 @@ export type InvoiceInput = {
 
 /** See quotes/actions.ts: the builder's rules, applied again on the server. */
 function validate(input: InvoiceInput): string | null {
-  if (!isInvoiceStatus(input.status)) return "Kies een geldige status.";
+  /*
+    Only the two an admin may set by hand. `issued` and `sent` are the flow's
+    to give -- the first by making the document definitive, the second by
+    actually mailing it -- and a dropdown that could set either would produce
+    an invoice claiming to exist without a number behind it.
+  */
+  if (!isInvoiceStatus(input.status) || !selectableInvoiceStatuses.includes(input.status)) {
+    return "Kies een geldige status.";
+  }
   if (!input.customer.customerId) return "Kies een klant.";
 
   const dates = validateDates(input.issueDate, input.dueDate, "De vervaldatum");
@@ -67,24 +75,25 @@ export async function saveInvoice(
   };
 
   /*
-    An invoice that has been sent is the document the customer holds, and its
-    figures may not move afterwards: two versions of one invoice number is the
-    one thing an administration must never produce. The database refuses such
-    an update outright; this check is here so the admin reads a sentence
-    instead of a constraint. Status is not touched by that rule -- the payment
-    system has to be able to move sent -> paid -> overdue.
+    An invoice that has been made definitive is a document, and its figures
+    may not move afterwards: two versions of one invoice number is the one
+    thing an administration must never produce. That is true from the moment
+    it is issued, not from the moment it is mailed -- the whole point of
+    issuing first is that the admin approves a document that then cannot
+    change. The database refuses such an update outright; this check is here
+    so the admin reads a sentence instead of a constraint.
   */
   if (id) {
     const { data: existing, error: readError } = await db
       .from("invoices")
-      .select("sent_at, number_value")
+      .select("issued_at, number_value")
       .eq("id", id)
       .maybeSingle();
     if (readError) return actionFailed(readError, "Factuur laden mislukt.");
-    if (existing?.sent_at) {
+    if (existing?.issued_at) {
       return {
         ok: false,
-        error: `Factuur ${existing.number_value} is al verstuurd. De gegevens liggen vast; corrigeren kan alleen met een creditfactuur.`,
+        error: `Factuur ${existing.number_value} is al definitief. De gegevens liggen vast; corrigeren kan alleen met een creditfactuur.`,
       };
     }
   }

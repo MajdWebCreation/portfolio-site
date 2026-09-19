@@ -191,21 +191,24 @@ const invoiceGone = "Deze factuur bestaat niet (meer).";
 async function activatableInvoice(db: Awaited<ReturnType<typeof adminDb>>, invoiceId: string) {
   const { data, error } = await db
     .from("invoices")
-    .select("id, customer_id, project_id, sent_at, number_value")
+    .select("id, customer_id, project_id, issued_at, number_value")
     .eq("id", invoiceId)
     .maybeSingle();
   if (error) return { error: actionFailed(error, "Factuur laden mislukt.") };
   if (!data) return { error: { ok: false as const, error: invoiceGone } };
   /*
-    Once the invoice is out, its mail has already told the customer what
-    paying it authorises. Changing that afterwards would leave the customer
-    holding one promise and the administration another.
+    Once the invoice is definitive, the document says in so many words what
+    paying it authorises -- or says nothing about a monthly service at all --
+    and that note is frozen with the rest of it. Attaching a service
+    afterwards would leave the customer holding one promise and the
+    administration another, which is exactly what the send flow then refuses
+    to mail.
   */
-  if (data.sent_at) {
+  if (data.issued_at) {
     return {
       error: {
         ok: false as const,
-        error: `Factuur ${data.number_value} is al verstuurd. Koppel de maandelijkse service aan een nieuwe factuur, of activeer de incasso apart.`,
+        error: `Factuur ${data.number_value} is al definitief. Koppel de maandelijkse service aan een nieuwe factuur, of activeer de incasso apart.`,
       },
     };
   }

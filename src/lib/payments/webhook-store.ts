@@ -1,7 +1,8 @@
 import { invoiceLinks } from "@/lib/admin/communications/links";
 import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email";
 import { toDateKey } from "@/lib/admin/format";
-import { documentFileName, renderInvoicePdf } from "@/lib/admin/pdf/to-buffer";
+import { documentFileName } from "@/lib/admin/pdf/to-buffer";
+import { readInvoiceArtifact } from "@/lib/admin/invoices/artifact";
 import { calculateTotals, formatCents } from "@/lib/money";
 import { invoiceColumns, invoiceFromRow, type InvoiceRow } from "@/lib/admin/invoices/mapper";
 import type { Invoice, InvoiceStatus } from "@/lib/admin/invoices/types";
@@ -244,21 +245,22 @@ export function createWebhookStore(): WebhookStore {
     },
 
     /*
-      The document for a term the customer already paid. Same renderer and
+      The document for a term the customer already paid. Same stored file and
       same mailer as every other invoice; only the wording differs, because
       there is no collection coming. Marked as sent through the same field a
       manual send writes, which is what keeps the daily job away from it.
+
+      The PDF is the one that was stored when the term was issued, verified
+      against its hash. Rendering a fresh one here would attach a different
+      file from the one the administration holds as this invoice.
     */
     async sendSettledInvoice(invoice: Invoice, service: RecurringService) {
       const recipient = invoice.customer.email.trim();
       if (!recipient) return { sent: false, reason: "de klant heeft geen e-mailadres" };
 
-      let pdf: Buffer;
-      try {
-        pdf = await renderInvoicePdf(invoice);
-      } catch (error) {
-        return { sent: false, reason: error instanceof Error ? error.message : "de PDF kon niet worden gemaakt" };
-      }
+      const artifact = await readInvoiceArtifact(db, invoice);
+      if (!artifact.ok) return { sent: false, reason: artifact.reason };
+      const pdf = artifact.pdf;
 
       /* The invoice knows its project when it was filed under one; a term
          created by the activation flow may not, and then the service does. */

@@ -3,7 +3,9 @@ import { toDateKey } from "@/lib/admin/format";
 import { hasPaymentsAdminAccess, paymentsAdminClient } from "@/lib/payments/admin-client";
 import { invoiceLinks } from "@/lib/admin/communications/links";
 import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email";
-import { documentFileName, renderInvoicePdf } from "@/lib/admin/pdf/to-buffer";
+import { documentFileName } from "@/lib/admin/pdf/to-buffer";
+import { readInvoiceArtifact } from "@/lib/admin/invoices/artifact";
+import type { Invoice } from "@/lib/admin/invoices/types";
 import { calculateTotals, formatCents } from "@/lib/money";
 import { runPrenotifications } from "@/lib/payments/prenotification-runner";
 import { createPrenotificationStore } from "@/lib/payments/prenotification-store";
@@ -45,10 +47,23 @@ async function handle(request: Request): Promise<Response> {
   let logClient: ReturnType<typeof paymentsAdminClient> | undefined;
   const communicationsDb = () => (logClient ??= paymentsAdminClient());
 
+  /*
+    The attachment is the PDF that was stored when the term was issued, read
+    back and checked against its hash -- never a fresh render, which would be
+    a different file from the one this invoice is. A term whose file is
+    missing or altered throws, and the runner marks that announcement failed
+    and tries again tomorrow rather than mailing something else.
+  */
+  const storedPdf = async (invoice: Invoice) => {
+    const artifact = await readInvoiceArtifact(communicationsDb(), invoice);
+    if (!artifact.ok) throw new Error(artifact.reason);
+    return artifact.pdf;
+  };
+
   try {
     const summary = await runPrenotifications(
       createPrenotificationStore(),
-      renderInvoicePdf,
+      storedPdf,
       /*
         The invoice mail, with the PDF attached and no payment button: this
         term is collected by direct debit, and a button would invite paying

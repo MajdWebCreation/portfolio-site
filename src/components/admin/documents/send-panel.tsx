@@ -4,6 +4,7 @@ import { useState } from "react";
 import AdminButton from "@/components/admin/admin-button";
 import { useSave } from "@/components/admin/save-controls";
 import { sendInvoiceToCustomer, sendQuoteToCustomer } from "@/lib/admin/documents/send";
+import { documentFingerprint } from "@/lib/admin/documents/document-payload";
 import { documentRecord, type DocumentView } from "@/lib/admin/documents/view";
 import { formatDate, formatDateTime } from "@/lib/admin/format";
 import { formatCents } from "@/lib/money";
@@ -11,9 +12,10 @@ import { formatCents } from "@/lib/money";
 /**
  * Sending the saved document to its customer.
  *
- * Deliberately two steps: the first click asks, the second sends. A quote or
- * invoice leaving for a customer cannot be taken back, and it is the moment
- * the definitive number is issued, so it should not be one stray click away.
+ * Deliberately two steps: the first click asks, the second sends. A document
+ * leaving for a customer cannot be taken back, so it should not be one stray
+ * click away. For a quote this is also the moment its number is issued; an
+ * invoice was already made definitive, and sending changes nothing about it.
  *
  * The server action reads the document from the database, not from this
  * screen — so the panel says what is about to be sent, and refuses while the
@@ -22,6 +24,11 @@ import { formatCents } from "@/lib/money";
  * Its own module, and not part of the PDF panel any more: sending is the one
  * thing here that always has to work, and the PDF renderer it used to sit next
  * to is a megabyte of JavaScript that most visits never need.
+ *
+ * For an invoice it also sends the fingerprint of the document on this
+ * screen. The server recomputes it from the row and refuses if the two
+ * differ, so "the PDF I just looked at" and "the PDF that went out" is not a
+ * claim resting on both sides happening to read the same row.
  */
 export default function SendPanel({ doc }: { doc: DocumentView }) {
   const document = documentRecord(doc);
@@ -47,7 +54,10 @@ export default function SendPanel({ doc }: { doc: DocumentView }) {
 
   function send() {
     run(
-      () => (doc.kind === "quote" ? sendQuoteToCustomer(document.id) : sendInvoiceToCustomer(document.id)),
+      () =>
+        doc.kind === "quote"
+          ? sendQuoteToCustomer(document.id)
+          : sendInvoiceToCustomer(document.id, documentFingerprint(doc)),
       (number: string) => {
         setSentNumber(number);
         setConfirming(false);
@@ -78,7 +88,7 @@ export default function SendPanel({ doc }: { doc: DocumentView }) {
             De opgeslagen {kindLabel} gaat als PDF naar <span className="text-ink">{recipient}</span>.
             {document.number.provisional
               ? " Daarbij wordt het definitieve nummer toegekend."
-              : ` Het nummer blijft ${document.number.value}.`}
+              : ` Dit is exact de PDF hierboven: ${document.number.value} en de bedragen veranderen niet meer.`}
           </p>
           {activates ? (
             <p className="text-[0.85rem] leading-snug text-body">

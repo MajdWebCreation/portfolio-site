@@ -20,6 +20,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admin_profiles: {
@@ -675,6 +700,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          activation_note: Json | null
           billing_period_end: string | null
           billing_period_start: string | null
           created_at: string
@@ -688,9 +714,15 @@ export type Database = {
           customer_postal_code: string
           customer_street: string
           customer_vat_number: string | null
+          document_bytes: number | null
+          document_generated_at: string | null
+          document_path: string | null
+          document_sha256: string | null
           due_date: string
+          finalizing_at: string | null
           id: string
           issue_date: string
+          issued_at: string | null
           notes: string
           number_provisional: boolean
           number_value: string
@@ -704,6 +736,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activation_note?: Json | null
           billing_period_end?: string | null
           billing_period_start?: string | null
           created_at?: string
@@ -717,9 +750,15 @@ export type Database = {
           customer_postal_code: string
           customer_street: string
           customer_vat_number?: string | null
+          document_bytes?: number | null
+          document_generated_at?: string | null
+          document_path?: string | null
+          document_sha256?: string | null
           due_date: string
+          finalizing_at?: string | null
           id?: string
           issue_date: string
+          issued_at?: string | null
           notes?: string
           number_provisional?: boolean
           number_value: string
@@ -733,6 +772,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activation_note?: Json | null
           billing_period_end?: string | null
           billing_period_start?: string | null
           created_at?: string
@@ -746,9 +786,15 @@ export type Database = {
           customer_postal_code?: string
           customer_street?: string
           customer_vat_number?: string | null
+          document_bytes?: number | null
+          document_generated_at?: string | null
+          document_path?: string | null
+          document_sha256?: string | null
           due_date?: string
+          finalizing_at?: string | null
           id?: string
           issue_date?: string
+          issued_at?: string | null
           notes?: string
           number_provisional?: boolean
           number_value?: string
@@ -1309,8 +1355,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      assign_invoice_number: { Args: { p_invoice_id: string }; Returns: string }
       assign_quote_number: { Args: { p_quote_id: string }; Returns: string }
+      begin_invoice_finalization: {
+        Args: { p_activation?: Json; p_invoice_id: string }
+        Returns: string
+      }
+      complete_invoice_finalization: {
+        Args: {
+          p_bytes: number
+          p_invoice_id: string
+          p_path: string
+          p_sha256: string
+        }
+        Returns: Json
+      }
       save_invoice_lines: {
         Args: { p_invoice_id: string; p_lines: Json }
         Returns: undefined
@@ -1447,6 +1505,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

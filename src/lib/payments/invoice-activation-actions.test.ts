@@ -22,7 +22,7 @@ const invoice = (overrides: Record<string, unknown> = {}) => ({
   id: "inv-1",
   customer_id: "cust-1",
   project_id: "proj-1",
-  sent_at: null,
+  issued_at: null,
   number_value: "FAC-CONCEPT-1",
   status: "draft",
   ...overrides,
@@ -126,7 +126,7 @@ describe("what it refuses", () => {
   */
   it("refuses an invoice that has been sent", async () => {
     db = createFakeDb({
-      invoices: [invoice({ sent_at: "2026-09-13T10:00:00.000Z", number_value: "YM-F-2026-000001" })],
+      invoices: [invoice({ issued_at: "2026-09-13T10:00:00.000Z", number_value: "YM-F-2026-000001" })],
       recurring_services: [],
     });
 
