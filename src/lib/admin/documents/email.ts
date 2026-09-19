@@ -55,6 +55,13 @@ export type DocumentMailContent = {
   /** The project this invoice is for; names the mail instead of the company. */
   projectName?: string;
   /**
+   * The reference the customer quotes when paying, when it is not simply the
+   * invoice number. Then, and only then, the mail names it: an invoice whose
+   * reference *is* its number would print the same string twice under two
+   * labels, which reads as two things to quote.
+   */
+  paymentReference?: string;
+  /**
    * Present when paying this one-off invoice also switches a monthly service
    * on. The monthly amounts are shown so the customer knows what they are
    * authorising -- they are not part of what is collected now.
@@ -270,9 +277,13 @@ export function buildDocumentMailBody(input: DocumentMailContent): MailBody {
     : `Hierbij offerte ${input.number} van ${companyProfile.name}.`;
 
   // Nothing about payment on a quote: a quote is a proposal, not a bill.
+  const ownReference = input.paymentReference?.trim();
   const facts: [string, string][] = isInvoice
     ? [
         ["Factuurnummer", input.number],
+        ...(ownReference && ownReference !== input.number
+          ? ([["Betalingskenmerk", ownReference]] as [string, string][])
+          : []),
         ["Factuurdatum", input.issueDateLabel],
         ["Vervaldatum", input.deadlineLabel],
         ["Totaal incl. btw", input.totalLabel],

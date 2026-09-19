@@ -15,6 +15,15 @@ import { formatCents } from "@/lib/money";
 */
 export type { InvoiceActivation };
 
+/**
+ * The reference this document asks for. An invoice that goes out always has
+ * one -- `issuedPaymentReference` sees to that when it is issued -- and the
+ * fallback to the number covers a concept the admin emptied the field on.
+ */
+function paymentReferenceOf(invoice: Invoice): string {
+  return invoice.paymentReference || invoice.number.value;
+}
+
 /** One bank detail: label left, value right, like the metadata at the top. */
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -26,6 +35,18 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 /**
+ * What the customer is asked to quote when they transfer the money.
+ *
+ * Exported because it is the one sentence on the document that has to carry
+ * the same reference as the metadata, the mail and our own row -- a mismatch
+ * there is a payment nobody can match to an invoice, so it is asserted rather
+ * than trusted.
+ */
+export function paymentInstruction(invoice: Invoice): string {
+  return `Graag betalen vóór ${formatDocumentDate(invoice.dueDate)} onder vermelding van ${paymentReferenceOf(invoice)}.`;
+}
+
+/**
  * Payment block: the request in a sentence, the bank details as rows, so the
  * IBAN and the account holder read as data rather than running text. The BIC
  * row is omitted while no BIC is configured.
@@ -34,9 +55,7 @@ function Payment({ invoice }: { invoice: Invoice }) {
   return (
     <View style={{ marginTop: 18 }} wrap={false}>
       <Text style={[styles.mono, { marginBottom: 5 }]}>Betaling</Text>
-      <Text style={[styles.prose, { maxWidth: "88%" }]}>
-        Graag betalen vóór {formatDocumentDate(invoice.dueDate)} onder vermelding van {invoice.paymentReference || invoice.number.value}.
-      </Text>
+      <Text style={[styles.prose, { maxWidth: "88%" }]}>{paymentInstruction(invoice)}</Text>
       <View style={{ width: "56%", marginTop: 8 }}>
         <DetailRow label="IBAN" value={companyProfile.iban} />
         {companyProfile.bic ? <DetailRow label="BIC" value={companyProfile.bic} /> : null}
@@ -63,7 +82,7 @@ function DirectDebit({ invoice }: { invoice: Invoice }) {
         {companyProfile.legalName}, op basis van de afgegeven machtiging. U hoeft zelf niets over te maken.
       </Text>
       <View style={{ width: "56%", marginTop: 8 }}>
-        <DetailRow label="Kenmerk" value={invoice.paymentReference || invoice.number.value} />
+        <DetailRow label="Kenmerk" value={paymentReferenceOf(invoice)} />
         <DetailRow label="Incassant" value={companyProfile.accountHolder} />
       </View>
     </View>
@@ -83,7 +102,7 @@ function Settled({ invoice }: { invoice: Invoice }) {
         Deze factuur is voldaan. U hoeft niets over te maken.
       </Text>
       <View style={{ width: "56%", marginTop: 8 }}>
-        <DetailRow label="Kenmerk" value={invoice.paymentReference || invoice.number.value} />
+        <DetailRow label="Kenmerk" value={paymentReferenceOf(invoice)} />
       </View>
     </View>
   );
@@ -154,7 +173,7 @@ export function invoiceMetaRows(invoice: Invoice): { label: string; value: strin
           },
         ]
       : []),
-    { label: "Betalingskenmerk", value: invoice.paymentReference || invoice.number.value },
+    { label: "Betalingskenmerk", value: paymentReferenceOf(invoice) },
   ];
 }
 

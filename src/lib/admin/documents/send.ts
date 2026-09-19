@@ -6,6 +6,7 @@ import { invoiceLinks, quoteLinks } from "@/lib/admin/communications/links";
 import { adminDb } from "@/lib/admin/db";
 import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email";
 import { toDateKey } from "@/lib/admin/format";
+import { issuedPaymentReference } from "@/lib/admin/documents/numbering";
 import type { DocumentLine } from "@/lib/admin/documents/types";
 import { hasLineErrors, validateLine } from "@/lib/admin/documents/validation";
 import { getInvoice } from "@/lib/admin/invoices/repository";
@@ -28,7 +29,9 @@ import { invoicePayLink, serviceActivatedBy } from "@/lib/payments/pay-link";
  *  2. The document is validated again on the server: a customer with a real
  *     address, lines that add up, dates that make sense.
  *  3. The database issues the definitive number, once. A retry after a failed
- *     mail returns the number the document already has.
+ *     mail returns the number the document already has. An invoice whose
+ *     betalingskenmerk was only ever the concept's own gets that number as
+ *     its reference here too, for the same reason and at the same moment.
  *  4. The PDF is rendered from that numbered document.
  *  5. Resend accepts the mail — or does not.
  *  6. Only then are status, sent_at and recipient_email written.
@@ -144,7 +147,27 @@ export async function sendInvoiceToCustomer(id: string): Promise<ActionResult<st
     return actionFailed(assigned.error, "Het factuurnummer kon niet worden toegekend.");
   }
 
-  const numbered = { ...invoice, number: { value: assigned.data, provisional: false } };
+  /*
+    The betalingskenmerk follows the number, unless the admin gave it one of
+    their own; see `issuedPaymentReference`. It is written before the PDF is
+    rendered, so the document the customer receives and the row we keep say
+    the same thing -- and a write that fails stops the send rather than
+    producing a mismatch nobody can correct afterwards.
+
+    A document that has already gone out is left alone in both places. Its
+    reference is part of what the customer holds, the database refuses to
+    change it, and a resend must hand over the same document again.
+  */
+  const reference = invoice.sentAt
+    ? invoice.paymentReference
+    : issuedPaymentReference(invoice.paymentReference, assigned.data);
+
+  if (reference !== invoice.paymentReference) {
+    const { error } = await db.from("invoices").update({ payment_reference: reference }).eq("id", id);
+    if (error) return actionFailed(error, "Het betalingskenmerk kon niet worden vastgelegd.");
+  }
+
+  const numbered = { ...invoice, number: { value: assigned.data, provisional: false }, paymentReference: reference };
   const recipient = numbered.customer.email.trim();
 
   /*
@@ -248,6 +271,7 @@ export async function sendInvoiceToCustomer(id: string): Promise<ActionResult<st
     fileName: documentFileName(numbered.number.value),
     ...(payUrl ? { payUrl } : {}),
     ...(project ? { projectName: project.name } : {}),
+    paymentReference: numbered.paymentReference,
     ...(activates ? { activates } : {}),
   });
 

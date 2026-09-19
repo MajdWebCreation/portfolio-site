@@ -14,7 +14,10 @@ let stored = invoice;
 let project: { id: string; name: string } | undefined;
 
 const rpc = vi.fn();
-const update = vi.fn(() => ({ eq: async () => ({ error: null }) }));
+type QueryResult = { error: { message: string } | null };
+const update = vi.fn<(row: Record<string, unknown>) => { eq: (...args: string[]) => Promise<QueryResult> }>(() => ({
+  eq: async () => ({ error: null }),
+}));
 const from = vi.fn(() => ({ update }));
 const sendDocumentMail = vi.fn();
 const invoicePayLink = vi.fn();
@@ -29,8 +32,10 @@ vi.mock("@/lib/admin/db", async (importOriginal) => ({
 vi.mock("@/lib/admin/invoices/repository", () => ({ getInvoice: async () => stored }));
 vi.mock("@/lib/admin/projects/repository", () => ({ getProject: async () => project }));
 vi.mock("@/lib/admin/quotes/repository", () => ({ getQuote: async () => undefined }));
+/* Typed as the flow calls it, so the test can read back the invoice it rendered. */
+const renderInvoicePdf = vi.fn<(invoice: unknown, activates?: unknown) => Promise<Buffer>>(async () => Buffer.from("pdf"));
 vi.mock("@/lib/admin/pdf/to-buffer", () => ({
-  renderInvoicePdf: async () => Buffer.from("pdf"),
+  renderInvoicePdf: (invoice: unknown, activates?: unknown) => renderInvoicePdf(invoice, activates),
   renderQuotePdf: async () => Buffer.from("pdf"),
   documentFileName: (value: string) => `${value}.pdf`,
 }));
@@ -222,5 +227,126 @@ describe("the first collection date at the moment of sending", () => {
     const result = await sendInvoiceToCustomer("inv-1");
 
     expect(result).toEqual({ ok: true, value: "YM-F-2026-000001" });
+  });
+});
+
+/*
+  The betalingskenmerk at the moment the invoice becomes a real document.
+
+  A concept carries an automatic FAC-CONCEPT-… reference. That string may
+  never reach a customer: it is what a bank transfer is matched on, and an
+  invoice numbered YM-F-2026-000001 that asks for FAC-CONCEPT-OUSHO gives the
+  payment two names. What the admin typed themselves is a different matter --
+  that is the customer's own purchase order, and it stays.
+*/
+describe("the betalingskenmerk when an invoice is sent", () => {
+  const concept = (paymentReference: string) =>
+    invoiceFixture({
+      status: "draft",
+      number: { value: "FAC-CONCEPT-QLJB5", provisional: true },
+      paymentReference,
+    });
+
+  /** Every column written to `invoices` during the send, in order. */
+  const written = () => update.mock.calls.map(([row]) => row);
+  /** The invoice the PDF was rendered from. */
+  const rendered = () => renderInvoicePdf.mock.calls[0]![0] as { paymentReference: string; number: { value: string } };
+  /** What the mail was told. */
+  const mailed = () => sendDocumentMail.mock.calls[0]?.[0] as { number: string; paymentReference?: string };
+
+  it("replaces an automatic concept reference with the definitive number", async () => {
+    stored = concept("FAC-CONCEPT-OUSHO");
+
+    const result = await sendInvoiceToCustomer("inv-1");
+
+    expect(result).toEqual({ ok: true, value: "YM-F-2026-000001" });
+    expect(from).toHaveBeenCalledWith("invoices");
+    expect(written()[0]).toEqual({ payment_reference: "YM-F-2026-000001" });
+    // The same value in the document, the mail and the row.
+    expect(rendered().paymentReference).toBe("YM-F-2026-000001");
+    expect(mailed().paymentReference).toBe("YM-F-2026-000001");
+    expect(mailed().number).toBe("YM-F-2026-000001");
+  });
+
+  it("gives the number to an invoice whose reference was left empty", async () => {
+    stored = concept("");
+
+    await sendInvoiceToCustomer("inv-1");
+
+    expect(written()[0]).toEqual({ payment_reference: "YM-F-2026-000001" });
+    expect(rendered().paymentReference).toBe("YM-F-2026-000001");
+  });
+
+  it("keeps a reference the admin typed", async () => {
+    stored = concept("PO-4417");
+
+    const result = await sendInvoiceToCustomer("inv-1");
+
+    expect(result).toEqual({ ok: true, value: "YM-F-2026-000001" });
+    // Nothing about the reference is written, because nothing changes.
+    expect(written().some((row) => "payment_reference" in row)).toBe(false);
+    expect(rendered().paymentReference).toBe("PO-4417");
+    expect(rendered().number.value).toBe("YM-F-2026-000001");
+    expect(mailed().paymentReference).toBe("PO-4417");
+  });
+
+  /*
+    An invoice that has gone out is the document the customer holds. Its
+    reference is part of it, the database refuses to move it, and a resend
+    hands over the same document again.
+  */
+  it("leaves an invoice that was already sent exactly as it is", async () => {
+    stored = invoiceFixture({
+      status: "sent",
+      sentAt: "2026-09-18T10:00:00.000Z",
+      paymentReference: "FAC-CONCEPT-OUSHO",
+    });
+
+    const result = await sendInvoiceToCustomer("inv-1");
+
+    expect(result.ok).toBe(true);
+    expect(written().some((row) => "payment_reference" in row)).toBe(false);
+    expect(rendered().paymentReference).toBe("FAC-CONCEPT-OUSHO");
+  });
+
+  /* Sending again after the reference already followed the number. */
+  it("writes nothing the second time", async () => {
+    stored = invoiceFixture({
+      status: "draft",
+      number: { value: "YM-F-2026-000001", provisional: false },
+      paymentReference: "YM-F-2026-000001",
+    });
+
+    await sendInvoiceToCustomer("inv-1");
+
+    expect(written().some((row) => "payment_reference" in row)).toBe(false);
+    expect(rendered().paymentReference).toBe("YM-F-2026-000001");
+  });
+
+  /* A reference that cannot be recorded is not one to print and mail. */
+  it("does not send when the reference could not be written", async () => {
+    stored = concept("FAC-CONCEPT-OUSHO");
+    update.mockReturnValueOnce({ eq: async () => ({ error: { message: "rls" } }) });
+
+    const result = await sendInvoiceToCustomer("inv-1");
+
+    expect(result.ok).toBe(false);
+    expect(renderInvoicePdf).not.toHaveBeenCalled();
+    expect(sendDocumentMail).not.toHaveBeenCalled();
+  });
+
+  /*
+    Mollie gets no reference field of its own -- a payment link carries a
+    description -- but that description must name the definitive invoice, not
+    the concept it was a minute ago.
+  */
+  it("hands the payment link the numbered invoice", async () => {
+    stored = concept("FAC-CONCEPT-OUSHO");
+
+    await sendInvoiceToCustomer("inv-1");
+
+    const [forLink] = invoicePayLink.mock.calls[0] as [{ number: { value: string }; paymentReference: string }];
+    expect(forLink.number).toEqual({ value: "YM-F-2026-000001", provisional: false });
+    expect(forLink.paymentReference).toBe("YM-F-2026-000001");
   });
 });
