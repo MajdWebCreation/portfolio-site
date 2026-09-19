@@ -525,8 +525,52 @@ describe("the invariants the migration states", () => {
     filing it as the document a customer received last month is the one thing
     an artifact store must never do.
   */
-  it("leaves invoices issued before it without a fabricated artifact", () => {
+  /*
+    Invoices from before this migration keep whatever they were: stamped so
+    the lifecycle reads correctly, and deliberately without an artifact,
+    because generating a PDF today and filing it as the document a customer
+    received last month is the one thing an artifact store must never do.
+
+    The dated exemption that allowed those rows is history: there were none,
+    and `invoice_document_required` below removed the clause. An invariant
+    that depends on the clock being past a certain point is not an invariant.
+  */
+  it("stamps older invoices without fabricating a document for them", () => {
     expect(sql).toContain("set finalizing_at = coalesce(sent_at, created_at),");
     expect(sql).toContain("issued_at < timestamptz '2026-09-19 21:00:00+00'");
+  });
+});
+
+/*
+  The rule as it now stands in the database: issued means a document exists,
+  with no escape clause of any kind.
+*/
+describe("the artifact requirement, once the exemption was dropped", () => {
+  const sql = readFileSync("supabase/migrations/20260919202406_invoice_document_required.sql", "utf8");
+
+  it("refuses to run while any invoice is issued without a document", () => {
+    expect(sql).toContain("where issued_at is not null");
+    expect(sql).toContain("and document_path is null");
+    expect(sql).toContain("raise exception");
+  });
+
+  it("states the rule with no date in it", () => {
+    expect(sql).toContain("check (issued_at is null or document_path is not null)");
+    expect(sql).not.toContain("timestamptz '2026");
+  });
+
+  /* What a path must come with is `invoices_document_complete`'s business. */
+  it("does not restate what the completeness constraint already says", () => {
+    expect(sql).not.toContain("document_sha256 ~");
+    expect(sql).not.toContain("document_bytes >");
+  });
+
+  /* One constraint swapped, and nothing else touched. */
+  it("changes nothing but that one constraint", () => {
+    expect(sql).toContain("drop constraint invoices_issued_has_document");
+    expect(sql).toContain("add constraint invoices_issued_has_document");
+    for (const forbidden of ["add column", "drop column", "create policy", "create trigger", "create or replace function", "insert into", "update public.invoices"]) {
+      expect(sql.toLowerCase(), `migration should not contain "${forbidden}"`).not.toContain(forbidden);
+    }
   });
 });
