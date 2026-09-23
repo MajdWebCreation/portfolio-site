@@ -7,6 +7,7 @@ import { isAuthFailure, type ProviderHealth } from "@/lib/analytics-admin/types"
 import { syncedProviders, type ProviderConfigStatus, type SyncedProvider } from "@/lib/analytics-admin/synced-providers";
 import { providerLabels } from "@/lib/admin/analytics/providers";
 import { buildAcquisition, buildBingSearch, buildGoogleSearch, buildInsights } from "@/lib/admin/analytics/search-queries";
+import { buildClarity } from "@/lib/admin/analytics/clarity-queries";
 import type {
   AiRow,
   AnalyticsDashboard,
@@ -307,7 +308,7 @@ export function buildContactFunnel(facts: FactRecord[], ranges: PeriodRanges): C
 export function buildProviderSyncStatus(
   provider: SyncedProvider,
   runs: SyncRunRecord[],
-  config: { configured: boolean; missing: string[] },
+  config: { configured: boolean; missing: string[]; parts?: ProviderSyncStatus["parts"] },
   hasFacts: boolean,
 ): ProviderSyncStatus {
   const sorted = runs.filter((run) => run.provider === provider).sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1));
@@ -358,6 +359,7 @@ export function buildProviderSyncStatus(
       : null,
     reports,
     hasFacts,
+    parts: config.parts ?? [],
   };
 }
 
@@ -389,6 +391,8 @@ export type DashboardInput = {
   truncated?: boolean;
   /** For the links to the providers' own interfaces; not a secret. */
   gscSiteUrl?: string | null;
+  /** The latest Clarity snapshot, read apart from the period (it is a rolling 72 hours). */
+  clarityFacts?: FactRecord[];
 };
 
 export function buildDashboard(input: DashboardInput): AnalyticsDashboard {
@@ -415,6 +419,7 @@ export function buildDashboard(input: DashboardInput): AnalyticsDashboard {
     acquisition,
     googleSearch,
     bingSearch: buildBingSearch(facts, ranges),
+    clarity: buildClarity(input.clarityFacts ?? []),
     insights: buildInsights({ googleSearch, services, acquisition }),
     sync: buildSyncStatus(input),
   };

@@ -724,8 +724,9 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
   const labelBase =
     "mb-2 block text-[11px] uppercase tracking-[0.24em] text-white/56";
 
+  /* The whole planner, choices and summary included, is masked for Microsoft Clarity. */
   return (
-    <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-start">
+    <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-start" data-clarity-mask="true">
       <form
         ref={formTopRef}
         onSubmit={handleSubmit}

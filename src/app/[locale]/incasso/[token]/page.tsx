@@ -38,7 +38,7 @@ export default async function ActivationPage({
   const amount = formatCents(activation.amountCents);
 
   return (
-    <main className="container-x flex min-h-[70vh] max-w-[42rem] flex-col justify-center py-20">
+    <main className="container-x flex min-h-[70vh] max-w-[42rem] flex-col justify-center py-20" data-clarity-mask="true">
       <h1 className="display-md text-ink">Automatische incasso activeren</h1>
       <p className="lede mt-5 text-body">
         {activation.contactName ? `Beste ${activation.contactName}, ` : ""}

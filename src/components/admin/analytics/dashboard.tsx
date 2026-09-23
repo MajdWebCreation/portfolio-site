@@ -3,6 +3,7 @@ import AdminSection from "@/components/admin/admin-section";
 import { Delta, Empty, num, pct } from "@/components/admin/analytics/parts";
 import { AcquisitionSection, BingSearchSection, GoogleSearchSection, InsightsSection } from "@/components/admin/analytics/search-sections";
 import SyncStatusSection from "@/components/admin/analytics/sync-status";
+import ClaritySection from "@/components/admin/analytics/clarity-section";
 import TrendLine from "@/components/admin/analytics/trend-line";
 import { pageTypeLabels } from "@/lib/admin/analytics/page-types";
 import { periods, type AnalyticsDashboard, type FunnelStep, type OverviewKey, type SyncStatus } from "@/lib/admin/analytics/types";
@@ -473,6 +474,8 @@ export default function AnalyticsDashboardView({ data }: { data: AnalyticsDashbo
       <GoogleSearchSection block={data.googleSearch} status={sync.providers.find((provider) => provider.provider === "gsc")} />
 
       <BingSearchSection block={data.bingSearch} status={sync.providers.find((provider) => provider.provider === "bing")} />
+
+      <ClaritySection block={data.clarity} status={sync.providers.find((provider) => provider.provider === "clarity")} />
 
       <SyncStatusSection sync={sync} />
     </div>

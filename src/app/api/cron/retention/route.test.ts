@@ -98,10 +98,11 @@ describe("with RETENTION_ENABLED=true", () => {
     expect(store.deleteInquiries).toHaveBeenCalledWith(["inq-anna-voorbeeld"]);
     expect(store.deleteLeads).toHaveBeenCalledWith(["lead-bedrijf-bv"]);
     expect(store.redactCommunications).toHaveBeenCalledWith(["comm-1"]);
-    expect(store.deleteAnalyticsFacts).toHaveBeenCalledTimes(2);
+    expect(store.deleteAnalyticsFacts).toHaveBeenCalledTimes(3);
     expect(body.analyticsFacts).toEqual([
       { retentionClass: "aggregate", cutoff: expect.any(String), selected: 9 },
       { retentionClass: "query_text", cutoff: expect.any(String), selected: 4 },
+      { retentionClass: "clarity_live", cutoff: expect.any(String), selected: 4 },
     ]);
     expect(String(info[0]?.[0])).toBe("Retention run finished");
   });

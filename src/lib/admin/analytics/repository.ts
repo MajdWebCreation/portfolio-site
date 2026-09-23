@@ -90,6 +90,17 @@ async function readRuns(db: Db, provider: SyncedProvider): Promise<SyncRunRecord
   }));
 }
 
+/** The latest Clarity snapshot: its day, then its rows. Two small reads, whatever the page's period. */
+async function readLatestClarity(db: Db): Promise<FactRecord[]> {
+  const latest = await db.from("analytics_facts").select("date").eq("provider", "clarity").order("date", { ascending: false }).limit(1);
+  failed("Clarity laden", latest.error);
+  const date = latest.data?.[0]?.date;
+  if (!date) return [];
+  const { data, error } = await db.from("analytics_facts").select("report, date, dims, metrics").eq("provider", "clarity").eq("date", date).limit(FACT_PAGE);
+  failed("Clarity laden", error);
+  return (data ?? []).map(factRecordFromRow).filter((row): row is FactRecord => row !== null);
+}
+
 async function hasAnyFact(db: Db, provider: SyncedProvider): Promise<boolean> {
   const { data, error } = await db.from("analytics_facts").select("date").eq("provider", provider).limit(1);
   failed("Analytics laden", error);
@@ -100,7 +111,7 @@ export async function loadAnalyticsDashboard(period: Period, now: Date = new Dat
   const ranges = periodRanges(period, now);
   const db = await adminDb();
 
-  const [facts, inquiryRows, runs, factFlags] = await Promise.all([
+  const [facts, inquiryRows, runs, factFlags, clarityFacts] = await Promise.all([
     readFacts(db, ranges.previous.start, ranges.current.end),
     db
       .from("inquiries")
@@ -108,6 +119,7 @@ export async function loadAnalyticsDashboard(period: Period, now: Date = new Dat
       .gte("received_at", `${ranges.previous.start}T00:00:00Z`),
     Promise.all(syncedProviders.map((provider) => readRuns(db, provider))),
     Promise.all(syncedProviders.map((provider) => hasAnyFact(db, provider))),
+    readLatestClarity(db),
   ]);
 
   failed("Aanvragen laden", inquiryRows.error);
@@ -124,5 +136,6 @@ export async function loadAnalyticsDashboard(period: Period, now: Date = new Dat
     hasFacts: Object.fromEntries(syncedProviders.map((provider, index) => [provider, factFlags[index]])),
     truncated: facts.truncated,
     gscSiteUrl: gsc.ok ? gsc.siteUrl : null,
+    clarityFacts,
   });
 }

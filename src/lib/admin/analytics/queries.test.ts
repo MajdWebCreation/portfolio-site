@@ -210,6 +210,7 @@ describe("sync status", () => {
         { provider: "ga4", configured: false, missing: ["GA4_PROPERTY_ID"] },
         { provider: "gsc", ...configured },
         { provider: "bing", ...configured },
+        { provider: "clarity", configured: false, missing: ["CLARITY_API_TOKEN"] },
       ],
       enabled: false,
       hasFacts: { bing: true },
@@ -218,6 +219,7 @@ describe("sync status", () => {
       ["ga4", "not_configured", false],
       ["gsc", "auth_failed", false],
       ["bing", "ok", true],
+      ["clarity", "not_configured", false],
     ]);
     expect(sync.providers[0]).toMatchObject({ label: "Google Analytics", missing: ["GA4_PROPERTY_ID"], lastSuccess: null, lastFailure: null, lastRun: null, reports: [] });
   });
@@ -229,11 +231,12 @@ describe("sync status", () => {
         { provider: "ga4", ...configured },
         { provider: "gsc", ...configured },
         { provider: "bing", ...configured },
+        { provider: "clarity", ...configured },
       ],
       enabled: true,
       hasFacts: {},
     });
-    expect(sync.providers.map((p) => p.health)).toEqual(["configured", "configured", "ok"]);
+    expect(sync.providers.map((p) => p.health)).toEqual(["configured", "configured", "ok", "configured"]);
   });
 });
 

@@ -137,6 +137,7 @@ describe("runAnalyticsSync", () => {
     expect(summary.retention).toEqual([
       { retentionClass: "aggregate", cutoff: "2024-07-23", deleted: 1 },
       { retentionClass: "query_text", cutoff: "2025-05-23", deleted: 0 },
+      { retentionClass: "clarity_live", cutoff: "2026-06-25", deleted: 0 },
     ]);
     expect(facts.has(factKey(row({ date: "2025-01-01" })))).toBe(true);
   });
@@ -166,7 +167,7 @@ describe("runAnalyticsSync", () => {
       ["ga4.geo", "failed", "unexpected"],
     ]);
     expect(JSON.stringify(summaryLogFields(summary))).not.toContain("secret");
-    expect(summary.retention?.map((entry) => entry.deleted)).toEqual([0, 0]);
+    expect(summary.retention?.map((entry) => entry.deleted)).toEqual([0, 0, 0]);
   });
 
   it("fails a report its compatibility check refuses, without fetching it", async () => {

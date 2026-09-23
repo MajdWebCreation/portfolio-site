@@ -33,7 +33,7 @@ export default async function DirectDebitReturnPage({
   const problem = status ? messages[status] : undefined;
 
   return (
-    <main className="container-x flex min-h-[70vh] max-w-[42rem] flex-col justify-center py-20">
+    <main className="container-x flex min-h-[70vh] max-w-[42rem] flex-col justify-center py-20" data-clarity-mask="true">
       <h1 className="display-md text-ink">{problem ? "Dat lukte niet" : "Bedankt"}</h1>
       <p className="lede mt-5 text-body">
         {problem ??

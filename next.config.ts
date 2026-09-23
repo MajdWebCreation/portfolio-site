@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { buildReportOnlyPolicy } from "./src/lib/csp/policy";
 
 /*
   Article images live in Supabase Storage, so next/image needs that host on
@@ -9,45 +10,8 @@ const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
   : null;
 
-/*
-  Content Security Policy, in report-only mode.
-
-  Nothing is blocked yet. The browser applies the policy below as if it were
-  enforced, but instead of refusing a request it posts a report to
-  /api/csp-report and carries on. That is deliberate: the public pages are
-  static and Next injects inline scripts for hydration, so a strict nonce
-  policy is not available without making every page dynamic, and the fallback
-  ('unsafe-inline') has to be seen working against real traffic before it is
-  allowed to break anything. Move to `Content-Security-Policy` only once the
-  reports have been quiet.
-
-  What each source is for:
-    script   gtag.js, loaded only after analytics consent (consent/analytics-scripts.tsx)
-    connect  Google Analytics collection; the Supabase host for the admin's
-             browser-side image upload
-    img      the Supabase public bucket (admin preview), GA beacons, blob and
-             data URLs the admin's PDF preview and next/og use
-    frame    blob: for the admin's PDF preview iframes
-    form     server actions post to the site itself; a direct debit
-             activation then redirects to Mollie's checkout, and Chrome checks
-             that redirect against form-action as well
-  Development adds 'unsafe-eval', which the dev server's tooling needs.
-*/
-const cspReportOnly = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""} https://www.googletagmanager.com`,
-  "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: https://www.googletagmanager.com https://*.google-analytics.com${supabaseHost ? ` https://${supabaseHost}` : ""}`,
-  "font-src 'self'",
-  `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com${supabaseHost ? ` https://${supabaseHost}` : ""}`,
-  "frame-src blob:",
-  "frame-ancestors 'none'",
-  "form-action 'self' https://www.mollie.com",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "report-uri /api/csp-report",
-  "report-to csp",
-].join("; ");
+/* Content Security Policy, report-only: built and documented in src/lib/csp/policy.ts, where the tests can read it. */
+const cspReportOnly = buildReportOnlyPolicy({ development: process.env.NODE_ENV === "development", supabaseHost });
 
 /*
   The headers every response carries. None of them changes how the site

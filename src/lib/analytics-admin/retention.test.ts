@@ -2,13 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import { bingReportKeys } from "@/lib/analytics-admin/providers/bing";
 import { ga4ReportKeys } from "@/lib/analytics-admin/providers/ga4";
 import { gscReportKeys } from "@/lib/analytics-admin/providers/gsc";
+import { clarityReportKeys } from "@/lib/analytics-admin/providers/clarity";
 import { reportRetention, reportsOfClass, retentionClassOf, retentionCutoff } from "@/lib/analytics-admin/retention";
 import { factKey, runAnalyticsSync } from "@/lib/analytics-admin/runner";
 import type { FactRow, FactsStore, ProviderAdapter } from "@/lib/analytics-admin/types";
 
 describe("retention classes", () => {
   it("gives every report of every provider a class, and nothing else", () => {
-    expect(Object.keys(reportRetention).sort()).toEqual([...ga4ReportKeys, ...gscReportKeys, ...bingReportKeys].sort());
+    expect(Object.keys(reportRetention).sort()).toEqual([...ga4ReportKeys, ...gscReportKeys, ...bingReportKeys, ...clarityReportKeys].sort());
   });
 
   it("keeps query text 16 months and aggregates 26", () => {
@@ -17,6 +18,8 @@ describe("retention classes", () => {
     expect(retentionClassOf("gsc.something_new")).toBeNull();
     expect(retentionCutoff("query_text", "2026-09-23")).toBe("2025-05-23");
     expect(retentionCutoff("aggregate", "2026-09-23")).toBe("2024-07-23");
+    expect(reportsOfClass("clarity_live").sort()).toEqual(["clarity.live", "clarity.totals"]);
+    expect(retentionCutoff("clarity_live", "2026-09-23")).toBe("2026-06-25");
   });
 });
 
@@ -78,6 +81,7 @@ describe("retention cleanup after a sync", () => {
     expect(summary.retention).toEqual([
       { retentionClass: "aggregate", cutoff: "2024-07-23", deleted: 1 },
       { retentionClass: "query_text", cutoff: "2025-05-23", deleted: 3 },
+      { retentionClass: "clarity_live", cutoff: "2026-06-25", deleted: 0 },
     ]);
   });
 

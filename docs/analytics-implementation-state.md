@@ -238,3 +238,25 @@ Geen van de nieuwe waarden staat in Vercel. De Vercel MCP-koppeling toont het pr
 - **Requestconcurrency**: per provider één request-poort (`createRequestGate`, `PROVIDER_REQUEST_CONCURRENCY = 3`) over alle rapporten en dagen; `gsc.queries` vraagt dagen met `GSC_DAY_CONCURRENCY = 3` via die poort. Theoretisch maximum: 3 per provider, 9 totaal, plus ≤ 2 tokenuitwisselingen (één per Google-scope) = 11. Paginering (GA4, GSC) blijft sequentieel (afhankelijk van het vorige antwoord); Bing doet één request per rapport.
 - **Deadline**: `RUN_DEADLINE_MS = 40 000`, één gedeelde `pastDeadline` voor runner (geen nieuw rapport) en poorten (geen nieuw request) → `deadline`. Laatste request eindigt uiterlijk ~50 s (10 s timeout).
 - **Stale runs**: bij de start van een applied sync zet `FactsStore.failStaleRuns` runs die > 15 min op `running` staan op `failed`, `error = 'stale_run'`; telling in `summary.staleRunsRecovered`. Fouten hierbij stoppen de sync niet. Dry run raakt niets.
+
+## 18. Fase 5 — Microsoft Clarity (23 september 2026)
+
+**Consent**: `CONSENT_VERSION = 2`, cookie `2.a<0|1>.r<0|1>.<moment>` (`recordings` = gedragsopnames). Versie-1-waarden worden herkend (`storedConsentVersion`) maar gelden als geen keuze → opnieuw vragen. `decideConsent({analytics, recordings})`; categorieën onafhankelijk. Intrekken van opnames: `withdrawClarity()` (legacy `clarity('consent', false)`, alleen in `lib/clarity/client.ts`) + `_clck`/`_clsk` verlopen + `reloadRequired` → dialoog herlaadt. Dialoog toont alleen geconfigureerde categorieën; "Alles accepteren" = alleen die.
+
+**Tag**: `components/consent/clarity-script.tsx`, alleen bij `NEXT_PUBLIC_CLARITY_PROJECT_ID` + `recordings` + `clarityAllowedOnPath` (niet `/admin`, `/<locale>/incasso/*`, `/<locale>/betaling/*`). Loader = Microsofts snippet + direct `consentv2 {ad_Storage: denied, analytics_Storage: granted}` in de wachtrij. Clientnavigatie naar een uitgesloten route na laden → reload. Geen identify, geen custom tags.
+
+**Masking**: `data-clarity-mask="true"` op contactformulier-container, volledige planner, incasso- en betaalpagina's; nergens unmask (`lib/clarity/masking.test.ts`).
+
+**CSP** (`lib/csp/policy.ts`, nog Report-Only): `https://*.clarity.ms` in script-src en connect-src; c.bing.com bewust niet (MUID-cookie-sync).
+
+**Teksten**: privacy.ts (Clarity-sectie: doel, opnames/heatmaps/frustratiesignalen, alleen na aparte toestemming, masking, geen identificatie, Microsoft zelfstandig verwerkingsverantwoordelijke en volgens Terms eigen doeleinden incl. advertentieprofielen, link Microsoft Privacy Statement, Microsoft-retentie 30 d / 9 mnd, eigen 90 dagen; ontvangers, doorgifte, bewaartermijnen). cookies.ts: sectie + tabel `_clck`, `_clsk`, MUID/CLID/ANONCHK/MR/SM volgens Microsoft-docs, looptijden "door Microsoft bepaald" tot browserverificatie; `indexable: false`.
+
+**Export**: `providers/clarity.ts`, `CLARITY_API_TOKEN`; `clarity.live` (URL) en `clarity.totals`, `numOfDays=3`, 2 requests per run, momentopname op UTC-dag. Numerieke velden van toegestane metrics als `<metric>_<field>`; alleen pad (geen query), uitgesloten routes en identifier-achtige segmenten gefilterd. Veldnamen buiten Traffic zijn niet door Microsoft gedocumenteerd → eerste echte antwoord controleren (`clarity-queries.ts` kandidaten).
+
+**Retentie**: klasse `clarity_live` 90 dagen (`retention.ts`, nu `{months}`/`{days}`), via `/api/cron/retention` en de sync.
+
+**Dashboard**: blok "Gedrag" (`clarity-section.tsx`): laatste momentopname, tegels, probleem-URL's, link naar clarity.microsoft.com (geen ongedocumenteerde deep link). Providerkaart toont "Tracking op de website" en "Export-API" apart.
+
+**Verificatie**: headless (stub-tag, `scratchpad/verify-clarity.mjs` van die sessie) 37/37: geen clarity.ms vóór keuze / bij noodzakelijk / bij alleen statistieken; tag + collect + consentv2 bij opnames; intrekken → reload, 0 requests, cookies weg; GA en Clarity onafhankelijk; v1-cookie → opnieuw vragen; uitgesloten routes en admin 0 requests; masking in DOM.
+
+**Open (eigenaar)**: Clarity-project, Masking = Strict, env vars, echte-tag-controle van cookies (namen, looptijd, domein, SameSite, third-party), test-opname op masking, eerste Data-Export-antwoord op veldnamen, juridische review van tekst (Terms 4.b: vermelding Microsoft Advertising), `cookieStatement.indexable` terug na review.

@@ -52,7 +52,7 @@ export { shiftDate };
  * logs, the caller logs, from the summary: provider, report, mode, count,
  * status, dates and duration. No dimension value ever reaches a log line.
  */
-export const FACTS_RETENTION_MONTHS = retentionClasses.aggregate;
+export const FACTS_RETENTION_MONTHS = retentionClasses.aggregate.months;
 
 export type SyncOptions = {
   providers: ProviderEntry[];

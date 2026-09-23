@@ -7,6 +7,8 @@ import {
   searchConsoleReadScope,
 } from "@/lib/analytics-admin/google-auth";
 import { createBingAdapter, readBingConfig } from "@/lib/analytics-admin/providers/bing";
+import { clarityEnv, createClarityAdapter, readClarityConfig } from "@/lib/analytics-admin/providers/clarity";
+import { clarityProjectId } from "@/lib/clarity/client";
 import { createGa4Adapter } from "@/lib/analytics-admin/providers/ga4";
 import { createGscAdapter } from "@/lib/analytics-admin/providers/gsc";
 import { createRequestGate } from "@/lib/analytics-admin/concurrency";
@@ -51,19 +53,31 @@ export function providerConfigStatus(env: Env = process.env): ProviderConfigStat
   const ga4 = readGa4Config(env);
   const gsc = readGscConfig(env);
   const bing = readBingConfig(env);
+  const clarity = readClarityConfig(env);
+  /* The tag's project id is inlined at build time; `env` is consulted first so the tests can set it. */
+  const clarityTag = Boolean(env[clarityEnv.projectId] ? /^[a-z0-9]{6,20}$/i.test(env[clarityEnv.projectId]!.trim()) : clarityProjectId());
   return [
     { provider: "ga4", configured: ga4.ok, missing: ga4.ok ? [] : ga4.missing },
     { provider: "gsc", configured: gsc.ok, missing: gsc.ok ? [] : gsc.missing },
     { provider: "bing", configured: bing.ok, missing: bing.ok ? [] : bing.missing },
+    {
+      provider: "clarity",
+      configured: clarity.ok,
+      missing: clarity.ok ? [] : clarity.missing,
+      parts: [
+        { label: "Tracking op de website", configured: clarityTag, variable: clarityEnv.projectId },
+        { label: "Export-API", configured: clarity.ok, variable: clarityEnv.apiToken },
+      ],
+    },
   ];
 }
 
 /**
  * Requests in flight per provider, across all its reports and days. With
- * three providers side by side that is at most nine provider requests at
- * once, plus at most one token exchange per Google scope (the token source
- * shares one exchange between concurrent callers): eleven in the worst
- * case. Report-level concurrency (runner.ts) and the day concurrency of
+ * four providers side by side that is at most twelve provider requests at
+ * once (Clarity has only two reports, so in practice at most eleven), plus
+ * at most one token exchange per Google scope (the token source shares one
+ * exchange between concurrent callers). Report-level concurrency (runner.ts) and the day concurrency of
  * gsc.queries only decide who gets the slots; they cannot raise this.
  */
 export const PROVIDER_REQUEST_CONCURRENCY = 3;
@@ -111,6 +125,13 @@ export function providerEntries(env: Env = process.env, options: { fetch?: typeo
     bing.ok
       ? { key: "bing", configured: true, adapter: createBingAdapter({ siteUrl: bing.siteUrl, auth: bing.auth, fetch: options.fetch, gate: gate() }) }
       : { key: "bing", configured: false, missing: bing.missing },
+  );
+
+  const clarity = readClarityConfig(env);
+  entries.push(
+    clarity.ok
+      ? { key: "clarity", configured: true, adapter: createClarityAdapter({ token: clarity.token, fetch: options.fetch, gate: gate() }) }
+      : { key: "clarity", configured: false, missing: clarity.missing },
   );
 
   return entries;

@@ -32,6 +32,16 @@ function ProviderCard({ status }: { status: ProviderSyncStatus }) {
         <h3 className="text-[0.95rem] font-medium text-ink">{status.label}</h3>
         <HealthBadge health={status.health} />
       </div>
+      {status.parts.length > 0 ? (
+        <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[0.85rem] text-muted">
+          {status.parts.map((part) => (
+            <li key={part.variable}>
+              {part.label}: <span className={part.configured ? "text-success" : "text-ink"}>{part.configured ? "ingesteld" : "niet ingesteld"}</span>{" "}
+              <span className="tabular text-faint">({part.variable})</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {!status.configured ? (
         <p className="mt-2 text-[0.88rem] text-muted">
           Ontbrekend of ongeldig in de omgeving: <span className="tabular text-ink">{status.missing.join(", ")}</span>.

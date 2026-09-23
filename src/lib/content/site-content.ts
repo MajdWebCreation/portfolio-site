@@ -213,7 +213,12 @@ export const siteContent = {
     },
     consent: {
       title: "Jouw privacy, jouw keuze",
-      body: "YM Creations gebruikt noodzakelijke technologie om de website goed te laten werken. Met jouw toestemming verwerken we via Google Analytics persoonsgegevens over je gebruik en apparaat, om te begrijpen hoe de website wordt gebruikt en die te verbeteren; die gegevens worden gedeeld met Google. Je kunt je toestemming later altijd intrekken via Cookie-instellingen.",
+      body: "YM Creations gebruikt noodzakelijke technologie om de website goed te laten werken.",
+      bodyAnalytics:
+        "Met jouw toestemming verwerken we via Google Analytics persoonsgegevens over je gebruik en apparaat, om te begrijpen hoe de website wordt gebruikt en die te verbeteren; die gegevens worden gedeeld met Google.",
+      bodyRecordings:
+        "Met aparte toestemming legt Microsoft Clarity vast waar je klikt, hoe ver je scrolt en waar je mogelijk vastloopt, als heatmaps en gereconstrueerde sessieopnames; formulieren worden daarbij afgeschermd.",
+      bodyWithdraw: "Je kunt je toestemming later altijd intrekken via Cookie-instellingen.",
       necessaryOnly: "Alleen noodzakelijk",
       acceptAll: "Alles accepteren",
       preferences: "Voorkeuren",
@@ -228,6 +233,10 @@ export const siteContent = {
       analyticsLabel: "Statistieken",
       analyticsText: "Google Analytics meet hoe de website wordt gebruikt, zodat we die kunnen verbeteren. Gegevens worden daarbij gedeeld met Google. Staat uit totdat je het aanzet.",
       analyticsToggle: "Statistieken via Google Analytics",
+      recordingsLabel: "Gedragsopnames",
+      recordingsText:
+        "Microsoft Clarity laat zien waar bezoekers klikken, hoe ver ze scrollen en waar ze mogelijk vastlopen, via heatmaps en gereconstrueerde sessieopnames. Formulieren en pagina's met klant- of betaalgegevens worden afgeschermd. Microsoft is voor deze gegevens zelf verantwoordelijk en gebruikt ze volgens zijn eigen voorwaarden ook voor eigen doeleinden. Staat uit totdat je het aanzet.",
+      recordingsToggle: "Gedragsopnames via Microsoft Clarity",
       save: "Voorkeuren opslaan",
     },
   },
@@ -373,7 +382,12 @@ export const siteContent = {
     },
     consent: {
       title: "Your privacy, your choice",
-      body: "YM Creations uses necessary technology to make this website work. With your consent, we process personal data about your usage and device through Google Analytics, to understand how the website is used and to improve it; that data is shared with Google. You can withdraw your consent at any time under Cookie settings.",
+      body: "YM Creations uses necessary technology to make this website work.",
+      bodyAnalytics:
+        "With your consent, we process personal data about your usage and device through Google Analytics, to understand how the website is used and to improve it; that data is shared with Google.",
+      bodyRecordings:
+        "With separate consent, Microsoft Clarity records where you click, how far you scroll and where you may get stuck, as heatmaps and reconstructed session recordings; forms are masked.",
+      bodyWithdraw: "You can withdraw your consent at any time under Cookie settings.",
       necessaryOnly: "Necessary only",
       acceptAll: "Accept all",
       preferences: "Preferences",
@@ -388,6 +402,10 @@ export const siteContent = {
       analyticsLabel: "Analytics",
       analyticsText: "Google Analytics measures how the website is used so we can improve it. That data is shared with Google. Off until you switch it on.",
       analyticsToggle: "Analytics via Google Analytics",
+      recordingsLabel: "Behaviour recordings",
+      recordingsText:
+        "Microsoft Clarity shows where visitors click, how far they scroll and where they may get stuck, through heatmaps and reconstructed session recordings. Forms and pages with customer or payment data are masked. Microsoft is itself responsible for this data and, under its own terms, also uses it for its own purposes. Off until you switch it on.",
+      recordingsToggle: "Behaviour recordings via Microsoft Clarity",
       save: "Save preferences",
     },
   },

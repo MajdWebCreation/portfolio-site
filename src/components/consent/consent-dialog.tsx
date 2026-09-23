@@ -9,7 +9,13 @@ import { closeConsentSettings, decideConsent, hydrateConsent, useConsentSnapshot
 
 export type ConsentCopy = {
   title: string;
+  /** The necessary part; always shown. */
   body: string;
+  /** One sentence per optional category, shown only when the deployment has it. */
+  bodyAnalytics: string;
+  bodyRecordings: string;
+  /** How to change one's mind; always last. */
+  bodyWithdraw: string;
   necessaryOnly: string;
   acceptAll: string;
   preferences: string;
@@ -24,6 +30,9 @@ export type ConsentCopy = {
   analyticsLabel: string;
   analyticsText: string;
   analyticsToggle: string;
+  recordingsLabel: string;
+  recordingsText: string;
+  recordingsToggle: string;
   save: string;
 };
 
@@ -31,7 +40,32 @@ type ConsentDialogProps = {
   copy: ConsentCopy;
   privacyHref: string;
   cookiesHref: string;
+  /** Google Analytics is configured for this deployment. */
+  analyticsAvailable: boolean;
+  /** Microsoft Clarity is configured for this deployment. */
+  recordingsAvailable: boolean;
 };
+
+function Switch({ checked, onToggle, label, describedBy }: { checked: boolean; onToggle: () => void; label: string; describedBy: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      aria-describedby={describedBy}
+      onClick={onToggle}
+      className={`relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border transition-colors duration-200 ${
+        checked ? "border-accent bg-accent" : "border-line-strong bg-paper-deep"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`absolute left-0.5 h-[1.1rem] w-[1.1rem] rounded-full bg-surface shadow-sm transition-transform duration-200 ${checked ? "translate-x-4" : "translate-x-0"}`}
+      />
+    </button>
+  );
+}
 
 /**
  * The cookie choice, as a card.
@@ -50,17 +84,27 @@ type ConsentDialogProps = {
  * opened from the footer, a close button and Escape as well -- there a choice
  * already exists and leaving it as it is means exactly that.
  *
+ * The optional categories are independent: statistics (Google Analytics) and
+ * behaviour recordings (Microsoft Clarity) each have their own switch, and
+ * saying yes to one never turns on the other. "Accept all" means every
+ * category this deployment actually has; a category it does not have is
+ * neither shown nor recorded as accepted. Withdrawing recordings reloads the
+ * page after the choice is stored, so the Clarity tag is gone rather than
+ * merely told to stop.
+ *
  * On its first appearance the card does not take focus: it is an offer, not
  * an interruption. Opened from the footer it is what the visitor asked for,
  * so focus moves to its title and returns to the footer button on close.
  */
-export default function ConsentDialog({ copy, privacyHref, cookiesHref }: ConsentDialogProps) {
+export default function ConsentDialog({ copy, privacyHref, cookiesHref, analyticsAvailable, recordingsAvailable }: ConsentDialogProps) {
   const { hydrated, decision, settingsOpen } = useConsentSnapshot();
   const [layer, setLayer] = useState<"choice" | "preferences">("choice");
   const [analytics, setAnalytics] = useState(false);
+  const [recordings, setRecordings] = useState(false);
   const titleId = useId();
   const bodyId = useId();
   const analyticsTextId = useId();
+  const recordingsTextId = useId();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
@@ -71,6 +115,7 @@ export default function ConsentDialog({ copy, privacyHref, cookiesHref }: Consen
   const open = hydrated && (decision === null || settingsOpen);
   const showPreferences = settingsOpen || layer === "preferences";
   const storedAnalytics = decision?.analytics ?? false;
+  const storedRecordings = decision?.recordings ?? false;
 
   // Opened from the footer: the dialog starts on preferences and the switch
   // reflects the stored choice. State derived from a prop change is set
@@ -81,6 +126,7 @@ export default function ConsentDialog({ copy, privacyHref, cookiesHref }: Consen
     if (settingsOpen) {
       setLayer("preferences");
       setAnalytics(storedAnalytics);
+      setRecordings(storedRecordings);
     }
   }
 
@@ -121,21 +167,27 @@ export default function ConsentDialog({ copy, privacyHref, cookiesHref }: Consen
   }
 
   /*
-    Records the choice, and when it is a yes, measures that it was given:
-    the one event that can only ever exist after consent. Where the card
-    was opened from is the only parameter. A no is never sent anywhere.
+    Records the choice, and when analytics is a yes, measures that it was
+    given: the one event that can only ever exist after consent. Where the
+    card was opened from is the only parameter. A no is never sent anywhere,
+    and a recordings choice is never told to Google. A category this
+    deployment does not have is recorded as not accepted.
   */
-  function decide(analytics: boolean) {
-    decideConsent(analytics);
-    /* The visit's origin follows the same choice: kept across a reload only with a yes. */
-    syncAttributionStorage(analytics);
-    if (analytics) {
+  function decide(choice: { analytics: boolean; recordings: boolean }) {
+    const effective = { analytics: analyticsAvailable && choice.analytics, recordings: recordingsAvailable && choice.recordings };
+    const { reloadRequired } = decideConsent(effective);
+    /* The visit's origin follows the analytics choice: kept across a reload only with a yes. */
+    syncAttributionStorage(effective.analytics);
+    if (effective.analytics) {
       trackEvent("consent_granted", { placement: settingsOpen ? "settings" : "banner" });
     }
+    /* Clarity was told to stop; the reload makes sure its tag is no longer in the page. */
+    if (reloadRequired) window.location.reload();
   }
 
   function openPreferences() {
     setAnalytics(storedAnalytics);
+    setRecordings(storedRecordings);
     focusTitleOnLayer.current = true;
     setLayer("preferences");
   }
@@ -192,37 +244,35 @@ export default function ConsentDialog({ copy, privacyHref, cookiesHref }: Consen
               </div>
               <dd className="label-mono shrink-0 pt-0.5 text-faint">{copy.necessaryStatus}</dd>
             </div>
-            <div className="flex items-start justify-between gap-6 py-4">
-              <div>
-                <dt className="label-mono text-ink">{copy.analyticsLabel}</dt>
-                <dd id={analyticsTextId} className="mt-1.5 text-[0.9rem] leading-relaxed text-muted">
-                  {copy.analyticsText}
+            {analyticsAvailable ? (
+              <div className="flex items-start justify-between gap-6 py-4">
+                <div>
+                  <dt className="label-mono text-ink">{copy.analyticsLabel}</dt>
+                  <dd id={analyticsTextId} className="mt-1.5 text-[0.9rem] leading-relaxed text-muted">
+                    {copy.analyticsText}
+                  </dd>
+                </div>
+                <dd className="shrink-0 pt-0.5">
+                  <Switch checked={analytics} onToggle={() => setAnalytics((value) => !value)} label={copy.analyticsToggle} describedBy={analyticsTextId} />
                 </dd>
               </div>
-              <dd className="shrink-0 pt-0.5">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={analytics}
-                  aria-label={copy.analyticsToggle}
-                  aria-describedby={analyticsTextId}
-                  onClick={() => setAnalytics((value) => !value)}
-                  className={`relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border transition-colors duration-200 ${
-                    analytics ? "border-accent bg-accent" : "border-line-strong bg-paper-deep"
-                  }`}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={`absolute left-0.5 h-[1.1rem] w-[1.1rem] rounded-full bg-surface shadow-sm transition-transform duration-200 ${
-                      analytics ? "translate-x-4" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </dd>
-            </div>
+            ) : null}
+            {recordingsAvailable ? (
+              <div className="flex items-start justify-between gap-6 py-4">
+                <div>
+                  <dt className="label-mono text-ink">{copy.recordingsLabel}</dt>
+                  <dd id={recordingsTextId} className="mt-1.5 text-[0.9rem] leading-relaxed text-muted">
+                    {copy.recordingsText}
+                  </dd>
+                </div>
+                <dd className="shrink-0 pt-0.5">
+                  <Switch checked={recordings} onToggle={() => setRecordings((value) => !value)} label={copy.recordingsToggle} describedBy={recordingsTextId} />
+                </dd>
+              </div>
+            ) : null}
           </dl>
 
-          <CtaButton variant="primary" onClick={() => decide(analytics)} className="mt-5 w-full">
+          <CtaButton variant="primary" onClick={() => decide({ analytics, recordings })} className="mt-5 w-full">
             {copy.save}
           </CtaButton>
         </div>
@@ -232,15 +282,15 @@ export default function ConsentDialog({ copy, privacyHref, cookiesHref }: Consen
             {copy.title}
           </h2>
           <p id={bodyId} className="mt-2 text-[0.9rem] leading-relaxed text-muted">
-            {copy.body}
+            {[copy.body, analyticsAvailable ? copy.bodyAnalytics : null, recordingsAvailable ? copy.bodyRecordings : null, copy.bodyWithdraw].filter(Boolean).join(" ")}
           </p>
 
           {/* Two answers, one shape: the same variant, the same width, one Tab apart. */}
           <div className="mt-5 grid gap-3 xs:grid-cols-2">
-            <CtaButton variant="secondary" onClick={() => decide(false)} className="w-full px-3">
+            <CtaButton variant="secondary" onClick={() => decide({ analytics: false, recordings: false })} className="w-full px-3">
               {copy.necessaryOnly}
             </CtaButton>
-            <CtaButton variant="secondary" onClick={() => decide(true)} className="w-full px-3">
+            <CtaButton variant="secondary" onClick={() => decide({ analytics: true, recordings: true })} className="w-full px-3">
               {copy.acceptAll}
             </CtaButton>
           </div>

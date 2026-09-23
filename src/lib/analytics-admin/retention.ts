@@ -1,7 +1,8 @@
 import type { BingReportKey } from "@/lib/analytics-admin/providers/bing";
+import type { ClarityReportKey } from "@/lib/analytics-admin/providers/clarity";
 import type { Ga4ReportKey } from "@/lib/analytics-admin/providers/ga4";
 import type { GscReportKey } from "@/lib/analytics-admin/providers/gsc";
-import { shiftMonths } from "@/lib/analytics-admin/schedule";
+import { shiftDate, shiftMonths } from "@/lib/analytics-admin/schedule";
 
 /**
  * How long each kind of fact is kept, in one place.
@@ -13,6 +14,13 @@ import { shiftMonths } from "@/lib/analytics-admin/schedule";
  *               filter in query-filter.ts). 16 months: a year-on-year
  *               comparison plus a margin, and no longer, because a query
  *               is text from a person even when it has been filtered.
+ *   clarity_live  YM's own copy of Microsoft Clarity's per-page and
+ *               project totals for the last 72 hours. 90 days: the API only
+ *               ever returns the last three days and these figures serve
+ *               recent usability work, not trends. This is the retention of
+ *               the aggregates in our database; what Microsoft keeps in
+ *               Clarity itself (recordings 30 days, click and heatmap data
+ *               and labelled sessions 9 months) is Microsoft's.
  *
  * Every report of every provider must be named here: the type below is a
  * record over all report keys, so a new report does not compile until it
@@ -25,10 +33,14 @@ import { shiftMonths } from "@/lib/analytics-admin/schedule";
  * RETENTION_ENABLED switch. An applied sync runs the same cleanup again as
  * a second line; it is not the guarantee.
  */
-export const retentionClasses = { aggregate: 26, query_text: 16 } as const;
+export const retentionClasses = {
+  aggregate: { months: 26 },
+  query_text: { months: 16 },
+  clarity_live: { days: 90 },
+} as const satisfies Record<string, { months: number } | { days: number }>;
 export type RetentionClass = keyof typeof retentionClasses;
 
-export const reportRetention: Record<Ga4ReportKey | GscReportKey | BingReportKey, RetentionClass> = {
+export const reportRetention: Record<Ga4ReportKey | GscReportKey | BingReportKey | ClarityReportKey, RetentionClass> = {
   "ga4.overview": "aggregate",
   "ga4.sources": "aggregate",
   "ga4.first_user_sources": "aggregate",
@@ -49,6 +61,8 @@ export const reportRetention: Record<Ga4ReportKey | GscReportKey | BingReportKey
   "bing.queries": "query_text",
   "bing.pages": "aggregate",
   "bing.crawl": "aggregate",
+  "clarity.live": "clarity_live",
+  "clarity.totals": "clarity_live",
 };
 
 export function retentionClassOf(report: string): RetentionClass | null {
@@ -63,7 +77,8 @@ export function reportsOfClass(retentionClass: RetentionClass): string[] {
 
 /** The first day that is kept for a class: facts dated before it are removed. */
 export function retentionCutoff(retentionClass: RetentionClass, today: string): string {
-  return shiftMonths(today, -retentionClasses[retentionClass]);
+  const term: { months: number } | { days: number } = retentionClasses[retentionClass];
+  return "months" in term ? shiftMonths(today, -term.months) : shiftDate(today, -term.days);
 }
 
 export type RetentionTarget = { retentionClass: RetentionClass; cutoff: string; reports: string[] | null };

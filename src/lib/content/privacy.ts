@@ -8,9 +8,10 @@ import { businessInfo } from "@/lib/content/site-content";
 
   Everything stated here is backed by the code or by a decision the business
   owner took: which data the forms collect (api/contact/route.ts), where it
-  goes (Supabase, Resend, Vercel, Mollie, Google behind consent), and how long
+  goes (Supabase, Resend, Vercel, Mollie, Google and Microsoft Clarity behind
+  their own consent categories), and how long
   it is kept (lib/retention/policy.ts; for synced search terms
-  lib/analytics-admin/retention.ts, and the filter that keeps address-,
+  and Clarity totals lib/analytics-admin/retention.ts, and the filter that keeps address-,
   number- and token-like terms out is lib/analytics-admin/query-filter.ts). What the statement deliberately does
   not say, because nothing in this repository can vouch for it: where each
   provider stores data, what each provider keeps in its own logs, and the
@@ -89,6 +90,27 @@ export const privacyStatement: LegalStatementSet = {
           type: "paragraph",
           content: `Alleen als je daarvoor toestemming geeft, gebruiken we Google Analytics om te begrijpen hoe de website wordt gebruikt en om die te verbeteren. Daarbij worden gegevens over je bezoek gedeeld met Google. Zonder toestemming wordt Google Analytics niet geladen. Je kunt je keuze op elk moment wijzigen via Cookie-instellingen onderaan de pagina. Meer daarover staat in de [cookieverklaring](${getLocalizedPath("nl", "cookies")}).`,
         },
+        { type: "heading", level: 3, content: "Gedragsopnames (Microsoft Clarity)" },
+        {
+          type: "paragraph",
+          content:
+            "Alleen als je daar apart toestemming voor geeft, onder gedragsopnames, laden we Microsoft Clarity. Clarity legt vast hoe je de website gebruikt: waar je klikt, hoe ver je scrolt en hoe je van pagina naar pagina gaat. Daarmee maakt Clarity gereconstrueerde sessieopnames en klik-, scroll- en aandachtsheatmaps, en signaleert het momenten waarop bezoekers mogelijk vastlopen, zoals herhaald of vergeefs klikken en snel teruggaan. We gebruiken dit om de website gebruiksvriendelijker te maken. Zonder die toestemming wordt Clarity niet geladen, ook niet als je toestemming voor statistieken gaf. De grondslag is je toestemming; je trekt die op elk moment in via Cookie-instellingen.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "Formulieren, zoals het contactformulier en de projectplanner, worden in de opnames afgeschermd, en op de betaal- en incassopagina's wordt Clarity niet geladen. We sturen Clarity geen namen, e-mailadressen of andere gegevens waarmee je te herkennen bent, en koppelen opnames niet aan een aanvraag of klant. Clarity herkent een browser bij een volgend bezoek wel aan een pseudonieme code in een cookie; zie de [cookieverklaring](" + getLocalizedPath("nl", "cookies") + ").",
+        },
+        {
+          type: "paragraph",
+          content:
+            "Voor Clarity zijn Microsoft en YM Creations elk zelfstandig verwerkingsverantwoordelijke. Volgens de voorwaarden van Microsoft mag Microsoft de persoonsgegevens die het via Clarity verzamelt ook voor eigen doeleinden gebruiken, waaronder het leveren en verbeteren van zijn diensten en het opstellen van gebruikersprofielen, onder meer voor advertenties (Microsoft Advertising). Wij geven Clarity het signaal dat opslag voor advertentiedoeleinden niet is toegestaan; wat Microsoft met de gegevens doet, valt onder de [privacyverklaring van Microsoft](https://privacy.microsoft.com/nl-nl/privacystatement). Microsoft bewaart opnames dertig dagen en klik- en heatmapgegevens en gemarkeerde opnames negen maanden.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "Daarnaast halen we uit Clarity per pagina opgetelde cijfers op, zoals het aantal sessies, de gemiddelde scrolldiepte en het aantal herhaalde of vergeefse klikken. Die bewaren we zelf en gebruiken we alleen in onze eigen beheeromgeving; opnames of heatmaps kopiëren we niet.",
+        },
         { type: "heading", level: 3, content: "Vindbaarheid in zoekmachines" },
         {
           type: "paragraph",
@@ -124,6 +146,7 @@ export const privacyStatement: LegalStatementSet = {
             "**Vercel** voor de hosting van de website en de technische logbestanden.",
             "**Mollie** voor betalingen en automatische incasso; voor de betaalgegevens die Mollie voor zijn betaaldienst verwerkt is Mollie zelfstandig verwerkingsverantwoordelijke.",
             "**Google** voor statistieken via Google Analytics, uitsluitend met jouw toestemming.",
+            "**Microsoft** voor gedragsopnames en heatmaps via Microsoft Clarity, uitsluitend met jouw toestemming voor gedragsopnames; Microsoft is daarvoor zelfstandig verwerkingsverantwoordelijke.",
           ],
         },
 
@@ -131,7 +154,7 @@ export const privacyStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Voor onze website en dienstverlening gebruiken we externe dienstverleners, waaronder Vercel, Supabase, Resend en, als je toestemming geeft voor statistieken, Google Analytics. Afhankelijk van de gebruikte infrastructuur kunnen deze partijen persoonsgegevens buiten de Europese Economische Ruimte verwerken.",
+            "Voor onze website en dienstverlening gebruiken we externe dienstverleners, waaronder Vercel, Supabase, Resend, als je toestemming geeft voor statistieken Google Analytics, en als je toestemming geeft voor gedragsopnames Microsoft Clarity. Afhankelijk van de gebruikte infrastructuur kunnen deze partijen persoonsgegevens buiten de Europese Economische Ruimte verwerken.",
         },
         {
           type: "paragraph",
@@ -161,6 +184,7 @@ export const privacyStatement: LegalStatementSet = {
             "De inhoud van andere klantberichten: twaalf maanden; dat een bericht is verstuurd blijft geregistreerd.",
             "Je cookiekeuze: zes maanden.",
             "Zoektermen uit Google Search Console en Bing Webmaster Tools: zestien maanden.",
+            "Per pagina opgetelde cijfers uit Microsoft Clarity in onze eigen database: negentig dagen. Voor wat Microsoft zelf bewaart, zie hierboven onder gedragsopnames.",
           ],
         },
 
@@ -243,6 +267,27 @@ export const privacyStatement: LegalStatementSet = {
           type: "paragraph",
           content: `Only with your consent do we use Google Analytics to understand how the website is used and to improve it. Data about your visit is then shared with Google. Without consent, Google Analytics is not loaded. You can change your choice at any time under Cookie settings at the bottom of the page. The [cookie statement](${getLocalizedPath("en", "cookies")}) has the details.`,
         },
+        { type: "heading", level: 3, content: "Behaviour recordings (Microsoft Clarity)" },
+        {
+          type: "paragraph",
+          content:
+            "Only if you give separate consent for behaviour recordings do we load Microsoft Clarity. Clarity records how you use the website: where you click, how far you scroll and how you move from page to page. From that, Clarity creates reconstructed session recordings and click, scroll and attention heatmaps, and flags moments where visitors may get stuck, such as repeated or ineffective clicks and quickly going back. We use this to make the website easier to use. Without that consent Clarity is not loaded, not even if you consented to analytics. The legal basis is your consent; you can withdraw it at any time under Cookie settings.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "Forms, such as the contact form and the project planner, are masked in the recordings, and Clarity is not loaded on the payment and direct debit pages. We send Clarity no names, email addresses or other data by which you can be recognised, and we do not link recordings to a request or a client. Clarity does recognise a browser on a later visit by a pseudonymous code in a cookie; see the [cookie statement](" + getLocalizedPath("en", "cookies") + ").",
+        },
+        {
+          type: "paragraph",
+          content:
+            "For Clarity, Microsoft and YM Creations are each an independent controller. Under Microsoft's terms, Microsoft may also use the personal data it collects through Clarity for its own purposes, including providing and improving its services and creating user profiles, including for advertising (Microsoft Advertising). We signal to Clarity that storage for advertising purposes is not allowed; what Microsoft does with the data is governed by the [Microsoft privacy statement](https://privacy.microsoft.com/en-us/privacystatement). Microsoft keeps recordings for thirty days and click and heatmap data and labelled recordings for nine months.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "In addition, we retrieve per-page totals from Clarity, such as the number of sessions, the average scroll depth and the number of repeated or ineffective clicks. We keep these ourselves and use them only in our own admin area; we do not copy recordings or heatmaps.",
+        },
         { type: "heading", level: 3, content: "Visibility in search engines" },
         {
           type: "paragraph",
@@ -278,6 +323,7 @@ export const privacyStatement: LegalStatementSet = {
             "**Vercel** for hosting the website and its technical logs.",
             "**Mollie** for payments and direct debit; for the payment data Mollie processes for its payment service, Mollie is an independent controller.",
             "**Google** for analytics through Google Analytics, only with your consent.",
+            "**Microsoft** for behaviour recordings and heatmaps through Microsoft Clarity, only with your consent for behaviour recordings; Microsoft is an independent controller for this.",
           ],
         },
 
@@ -285,7 +331,7 @@ export const privacyStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "We use external service providers for our website and services, including Vercel, Supabase, Resend and, when you consent to analytics, Google Analytics. Depending on the infrastructure used, these providers may process personal data outside the European Economic Area.",
+            "We use external service providers for our website and services, including Vercel, Supabase, Resend, Google Analytics when you consent to analytics, and Microsoft Clarity when you consent to behaviour recordings. Depending on the infrastructure used, these providers may process personal data outside the European Economic Area.",
         },
         {
           type: "paragraph",
@@ -315,6 +361,7 @@ export const privacyStatement: LegalStatementSet = {
             "The content of other client messages: twelve months; the fact that a message was sent stays on record.",
             "Your cookie choice: six months.",
             "Search terms from Google Search Console and Bing Webmaster Tools: sixteen months.",
+            "Per-page totals from Microsoft Clarity in our own database: ninety days. For what Microsoft itself keeps, see behaviour recordings above.",
           ],
         },
 

@@ -15,12 +15,21 @@ import { getLocalizedPath } from "@/lib/content/routes";
   (`sb-<project-ref>-auth-token`, chunked when large, Max-Age 400 days,
   lib/supabase/session.ts and server.ts); how long the signed-in session is
   actually valid is decided by the Auth service, not by that cookie.
-  `indexable` is true since the text was reviewed and confirmed; flip it back
-  while any of the above is being changed, so the sitemap and robots meta
-  follow the text rather than run ahead of it.
+  Microsoft Clarity (components/consent/clarity-script.tsx) is loaded only
+  after consent for behaviour recordings. The cookie names below are the ones
+  Microsoft documents ("Clarity cookies", learn.microsoft.com, checked 23
+  September 2026): first-party _clck and _clsk, and on Microsoft's own
+  domains MUID, CLID, ANONCHK, MR and SM. Microsoft's page gives no
+  lifetimes, so none are stated here; they are to be read off a browser
+  running the real tag and added then, together with any cookie that
+  appears and is not listed.
+
+  `indexable` is false while the Clarity part awaits that check and the
+  owner's review; set it back to true only after both, so the sitemap and
+  robots meta follow the text rather than run ahead of it.
 */
 export const cookieStatement: LegalStatementSet = {
-  indexable: true,
+  indexable: false,
   content: {
     nl: {
       title: "Cookieverklaring",
@@ -55,6 +64,18 @@ export const cookieStatement: LegalStatementSet = {
             "Met jouw toestemming laden we Google Analytics om te begrijpen hoe de website wordt gebruikt en om die te verbeteren. Google plaatst dan cookies om bezoeken en bezoekers van elkaar te onderscheiden, en gegevens over je bezoek worden gedeeld met Google. Die cookies zijn ingesteld op een looptijd van negentig dagen. De cookie die bezoekers onderscheidt wordt bij een nieuw bezoek niet verlengd; de cookie die de sessie bijhoudt wordt bij elk bezoek opnieuw voor negentig dagen gezet, omdat Google daarin de sessiestatus bijwerkt. Zonder toestemming wordt het script niet geladen en worden deze cookies niet geplaatst. Statistieken staan standaard uit.",
         },
 
+        { type: "heading", level: 2, content: "Gedragsopnames, alleen met toestemming" },
+        {
+          type: "paragraph",
+          content:
+            "Alleen als je toestemming geeft voor gedragsopnames, laden we Microsoft Clarity. Clarity laat zien waar bezoekers klikken, hoe ver ze scrollen en waar ze mogelijk vastlopen, via heatmaps en gereconstrueerde sessieopnames. Clarity plaatst dan twee cookies op onze website: één die je browser bij een volgend bezoek herkent aan een pseudonieme code, en één die de pagina's van één bezoek samenvoegt tot één opname. Zonder die toestemming wordt Clarity niet geladen en worden deze cookies niet geplaatst, ook niet als je toestemming voor statistieken gaf. Gedragsopnames staan standaard uit.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "Microsoft kan daarnaast op zijn eigen domeinen cookies plaatsen of uitlezen. Microsoft noemt daarvoor MUID, CLID, ANONCHK, MR en SM; die dienen er volgens Microsoft onder meer voor om een browser over sites heen te herkennen, en MUID wordt volgens Microsoft ook voor advertenties gebruikt. Wij geven Clarity het signaal dat opslag voor advertentiedoeleinden niet is toegestaan. Deze cookies staan op domeinen van Microsoft en vallen onder de [privacyverklaring van Microsoft](https://privacy.microsoft.com/nl-nl/privacystatement); wij kunnen ze niet uitlezen of verwijderen.",
+        },
+
         { type: "heading", level: 2, content: "Overzicht" },
         {
           type: "table",
@@ -63,6 +84,9 @@ export const cookieStatement: LegalStatementSet = {
             ["ym_consent", "Onthoudt je cookiekeuze, de versie van de keuze en het moment waarop je die maakte.", "Noodzakelijk, eigen cookie", "6 maanden"],
             ["_ga", "Google Analytics: onderscheidt bezoekers.", "Statistieken, Google, alleen met toestemming", "90 dagen, niet verlengd"],
             ["_ga_*", "Google Analytics: houdt de sessie bij.", "Statistieken, Google, alleen met toestemming", "90 dagen vanaf het laatste bezoek"],
+            ["_clck", "Microsoft Clarity: herkent je browser bij een volgend bezoek aan een pseudonieme code en bewaart Clarity-voorkeuren.", "Gedragsopnames, Microsoft, alleen met toestemming", "Door Microsoft bepaald"],
+            ["_clsk", "Microsoft Clarity: voegt de pagina's van één bezoek samen tot één opname.", "Gedragsopnames, Microsoft, alleen met toestemming", "Door Microsoft bepaald"],
+            ["MUID, CLID, ANONCHK, MR, SM", "Microsoft: op Microsofts eigen domeinen, onder meer om een browser over sites heen te herkennen.", "Gedragsopnames, Microsoft, alleen met toestemming; cookies van Microsoft zelf", "Door Microsoft bepaald"],
             [
               "sb-*-auth-token",
               "Authenticatiecookie van de beheeromgeving: bewaart de ingelogde sessie van een medewerker.",
@@ -76,7 +100,7 @@ export const cookieStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Onderaan elke pagina staat Cookie-instellingen. Daar zet je statistieken aan of uit. Zet je ze uit, dan stopt het meten direct en verwijderen we de Google Analytics-cookies voor zover dat vanuit de website kan. Na zes maanden vragen we je keuze opnieuw, en ook eerder als de cookies of de partijen die ze plaatsen wezenlijk veranderen.",
+            "Onderaan elke pagina staat Cookie-instellingen. Daar zet je statistieken en gedragsopnames elk afzonderlijk aan of uit. Zet je statistieken uit, dan stopt het meten direct en verwijderen we de Google Analytics-cookies voor zover dat vanuit de website kan. Zet je gedragsopnames uit, dan vragen we Clarity te stoppen en zijn cookies te wissen, verwijderen we de Clarity-cookies op onze website en laadt de pagina opnieuw zonder Clarity. Cookies op domeinen van Microsoft kunnen wij niet verwijderen. Na zes maanden vragen we je keuze opnieuw, en ook eerder als de cookies of de partijen die ze plaatsen wezenlijk veranderen.",
         },
         {
           type: "paragraph",
@@ -117,6 +141,18 @@ export const cookieStatement: LegalStatementSet = {
             "With your consent we load Google Analytics to understand how the website is used and to improve it. Google then sets cookies to tell visits and visitors apart, and data about your visit is shared with Google. Those cookies are set to last ninety days. The cookie that tells visitors apart is not extended by a later visit; the cookie that tracks the session is set again for ninety days on each visit, because Google updates the session state in it. Without consent the script is not loaded and these cookies are not set. Analytics is off by default.",
         },
 
+        { type: "heading", level: 2, content: "Behaviour recordings, only with consent" },
+        {
+          type: "paragraph",
+          content:
+            "Only if you consent to behaviour recordings do we load Microsoft Clarity. Clarity shows where visitors click, how far they scroll and where they may get stuck, through heatmaps and reconstructed session recordings. Clarity then sets two cookies on our website: one that recognises your browser on a later visit by a pseudonymous code, and one that joins the pages of one visit into one recording. Without that consent Clarity is not loaded and these cookies are not set, not even if you consented to analytics. Behaviour recordings are off by default.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "Microsoft may also set or read cookies on its own domains. Microsoft lists MUID, CLID, ANONCHK, MR and SM for this; according to Microsoft they serve, among other things, to recognise a browser across sites, and MUID is also used for advertising. We signal to Clarity that storage for advertising purposes is not allowed. These cookies live on Microsoft's domains and are governed by the [Microsoft privacy statement](https://privacy.microsoft.com/en-us/privacystatement); we cannot read or remove them.",
+        },
+
         { type: "heading", level: 2, content: "Overview" },
         {
           type: "table",
@@ -125,6 +161,9 @@ export const cookieStatement: LegalStatementSet = {
             ["ym_consent", "Remembers your cookie choice, the version it was made under and when you made it.", "Necessary, first-party", "6 months"],
             ["_ga", "Google Analytics: tells visitors apart.", "Analytics, Google, only with consent", "90 days, not extended"],
             ["_ga_*", "Google Analytics: keeps track of the session.", "Analytics, Google, only with consent", "90 days from the last visit"],
+            ["_clck", "Microsoft Clarity: recognises your browser on a later visit by a pseudonymous code and keeps Clarity preferences.", "Behaviour recordings, Microsoft, only with consent", "Set by Microsoft"],
+            ["_clsk", "Microsoft Clarity: joins the pages of one visit into one recording.", "Behaviour recordings, Microsoft, only with consent", "Set by Microsoft"],
+            ["MUID, CLID, ANONCHK, MR, SM", "Microsoft: on Microsoft's own domains, among other things to recognise a browser across sites.", "Behaviour recordings, Microsoft, only with consent; Microsoft's own cookies", "Set by Microsoft"],
             [
               "sb-*-auth-token",
               "Authentication cookie of the admin area: holds a staff member's signed-in session.",
@@ -138,7 +177,7 @@ export const cookieStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Cookie settings sits at the bottom of every page. There you switch analytics on or off. Switching it off stops measurement immediately and removes the Google Analytics cookies as far as the website can. After six months we ask again, and sooner if the cookies or the parties setting them change materially.",
+            "Cookie settings sits at the bottom of every page. There you switch analytics and behaviour recordings on or off, each on its own. Switching analytics off stops measurement immediately and removes the Google Analytics cookies as far as the website can. Switching behaviour recordings off asks Clarity to stop and erase its cookies, removes the Clarity cookies on our website and reloads the page without Clarity. Cookies on Microsoft's domains cannot be removed by us. After six months we ask again, and sooner if the cookies or the parties setting them change materially.",
         },
         {
           type: "paragraph",

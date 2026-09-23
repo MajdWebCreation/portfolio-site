@@ -240,3 +240,46 @@ describe("the search blocks", () => {
     expect(html).toContain("Webshop werd 80 keer bekeken");
   });
 });
+
+describe("the Clarity block", () => {
+  const clarityConfig: ProviderConfigStatus[] = [
+    ...allConfigured,
+    {
+      provider: "clarity",
+      configured: true,
+      missing: [],
+      parts: [
+        { label: "Tracking op de website", configured: true, variable: "NEXT_PUBLIC_CLARITY_PROJECT_ID" },
+        { label: "Export-API", configured: true, variable: "CLARITY_API_TOKEN" },
+      ],
+    },
+  ];
+
+  it("shows the latest snapshot, problem pages in plain counts, and a link to Clarity, without secrets", () => {
+    const html = render({
+      config: clarityConfig,
+      clarityFacts: [
+        { report: "clarity.totals", date: "2026-09-23", dims: {}, metrics: { traffic_total_session_count: 52, rage_clicks_sub_total: 9 } },
+        { report: "clarity.live", date: "2026-09-23", dims: { url: "/nl/tarieven" }, metrics: { rage_clicks_sub_total: 7 } },
+      ],
+    });
+    const block = html.slice(html.indexOf('id="clarity"'), html.indexOf('id="sync"'));
+    expect(block).toContain("52");
+    expect(block).toContain("/nl/tarieven");
+    expect(block).toContain("7 rage clicks");
+    expect(block).toContain("Open Clarity");
+    expect(block).not.toMatch(/slecht|verkeerd/i);
+    const sync = html.slice(html.indexOf('id="sync"'));
+    expect(sync).toContain("Microsoft Clarity");
+    expect(sync).toContain("Tracking op de website");
+    expect(sync).toContain("CLARITY_API_TOKEN");
+  });
+
+  it("says what is missing when neither tag nor export is set up", () => {
+    const html = render({ config: [...allConfigured, { provider: "clarity", configured: false, missing: ["CLARITY_API_TOKEN"], parts: [{ label: "Tracking op de website", configured: false, variable: "NEXT_PUBLIC_CLARITY_PROJECT_ID" }, { label: "Export-API", configured: false, variable: "CLARITY_API_TOKEN" }] }] });
+    const block = html.slice(html.indexOf('id="clarity"'), html.indexOf('id="sync"'));
+    expect(block).toContain("Tracking op de website staat niet aan");
+    expect(block).toContain("Export-API niet gekoppeld");
+  });
+});
+

@@ -9,7 +9,15 @@ export const providerLabels: Record<SyncedProvider, string> = {
   ga4: "Google Analytics",
   gsc: "Google Search Console",
   bing: "Bing Webmaster Tools",
+  clarity: "Microsoft Clarity",
 };
+
+/**
+ * Clarity's own interface. Microsoft documents no deep link into a
+ * project's recordings or heatmaps, so the link opens Clarity and the
+ * project is chosen there.
+ */
+export const clarityUrl = "https://clarity.microsoft.com/";
 
 /** Search Console's own interface for a property; for what its API does not offer. */
 export function searchConsoleUrl(siteUrl: string | null): string {

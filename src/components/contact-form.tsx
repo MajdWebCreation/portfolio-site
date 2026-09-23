@@ -210,8 +210,9 @@ export default function ContactForm({
   const labelBase = "label-mono mb-2 block";
   const errorText = "mt-2 text-[0.85rem] text-danger";
 
+  /* Masked for Microsoft Clarity as a whole: whatever a visitor types or is shown back here never reaches a recording. */
   return (
-    <div className={className}>
+    <div className={className} data-clarity-mask="true">
       <div>
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           <div className="hidden">

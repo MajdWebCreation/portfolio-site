@@ -97,6 +97,7 @@ describe("executeAnalyticsSync", () => {
       { provider: "ga4", health: "not_configured", missing: ["GA4_PROPERTY_ID"] },
       { provider: "gsc", health: "ok" },
       { provider: "bing", health: "ok" },
+      { provider: "clarity", health: "not_configured", missing: ["CLARITY_API_TOKEN"] },
     ]);
     expect(api.hosts).not.toContain("analyticsdata.googleapis.com");
     expect(api.hosts).toContain("www.googleapis.com");
@@ -118,6 +119,7 @@ describe("executeAnalyticsSync", () => {
       ["ga4", "ok"],
       ["gsc", "not_configured"],
       ["bing", "ok"],
+      ["clarity", "not_configured"],
     ]);
     expect(api.hosts).not.toContain("www.googleapis.com");
   });
@@ -130,6 +132,7 @@ describe("executeAnalyticsSync", () => {
       { provider: "ga4", health: "not_configured", missing: ["GOOGLE_SERVICE_ACCOUNT_EMAIL", "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"] },
       { provider: "gsc", health: "not_configured", missing: ["GOOGLE_SERVICE_ACCOUNT_EMAIL", "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"] },
       { provider: "bing", health: "ok" },
+      { provider: "clarity", health: "not_configured", missing: ["CLARITY_API_TOKEN"] },
     ]);
     expect(api.hosts).toEqual(["ssl.bing.com"]);
   });
@@ -137,17 +140,17 @@ describe("executeAnalyticsSync", () => {
   it("isolates a refused Google token from Bing, and a refused Bing key from Google", async () => {
     const token = await executeAnalyticsSync({ env: { ...google, ...ga4, ...gsc, ...bing }, fetch: fakeProviders({ refuse: "token" }).fetch, now });
     if (!token.ok) throw new Error("expected a run");
-    expect(token.summary.providers.map((p) => p.health)).toEqual(["auth_failed", "auth_failed", "ok"]);
+    expect(token.summary.providers.map((p) => p.health)).toEqual(["auth_failed", "auth_failed", "ok", "not_configured"]);
 
     resetGoogleTokenSources();
     const gscRefused = await executeAnalyticsSync({ env: { ...google, ...ga4, ...gsc, ...bing }, fetch: fakeProviders({ refuse: "gsc" }).fetch, now });
     if (!gscRefused.ok) throw new Error("expected a run");
-    expect(gscRefused.summary.providers.map((p) => p.health)).toEqual(["ok", "auth_failed", "ok"]);
+    expect(gscRefused.summary.providers.map((p) => p.health)).toEqual(["ok", "auth_failed", "ok", "not_configured"]);
 
     resetGoogleTokenSources();
     const bingRefused = await executeAnalyticsSync({ env: { ...google, ...ga4, ...gsc, ...bing }, fetch: fakeProviders({ refuse: "bing" }).fetch, now });
     if (!bingRefused.ok) throw new Error("expected a run");
-    expect(bingRefused.summary.providers.map((p) => p.health)).toEqual(["ok", "ok", "auth_failed"]);
+    expect(bingRefused.summary.providers.map((p) => p.health)).toEqual(["ok", "ok", "auth_failed", "not_configured"]);
     expect(JSON.stringify(bingRefused.summary)).not.toContain("Invalid API key");
   });
 
@@ -166,7 +169,7 @@ describe("executeAnalyticsSync", () => {
 
     const applied = await executeAnalyticsSync({ env: { ...bing, ANALYTICS_SYNC_ENABLED: "true" }, fetch: fakeProviders().fetch, now, store });
     expect(applied.ok && applied.summary.mode).toBe("applied");
-    expect(store.calls).toEqual(["failStaleRuns", "startRun", "upsert", "deleteStale", "finishRun", "deleteOlderThan", "deleteOlderThan"]);
+    expect(store.calls).toEqual(["failStaleRuns", "startRun", "upsert", "deleteStale", "finishRun", "deleteOlderThan", "deleteOlderThan", "deleteOlderThan"]);
   });
 
   it("refuses the whole run only when writing is on and there is no key to write with", async () => {
@@ -210,10 +213,19 @@ describe("executeAnalyticsSync", () => {
   });
 
   it("reports configuration per provider without calling anything", () => {
-    expect(providerConfigStatus({ ...google, ...gsc })).toEqual([
+    expect(providerConfigStatus({ ...google, ...gsc, NEXT_PUBLIC_CLARITY_PROJECT_ID: "abc123xyz" })).toEqual([
       { provider: "ga4", configured: false, missing: ["GA4_PROPERTY_ID"] },
       { provider: "gsc", configured: true, missing: [] },
       { provider: "bing", configured: false, missing: ["BING_WEBMASTER_API_KEY", "BING_SITE_URL"] },
+      {
+        provider: "clarity",
+        configured: false,
+        missing: ["CLARITY_API_TOKEN"],
+        parts: [
+          { label: "Tracking op de website", configured: true, variable: "NEXT_PUBLIC_CLARITY_PROJECT_ID" },
+          { label: "Export-API", configured: false, variable: "CLARITY_API_TOKEN" },
+        ],
+      },
     ]);
   });
 });

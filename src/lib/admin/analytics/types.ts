@@ -99,6 +99,8 @@ export type ProviderSyncStatus = {
   reports: ReportStatus[];
   /** Any fact row of this provider exists at all, so an empty block means "nothing in this period" rather than "never synced". */
   hasFacts: boolean;
+  /** Separately configured pieces (Clarity: tag and export API), by label and variable name; never a value. */
+  parts: Array<{ label: string; configured: boolean; variable: string }>;
 };
 
 export type SyncStatus = {
@@ -179,6 +181,25 @@ export type AcquisitionRow = {
   inquiries: number;
 };
 
+/** One behaviour signal from Clarity: a count, or null when the answer did not carry it. */
+export type ClaritySignalKey = "rageClicks" | "deadClicks" | "quickbacks" | "excessiveScroll" | "scriptErrors" | "errorClicks";
+
+export type ClarityProblemUrl = { path: string; signals: Array<{ key: ClaritySignalKey; count: number }>; total: number };
+
+export type ClarityBlock = {
+  /** The UTC day of the latest snapshot, or null when there is none. */
+  snapshotDate: string | null;
+  sessions: number | null;
+  botSessions: number | null;
+  scrollDepth: number | null;
+  /** Seconds, as Clarity reports them. */
+  engagementActive: number | null;
+  engagementTotal: number | null;
+  signals: Record<ClaritySignalKey, number | null>;
+  problemUrls: ClarityProblemUrl[];
+  consoleUrl: string;
+};
+
 export type Insight = { kind: "low_ctr_page" | "search_change" | "service_low_cta" | "source_no_inquiries"; text: string };
 
 export type AnalyticsDashboard = {
@@ -199,6 +220,7 @@ export type AnalyticsDashboard = {
   acquisition: AcquisitionRow[];
   googleSearch: GoogleSearchBlock;
   bingSearch: BingSearchBlock;
+  clarity: ClarityBlock;
   insights: Insight[];
   sync: SyncStatus;
 };

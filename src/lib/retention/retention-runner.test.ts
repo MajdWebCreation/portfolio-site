@@ -45,6 +45,7 @@ const expectedCounts = {
   analyticsFacts: [
     { retentionClass: "aggregate", cutoff: "2024-07-23", selected: 0 },
     { retentionClass: "query_text", cutoff: "2025-05-23", selected: 0 },
+    { retentionClass: "clarity_live", cutoff: "2026-06-25", selected: 0 },
   ],
 };
 
@@ -136,17 +137,26 @@ describe("analytics facts in the general retention pass", () => {
     { report: "bing.traffic", date: "2024-07-23" },
     { report: "ga4.overview", date: "2024-07-22" },
     { report: "gsc.pages", date: "2024-01-01" },
+    { report: "clarity.live", date: "2026-06-24" },
+    { report: "clarity.totals", date: "2026-06-25" },
   ];
 
   it("removes query facts after 16 months and all facts after 26, without any provider sync, keeping the boundary days", async () => {
     const facts = analyticsTable(history);
     const summary = await runRetention(fakeStore({ countAnalyticsFacts: facts.countAnalyticsFacts, deleteAnalyticsFacts: facts.deleteAnalyticsFacts }), { apply: true, now });
 
-    expect(facts.table.map((row) => `${row.report}@${row.date}`).sort()).toEqual(["bing.traffic@2024-07-23", "gsc.queries@2025-05-23", "gsc.totals@2025-03-01"]);
+    expect(facts.table.map((row) => `${row.report}@${row.date}`).sort()).toEqual([
+      "bing.traffic@2024-07-23",
+      "clarity.totals@2026-06-25",
+      "gsc.queries@2025-05-23",
+      "gsc.totals@2025-03-01",
+    ]);
     expect(summary.analyticsFacts).toEqual([
       { retentionClass: "aggregate", cutoff: "2024-07-23", selected: 2 },
       { retentionClass: "query_text", cutoff: "2025-05-23", selected: 3 },
+      { retentionClass: "clarity_live", cutoff: "2026-06-25", selected: 1 },
     ]);
+    expect(facts.deleteAnalyticsFacts).toHaveBeenCalledWith("2026-06-25", ["clarity.live", "clarity.totals"]);
     expect(facts.deleteAnalyticsFacts).toHaveBeenCalledWith("2025-05-23", ["gsc.queries", "gsc.query_page", "bing.queries"]);
     expect(facts.deleteAnalyticsFacts).toHaveBeenCalledWith("2024-07-23", null);
   });
@@ -157,6 +167,6 @@ describe("analytics facts in the general retention pass", () => {
 
     expect(facts.deleteAnalyticsFacts).not.toHaveBeenCalled();
     expect(facts.table).toHaveLength(history.length);
-    expect(summary.analyticsFacts.map((entry) => entry.selected)).toEqual([2, 3]);
+    expect(summary.analyticsFacts.map((entry) => entry.selected)).toEqual([2, 3, 1]);
   });
 });

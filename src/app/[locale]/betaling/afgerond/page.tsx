@@ -95,7 +95,7 @@ export default async function PaymentReturnPage({
   const words = copy[locale];
 
   return (
-    <main className="container-x">
+    <main className="container-x" data-clarity-mask="true">
       <PaymentReturnStatus
         initial={initial}
         {...(state ? { token: state } : {})}

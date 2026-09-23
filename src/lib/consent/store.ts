@@ -7,6 +7,7 @@ import {
   readCookieValue,
   type ConsentDecision,
 } from "@/lib/consent/consent";
+import { withdrawClarity } from "@/lib/clarity/client";
 
 /**
  * The consent choice, live, for everything in the browser that needs it.
@@ -61,6 +62,11 @@ export function hasAnalyticsConsent(): boolean {
   return snapshot.decision?.analytics === true;
 }
 
+/** Microsoft Clarity: behaviour recordings, its own category. Never implied by analytics. */
+export function hasRecordingsConsent(): boolean {
+  return snapshot.decision?.recordings === true;
+}
+
 /**
  * The GA property, when the deployment has one. Read here and in the layout;
  * `NEXT_PUBLIC_` values are inlined at build time, so this must stay a
@@ -104,20 +110,40 @@ function expireGoogleCookies() {
   }
 }
 
-/** Records a choice: writes the cookie and lets every subscriber know. */
-export function decideConsent(analytics: boolean): void {
-  const decision: ConsentDecision = { version: CONSENT_VERSION, analytics, decidedAt: new Date().toISOString() };
+export type ConsentChoice = { analytics: boolean; recordings: boolean };
+
+/**
+ * Records a choice: writes the cookie and lets every subscriber know.
+ *
+ * Each category is handled on its own. Withdrawing analytics stops Google
+ * (kill switch, cookies) and leaves recordings as they are; withdrawing
+ * recordings stops Clarity and leaves analytics as they are. A withdrawal of
+ * recordings returns `reloadRequired`: Clarity's documented stop call is
+ * made here, but the tag that already runs in this page is only truly gone
+ * after a reload, which the caller then does.
+ */
+export function decideConsent(choice: ConsentChoice): { reloadRequired: boolean } {
+  const decision: ConsentDecision = {
+    version: CONSENT_VERSION,
+    analytics: choice.analytics,
+    recordings: choice.recordings,
+    decidedAt: new Date().toISOString(),
+  };
   document.cookie = consentCookieString(decision, { secure: window.location.protocol === "https:" });
 
-  const previouslyGranted = snapshot.decision?.analytics === true;
-  if (previouslyGranted && !analytics) {
+  const previouslyAnalytics = snapshot.decision?.analytics === true;
+  if (previouslyAnalytics && !choice.analytics) {
     setAnalyticsDisabled(true);
     expireGoogleCookies();
-  } else if (analytics) {
+  } else if (choice.analytics) {
     setAnalyticsDisabled(false);
   }
 
+  const recordingsWithdrawn = snapshot.decision?.recordings === true && !choice.recordings;
+  if (recordingsWithdrawn) withdrawClarity();
+
   publish({ hydrated: true, decision, settingsOpen: false });
+  return { reloadRequired: recordingsWithdrawn };
 }
 
 export function openConsentSettings(): void {
