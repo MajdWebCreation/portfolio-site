@@ -22,6 +22,8 @@ const store: RetentionStore = {
   deleteInquiries: vi.fn(async () => {}),
   deleteLeads: vi.fn(async () => {}),
   redactCommunications: vi.fn(async () => {}),
+  countAnalyticsFacts: vi.fn(async (_cutoff: string, reports: string[] | null) => (reports ? 4 : 9)),
+  deleteAnalyticsFacts: vi.fn(async (_cutoff: string, reports: string[] | null) => (reports ? 4 : 9)),
 };
 
 vi.mock("@/lib/retention/retention-store", () => ({ createRetentionStore: () => store }));
@@ -55,7 +57,7 @@ afterEach(() => {
   else process.env.RETENTION_ENABLED = originalEnabled;
 });
 
-const mutations = () => [store.deleteInquiries, store.deleteLeads, store.redactCommunications];
+const mutations = () => [store.deleteInquiries, store.deleteLeads, store.redactCommunications, store.deleteAnalyticsFacts];
 
 async function runAndRead() {
   const response = await authorised();
@@ -96,6 +98,11 @@ describe("with RETENTION_ENABLED=true", () => {
     expect(store.deleteInquiries).toHaveBeenCalledWith(["inq-anna-voorbeeld"]);
     expect(store.deleteLeads).toHaveBeenCalledWith(["lead-bedrijf-bv"]);
     expect(store.redactCommunications).toHaveBeenCalledWith(["comm-1"]);
+    expect(store.deleteAnalyticsFacts).toHaveBeenCalledTimes(2);
+    expect(body.analyticsFacts).toEqual([
+      { retentionClass: "aggregate", cutoff: expect.any(String), selected: 9 },
+      { retentionClass: "query_text", cutoff: expect.any(String), selected: 4 },
+    ]);
     expect(String(info[0]?.[0])).toBe("Retention run finished");
   });
 });
@@ -109,8 +116,10 @@ describe("what is logged and returned", () => {
 
     expect(info).toHaveLength(1);
     const [, payload] = info[0];
-    expect(Object.keys(payload as object).sort()).toEqual(["communicationsSelected", "cutoff", "inquiriesSelected", "leadsSelected", "mode"]);
-    expect(Object.keys(body).sort()).toEqual(["communicationsSelected", "cutoff", "inquiriesSelected", "leadsSelected", "mode"]);
+    const keys = ["analyticsFacts", "communicationsSelected", "cutoff", "inquiriesSelected", "leadsSelected", "mode"];
+    expect(Object.keys(payload as object).sort()).toEqual(keys);
+    expect(Object.keys(body).sort()).toEqual(keys);
+    for (const entry of body.analyticsFacts) expect(Object.keys(entry).sort()).toEqual(["cutoff", "retentionClass", "selected"]);
     const text = JSON.stringify(info) + JSON.stringify(body);
     for (const personal of ["anna", "Anna", "@", "bedrijf", "Beste", "inq-", "lead-", "comm-"]) {
       expect(text).not.toContain(personal);

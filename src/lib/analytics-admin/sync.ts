@@ -1,13 +1,23 @@
 import { createFactsStore } from "@/lib/analytics-admin/facts-store";
-import { analyticsReadScope, createServiceAccountTokenSource, readGoogleConfig, type TokenSource } from "@/lib/analytics-admin/google-auth";
+import {
+  analyticsReadScope,
+  googleTokenSource,
+  readGa4Config,
+  readGscConfig,
+  searchConsoleReadScope,
+} from "@/lib/analytics-admin/google-auth";
+import { createBingAdapter, readBingConfig } from "@/lib/analytics-admin/providers/bing";
 import { createGa4Adapter } from "@/lib/analytics-admin/providers/ga4";
-import { runAnalyticsSync, syncWindow } from "@/lib/analytics-admin/runner";
-import type { FactsStore, SyncSummary } from "@/lib/analytics-admin/types";
+import { createGscAdapter } from "@/lib/analytics-admin/providers/gsc";
+import { createRequestGate } from "@/lib/analytics-admin/concurrency";
+import { runAnalyticsSync, runDeadline } from "@/lib/analytics-admin/runner";
+import type { ProviderConfigStatus } from "@/lib/analytics-admin/synced-providers";
+import type { FactsStore, ProviderEntry, SyncSummary } from "@/lib/analytics-admin/types";
 import { hasPaymentsAdminAccess, paymentsAdminClient } from "@/lib/payments/admin-client";
 
 /**
  * The one entry point both the cron and the admin's "vernieuw nu" use, so
- * they cannot drift: same window, same providers, same switch.
+ * they cannot drift: same providers, same plans, same switch.
  *
  * The switch is `ANALYTICS_SYNC_ENABLED`, read at call time. Exactly "true"
  * writes; anything else is a dry run that fetches, counts and touches
@@ -16,42 +26,102 @@ import { hasPaymentsAdminAccess, paymentsAdminClient } from "@/lib/payments/admi
  * pressing it while the switch is off is informative rather than a way
  * around it.
  *
- * Configuration is checked before anything is fetched, and what is missing
- * is named by variable, never by value.
+ * Configuration is per provider. Each one is either an adapter or the
+ * list of its missing variables (by name, never by value), and a missing
+ * one is reported in the summary while the others run: no GA4 property
+ * does not stop Search Console, no Bing key does not stop Google. The
+ * shared Google service account is needed by both Google providers; when
+ * it is missing, both say so and Bing still runs.
+ *
+ * The only reason the whole run is refused is infrastructure: writing is
+ * switched on but the server has no key to write with.
  */
 export const ANALYTICS_SYNC_ENABLED = "ANALYTICS_SYNC_ENABLED";
 
-export function analyticsSyncEnabled(env: Record<string, string | undefined> = process.env): boolean {
+type Env = Record<string, string | undefined>;
+
+export function analyticsSyncEnabled(env: Env = process.env): boolean {
   return env[ANALYTICS_SYNC_ENABLED] === "true";
 }
 
-export type SyncPreflight =
-  | { ok: true; apply: boolean }
-  | { ok: false; reason: "google_not_configured" | "store_not_configured"; missing: string[] };
+export { syncedProviders, type ProviderConfigStatus, type SyncedProvider } from "@/lib/analytics-admin/synced-providers";
 
-export function preflightAnalyticsSync(env: Record<string, string | undefined> = process.env): SyncPreflight {
-  const google = readGoogleConfig(env);
-  if (!google.ok) return { ok: false, reason: "google_not_configured", missing: google.missing };
-  const apply = analyticsSyncEnabled(env);
-  if (apply && !hasPaymentsAdminAccess()) return { ok: false, reason: "store_not_configured", missing: ["SUPABASE_SECRET_KEY"] };
-  return { ok: true, apply };
+/** What each provider lacks, for the dashboard: reads the environment, calls nothing. */
+export function providerConfigStatus(env: Env = process.env): ProviderConfigStatus[] {
+  const ga4 = readGa4Config(env);
+  const gsc = readGscConfig(env);
+  const bing = readBingConfig(env);
+  return [
+    { provider: "ga4", configured: ga4.ok, missing: ga4.ok ? [] : ga4.missing },
+    { provider: "gsc", configured: gsc.ok, missing: gsc.ok ? [] : gsc.missing },
+    { provider: "bing", configured: bing.ok, missing: bing.ok ? [] : bing.missing },
+  ];
 }
 
-/* One token per process: the JWT exchange is not repeated for every report. */
-let tokenSource: TokenSource | null = null;
-let tokenSourceFor: string | null = null;
+/**
+ * Requests in flight per provider, across all its reports and days. With
+ * three providers side by side that is at most nine provider requests at
+ * once, plus at most one token exchange per Google scope (the token source
+ * shares one exchange between concurrent callers): eleven in the worst
+ * case. Report-level concurrency (runner.ts) and the day concurrency of
+ * gsc.queries only decide who gets the slots; they cannot raise this.
+ */
+export const PROVIDER_REQUEST_CONCURRENCY = 3;
 
-function googleToken(email: string, privateKey: string): TokenSource {
-  if (!tokenSource || tokenSourceFor !== email) {
-    tokenSource = createServiceAccountTokenSource({ email, privateKey, scope: analyticsReadScope });
-    tokenSourceFor = email;
-  }
-  return tokenSource;
+/** Adapters for the configured providers; the others as their missing variables. */
+export function providerEntries(env: Env = process.env, options: { fetch?: typeof fetch; pastDeadline?: () => boolean } = {}): ProviderEntry[] {
+  const entries: ProviderEntry[] = [];
+  const gate = () => createRequestGate({ concurrency: PROVIDER_REQUEST_CONCURRENCY, pastDeadline: options.pastDeadline });
+  const fetchOption = { fetch: options.fetch };
+
+  const ga4 = readGa4Config(env);
+  entries.push(
+    ga4.ok
+      ? {
+          key: "ga4",
+          configured: true,
+          adapter: createGa4Adapter({
+            propertyId: ga4.propertyId,
+            token: googleTokenSource(ga4.account, [analyticsReadScope], fetchOption),
+            fetch: options.fetch,
+            gate: gate(),
+          }),
+        }
+      : { key: "ga4", configured: false, missing: ga4.missing },
+  );
+
+  const gsc = readGscConfig(env);
+  entries.push(
+    gsc.ok
+      ? {
+          key: "gsc",
+          configured: true,
+          adapter: createGscAdapter({
+            siteUrl: gsc.siteUrl,
+            token: googleTokenSource(gsc.account, [searchConsoleReadScope], fetchOption),
+            fetch: options.fetch,
+            gate: gate(),
+          }),
+        }
+      : { key: "gsc", configured: false, missing: gsc.missing },
+  );
+
+  const bing = readBingConfig(env);
+  entries.push(
+    bing.ok
+      ? { key: "bing", configured: true, adapter: createBingAdapter({ siteUrl: bing.siteUrl, auth: bing.auth, fetch: options.fetch, gate: gate() }) }
+      : { key: "bing", configured: false, missing: bing.missing },
+  );
+
+  return entries;
 }
 
 /** A store that must never be reached: a dry run does not touch it, and this makes sure of it. */
 const noStore: FactsStore = {
   upsert: async () => {
+    throw new Error("Dry run wrote to the store");
+  },
+  deleteStale: async () => {
     throw new Error("Dry run wrote to the store");
   },
   startRun: async () => {
@@ -60,29 +130,35 @@ const noStore: FactsStore = {
   finishRun: async () => {
     throw new Error("Dry run wrote to the store");
   },
+  failStaleRuns: async () => {
+    throw new Error("Dry run wrote to the store");
+  },
   deleteOlderThan: async () => {
     throw new Error("Dry run wrote to the store");
   },
 };
 
-export type SyncOutcome = { ok: true; summary: SyncSummary } | { ok: false; preflight: Extract<SyncPreflight, { ok: false }> };
+export type SyncOutcome =
+  | { ok: true; summary: SyncSummary }
+  | { ok: false; reason: "store_not_configured"; missing: string[] };
 
-export async function executeAnalyticsSync(now = new Date()): Promise<SyncOutcome> {
-  const preflight = preflightAnalyticsSync();
-  if (!preflight.ok) return { ok: false, preflight };
+export async function executeAnalyticsSync(
+  options: { now?: Date; ignoreCadence?: boolean; env?: Env; fetch?: typeof fetch; store?: FactsStore; pastDeadline?: () => boolean } = {},
+): Promise<SyncOutcome> {
+  const env = options.env ?? process.env;
+  const apply = analyticsSyncEnabled(env);
+  if (apply && !options.store && !hasPaymentsAdminAccess()) return { ok: false, reason: "store_not_configured", missing: ["SUPABASE_SECRET_KEY"] };
 
-  const google = readGoogleConfig();
-  if (!google.ok) return { ok: false, preflight: { ok: false, reason: "google_not_configured", missing: google.missing } };
-
-  const ga4 = createGa4Adapter({ propertyId: google.propertyId, token: googleToken(google.email, google.privateKey) });
-  const store = preflight.apply ? createFactsStore(paymentsAdminClient()) : noStore;
-
+  const store = apply ? (options.store ?? createFactsStore(paymentsAdminClient())) : noStore;
+  /* One deadline for the run, shared by the runner (no new report) and the request gates (no new request). */
+  const pastDeadline = options.pastDeadline ?? runDeadline();
   const summary = await runAnalyticsSync({
-    providers: [ga4],
+    providers: providerEntries(env, { fetch: options.fetch, pastDeadline }),
     store,
-    window: syncWindow(now),
-    apply: preflight.apply,
-    now,
+    apply,
+    pastDeadline,
+    now: options.now ?? new Date(),
+    ignoreCadence: options.ignoreCadence ?? false,
   });
 
   return { ok: true, summary };

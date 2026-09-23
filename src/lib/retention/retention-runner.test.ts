@@ -30,12 +30,23 @@ function fakeStore(overrides: Partial<RetentionStore> = {}) {
     deleteInquiries: vi.fn(async () => {}),
     deleteLeads: vi.fn(async () => {}),
     redactCommunications: vi.fn(async () => {}),
+    countAnalyticsFacts: vi.fn(async () => 0),
+    deleteAnalyticsFacts: vi.fn(async () => 0),
     ...overrides,
   };
   return store;
 }
 
-const expectedCounts = { cutoff: "2025-09-23T05:00:00.000Z", inquiriesSelected: 1, leadsSelected: 1, communicationsSelected: 1 };
+const expectedCounts = {
+  cutoff: "2025-09-23T05:00:00.000Z",
+  inquiriesSelected: 1,
+  leadsSelected: 1,
+  communicationsSelected: 1,
+  analyticsFacts: [
+    { retentionClass: "aggregate", cutoff: "2024-07-23", selected: 0 },
+    { retentionClass: "query_text", cutoff: "2025-05-23", selected: 0 },
+  ],
+};
 
 describe("an applied retention run", () => {
   it("removes exactly what the policy says and reports the counts", async () => {
@@ -97,5 +108,55 @@ describe("a dry run", () => {
     for (const query of [store.inquiryCandidates, store.leadCandidates, store.communicationCandidates]) {
       expect(query).toHaveBeenCalledWith("2025-09-23T05:00:00.000Z");
     }
+  });
+});
+
+describe("analytics facts in the general retention pass", () => {
+  /* The facts table as the database behaves: date < cutoff, limited to the named reports when given. Only report and date are known here. */
+  function analyticsTable(rows: Array<{ report: string; date: string }>) {
+    const table = [...rows];
+    const matches = (cutoff: string, reports: string[] | null) => (row: { report: string; date: string }) => row.date < cutoff && (!reports || reports.includes(row.report));
+    return {
+      table,
+      countAnalyticsFacts: vi.fn(async (cutoff: string, reports: string[] | null) => table.filter(matches(cutoff, reports)).length),
+      deleteAnalyticsFacts: vi.fn(async (cutoff: string, reports: string[] | null) => {
+        const doomed = table.filter(matches(cutoff, reports));
+        for (const row of doomed) table.splice(table.indexOf(row), 1);
+        return doomed.length;
+      }),
+    };
+  }
+
+  const history = [
+    { report: "gsc.queries", date: "2025-05-22" },
+    { report: "gsc.queries", date: "2025-05-23" },
+    { report: "gsc.query_page", date: "2025-02-01" },
+    { report: "bing.queries", date: "2025-03-01" },
+    { report: "gsc.totals", date: "2025-03-01" },
+    { report: "bing.traffic", date: "2024-07-23" },
+    { report: "ga4.overview", date: "2024-07-22" },
+    { report: "gsc.pages", date: "2024-01-01" },
+  ];
+
+  it("removes query facts after 16 months and all facts after 26, without any provider sync, keeping the boundary days", async () => {
+    const facts = analyticsTable(history);
+    const summary = await runRetention(fakeStore({ countAnalyticsFacts: facts.countAnalyticsFacts, deleteAnalyticsFacts: facts.deleteAnalyticsFacts }), { apply: true, now });
+
+    expect(facts.table.map((row) => `${row.report}@${row.date}`).sort()).toEqual(["bing.traffic@2024-07-23", "gsc.queries@2025-05-23", "gsc.totals@2025-03-01"]);
+    expect(summary.analyticsFacts).toEqual([
+      { retentionClass: "aggregate", cutoff: "2024-07-23", selected: 2 },
+      { retentionClass: "query_text", cutoff: "2025-05-23", selected: 3 },
+    ]);
+    expect(facts.deleteAnalyticsFacts).toHaveBeenCalledWith("2025-05-23", ["gsc.queries", "gsc.query_page", "bing.queries"]);
+    expect(facts.deleteAnalyticsFacts).toHaveBeenCalledWith("2024-07-23", null);
+  });
+
+  it("only counts in a dry run", async () => {
+    const facts = analyticsTable(history);
+    const summary = await runRetention(fakeStore({ countAnalyticsFacts: facts.countAnalyticsFacts, deleteAnalyticsFacts: facts.deleteAnalyticsFacts }), { apply: false, now });
+
+    expect(facts.deleteAnalyticsFacts).not.toHaveBeenCalled();
+    expect(facts.table).toHaveLength(history.length);
+    expect(summary.analyticsFacts.map((entry) => entry.selected)).toEqual([2, 3]);
   });
 });

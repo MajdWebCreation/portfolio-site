@@ -1,7 +1,7 @@
 # Analytics — implementatiestand en handoff
 
-**Stand:** 23 september 2026, werkboom op `main` @ `aae4609` plus niet-gecommitte wijzigingen (fase 0, 1 en de GA4-kern van fase 2).
-**Doel van dit document:** een nieuwe sessie kan fase 3 (Google Search Console) en fase 4 (Bing Webmaster Tools) bouwen zonder de chatgeschiedenis. Het ontwerp (A–M) staat in het onderzoeksrapport van 23 september 2026; dit document beschrijft alleen wat er nu in de repository staat en welke besluiten vastliggen.
+**Stand:** 23 september 2026, werkboom op `main` @ `aae4609` plus niet-gecommitte wijzigingen (fase 0, 1, 2-GA4, 2.5, 3 en 4).
+**Doel van dit document:** een nieuwe sessie kan verder zonder de chatgeschiedenis. §15 beschrijft fase 2.5/3/4; waar §6–§10 en §14 iets anders zeggen, geldt §15. Het ontwerp (A–M) staat in het onderzoeksrapport van 23 september 2026; dit document beschrijft alleen wat er nu in de repository staat en welke besluiten vastliggen.
 
 ## 1. Wat gebouwd is (fase 0, 1, 2-GA4)
 
@@ -10,11 +10,12 @@
 | 0 | Typed eventregister, runtime guard, alle CTA's op stabiele ids, view-events, funnel-events contact/planner, consent-default vóór `gtag('config')`, `web_vital` en UA-parameters verwijderd | klaar, geverifieerd in headless Chrome |
 | 1 | Attributie in de browser (first touch), servervalidatie, vijf kolommen op `inquiries`, admin toont/filtert herkomst, privacyverklaring aangepast | klaar; migratie nog niet toegepast |
 | 2 (GA4) | `analytics_facts` + `analytics_sync_runs`, Google-auth zonder dependency, GA4-adapter met negen rapporten, runner met dry-run, cron, `/admin/analytics` met alle blokken, "Vernieuw nu" | klaar; migratie, env vars en Google-account nog niet |
-| 3 | Search Console-adapter en dashboardblok | **niet gebouwd** |
-| 4 | Bing Webmaster-adapter en dashboardblok | **niet gebouwd** |
+| 2.5 | Multi-provider fundament: config per provider, token per scope, plannen per rapport, status per provider | klaar (§15) |
+| 3 | Search Console-adapter en dashboardblok | klaar (§15); env en Search Console-toegang nog niet |
+| 4 | Bing Webmaster-adapter en dashboardblok | klaar (§15); env nog niet |
 | 5 | Microsoft Clarity (eigen consentcategorie, versie 2) | **niet gebouwd**, eigenaarsbesluit vereist |
 
-Niet gebouwd en buiten scope tot nader order: GSC, Bing, Clarity, sessieopnames, heatmaps, CSV-import van generatieve-AI-rapporten, eigen raw-event-opslag.
+Niet gebouwd en buiten scope tot nader order: Clarity, sessieopnames, heatmaps, CSV-import van generatieve-AI-rapporten, eigen raw-event-opslag.
 
 ## 2. Typed analytics-events (fase 0)
 
@@ -178,3 +179,62 @@ Geen van de nieuwe waarden staat in Vercel. De Vercel MCP-koppeling toont het pr
 - Search Console (geverifieerd 23-09-2026): `POST https://www.googleapis.com/webmasters/v3/sites/{siteUrl}/searchAnalytics/query`, dims `date, query, page, country, device, searchAppearance`, `type` web, `rowLimit` ≤25.000 met `startRow`, `dataState` `all`|`final`, landen ISO-3166-1 alpha-3, datums Pacific time, ~16 maanden historie, 1.200 QPM per site. AI Overviews/AI Mode zitten in `web` zonder filter; het rapport "Search Generative AI performance" heeft geen API. `siteUrl` `sc-domain:ymcreations.com` bij een domeinproperty (propertytype nog te bevestigen). Geplande rapport-keys: `gsc.totals`, `gsc.queries`, `gsc.pages`, `gsc.query_page`, `gsc.countries`, `gsc.devices`, `gsc.appearance`. Env: `GSC_SITE_URL`; hergebruik service account.
 - Bing (geverifieerd 23-09-2026): alleen JSON, `GET https://ssl.bing.com/webmaster/api.svc/json/<Methode>?apikey=…&siteUrl=…` (SOAP/POX uit sinds 31-08-2026); antwoorden `{"d": …}`, datums `/Date(ticks)/`, fouten HTTP 400 `{ErrorCode, Message}`; methoden `GetRankAndTrafficStats` (dagelijks, Web+Chat), `GetQueryStats`, `GetPageStats`, `GetPageQueryStats` (wekelijks), `GetCrawlStats` (6 maanden); geen land/apparaat, geen gepubliceerde rate limits, ~6 maanden historie; AI Performance-rapport zonder API. Env: `BING_WEBMASTER_API_KEY` (of OAuth `webmaster.read`), `BING_SITE_URL`.
 - Beide: eigen adapter onder `src/lib/analytics-admin/providers/`, toevoegen aan `executeAnalyticsSync`, preflight per provider (ontbrekende variabele per naam), rapport-keys in `repository.ts`, aggregaties + blok in `queries.ts`/`dashboard.tsx`, fixtures-tests zonder echte API-calls, sync-status per provider in het dashboard.
+
+## 15. Fase 2.5, 3 en 4 (23 september 2026)
+
+**Fase 2.5 — multi-provider fundament**
+- `analytics-admin/types.ts`: `ProviderAdapter` heeft nu `plan(report, {now, ignoreCadence}) → SyncPlan[]` en `fetch(report, plan)`; `SyncPlan = {phase: recent|final|snapshot, window}`. `ProviderEntry` = adapter óf `{configured:false, missing}`. `ProviderHealth` = `configured | not_configured | auth_failed | provider_error | ok`. `SyncSummary` heeft `providers[]` en per rapport `windows[]` (geen globaal `window` meer). Nieuwe foutklasse `empty_response`. `FactsStore.upsert(rows, syncedAt)` + `deleteStale({provider, report, dates, syncedAt})`.
+- `schedule.ts`: `dateKeyIn(now, tz)`, `windowFrom`, `daysIn`, `Cadence` (`daily` / `weeklyOn(weekday, tz)`), `isDue`. `shiftDate` woont hier (runner her-exporteert).
+- `runner.ts`: per provider; niet-geconfigureerd → `not_configured`, niets geprobeerd. Per rapport: plan (leeg = `skipped`, geen run-record) → startRun → check → fetch per plan → dedupe → upsert met één `syncedAt` → `deleteStale` voor de datums die dit antwoord bevatte → finishRun. Na een `auth`-fout vraagt de runner die provider niets meer en faalt de overige rapporten met dezelfde klasse. Dry run: geen upsert/deleteStale/run/retentie.
+- `google-auth.ts`: `readServiceAccountConfig`, `readGa4Config`, `readGscConfig` (elk noemt alleen eigen + gedeelde ontbrekende variabelen); `readGoogleConfig` bestaat niet meer. `googleTokenSource(account, scopes)` cachet per `email + genormaliseerde scopes` (gesorteerd, ontdubbeld); `resetGoogleTokenSources()` voor tests.
+- `sync.ts`: `providerEntries(env)`, `providerConfigStatus(env)` (voor het dashboard), `executeAnalyticsSync({now, ignoreCadence, env, fetch, store})`. Enige globale weigering: schrijven aan maar geen `SUPABASE_SECRET_KEY` → `{ok:false, reason:"store_not_configured"}` → cron 503. Een ontbrekende provider is een normale 200. De knop "Vernieuw nu" draait met `ignoreCadence: true`.
+- `synced-providers.ts`: `["ga4","gsc","bing"]`; Clarity later = entry hier + adapter + label in `admin/analytics/providers.ts`.
+
+**Fase 3 — Search Console** (`providers/gsc.ts`, env `GSC_SITE_URL`, scope `webmasters.readonly`)
+- Endpoint `POST https://www.googleapis.com/webmasters/v3/sites/{siteUrl}/searchAnalytics/query`, `type: web`. `siteUrl` als `sc-domain:…` of URL-prefix met slash; beide geaccepteerd, geen aanname.
+- Datums in Pacific-tijd. Plan per dagrapport: `final` = PT-vandaag −10 t/m −4 met `dataState: final`; `recent` = −3 t/m vandaag met `dataState: all`. Voorlopige rijen worden overschreven zodra de final-read die dag teruggeeft; dagen zonder antwoord blijven staan.
+- Rapporten: `gsc.totals` (date), `gsc.queries` (query, per dag top 500, één request per dag), `gsc.pages`, `gsc.countries` (alpha-3 zoals geleverd), `gsc.devices`, `gsc.appearance` (dim `appearance`), `gsc.query_page` (query+page, wekelijks maandag, 28 settled dagen, opgeslagen op de einddatum met metric `window_days`). Metrics `clicks, impressions, ctr, position`.
+- Totalen alleen uit `gsc.totals`; queryrijen nooit opgeteld tot totaal. AI Overviews/AI Mode zitten in `web`; geen API voor AI-rapport → dashboardkaart met link.
+
+**Fase 4 — Bing** (`providers/bing.ts`, env `BING_WEBMASTER_API_KEY`, `BING_SITE_URL`)
+- `GET https://ssl.bing.com/webmaster/api.svc/json/<Methode>?siteUrl&apikey`, `{"d": …}` (`d: null` = leeg), `/Date(ms±hhmm)/` → dag in eigen offset.
+- `bing.traffic` (GetRankAndTrafficStats, dagelijks, 14 dagen bewaard; volgens Microsoft sinds 24-03-2023 alle verticals incl. Chat → label "Web + Chat"), `bing.queries` / `bing.pages` (GetQueryStats/GetPageStats, door Bing wekelijks bijgewerkt; wij maandag, 42 dagen; positie < 0 = niet gerapporteerd), `bing.crawl` (GetCrawlStats, alleen aanwezige numerieke velden). Geen land/apparaat.
+- Fouten: 400 `ErrorCode` 3/6/14 → `auth 400`, 4/5 → `quota 400`, anders `http 400`; lege body `empty_response`. Key alleen in de request-URL, nooit in fout/log. `BingAuth` is een union (nu alleen `api_key`), OAuth later mogelijk.
+
+**Dashboard**
+- `admin/analytics/search-queries.ts`: `buildGoogleSearch`, `buildBingSearch`, `buildAcquisition`, `buildInsights`, `risersAndFallers`; CTR = klikken/impressies, positie impressie-gewogen. Drempels: stijgers/dalers ≥50 impressies en ≥3 klikken verschil, percentage vanaf 10 klikken basis; inzichten: lage CTR ≥200 impressies en < ½ site-CTR, Google-klikken ±25% vanaf 30, dienst ≥50 views en <2% CTA, bron ≥100 sessies zonder aanvraag.
+- `branded.ts`: "ym creations"/"ymcreations" als hele woorden na normalisatie (NFKC, lowercase, `-._/` → spatie).
+- `page-types.ts#describeSearchPage`: pad → page_type, service via `getServiceBySlug`, artikel-slug.
+- `aggregate.ts` (sum/compare/daily), `DailyPoint` is nu `{date, value}`; `TrendLine` heeft `unit`.
+- Repository leest facts van alle providers gepagineerd (1.000 per request, plafond 100.000, `sync.truncated`), runs en "heeft facts" per provider.
+- UI: `search-sections.tsx` (Opvallend, Per bron naast elkaar, Google Search, Bing Search), `sync-status.tsx` (kaart per provider), `parts.tsx` (num/pct/Delta/Empty). Geen module-brede "GA4 niet gekoppeld" meer.
+
+**Tests**: `runner.test.ts` (isolatie, auth-kortsluiting, skipped, plannen, dry run, voorlopig→final), `google-auth.test.ts` (config-scheiding, scope-cache), `sync.test.ts` (env→summary met nep-fetch), `providers/gsc.test.ts`, `providers/bing.test.ts`, `search-queries.test.ts`, `queries.test.ts`, `dashboard.test.tsx`, cron-route. Stand: 92 bestanden, 1168 tests groen (17 skipped); lint, tsc, build groen.
+
+**Nog door de eigenaar**
+1. Migraties (ongewijzigd, §11.1). Geen nieuwe migratie nodig voor 2.5/3/4.
+2. Vercel: `GSC_SITE_URL`, `BING_WEBMASTER_API_KEY`, `BING_SITE_URL` naast de GA-variabelen.
+3. Google Cloud: Search Console API aanzetten; service account als gebruiker (Beperkt) op de Search Console-property; propertytype bepaalt `GSC_SITE_URL`.
+4. Bing Webmaster Tools: site geverifieerd, API-key aanmaken.
+5. Eerste dry-runs lezen (cron-log toont per provider `health` en per rapport `windows`/`rows`/`error`), daarna pas `ANALYTICS_SYNC_ENABLED=true`.
+
+**Risico's**
+- Alleen tegen fixtures getest; eerste echte dry-run is de controle (met name GSC-permissies en Bing-positie-schaal).
+- Geen historische backfill: GSC begint met ~11 dagen, Bing met 14 (traffic) / 42 dagen; 90-dagen-vergelijkingen vullen zich in de loop van maanden.
+- Cron `maxDuration 60` en alles sequentieel (~30–40 requests, maandag meer); bij groei per provider splitsen.
+- Dashboard leest facts zonder DB-aggregatie; bij veel GSC-queries (500/dag × 180 dagen) kan het plafond geraakt worden → dan een aggregatie-RPC of kleinere top-N.
+
+## 16. Pre-production hardening (23 september 2026)
+
+- **Queryfilter** `analytics-admin/query-filter.ts` (`sanitizeSearchQuery`), gebruikt in `gsc.ts` (gsc.queries, gsc.query_page) en `bing.ts` (bing.queries) vóór `dims.query`. Gedropt: leeg, control/format-tekens, > 200 tekens, e-mail, ≥ 9 cijfers in een telefoonachtige reeks (ook BSN/rekening/IBAN), volledige URL (`scheme://`, `www.`), JWT, bekende key-prefixen, woord ≥ 20 tekens met letters én cijfers, ≥ 32 hex. Gedropte rijen worden alleen geteld (`FetchResult.filtered` → `ReportRunResult.filtered` → cron-log), nooit gelogd.
+- **Retentie** `analytics-admin/retention.ts`: `aggregate` 26 maanden, `query_text` 16 maanden (gsc.queries, gsc.query_page, bing.queries). `reportRetention` is getypeerd over alle report-keys: een nieuw rapport compileert niet zonder klasse; de runner weigert `dims.query` onder een niet-`query_text`-rapport. Cleanup in `runner.ts#applyRetention`, alleen na een applied run; `summary.retention` is nu een lijst per klasse.
+- **Concurrency**: providers parallel, per provider max. 3 rapporten tegelijk (`mapWithLimit`, `REPORT_CONCURRENCY`); binnen een rapport blijven requests sequentieel. Rapporten die 45 s na de start nog niet begonnen zijn, falen als `deadline`. Tokenbron deelt één uitwisseling tussen gelijktijdige aanroepen.
+- **Timeouts** `analytics-admin/http.ts#fetchWithTimeout`: 10 s per request inclusief body, `AbortSignal.timeout` plus race (werkt ook als fetch het signaal negeert) → `ProviderError("timeout")`. Gebruikt door GA4, GSC, Bing en de tokenuitwisseling.
+- **Privacy** `privacy.ts` NL/EN: alinea "Vindbaarheid in zoekmachines" / "Visibility in search engines" en een bewaartermijnregel (16 maanden). `indexable` blijft false; `cookies.ts` ongewijzigd.
+
+## 17. Production-readiness fix (23 september 2026)
+
+- **Retentie onafhankelijk van de sync**: de algemene job `/api/cron/retention` (05:00, `RETENTION_ENABLED`, anders dry-run) verwijdert nu ook `analytics_facts`: `query_text` (gsc.queries, gsc.query_page, bing.queries) na 16 maanden, alles na 26. Doelen komen uit `analytics-admin/retention.ts#analyticsRetentionTargets`, dezelfde lijst die de sync als tweede lijn gebruikt. `RetentionStore.countAnalyticsFacts` / `deleteAnalyticsFacts` werken op datum + rapport met een database-count; er wordt geen fact-rij (dus geen dims) gelezen. Summary/log: `analyticsFacts: [{retentionClass, cutoff, selected}]`.
+- **Requestconcurrency**: per provider één request-poort (`createRequestGate`, `PROVIDER_REQUEST_CONCURRENCY = 3`) over alle rapporten en dagen; `gsc.queries` vraagt dagen met `GSC_DAY_CONCURRENCY = 3` via die poort. Theoretisch maximum: 3 per provider, 9 totaal, plus ≤ 2 tokenuitwisselingen (één per Google-scope) = 11. Paginering (GA4, GSC) blijft sequentieel (afhankelijk van het vorige antwoord); Bing doet één request per rapport.
+- **Deadline**: `RUN_DEADLINE_MS = 40 000`, één gedeelde `pastDeadline` voor runner (geen nieuw rapport) en poorten (geen nieuw request) → `deadline`. Laatste request eindigt uiterlijk ~50 s (10 s timeout).
+- **Stale runs**: bij de start van een applied sync zet `FactsStore.failStaleRuns` runs die > 15 min op `running` staan op `failed`, `error = 'stale_run'`; telling in `summary.staleRunsRecovered`. Fouten hierbij stoppen de sync niet. Dry run raakt niets.

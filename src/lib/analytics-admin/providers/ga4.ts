@@ -1,5 +1,8 @@
-import { ProviderError, type FactRow, type ProviderAdapter, type SyncWindow } from "@/lib/analytics-admin/types";
+import { ProviderError, type FactRow, type ProviderAdapter, type SyncPlan } from "@/lib/analytics-admin/types";
 import type { TokenSource } from "@/lib/analytics-admin/google-auth";
+import { syncWindow } from "@/lib/analytics-admin/runner";
+import { fetchWithTimeout, parseJson, type ProviderResponse } from "@/lib/analytics-admin/http";
+import { openGate, type RequestGate } from "@/lib/analytics-admin/concurrency";
 
 /**
  * Google Analytics 4 through the Analytics Data API (v1beta, runReport).
@@ -15,6 +18,11 @@ import type { TokenSource } from "@/lib/analytics-admin/google-auth";
  * remaining dimensions become `dims`. Metric values arrive as strings and
  * are parsed; a value that is not a number fails the report rather than
  * storing a zero that was never reported.
+ *
+ * Plan: every report daily, the last three days including today in the
+ * property's day (Europe/Amsterdam for this site). GA keeps processing a
+ * day for a while, so the same days are read again on the next runs and
+ * the upsert replaces them; there is no separate final phase.
  *
  * Errors carry a class and a status, never the response: a 401 or 403 is
  * `auth`, a 429 is `quota`, a 400 that mentions incompatibility is
@@ -142,48 +150,40 @@ export function normalizeGa4Rows(report: Ga4ReportKey, response: RunReportRespon
   return rows;
 }
 
-async function readJson<T>(response: Response): Promise<T> {
-  try {
-    return (await response.json()) as T;
-  } catch {
-    throw new ProviderError("invalid_response");
-  }
-}
-
-async function failFor(response: Response): Promise<never> {
+function failFor(response: ProviderResponse): never {
   if (response.status === 401 || response.status === 403) throw new ProviderError("auth", response.status);
   if (response.status === 429) throw new ProviderError("quota", 429);
-  if (response.status === 400) {
-    /* Only the presence of the word is read; the message itself goes nowhere. */
-    const text = await response.text().catch(() => "");
-    if (/incompatib/i.test(text)) throw new ProviderError("compatibility", 400);
-  }
+  /* Only the presence of the word is read; the message itself goes nowhere. */
+  if (response.status === 400 && /incompatib/i.test(response.text)) throw new ProviderError("compatibility", 400);
   throw new ProviderError("http", response.status);
 }
 
-export function createGa4Adapter(input: { propertyId: string; token: TokenSource; fetch?: typeof fetch }): ProviderAdapter {
+export function createGa4Adapter(input: { propertyId: string; token: TokenSource; fetch?: typeof fetch; timeoutMs?: number; gate?: RequestGate }): ProviderAdapter {
+  const gate = input.gate ?? openGate;
   const doFetch = input.fetch ?? fetch;
   const base = `https://analyticsdata.googleapis.com/v1beta/properties/${input.propertyId}`;
 
   async function post<T>(method: "runReport" | "checkCompatibility", body: unknown): Promise<T> {
     const token = await input.token();
-    let response: Response;
-    try {
-      response = await doFetch(`${base}:${method}`, {
-        method: "POST",
-        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
-    } catch {
-      throw new ProviderError("network");
-    }
-    if (!response.ok) await failFor(response);
-    return readJson<T>(response);
+    const response = await gate(() =>
+      fetchWithTimeout(
+        doFetch,
+        `${base}:${method}`,
+        { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body) },
+        input.timeoutMs,
+      ),
+    );
+    if (!response.ok) failFor(response);
+    return parseJson<T>(response.text);
   }
 
   return {
     key: "ga4",
     reports: ga4ReportKeys,
+
+    plan(_report, context) {
+      return [{ phase: "recent", window: syncWindow(context.now) }];
+    },
 
     async check(report) {
       if (!isGa4ReportKey(report)) throw new ProviderError("unknown_report");
@@ -199,8 +199,9 @@ export function createGa4Adapter(input: { propertyId: string; token: TokenSource
       if (incompatible) throw new ProviderError("compatibility");
     },
 
-    async fetch(report, window: SyncWindow) {
+    async fetch(report, plan: SyncPlan) {
       if (!isGa4ReportKey(report)) throw new ProviderError("unknown_report");
+      const { window } = plan;
       const spec = ga4Reports[report];
       const rows: FactRow[] = [];
       let offset = 0;

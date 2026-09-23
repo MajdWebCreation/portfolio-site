@@ -2,9 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SyncOutcome } from "@/lib/analytics-admin/sync";
 
 /*
-  The guard on the analytics cron: no secret, no run; no configuration, a
-  503 that names the variable; otherwise the summary, logged as counts and
-  classes only.
+  The guard on the analytics cron: no secret, no run; a provider without
+  configuration is part of a normal 200 summary; only a write switch
+  without a write key is a 503; the summary is logged as counts, dates
+  and classes only.
 */
 let outcome: SyncOutcome;
 const execute = vi.fn(async () => outcome);
@@ -41,11 +42,35 @@ describe("the analytics sync cron", () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
-  it("reports missing configuration by variable name", async () => {
-    outcome = { ok: false, preflight: { ok: false, reason: "google_not_configured", missing: ["GA4_PROPERTY_ID"] } };
+  it("answers 503 only when writing is on and the store cannot be written", async () => {
+    outcome = { ok: false, reason: "store_not_configured", missing: ["SUPABASE_SECRET_KEY"] };
     const response = await authorised();
     expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ ok: false, reason: "google_not_configured", missing: ["GA4_PROPERTY_ID"] });
+    expect(await response.json()).toEqual({ ok: false, reason: "store_not_configured", missing: ["SUPABASE_SECRET_KEY"] });
+  });
+
+  it("treats a provider without configuration as part of a normal run, named by variable", async () => {
+    outcome = {
+      ok: true,
+      summary: {
+        mode: "dry-run",
+        providers: [
+          { provider: "ga4", health: "not_configured", missing: ["GA4_PROPERTY_ID"] },
+          { provider: "gsc", health: "ok" },
+          { provider: "bing", health: "auth_failed" },
+        ],
+        results: [
+          { provider: "gsc", report: "gsc.queries", status: "ok", windows: [{ start: "2026-09-19", end: "2026-09-22" }], rows: 40, durationMs: 300 },
+          { provider: "bing", report: "bing.traffic", status: "failed", windows: [{ start: "2026-09-09", end: "2026-09-22" }], rows: 0, durationMs: 90, error: "auth 400" },
+        ],
+      },
+    };
+    const response = await authorised();
+    expect(response.status).toBe(200);
+    const logged = JSON.stringify(lines);
+    expect(logged).toContain("GA4_PROPERTY_ID");
+    expect(logged).toContain('"health":"auth_failed"');
+    expect(logged).toContain("2026-09-19..2026-09-22");
   });
 
   it("returns and logs the summary with counts and classes, marking a dry run as such", async () => {
@@ -53,8 +78,8 @@ describe("the analytics sync cron", () => {
       ok: true,
       summary: {
         mode: "dry-run",
-        window: { start: "2026-09-21", end: "2026-09-23" },
-        results: [{ provider: "ga4", report: "ga4.sources", status: "ok", rows: 12, durationMs: 80 }],
+        providers: [{ provider: "ga4", health: "ok" }],
+        results: [{ provider: "ga4", report: "ga4.sources", status: "ok", windows: [{ start: "2026-09-21", end: "2026-09-23" }], rows: 12, durationMs: 80 }],
       },
     };
     const response = await authorised();

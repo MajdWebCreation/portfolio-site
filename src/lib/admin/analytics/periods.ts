@@ -1,5 +1,5 @@
 import { toDateKey } from "@/lib/admin/format";
-import { shiftDate } from "@/lib/analytics-admin/runner";
+import { shiftDate } from "@/lib/analytics-admin/schedule";
 import { periods, type DateRange, type Period, type PeriodRanges } from "@/lib/admin/analytics/types";
 
 /**

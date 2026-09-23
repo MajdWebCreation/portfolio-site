@@ -15,6 +15,10 @@ import type { Database } from "@/lib/supabase/database.types";
  *
  * The communication log is read and written through its own module, which
  * is the one place allowed to touch that table.
+ *
+ * Analytics facts are counted and deleted by date and report alone, with
+ * the count returned by the database; no fact row, and so no dimension or
+ * search query, is ever selected.
  */
 export function createRetentionStore(db: SupabaseClient<Database>): RetentionStore {
   return {
@@ -61,6 +65,24 @@ export function createRetentionStore(db: SupabaseClient<Database>): RetentionSto
 
     redactCommunications(ids) {
       return redactCommunicationBodies(db, ids, retentionRedactedBody);
+    },
+
+    async countAnalyticsFacts(cutoff, reports) {
+      if (reports && reports.length === 0) return 0;
+      let query = db.from("analytics_facts").select("date", { count: "exact", head: true }).lt("date", cutoff);
+      if (reports) query = query.in("report", reports);
+      const { count, error } = await query;
+      if (error) throw new Error(`Analytics-facts tellen: ${error.message}`);
+      return count ?? 0;
+    },
+
+    async deleteAnalyticsFacts(cutoff, reports) {
+      if (reports && reports.length === 0) return 0;
+      let query = db.from("analytics_facts").delete({ count: "exact" }).lt("date", cutoff);
+      if (reports) query = query.in("report", reports);
+      const { count, error } = await query;
+      if (error) throw new Error(`Analytics-facts verwijderen: ${error.message}`);
+      return count ?? 0;
     },
   };
 }

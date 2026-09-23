@@ -8,6 +8,7 @@ import {
   buildLanding,
   buildOverview,
   buildPlannerFunnel,
+  buildProviderSyncStatus,
   buildSyncStatus,
   factRecordFromRow,
 } from "@/lib/admin/analytics/queries";
@@ -168,6 +169,7 @@ describe("landing and funnels", () => {
 
 describe("sync status", () => {
   const run = (report: string, status: string, startedAt: string, rows: number | null, error: string | null = null): SyncRunRecord => ({
+    provider: report.split(".")[0] as SyncRunRecord["provider"],
     report,
     status,
     startedAt,
@@ -175,20 +177,25 @@ describe("sync status", () => {
     rowsUpserted: rows,
     error,
   });
+  const configured = { configured: true, missing: [] };
 
-  it("reports the last success as a batch, the last failure, and the latest run per report", () => {
-    const status = buildSyncStatus(
+  it("reports the last success as a batch, the last failure, the last run and the latest run per report", () => {
+    const status = buildProviderSyncStatus(
+      "ga4",
       [
         run("ga4.overview", "ok", "2026-09-23T06:00:01Z", 3),
         run("ga4.sources", "failed", "2026-09-23T06:00:02Z", 0, "quota 429"),
         run("ga4.geo", "ok", "2026-09-23T06:00:03Z", 40),
         run("ga4.sources", "ok", "2026-09-22T06:00:02Z", 12),
+        run("gsc.totals", "ok", "2026-09-23T06:01:00Z", 7),
       ],
-      { configured: true, missing: [], enabled: true },
+      configured,
       true,
     );
     expect(status.lastSuccess).toEqual({ at: "2026-09-23T06:00:03Z", rows: 43 });
     expect(status.lastFailure).toEqual({ at: "2026-09-23T06:00:02Z", report: "ga4.sources", error: "quota 429" });
+    expect(status.lastRun).toEqual({ at: "2026-09-23T06:00:03Z", report: "ga4.geo", status: "ok" });
+    expect(status.health).toBe("provider_error");
     expect(status.reports.map((r) => [r.report, r.status])).toEqual([
       ["ga4.geo", "ok"],
       ["ga4.overview", "ok"],
@@ -196,15 +203,43 @@ describe("sync status", () => {
     ]);
   });
 
-  it("says what is missing when the provider is not configured", () => {
-    const status = buildSyncStatus([], { configured: false, missing: ["GA4_PROPERTY_ID"], enabled: false }, false);
-    expect(status).toMatchObject({ configured: false, missing: ["GA4_PROPERTY_ID"], lastSuccess: null, lastFailure: null, reports: [], hasFacts: false });
+  it("derives the health of each provider from its configuration and latest runs", () => {
+    const sync = buildSyncStatus({
+      runs: [run("gsc.totals", "failed", "2026-09-23T06:00:00Z", 0, "auth 403"), run("bing.traffic", "ok", "2026-09-23T06:00:00Z", 14)],
+      config: [
+        { provider: "ga4", configured: false, missing: ["GA4_PROPERTY_ID"] },
+        { provider: "gsc", ...configured },
+        { provider: "bing", ...configured },
+      ],
+      enabled: false,
+      hasFacts: { bing: true },
+    });
+    expect(sync.providers.map((p) => [p.provider, p.health, p.hasFacts])).toEqual([
+      ["ga4", "not_configured", false],
+      ["gsc", "auth_failed", false],
+      ["bing", "ok", true],
+    ]);
+    expect(sync.providers[0]).toMatchObject({ label: "Google Analytics", missing: ["GA4_PROPERTY_ID"], lastSuccess: null, lastFailure: null, lastRun: null, reports: [] });
+  });
+
+  it("shows a configured provider without runs as configured, and a later success clears an older failure", () => {
+    const sync = buildSyncStatus({
+      runs: [run("bing.traffic", "failed", "2026-09-22T06:00:00Z", 0, "http 500"), run("bing.traffic", "ok", "2026-09-23T06:00:00Z", 14)],
+      config: [
+        { provider: "ga4", ...configured },
+        { provider: "gsc", ...configured },
+        { provider: "bing", ...configured },
+      ],
+      enabled: true,
+      hasFacts: {},
+    });
+    expect(sync.providers.map((p) => p.health)).toEqual(["configured", "configured", "ok"]);
   });
 });
 
 describe("buildDashboard", () => {
   it("renders every block from nothing without throwing", () => {
-    const dashboard = buildDashboard({ ranges: ranges7, facts: [], inquiries: [], runs: [], config: { configured: true, missing: [], enabled: false }, hasFacts: false });
+    const dashboard = buildDashboard({ ranges: ranges7, facts: [], inquiries: [], runs: [], config: [], enabled: false, hasFacts: {} });
     expect(dashboard.daily.current).toHaveLength(7);
     expect(dashboard.sources).toEqual([]);
     expect(dashboard.plannerFunnel.steps).toHaveLength(6);

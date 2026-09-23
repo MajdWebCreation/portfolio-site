@@ -1,31 +1,18 @@
 import Link from "next/link";
 import AdminSection from "@/components/admin/admin-section";
-import RefreshButton from "@/components/admin/analytics/refresh-button";
+import { Delta, Empty, num, pct } from "@/components/admin/analytics/parts";
+import { AcquisitionSection, BingSearchSection, GoogleSearchSection, InsightsSection } from "@/components/admin/analytics/search-sections";
+import SyncStatusSection from "@/components/admin/analytics/sync-status";
 import TrendLine from "@/components/admin/analytics/trend-line";
-import StatusBadge from "@/components/admin/status-badge";
-import { formatDateTime } from "@/lib/admin/format";
 import { pageTypeLabels } from "@/lib/admin/analytics/page-types";
-import { periods, type AnalyticsDashboard, type Comparison, type FunnelStep, type OverviewKey, type SyncStatus } from "@/lib/admin/analytics/types";
+import { periods, type AnalyticsDashboard, type FunnelStep, type OverviewKey, type SyncStatus } from "@/lib/admin/analytics/types";
 import { trafficClassLabels } from "@/lib/attribution/types";
 
 /**
  * The analytics page, block by block. Every number comes from the model
- * the repository built; nothing here queries, computes a rate, or knows
- * a provider. Tables use the admin's table styles; the only drawing is
+ * the repository built; nothing here queries or computes a rate. Tables use the admin's table styles; the only drawing is
  * the trend line and the funnel bars.
  */
-const nl = new Intl.NumberFormat("nl-NL");
-const percent = new Intl.NumberFormat("nl-NL", { style: "percent", maximumFractionDigits: 1 });
-const signedPercent = new Intl.NumberFormat("nl-NL", { style: "percent", maximumFractionDigits: 0, signDisplay: "exceptZero" });
-
-function num(value: number | null): string {
-  return value === null ? "—" : nl.format(value);
-}
-
-function pct(value: number | null): string {
-  return value === null ? "—" : percent.format(value);
-}
-
 const tileLabels: Record<OverviewKey, { label: string; kind: "count" | "rate" }> = {
   sessions: { label: "Sessies", kind: "count" },
   users: { label: "Gebruikers", kind: "count" },
@@ -36,12 +23,6 @@ const tileLabels: Record<OverviewKey, { label: string; kind: "count" | "rate" }>
   inquiries: { label: "Aanvragen", kind: "count" },
   conversionRate: { label: "Conversie", kind: "rate" },
 };
-
-function Delta({ comparison }: { comparison: Comparison }) {
-  if (comparison.delta === null) return <span className="text-faint">geen vergelijking</span>;
-  const tone = comparison.delta > 0 ? "text-success" : comparison.delta < 0 ? "text-danger" : "text-muted";
-  return <span className={tone}>{signedPercent.format(comparison.delta)}</span>;
-}
 
 export function PeriodSwitch({ period }: { period: number }) {
   return (
@@ -84,10 +65,6 @@ function MetricTiles({ overview }: { overview: AnalyticsDashboard["overview"] })
   );
 }
 
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="text-[0.92rem] text-muted">{children}</p>;
-}
-
 function FunnelBars({ steps }: { steps: FunnelStep[] }) {
   const max = Math.max(1, ...steps.map((step) => step.count));
   return (
@@ -108,103 +85,11 @@ function FunnelBars({ steps }: { steps: FunnelStep[] }) {
   );
 }
 
-function SyncStatusBlock({ sync }: { sync: SyncStatus }) {
-  return (
-    <AdminSection id="sync" title="Synchronisatie" note="Google Analytics via de dagelijkse job, 06:00 UTC">
-      {!sync.configured ? (
-        <div className="space-y-3">
-          <p className="text-[0.95rem] text-ink">
-            <StatusBadge tone="danger">GA4 niet gekoppeld</StatusBadge>
-          </p>
-          <Empty>
-            Ontbrekend of ongeldig in de omgeving: <span className="tabular text-ink">{sync.missing.join(", ")}</span>. Zonder deze waarden haalt de job niets op en blijven de blokken hierboven leeg.
-          </Empty>
-        </div>
-      ) : (
-        <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="border-t border-line pt-2">
-            <dt className="label-mono text-muted">Schrijven</dt>
-            <dd className="mt-1 text-[0.92rem]">
-              {sync.enabled ? <StatusBadge tone="success">Aan</StatusBadge> : <StatusBadge tone="neutral">Proefrun</StatusBadge>}
-              {!sync.enabled ? <span className="mt-1 block text-[0.85rem] text-muted">ANALYTICS_SYNC_ENABLED is niet &quot;true&quot;: de job telt en slaat niets op.</span> : null}
-            </dd>
-          </div>
-          <div className="border-t border-line pt-2">
-            <dt className="label-mono text-muted">Laatste geslaagde sync</dt>
-            <dd className="mt-1 text-[0.92rem] text-ink">
-              {sync.lastSuccess ? (
-                <>
-                  {formatDateTime(sync.lastSuccess.at)}
-                  <span className="block text-[0.85rem] text-muted">{num(sync.lastSuccess.rows)} rijen</span>
-                </>
-              ) : (
-                <span className="text-muted">Nog geen</span>
-              )}
-            </dd>
-          </div>
-          <div className="border-t border-line pt-2">
-            <dt className="label-mono text-muted">Laatste fout</dt>
-            <dd className="mt-1 text-[0.92rem] text-ink">
-              {sync.lastFailure ? (
-                <>
-                  {formatDateTime(sync.lastFailure.at)}
-                  <span className="tabular block text-[0.85rem] text-danger">
-                    {sync.lastFailure.report}: {sync.lastFailure.error}
-                  </span>
-                </>
-              ) : (
-                <span className="text-muted">Geen</span>
-              )}
-            </dd>
-          </div>
-          <div className="border-t border-line pt-2">
-            <dt className="label-mono text-muted">Handmatig</dt>
-            <dd className="mt-1">
-              <RefreshButton />
-            </dd>
-          </div>
-        </dl>
-      )}
-      {sync.reports.length > 0 ? (
-        <table className="adm-table mt-6">
-          <thead>
-            <tr>
-              <th scope="col">Rapport</th>
-              <th scope="col">Status</th>
-              <th scope="col">Moment</th>
-              <th scope="col" className="adm-num">
-                Rijen
-              </th>
-              <th scope="col">Fout</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sync.reports.map((report) => (
-              <tr key={report.report}>
-                <td data-label="Rapport" className="tabular">
-                  {report.report}
-                </td>
-                <td data-label="Status">
-                  <StatusBadge tone={report.status === "ok" ? "success" : report.status === "failed" ? "danger" : "neutral"}>{report.status}</StatusBadge>
-                </td>
-                <td data-label="Moment">{formatDateTime(report.at)}</td>
-                <td data-label="Rijen" className="adm-num">
-                  {num(report.rows)}
-                </td>
-                <td data-label="Fout" className="tabular text-muted">
-                  {report.error ?? "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : null}
-    </AdminSection>
-  );
-}
-
-const noData = (sync: SyncStatus) =>
-  !sync.configured ? "GA4 is niet gekoppeld; zie Synchronisatie onderaan." : !sync.hasFacts ? "Nog niets gesynchroniseerd; zie Synchronisatie onderaan." : "Geen gegevens in deze periode.";
+const noData = (sync: SyncStatus) => {
+  const ga = sync.providers.find((provider) => provider.provider === "ga4");
+  if (!ga?.configured) return "Google Analytics is niet gekoppeld; zie Synchronisatie onderaan.";
+  return !ga.hasFacts ? "Nog niets gesynchroniseerd; zie Synchronisatie onderaan." : "Geen gegevens in deze periode.";
+};
 
 export default function AnalyticsDashboardView({ data }: { data: AnalyticsDashboard }) {
   const { ranges, sync } = data;
@@ -219,6 +104,10 @@ export default function AnalyticsDashboardView({ data }: { data: AnalyticsDashbo
           <TrendLine current={data.daily.current} previous={data.daily.previous} label="Sessies per dag" />
         </div>
       </AdminSection>
+
+      <InsightsSection insights={data.insights} />
+
+      <AcquisitionSection rows={data.acquisition} />
 
       <AdminSection id="sources" title="Herkomst" note="Google Analytics naast de herkomst die de website zelf bij een aanvraag vastlegde">
         <div className="grid gap-10 lg:grid-cols-12">
@@ -581,7 +470,11 @@ export default function AnalyticsDashboardView({ data }: { data: AnalyticsDashbo
         </AdminSection>
       </div>
 
-      <SyncStatusBlock sync={sync} />
+      <GoogleSearchSection block={data.googleSearch} status={sync.providers.find((provider) => provider.provider === "gsc")} />
+
+      <BingSearchSection block={data.bingSearch} status={sync.providers.find((provider) => provider.provider === "bing")} />
+
+      <SyncStatusSection sync={sync} />
     </div>
   );
 }

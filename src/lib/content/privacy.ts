@@ -9,7 +9,9 @@ import { businessInfo } from "@/lib/content/site-content";
   Everything stated here is backed by the code or by a decision the business
   owner took: which data the forms collect (api/contact/route.ts), where it
   goes (Supabase, Resend, Vercel, Mollie, Google behind consent), and how long
-  it is kept (lib/retention/policy.ts). What the statement deliberately does
+  it is kept (lib/retention/policy.ts; for synced search terms
+  lib/analytics-admin/retention.ts, and the filter that keeps address-,
+  number- and token-like terms out is lib/analytics-admin/query-filter.ts). What the statement deliberately does
   not say, because nothing in this repository can vouch for it: where each
   provider stores data, what each provider keeps in its own logs, and the
   state of the processing agreements. The text was reviewed and confirmed by
@@ -87,6 +89,12 @@ export const privacyStatement: LegalStatementSet = {
           type: "paragraph",
           content: `Alleen als je daarvoor toestemming geeft, gebruiken we Google Analytics om te begrijpen hoe de website wordt gebruikt en om die te verbeteren. Daarbij worden gegevens over je bezoek gedeeld met Google. Zonder toestemming wordt Google Analytics niet geladen. Je kunt je keuze op elk moment wijzigen via Cookie-instellingen onderaan de pagina. Meer daarover staat in de [cookieverklaring](${getLocalizedPath("nl", "cookies")}).`,
         },
+        { type: "heading", level: 3, content: "Vindbaarheid in zoekmachines" },
+        {
+          type: "paragraph",
+          content:
+            "Om te zien hoe de website in zoekmachines gevonden wordt, halen we uit Google Search Console en Bing Webmaster Tools cijfers op die Google en Microsoft zelf over de zoekresultaten bijhouden: zoektermen, pagina's, klikken en vertoningen, opgeteld per dag of per periode. Die gegevens komen van de zoekmachines, niet uit je browser; hiervoor wordt niets op je apparaat geplaatst. Zoektermen die op een e-mailadres, telefoonnummer, webadres of code lijken, slaan we niet op. We koppelen een zoekterm nooit aan een aanvraag of aan een persoon. De grondslag is ons gerechtvaardigd belang bij inzicht in de vindbaarheid van de website.",
+        },
 
         { type: "heading", level: 2, content: "Welke gegevens je moet geven" },
         {
@@ -152,6 +160,7 @@ export const privacyStatement: LegalStatementSet = {
             "Facturen en andere persoonsgegevens en documenten die onderdeel zijn van onze fiscale administratie: ten minste de wettelijke bewaartermijn van zeven jaar, en daarna alleen langer als daar nog een geldige juridische of administratieve reden voor bestaat.",
             "De inhoud van andere klantberichten: twaalf maanden; dat een bericht is verstuurd blijft geregistreerd.",
             "Je cookiekeuze: zes maanden.",
+            "Zoektermen uit Google Search Console en Bing Webmaster Tools: zestien maanden.",
           ],
         },
 
@@ -234,6 +243,12 @@ export const privacyStatement: LegalStatementSet = {
           type: "paragraph",
           content: `Only with your consent do we use Google Analytics to understand how the website is used and to improve it. Data about your visit is then shared with Google. Without consent, Google Analytics is not loaded. You can change your choice at any time under Cookie settings at the bottom of the page. The [cookie statement](${getLocalizedPath("en", "cookies")}) has the details.`,
         },
+        { type: "heading", level: 3, content: "Visibility in search engines" },
+        {
+          type: "paragraph",
+          content:
+            "To see how the website is found in search engines, we retrieve figures that Google and Microsoft keep about their own search results from Google Search Console and Bing Webmaster Tools: search terms, pages, clicks and impressions, added up per day or per period. This data comes from the search engines, not from your browser; nothing is placed on your device for it. Search terms that look like an email address, phone number, web address or code are not stored. We never link a search term to a request or to a person. The legal basis is our legitimate interest in understanding how the website can be found.",
+        },
 
         { type: "heading", level: 2, content: "Which data you have to provide" },
         {
@@ -299,6 +314,7 @@ export const privacyStatement: LegalStatementSet = {
             "Invoices and other personal data and documents that form part of our tax administration: at least the statutory retention period of seven years, and after that only for as long as there is still a valid legal or administrative reason.",
             "The content of other client messages: twelve months; the fact that a message was sent stays on record.",
             "Your cookie choice: six months.",
+            "Search terms from Google Search Console and Bing Webmaster Tools: sixteen months.",
           ],
         },
 

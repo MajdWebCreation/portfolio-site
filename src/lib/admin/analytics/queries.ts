@@ -1,14 +1,17 @@
 import { aiSources } from "@/lib/attribution/sources";
 import { isTrafficClass, trafficClasses, type TrafficClass } from "@/lib/attribution/types";
-import { daysOf, inRange } from "@/lib/admin/analytics/periods";
+import { inRange } from "@/lib/admin/analytics/periods";
+import { compare, daily, sum } from "@/lib/admin/analytics/aggregate";
 import { isPlannerStepName, pageTypeForLandingPage, plannerStepLabels, plannerStepOrder, serviceLabel } from "@/lib/admin/analytics/page-types";
+import { isAuthFailure, type ProviderHealth } from "@/lib/analytics-admin/types";
+import { syncedProviders, type ProviderConfigStatus, type SyncedProvider } from "@/lib/analytics-admin/synced-providers";
+import { providerLabels } from "@/lib/admin/analytics/providers";
+import { buildAcquisition, buildBingSearch, buildGoogleSearch, buildInsights } from "@/lib/admin/analytics/search-queries";
 import type {
   AiRow,
   AnalyticsDashboard,
-  Comparison,
   ContactFunnel,
   CtaRow,
-  DailyPoint,
   FactRecord,
   FunnelStep,
   GeoRow,
@@ -20,6 +23,7 @@ import type {
   PackageRow,
   PeriodRanges,
   PlannerFunnel,
+  ProviderSyncStatus,
   ReportStatus,
   ServiceRow,
   SourceRow,
@@ -37,20 +41,8 @@ import type {
  */
 const NOT_SET = "(not set)";
 
-function sum(rows: FactRecord[], metric: string): number {
-  return rows.reduce((total, row) => total + (row.metrics[metric] ?? 0), 0);
-}
 
-function compare(current: number, previous: number): Comparison {
-  return { current, previous, delta: previous > 0 ? (current - previous) / previous : null };
-}
 
-/** A per-day value over a range; a day the facts do not mention counts as zero. */
-function daily(rows: FactRecord[], ranges: PeriodRanges, which: "current" | "previous"): DailyPoint[] {
-  const byDay = new Map<string, number>();
-  for (const row of rows) byDay.set(row.date, (byDay.get(row.date) ?? 0) + (row.metrics.sessions ?? 0));
-  return daysOf(ranges[which]).map((date) => ({ date, sessions: byDay.get(date) ?? 0 }));
-}
 
 /** Sums rows by a key of their dimensions; the reducer keeps the metrics summed per group. */
 function groupBy<T>(rows: FactRecord[], key: (row: FactRecord) => string, build: (rows: FactRecord[]) => T): T[] {
@@ -311,8 +303,14 @@ export function buildContactFunnel(facts: FactRecord[], ranges: PeriodRanges): C
   };
 }
 
-export function buildSyncStatus(runs: SyncRunRecord[], config: { configured: boolean; missing: string[]; enabled: boolean }, hasFacts: boolean): SyncStatus {
-  const sorted = [...runs].sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1));
+/** A provider's state for the dashboard: its configuration first, then the latest run of each report. */
+export function buildProviderSyncStatus(
+  provider: SyncedProvider,
+  runs: SyncRunRecord[],
+  config: { configured: boolean; missing: string[] },
+  hasFacts: boolean,
+): ProviderSyncStatus {
+  const sorted = runs.filter((run) => run.provider === provider).sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1));
   const lastOk = sorted.find((run) => run.status === "ok");
   const lastFailed = sorted.find((run) => run.status === "failed");
 
@@ -337,28 +335,68 @@ export function buildSyncStatus(runs: SyncRunRecord[], config: { configured: boo
       error: run.error,
     });
   }
+  const reports = [...perReport.values()].sort((a, b) => a.report.localeCompare(b.report));
 
+  let health: ProviderHealth;
+  if (!config.configured) health = "not_configured";
+  else if (reports.length === 0) health = "configured";
+  else if (reports.some((report) => report.status === "failed" && isAuthFailure(report.error ?? undefined))) health = "auth_failed";
+  else if (reports.some((report) => report.status === "failed")) health = "provider_error";
+  else health = "ok";
+
+  const latest = sorted[0];
   return {
+    provider,
+    label: providerLabels[provider],
+    health,
     configured: config.configured,
     missing: config.missing,
-    enabled: config.enabled,
     lastSuccess,
     lastFailure: lastFailed ? { at: lastFailed.finishedAt ?? lastFailed.startedAt, report: lastFailed.report, error: lastFailed.error ?? "onbekend" } : null,
-    reports: [...perReport.values()].sort((a, b) => a.report.localeCompare(b.report)),
+    lastRun: latest
+      ? { at: latest.finishedAt ?? latest.startedAt, report: latest.report, status: latest.status === "ok" ? "ok" : latest.status === "failed" ? "failed" : "running" }
+      : null,
+    reports,
     hasFacts,
   };
 }
 
-export function buildDashboard(input: {
+export function buildSyncStatus(input: {
+  runs: SyncRunRecord[];
+  config: ProviderConfigStatus[];
+  enabled: boolean;
+  hasFacts: Partial<Record<SyncedProvider, boolean>>;
+  truncated?: boolean;
+}): SyncStatus {
+  return {
+    enabled: input.enabled,
+    truncated: input.truncated ?? false,
+    providers: syncedProviders.map((provider) => {
+      const config = input.config.find((entry) => entry.provider === provider) ?? { configured: false, missing: [] };
+      return buildProviderSyncStatus(provider, input.runs, config, input.hasFacts[provider] ?? false);
+    }),
+  };
+}
+
+export type DashboardInput = {
   ranges: PeriodRanges;
   facts: FactRecord[];
   inquiries: InquiryRecord[];
   runs: SyncRunRecord[];
-  config: { configured: boolean; missing: string[]; enabled: boolean };
-  hasFacts: boolean;
-}): AnalyticsDashboard {
+  config: ProviderConfigStatus[];
+  enabled: boolean;
+  hasFacts: Partial<Record<SyncedProvider, boolean>>;
+  truncated?: boolean;
+  /** For the links to the providers' own interfaces; not a secret. */
+  gscSiteUrl?: string | null;
+};
+
+export function buildDashboard(input: DashboardInput): AnalyticsDashboard {
   const { ranges, facts, inquiries } = input;
   const overviewRows = facts.filter((row) => row.report === "ga4.overview");
+  const services = buildServices(facts, ranges);
+  const googleSearch = buildGoogleSearch(facts, ranges, input.gscSiteUrl ?? null);
+  const acquisition = buildAcquisition(facts, inquiries, ranges);
   return {
     ranges,
     overview: buildOverview(facts, inquiries, ranges),
@@ -369,12 +407,16 @@ export function buildDashboard(input: {
     ai: buildAiReferrals(facts, inquiries, ranges),
     geo: buildGeo(facts, ranges),
     landing: buildLanding(facts, ranges),
-    services: buildServices(facts, ranges),
+    services,
     packages: buildPackages(facts, ranges),
     ctas: buildCtas(facts, ranges),
     plannerFunnel: buildPlannerFunnel(facts, ranges),
     contactFunnel: buildContactFunnel(facts, ranges),
-    sync: buildSyncStatus(input.runs, input.config, input.hasFacts),
+    acquisition,
+    googleSearch,
+    bingSearch: buildBingSearch(facts, ranges),
+    insights: buildInsights({ googleSearch, services, acquisition }),
+    sync: buildSyncStatus(input),
   };
 }
 

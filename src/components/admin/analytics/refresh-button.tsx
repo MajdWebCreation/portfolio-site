@@ -16,13 +16,14 @@ function describe(state: RefreshState): string | null {
     case "limited":
       return `Net al vernieuwd. Probeer het over ${Math.ceil(state.retryAfterSeconds / 60)} minuten opnieuw.`;
     case "not_configured":
-      return `GA4 is niet gekoppeld: ${state.missing.join(", ")} ontbreekt.`;
-    case "done":
+      return `Opslaan is aangezet maar kan niet: ${state.missing.join(", ")} ontbreekt.`;
+    case "done": {
+      const failed = state.failed.length > 0 ? ` Mislukt: ${state.failed.join("; ")}.` : "";
+      const skipped = state.unconfigured.length > 0 ? ` Niet gekoppeld: ${state.unconfigured.join(", ")}.` : "";
       return state.mode === "applied"
-        ? `Bijgewerkt: ${state.rows} rijen.${state.failed.length > 0 ? ` Mislukt: ${state.failed.join("; ")}.` : ""}`
-        : `Proefrun (ANALYTICS_SYNC_ENABLED staat niet op "true"): ${state.rows} rijen opgehaald, niets opgeslagen.${
-            state.failed.length > 0 ? ` Mislukt: ${state.failed.join("; ")}.` : ""
-          }`;
+        ? `Bijgewerkt: ${state.rows} rijen.${failed}${skipped}`
+        : `Proefrun (ANALYTICS_SYNC_ENABLED staat niet op "true"): ${state.rows} rijen opgehaald, niets opgeslagen.${failed}${skipped}`;
+    }
   }
 }
 

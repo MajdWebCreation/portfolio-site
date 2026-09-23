@@ -7,6 +7,7 @@ import { ProviderError } from "@/lib/analytics-admin/types";
  * test hands the adapter a fake fetch.
  */
 const window = { start: "2026-09-20", end: "2026-09-22" };
+const plan = { phase: "recent" as const, window };
 
 function apiRow(dimensions: string[], metrics: (string | number)[]) {
   return { dimensionValues: dimensions.map((value) => ({ value })), metricValues: metrics.map((value) => ({ value: String(value) })) };
@@ -99,7 +100,7 @@ describe("createGa4Adapter", () => {
       return json({ rows: fixtures["ga4.sources"].rows.slice(2), rowCount: 3 });
     });
     /* The fixture pages are small; the adapter pages by its own size, so simulate rowCount > one page. */
-    const rows = await adapter.fetch("ga4.sources", window);
+    const rows = await adapter.fetch("ga4.sources", plan);
     expect(rows).toHaveLength(2);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(calls[0]).toMatchObject({
@@ -120,7 +121,7 @@ describe("createGa4Adapter", () => {
       call += 1;
       return json({ rows: [apiRow([`2026092${call}`], [1, 1, 1, 1, "0.5", 1, 0])], rowCount: 10_001 });
     });
-    const rows = await adapter.fetch("ga4.overview", window);
+    const rows = (await adapter.fetch("ga4.overview", plan)) as Array<{ date: string }>;
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(rows.map((r) => r.date)).toEqual(["2026-09-21", "2026-09-22"]);
   });
@@ -133,14 +134,14 @@ describe("createGa4Adapter", () => {
       [500, "http"],
     ] as const) {
       const { adapter } = adapterWith(() => json({ error: { message: "secret detail" } }, status));
-      await expect(adapter.fetch("ga4.overview", window)).rejects.toMatchObject({ kind, status });
-      await expect(adapter.fetch("ga4.overview", window)).rejects.toThrow(`${kind} ${status}`);
+      await expect(adapter.fetch("ga4.overview", plan)).rejects.toMatchObject({ kind, status });
+      await expect(adapter.fetch("ga4.overview", plan)).rejects.toThrow(`${kind} ${status}`);
     }
   });
 
   it("classes an incompatible 400 as compatibility, and never repeats the message", async () => {
     const { adapter } = adapterWith(() => json({ error: { message: "Please remove sessionSource: it is incompatible with totalUsers" } }, 400));
-    const error = await adapter.fetch("ga4.sources", window).catch((e: ProviderError) => e);
+    const error = await adapter.fetch("ga4.sources", plan).catch((e: ProviderError) => e);
     expect(error).toMatchObject({ kind: "compatibility", status: 400 });
     expect(String(error)).not.toContain("sessionSource");
   });
@@ -149,10 +150,10 @@ describe("createGa4Adapter", () => {
     const { adapter: down } = adapterWith(() => {
       throw new TypeError("fetch failed");
     });
-    await expect(down.fetch("ga4.geo", window)).rejects.toMatchObject({ kind: "network" });
+    await expect(down.fetch("ga4.geo", plan)).rejects.toMatchObject({ kind: "network" });
 
     const { adapter: garbled } = adapterWith(() => new Response("<html>", { status: 200 }));
-    await expect(garbled.fetch("ga4.geo", window)).rejects.toMatchObject({ kind: "invalid_response" });
+    await expect(garbled.fetch("ga4.geo", plan)).rejects.toMatchObject({ kind: "invalid_response" });
   });
 
   it("checks compatibility and fails a report the API marks incompatible", async () => {
@@ -170,7 +171,7 @@ describe("createGa4Adapter", () => {
 
   it("refuses a report it does not know", async () => {
     const { adapter } = adapterWith(() => json({}));
-    await expect(adapter.fetch("gsc.queries", window)).rejects.toMatchObject({ kind: "unknown_report" });
+    await expect(adapter.fetch("gsc.queries", plan)).rejects.toMatchObject({ kind: "unknown_report" });
   });
 
   it("surfaces a token failure as the token's error", async () => {
@@ -180,7 +181,7 @@ describe("createGa4Adapter", () => {
         throw new ProviderError("auth", 401);
       },
     );
-    await expect(adapter.fetch("ga4.overview", window)).rejects.toMatchObject({ kind: "auth" });
+    await expect(adapter.fetch("ga4.overview", plan)).rejects.toMatchObject({ kind: "auth" });
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

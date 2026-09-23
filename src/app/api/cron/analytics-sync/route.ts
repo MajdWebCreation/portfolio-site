@@ -3,8 +3,9 @@ import { executeAnalyticsSync } from "@/lib/analytics-admin/sync";
 import { isAuthorisedCronRequest } from "@/lib/cron/auth";
 
 /**
- * The daily analytics synchronisation: Google Analytics day aggregates into
- * analytics_facts, see lib/analytics-admin.
+ * The daily analytics synchronisation: day aggregates from Google Analytics,
+ * Search Console and Bing Webmaster Tools into analytics_facts, see
+ * lib/analytics-admin.
  *
  * Its own route and schedule, with nothing in common with the mailing
  * jobs or the retention pass: an analytics failure must not stop an invoice
@@ -16,8 +17,16 @@ import { isAuthorisedCronRequest } from "@/lib/cron/auth";
  * and no row is written, updated or removed, and no run is recorded. A
  * first deployment can therefore be watched before it stores anything.
  *
- * The log line carries the mode, the window and per report the provider,
- * status, row count, duration and failure class. Never a dimension value.
+ * Providers are independent: one that is not configured, refuses its
+ * credentials or fails is reported per provider and the others run. The
+ * response is 200 with the summary in all those cases; only a missing
+ * write key while writing is switched on is a 503, because then no
+ * provider can be stored at all.
+ *
+ * The log line carries the mode, per provider its state (and missing
+ * variable names), and per report the provider, status, dates, row count,
+ * duration and failure class. Never a dimension value: no query, page or
+ * source.
  */
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -31,8 +40,8 @@ async function handle(request: Request): Promise<Response> {
     const outcome = await executeAnalyticsSync();
 
     if (!outcome.ok) {
-      console.error("Analytics sync not configured", { reason: outcome.preflight.reason, missing: outcome.preflight.missing });
-      return Response.json({ ok: false, reason: outcome.preflight.reason, missing: outcome.preflight.missing }, { status: 503 });
+      console.error("Analytics sync cannot write", { reason: outcome.reason, missing: outcome.missing });
+      return Response.json({ ok: false, reason: outcome.reason, missing: outcome.missing }, { status: 503 });
     }
 
     const fields = summaryLogFields(outcome.summary);

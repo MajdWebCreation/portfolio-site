@@ -1,6 +1,6 @@
-import { pageTypeFromPath } from "@/lib/analytics/page-type";
+import { localeFromPath, pageTypeFromPath } from "@/lib/analytics/page-type";
 import type { PageType } from "@/lib/analytics/events";
-import { serviceDefinitions, type ServiceKey } from "@/lib/content/services";
+import { getServiceBySlug, serviceDefinitions, type ServiceKey } from "@/lib/content/services";
 import { plannerStepNames, type PlannerStepName } from "@/lib/analytics/events";
 
 /**
@@ -50,3 +50,26 @@ export function isPlannerStepName(value: string): value is PlannerStepName {
 }
 
 export const plannerStepOrder = plannerStepNames;
+
+/**
+ * A page URL from a search provider, read with the site's own registers:
+ * the page type from the path (the same rule the events use), the service
+ * a service page belongs to (through the service register's slugs), and
+ * the article slug of a blog article. Anything else is its path.
+ */
+export type SearchPageInfo = { path: string; pageType: PageType; serviceId: string | null; articleSlug: string | null };
+
+export function describeSearchPage(url: string): SearchPageInfo {
+  let path = url;
+  try {
+    path = new URL(url).pathname;
+  } catch {
+    /* Not a full URL: read it as a path. */
+  }
+  const pageType = pageTypeFromPath(path);
+  const segments = path.split("/").filter(Boolean);
+  const slug = segments[2] ?? null;
+  const serviceId = pageType === "service" && slug ? (getServiceBySlug(localeFromPath(path), slug)?.key ?? null) : null;
+  const articleSlug = pageType === "article" && slug ? slug : null;
+  return { path, pageType, serviceId, articleSlug };
+}

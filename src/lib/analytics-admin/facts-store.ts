@@ -13,6 +13,13 @@ import type { Database, Json } from "@/lib/supabase/database.types";
  * `dims` in the database, which is what makes a re-sync of the same day
  * an update rather than a duplicate.
  *
+ * Every row of one run carries the run's `synced_at`. After the upsert,
+ * rows of the same report on the same days with an older stamp are the
+ * ones the provider no longer returns (a query that left a day's top list,
+ * a preliminary row the final data dropped) and are removed. Only days the
+ * run returned rows for are touched, so a provider that has nothing yet
+ * for a day never empties it.
+ *
  * Errors are rethrown with a fixed name so the runner can class them as
  * store failures without reading into the message.
  */
@@ -27,7 +34,7 @@ class FactsStoreError extends Error {
 
 export function createFactsStore(db: SupabaseClient<Database>): FactsStore {
   return {
-    async upsert(rows: FactRow[]) {
+    async upsert(rows: FactRow[], syncedAt: string) {
       let count = 0;
       for (let index = 0; index < rows.length; index += BATCH) {
         const batch = rows.slice(index, index + BATCH).map((row) => ({
@@ -36,13 +43,27 @@ export function createFactsStore(db: SupabaseClient<Database>): FactsStore {
           date: row.date,
           dims: row.dims as Json,
           metrics: row.metrics as Json,
-          synced_at: new Date().toISOString(),
+          synced_at: syncedAt,
         }));
         const { error } = await db.from("analytics_facts").upsert(batch, { onConflict: "provider,report,date,dims_key" });
         if (error) throw new FactsStoreError("Facts opslaan", error.message);
         count += batch.length;
       }
       return count;
+    },
+
+    async deleteStale({ provider, report, dates, syncedAt }) {
+      if (dates.length === 0) return 0;
+      const { data, error } = await db
+        .from("analytics_facts")
+        .delete()
+        .eq("provider", provider)
+        .eq("report", report)
+        .in("date", dates)
+        .lt("synced_at", syncedAt)
+        .select("date");
+      if (error) throw new FactsStoreError("Verouderde facts verwijderen", error.message);
+      return data?.length ?? 0;
     },
 
     async startRun(provider, report) {
@@ -68,8 +89,22 @@ export function createFactsStore(db: SupabaseClient<Database>): FactsStore {
       if (error) throw new FactsStoreError("Sync-run afronden", error.message);
     },
 
-    async deleteOlderThan(cutoffDate) {
-      const { data, error } = await db.from("analytics_facts").delete().lt("date", cutoffDate).select("date");
+    async failStaleRuns(startedBefore) {
+      const { data, error } = await db
+        .from("analytics_sync_runs")
+        .update({ status: "failed", error: "stale_run", finished_at: new Date().toISOString() })
+        .eq("status", "running")
+        .lt("started_at", startedBefore)
+        .select("id");
+      if (error) throw new FactsStoreError("Hangende sync-runs afsluiten", error.message);
+      return data?.length ?? 0;
+    },
+
+    async deleteOlderThan(cutoffDate, reports) {
+      if (reports && reports.length === 0) return 0;
+      let query = db.from("analytics_facts").delete().lt("date", cutoffDate);
+      if (reports) query = query.in("report", [...reports]);
+      const { data, error } = await query.select("date");
       if (error) throw new FactsStoreError("Oude facts verwijderen", error.message);
       return data?.length ?? 0;
     },

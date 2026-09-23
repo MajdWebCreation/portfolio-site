@@ -1,4 +1,5 @@
 import { createSign } from "node:crypto";
+import { fetchWithTimeout, parseJson } from "@/lib/analytics-admin/http";
 import { ProviderError } from "@/lib/analytics-admin/types";
 
 /**
@@ -22,22 +23,51 @@ import { ProviderError } from "@/lib/analytics-admin/types";
  */
 export const googleEnv = {
   propertyId: "GA4_PROPERTY_ID",
+  gscSiteUrl: "GSC_SITE_URL",
   email: "GOOGLE_SERVICE_ACCOUNT_EMAIL",
   privateKey: "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY",
 } as const;
 
 export const analyticsReadScope = "https://www.googleapis.com/auth/analytics.readonly";
+export const searchConsoleReadScope = "https://www.googleapis.com/auth/webmasters.readonly";
 
 const tokenEndpoint = "https://oauth2.googleapis.com/token";
 
-export type GoogleConfig =
-  | { ok: true; propertyId: string; email: string; privateKey: string }
-  | { ok: false; missing: string[] };
+type Env = Record<string, string | undefined>;
+type Missing = { ok: false; missing: string[] };
+
+/** The identity both Google providers share: one service account, one key. */
+export type ServiceAccount = { email: string; privateKey: string };
+
+export type ServiceAccountConfig = ({ ok: true } & ServiceAccount) | Missing;
+export type Ga4Config = { ok: true; propertyId: string; account: ServiceAccount } | Missing;
+export type GscConfig = { ok: true; siteUrl: string; account: ServiceAccount } | Missing;
 
 /** The GA4 property id: digits only, whatever prefix a copy from the UI carried. */
 export function normalizePropertyId(raw: string): string | null {
   const digits = raw.trim().replace(/^properties\//, "");
   return /^\d{1,20}$/.test(digits) ? digits : null;
+}
+
+/**
+ * A Search Console property as the API names it: a domain property
+ * (`sc-domain:example.com`) or a URL-prefix property
+ * (`https://www.example.com/`, always with the trailing slash the API
+ * expects). Which of the two production uses is not assumed; both are
+ * accepted, anything else is refused.
+ */
+export function normalizeGscSiteUrl(raw: string): string | null {
+  const value = raw.trim();
+  const domain = /^sc-domain:([a-z0-9-]+(\.[a-z0-9-]+)+)$/i.exec(value);
+  if (domain) return `sc-domain:${domain[1].toLowerCase()}`;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    if (url.search || url.hash || url.username || url.password) return null;
+    return url.pathname.endsWith("/") ? url.toString() : `${url.toString()}/`;
+  } catch {
+    return null;
+  }
 }
 
 export function normalizePrivateKey(raw: string): string | null {
@@ -55,15 +85,16 @@ export function normalizePrivateKey(raw: string): string | null {
   return `${key}\n`;
 }
 
-/** Reads and checks the three variables; names what is missing or malformed, never a value. */
-export function readGoogleConfig(env: Record<string, string | undefined> = process.env): GoogleConfig {
+function serverOnly() {
   if (typeof window !== "undefined") {
     throw new Error("Google credentials were read in the browser. They are server-only.");
   }
+}
 
+/** The shared service account: names what is missing or malformed, never a value. */
+export function readServiceAccountConfig(env: Env = process.env): ServiceAccountConfig {
+  serverOnly();
   const missing: string[] = [];
-  const propertyId = env[googleEnv.propertyId] ? normalizePropertyId(env[googleEnv.propertyId] as string) : null;
-  if (!propertyId) missing.push(googleEnv.propertyId);
 
   const email = env[googleEnv.email]?.trim() ?? "";
   if (!/^[^\s@]+@[^\s@]+\.iam\.gserviceaccount\.com$/.test(email)) missing.push(googleEnv.email);
@@ -71,8 +102,32 @@ export function readGoogleConfig(env: Record<string, string | undefined> = proce
   const privateKey = env[googleEnv.privateKey] ? normalizePrivateKey(env[googleEnv.privateKey] as string) : null;
   if (!privateKey) missing.push(googleEnv.privateKey);
 
-  if (missing.length > 0 || !propertyId || !privateKey) return { ok: false, missing };
-  return { ok: true, propertyId, email, privateKey };
+  if (missing.length > 0 || !privateKey) return { ok: false, missing };
+  return { ok: true, email, privateKey };
+}
+
+/** GA4: its own property id plus the shared account. A missing Search Console site does not matter here. */
+export function readGa4Config(env: Env = process.env): Ga4Config {
+  const account = readServiceAccountConfig(env);
+  const propertyId = env[googleEnv.propertyId] ? normalizePropertyId(env[googleEnv.propertyId] as string) : null;
+  const missing = [...(propertyId ? [] : [googleEnv.propertyId]), ...(account.ok ? [] : account.missing)];
+  if (!account.ok || !propertyId) return { ok: false, missing };
+  return { ok: true, propertyId, account: { email: account.email, privateKey: account.privateKey } };
+}
+
+/** Search Console: its own site plus the shared account. A missing GA4 property does not matter here. */
+export function readGscConfig(env: Env = process.env): GscConfig {
+  const account = readServiceAccountConfig(env);
+  const siteUrl = env[googleEnv.gscSiteUrl] ? normalizeGscSiteUrl(env[googleEnv.gscSiteUrl] as string) : null;
+  const missing = [...(siteUrl ? [] : [googleEnv.gscSiteUrl]), ...(account.ok ? [] : account.missing)];
+  if (!account.ok || !siteUrl) return { ok: false, missing };
+  return { ok: true, siteUrl, account: { email: account.email, privateKey: account.privateKey } };
+}
+
+/** Scopes in one deterministic form: deduplicated, sorted, space-separated, as the JWT claim wants them. */
+export function normalizeScopes(scopes: string | readonly string[]): string {
+  const list = (typeof scopes === "string" ? scopes.split(/\s+/) : [...scopes]).map((scope) => scope.trim()).filter(Boolean);
+  return [...new Set(list)].sort().join(" ");
 }
 
 function base64url(input: Buffer | string): string {
@@ -102,44 +157,83 @@ export type TokenSource = () => Promise<string>;
 export function createServiceAccountTokenSource(input: {
   email: string;
   privateKey: string;
-  scope: string;
+  scope: string | readonly string[];
   fetch?: typeof fetch;
   now?: () => Date;
+  timeoutMs?: number;
 }): TokenSource {
   const doFetch = input.fetch ?? fetch;
   const now = input.now ?? (() => new Date());
+  const scope = normalizeScopes(input.scope);
   let cached: { token: string; expiresAt: number } | null = null;
+  /* Reports run side by side: concurrent callers share one exchange instead of each starting their own. */
+  let pending: Promise<string> | null = null;
 
-  return async () => {
-    const at = now();
-    if (cached && cached.expiresAt - at.getTime() > 60_000) return cached.token;
-
-    const assertion = signServiceAccountJwt({ email: input.email, privateKey: input.privateKey, scope: input.scope, now: at });
-    let response: Response;
-    try {
-      response = await doFetch(tokenEndpoint, {
+  const exchange = async (at: Date): Promise<string> => {
+    const assertion = signServiceAccountJwt({ email: input.email, privateKey: input.privateKey, scope, now: at });
+    const response = await fetchWithTimeout(
+      doFetch,
+      tokenEndpoint,
+      {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }).toString(),
-      });
-    } catch {
-      throw new ProviderError("network");
-    }
+      },
+      input.timeoutMs,
+    );
 
     if (!response.ok) {
       throw new ProviderError(response.status === 400 || response.status === 401 || response.status === 403 ? "auth" : "http", response.status);
     }
 
-    let body: { access_token?: unknown; expires_in?: unknown };
-    try {
-      body = (await response.json()) as typeof body;
-    } catch {
-      throw new ProviderError("invalid_response");
-    }
+    const body = parseJson<{ access_token?: unknown; expires_in?: unknown }>(response.text);
     if (typeof body.access_token !== "string" || body.access_token.length === 0) throw new ProviderError("invalid_response");
 
     const lifetime = typeof body.expires_in === "number" ? body.expires_in : 3600;
     cached = { token: body.access_token, expiresAt: at.getTime() + lifetime * 1000 };
     return cached.token;
   };
+
+  return async () => {
+    const at = now();
+    if (cached && cached.expiresAt - at.getTime() > 60_000) return cached.token;
+    pending ??= exchange(at).finally(() => {
+      pending = null;
+    });
+    return pending;
+  };
+}
+
+/**
+ * One token source per account and scope set, for the life of the process.
+ *
+ * The key is the account e-mail plus the normalised scopes, so an
+ * Analytics token is never handed to Search Console or the other way
+ * round, and two requests for the same scopes share one exchange. A
+ * source refreshes its own token when it nears expiry; a failed exchange
+ * caches nothing.
+ */
+const tokenSources = new Map<string, TokenSource>();
+
+export function googleTokenSource(
+  account: ServiceAccount,
+  scopes: string | readonly string[],
+  options: { fetch?: typeof fetch; now?: () => Date; timeoutMs?: number } = {},
+): TokenSource {
+  const key = `${account.email}\n${normalizeScopes(scopes)}`;
+  let source = tokenSources.get(key);
+  if (!source) {
+    source = createServiceAccountTokenSource({ email: account.email, privateKey: account.privateKey, scope: scopes, ...options });
+    tokenSources.set(key, source);
+  }
+  return source;
+}
+
+/** For the tests: forget every cached source. */
+export function resetGoogleTokenSources(): void {
+  tokenSources.clear();
+}
+
+export function googleTokenSourceCount(): number {
+  return tokenSources.size;
 }
