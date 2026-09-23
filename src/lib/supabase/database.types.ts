@@ -5,11 +5,10 @@
  *   npx supabase gen types typescript --project-id wbrqbuctwzpobnvcsomt \
  *     > src/lib/supabase/database.types.ts
  *
- * Exception, 23 September 2026: the inquiries attribution columns and the
- * analytics_facts / analytics_sync_runs tables were written in by hand in
- * the generator's own format, because their migrations (20260923120000 and
- * 20260923120100) were authored but not yet applied to the remote project.
- * Regenerate once they are, and this note goes.
+ * Exception, 23 September 2026: the analytics_facts / analytics_sync_runs
+ * tables were written in by hand in the generator's own format, because
+ * their migration (20260923120100) was authored but not yet applied to the
+ * remote project. Regenerate once it is, and this note goes.
  */
 
 export type Json =

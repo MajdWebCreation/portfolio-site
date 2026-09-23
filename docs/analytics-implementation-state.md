@@ -59,7 +59,7 @@ Bestanden: `src/lib/attribution/{types,sources,classify,capture,event-params}.ts
 
 **Events**: `event-params.ts` → `traffic_class`/`traffic_source` alleen op `contact_submit` en `planner_complete`, en alleen bij een externe bron (`direct`/`internal` niet).
 
-**Database** (`supabase/migrations/20260923120000_inquiry_attribution.sql`): `inquiries.traffic_class` (CHECK op de zeven klassen), `traffic_source`, `traffic_medium`, `campaign`, `landing_path`; alle nullable; constraint `inquiries_attribution_shape` (alles null, of klasse én pad gevuld); anon-insert-grant uitgebreid met exact deze vijf kolommen; policy `inquiries_public_intake` opnieuw aangemaakt met vormchecks; index op `traffic_class`.
+**Database** (`supabase/migrations/20260923223958_inquiry_attribution.sql`, toegepast op productie op 24 september 2026; geschreven als 20260923120000): `inquiries.traffic_class` (CHECK op de zeven klassen), `traffic_source`, `traffic_medium`, `campaign`, `landing_path`; alle nullable; constraint `inquiries_attribution_shape` (alles null, of klasse én pad gevuld); anon-insert-grant uitgebreid met exact deze vijf kolommen; policy `inquiries_public_intake` opnieuw aangemaakt met vormchecks; index op `traffic_class`.
 
 **Admin**: `src/lib/admin/inquiries/{types,mapper,repository}.ts` (`Inquiry.attribution?`), `src/components/admin/inquiries/inquiry-detail.tsx` (sectie "Herkomst van het bezoek"), `inquiries-list.tsx` (kolom en filters "Bezoek via" en "Bron").
 
@@ -153,7 +153,7 @@ Geen van de nieuwe waarden staat in Vercel. De Vercel MCP-koppeling toont het pr
 
 ## 11. Nog handmatig door de eigenaar
 
-1. Migraties toepassen, in volgorde: `20260923120000_inquiry_attribution.sql`, `20260923120100_analytics_facts.sql` (ook nog open uit een eerdere fase: `20260923080000_redact_activation_tokens.sql`). Daarna `database.types.ts` regenereren.
+1. Migraties toepassen, in volgorde: ~~`20260923120000_inquiry_attribution.sql`~~ (toegepast 24 september 2026 als `20260923223958`), `20260923120100_analytics_facts.sql` (ook nog open uit een eerdere fase: `20260923080000_redact_activation_tokens.sql`). Daarna `database.types.ts` regenereren.
 2. Vercel Production/Preview: de vier nieuwe variabelen; `ANALYTICS_SYNC_ENABLED=true` pas na een paar dry-runs.
 3. Google Cloud: project, Analytics Data API aan, service account + sleutel, Viewer op de GA4-property. Voor fase 3 tevens Search Console API aan en het service account als gebruiker "Beperkt" op de Search Console-property (community-gedocumenteerd, bevestigen met een eerste aanroep).
 4. GA4 UI: 29 custom dimensions + metric `step_index`, key events `contact_submit`/`planner_complete`, retentie 14 maanden, Google Signals uit, geen Ads, Enhanced Measurement history-changes aan en outbound/form uit, unwanted referral `mollie.com`, internal traffic.
