@@ -61,6 +61,7 @@ const nextConfig: NextConfig = {
       { source: "/algemene-voorwaarden", destination: "/nl/algemene-voorwaarden", permanent: true },
       { source: "/privacy", destination: "/nl/privacy", permanent: true },
       { source: "/cookies", destination: "/nl/cookies", permanent: true },
+      { source: "/websitecheck", destination: "/nl/websitecheck", permanent: true },
       // Unprefixed English routes.
       { source: "/services", destination: "/en/services", permanent: true },
       { source: "/services/:slug", destination: "/en/services/:slug", permanent: true },

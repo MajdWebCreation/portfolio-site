@@ -23,6 +23,7 @@ const originOptions: readonly { value: OriginFilter; label: string }[] = [
   { value: "all", label: "Alle" },
   { value: "contact", label: inquiryOriginLabels.contact },
   { value: "project_planner", label: inquiryOriginLabels.project_planner },
+  { value: "websitecheck", label: inquiryOriginLabels.websitecheck },
 ];
 
 export default function InquiriesList({ inquiries }: { inquiries: Inquiry[] }) {
@@ -59,7 +60,7 @@ export default function InquiriesList({ inquiries }: { inquiries: Inquiry[] }) {
       .filter(
         (inquiry) =>
           !needle ||
-          [inquiry.name, inquiry.company ?? "", inquiry.email, inquiry.message]
+          [inquiry.name, inquiry.company ?? "", inquiry.email, inquiry.message, inquiry.origin === "websitecheck" ? inquiry.websiteUrl : ""]
             .join(" ")
             .toLowerCase()
             .includes(needle),
@@ -135,7 +136,7 @@ export default function InquiriesList({ inquiries }: { inquiries: Inquiry[] }) {
                   {inquiry.company ? <span className="block text-[0.85rem] text-muted">{inquiry.company}</span> : null}
                 </td>
                 <td data-label="Herkomst">
-                  <StatusBadge tone={inquiry.origin === "project_planner" ? "accent" : "neutral"}>
+                  <StatusBadge tone={inquiry.origin === "contact" ? "neutral" : "accent"}>
                     {inquiryOriginLabels[inquiry.origin]}
                   </StatusBadge>
                 </td>

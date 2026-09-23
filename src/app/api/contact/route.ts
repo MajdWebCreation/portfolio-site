@@ -1,7 +1,8 @@
 import { Resend } from "resend";
 import { validateAttribution } from "@/lib/attribution/classify";
 import { storeInquiry } from "@/lib/contact/inquiry";
-import type { ContactPayload } from "@/lib/contact/payload";
+import type { ContactMode, ContactPayload } from "@/lib/contact/payload";
+import { normalizeWebsiteUrl, websiteUrlHost } from "@/lib/contact/website-url";
 import {
   emailLink,
   emailList,
@@ -15,7 +16,7 @@ import {
 } from "@/lib/email/shell";
 
 type NormalizedSubmission = {
-  mode: "contact" | "project_planner";
+  mode: ContactMode;
   locale: "en" | "nl";
   name: string;
   email: string;
@@ -23,12 +24,16 @@ type NormalizedSubmission = {
   phone: string;
   message: string;
   website: string;
+  /** The websitecheck address, normalised; empty when missing or not a website address. */
+  websiteUrl: string;
   planner?: ContactPayload["planner"];
 };
 
 type ValidationField =
   | "name"
   | "email"
+  | "phone"
+  | "websiteUrl"
   | "message"
   | "projectType"
   | "pageCount"
@@ -56,16 +61,26 @@ function renderTextList(items: string[] | undefined, emptyLabel = "—") {
   return items.map((item) => `- ${item}`).join("\n");
 }
 
+function normalizeMode(mode: unknown): ContactMode {
+  return mode === "project_planner" || mode === "websitecheck" ? mode : "contact";
+}
+
+/* Digits with the separators people type; six to thirty characters. Not a phone parser, a sanity bound. */
+const phonePattern = /^\+?[0-9][0-9 ()./-]{5,29}$/;
+
 function normalizeSubmission(body: ContactPayload): NormalizedSubmission {
+  const mode = normalizeMode(body.mode);
   return {
-    mode: body.mode === "project_planner" ? "project_planner" : "contact",
+    mode,
     locale: body.locale === "nl" ? "nl" : "en",
     name: body.name?.trim() ?? "",
     email: body.email?.trim().toLowerCase() ?? "",
     company: body.company?.trim() ?? "",
     phone: body.phone?.trim() ?? "",
-    message: body.message?.trim() ?? "",
+    /* A websitecheck has no message: whatever a client put there is not kept. */
+    message: mode === "websitecheck" ? "" : (body.message?.trim() ?? ""),
     website: body.website?.trim() ?? "",
+    websiteUrl: mode === "websitecheck" ? (normalizeWebsiteUrl(body.websiteUrl) ?? "") : "",
     planner: body.planner,
   };
 }
@@ -78,6 +93,8 @@ function getValidationMessage(locale: "en" | "nl", field: ValidationField) {
   const nl: Record<ValidationField, string> = {
     name: "Vul je naam in",
     email: "Vul een geldig e-mailadres in",
+    phone: "Controleer je telefoonnummer",
+    websiteUrl: "Vul het adres van je website in, bijvoorbeeld www.jouwbedrijf.nl",
     message: "Je bericht is te kort",
     projectType: "Kies een projecttype",
     pageCount: "Maak een keuze voordat je doorgaat",
@@ -95,6 +112,8 @@ function getValidationMessage(locale: "en" | "nl", field: ValidationField) {
   const en: Record<ValidationField, string> = {
     name: "Enter your name",
     email: "Enter a valid email address",
+    phone: "Check your phone number",
+    websiteUrl: "Enter your website address, for example www.yourcompany.com",
     message: "Your message is too short",
     projectType: "Select a project type",
     pageCount: "Make a selection before continuing",
@@ -126,6 +145,16 @@ function validateSubmission(submission: NormalizedSubmission) {
   if (submission.mode === "contact") {
     if (submission.message.trim().length < 12) {
       errors.message = getValidationMessage(submission.locale, "message");
+    }
+    return errors;
+  }
+
+  if (submission.mode === "websitecheck") {
+    if (!submission.websiteUrl) {
+      errors.websiteUrl = getValidationMessage(submission.locale, "websiteUrl");
+    }
+    if (submission.phone && !phonePattern.test(submission.phone)) {
+      errors.phone = getValidationMessage(submission.locale, "phone");
     }
     return errors;
   }
@@ -305,6 +334,63 @@ ymcreations.com
   return { html, text };
 }
 
+/**
+ * The confirmation a websitecheck requester receives. It repeats the two
+ * things that matter to them: which site will be looked at, and that nothing
+ * is owed for it. No response time is promised for the check itself.
+ */
+function buildWebsitecheckCustomerEmail(params: { locale: "en" | "nl"; name: string; websiteUrl: string }) {
+  const { locale, name, websiteUrl } = params;
+  const isNl = locale === "nl";
+  const host = websiteUrlHost(websiteUrl);
+  const title = isNl ? "Je websitecheck-aanvraag is ontvangen" : "Your website check request has been received";
+  const intro = isNl
+    ? `Hi ${escapeHtml(name)}, bedankt voor je aanvraag. We bekijken ${escapeHtml(host)} persoonlijk en sturen je de bevindingen per e-mail op dit adres.`
+    : `Hi ${escapeHtml(name)}, thank you for your request. We will look at ${escapeHtml(host)} personally and send you our findings by email at this address.`;
+  const nextTitle = isNl ? "Wat gebeurt er nu?" : "What happens next?";
+  const nextText = isNl
+    ? "Iemand van YM Creations loopt door je website op eerste indruk, gebruik op mobiel, duidelijkheid, techniek en snelheid, vertrouwen en structuur. Je ontvangt een korte beoordeling in gewone taal: wat goed is, wat beter kan en wat het meest de moeite waard is om eerst op te pakken."
+    : "Someone at YM Creations goes through your website on first impression, mobile use, clarity, technical quality and speed, trust and structure. You receive a short assessment in plain language: what works, what could be better and what is most worth addressing first.";
+  const freeTitle = isNl ? "Gratis en vrijblijvend" : "Free and without obligation";
+  const freeText = isNl
+    ? "De websitecheck kost niets en verplicht je tot niets. Wil je daarna iets laten verbeteren of opnieuw laten bouwen, dan bespreken we dat pas als jij dat wilt."
+    : "The website check costs nothing and commits you to nothing. If you want something improved or rebuilt afterwards, we discuss that only when you want to.";
+
+  const html = emailShell({
+    locale,
+    title,
+    preheader: isNl ? `We bekijken ${host} persoonlijk.` : `We will look at ${host} personally.`,
+    content: [
+      emailText(intro, { top: 18 }),
+      emailMeta([{ label: "Website", value: websiteUrl }]),
+      emailSection({ label: nextTitle, html: escapeHtml(nextText) }),
+      emailDivider(),
+      emailPanel({ label: freeTitle, html: escapeHtml(freeText) }),
+    ].join(""),
+  });
+
+  const text = `
+${isNl ? `Hi ${name},` : `Hi ${name},`}
+
+${isNl
+  ? `Bedankt voor je aanvraag. We bekijken ${host} persoonlijk en sturen je de bevindingen per e-mail op dit adres.`
+  : `Thank you for your request. We will look at ${host} personally and send you our findings by email at this address.`}
+
+Website: ${websiteUrl}
+
+${nextTitle}
+${nextText}
+
+${freeTitle}
+${freeText}
+
+YM Creations
+ymcreations.com
+  `.trim();
+
+  return { html, text };
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ContactPayload;
@@ -315,6 +401,7 @@ export async function POST(request: Request) {
       phone,
       message,
       website,
+      websiteUrl,
       mode,
       locale,
       planner,
@@ -331,6 +418,7 @@ export async function POST(request: Request) {
       phone,
       message,
       website,
+      websiteUrl,
       mode,
       locale,
       planner,
@@ -362,7 +450,7 @@ export async function POST(request: Request) {
     // there is no record of it. The mail below is the notification, not the
     // record.
     try {
-      await storeInquiry({ origin: mode, locale, name, email, company, message, phone, planner, attribution });
+      await storeInquiry({ origin: mode, locale, name, email, company, message, phone, planner, websiteUrl, attribution });
     } catch (error) {
       // No visitor data in the log line: Vercel keeps these, and an address
       // does not help anyone read the failure.
@@ -396,7 +484,24 @@ export async function POST(request: Request) {
         ? locale === "nl"
           ? `Nieuwe Project Planner aanvraag — ${planner?.recommendedPackage || "Onbekend pakket"}`
           : `New Project Planner inquiry — ${planner?.recommendedPackage || "Unknown package"}`
-        : `New website inquiry from ${name}`;
+        : mode === "websitecheck"
+          ? `Nieuwe websitecheck-aanvraag — ${websiteUrlHost(websiteUrl)}`
+          : `New website inquiry from ${name}`;
+
+    const adminHeading =
+      mode === "project_planner"
+        ? "New Project Planner submission"
+        : mode === "websitecheck"
+          ? "New websitecheck request"
+          : "New contact form submission";
+
+    const websitecheckHtml =
+      mode === "websitecheck"
+        ? `
+        <p><strong>Website:</strong> <a href="${escapeHtml(websiteUrl)}">${escapeHtml(websiteUrl)}</a></p>
+        <p><strong>Phone:</strong> ${escapeHtml(phone || "—")}</p>
+      `
+        : "";
 
     const plannerHtml =
       mode === "project_planner"
@@ -432,11 +537,7 @@ export async function POST(request: Request) {
 
     const adminHtml = `
       <div style="font-family:Arial,Helvetica,sans-serif;padding:24px;color:#111827;">
-        <h2 style="margin:0 0 20px;">${
-          mode === "project_planner"
-            ? "New Project Planner submission"
-            : "New contact form submission"
-        }</h2>
+        <h2 style="margin:0 0 20px;">${adminHeading}</h2>
         <p><strong>Name:</strong> ${escapeHtml(name)}</p>
         <p><strong>Email:</strong> ${escapeHtml(email)}</p>
         <p><strong>Company:</strong> ${escapeHtml(company || "—")}</p>
@@ -445,10 +546,15 @@ export async function POST(request: Request) {
             ? `<p><strong>Phone:</strong> ${escapeHtml(phone || "—")}</p>`
             : ""
         }
-        <p><strong>Message:</strong></p>
+        ${websitecheckHtml}
+        ${
+          mode === "websitecheck"
+            ? ""
+            : `<p><strong>Message:</strong></p>
         <div style="margin-top:8px;padding:16px;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb;white-space:pre-wrap;">${escapeHtml(
           message
-        )}</div>
+        )}</div>`
+        }
         ${plannerHtml}
       </div>
     `;
@@ -481,19 +587,15 @@ ${(planner?.selectedAddOns ?? []).map((item) => `- ${item}`).join("\n") || "- �
         : "";
 
     const adminText = `
-${
-  mode === "project_planner"
-    ? "New Project Planner submission"
-    : "New contact form submission"
-}
+${adminHeading}
 
 Name: ${name}
 Email: ${email}
 Company: ${company || "—"}
-${mode === "project_planner" ? `Phone: ${phone || "—"}` : ""}
-
+${mode === "project_planner" || mode === "websitecheck" ? `Phone: ${phone || "—"}` : ""}
+${mode === "websitecheck" ? `Website: ${websiteUrl}` : `
 Message:
-${message}
+${message}`}
 
 ${plannerText}
     `.trim();
@@ -517,6 +619,10 @@ ${plannerText}
         ? locale === "nl"
           ? "We hebben je projectaanvraag ontvangen — YM Creations"
           : "We received your project request — YM Creations"
+        : mode === "websitecheck"
+          ? locale === "nl"
+            ? "We hebben je websitecheck-aanvraag ontvangen — YM Creations"
+            : "We received your website check request — YM Creations"
         : locale === "nl"
           ? "Je bericht is ontvangen — YM Creations"
           : "We received your message — YM Creations";
@@ -584,13 +690,15 @@ ${contactAddress}
 ymcreations.com
     `.trim();
 
-    const plannerCustomerEmail =
+    const customerEmail =
       mode === "project_planner"
         ? buildPlannerCustomerEmail({ locale, name, planner })
-        : null;
+        : mode === "websitecheck"
+          ? buildWebsitecheckCustomerEmail({ locale, name, websiteUrl })
+          : null;
 
-    const autoReplyHtml = plannerCustomerEmail?.html ?? defaultAutoReplyHtml;
-    const autoReplyText = plannerCustomerEmail?.text ?? defaultAutoReplyText;
+    const autoReplyHtml = customerEmail?.html ?? defaultAutoReplyHtml;
+    const autoReplyText = customerEmail?.text ?? defaultAutoReplyText;
 
     const autoReplyResult = await resend.emails.send({
       from,

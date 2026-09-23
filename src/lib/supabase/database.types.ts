@@ -537,6 +537,7 @@ export type Database = {
           traffic_medium: string | null
           traffic_source: string | null
           updated_at: string
+          website_url: string | null
         }
         Insert: {
           campaign?: string | null
@@ -557,6 +558,7 @@ export type Database = {
           traffic_medium?: string | null
           traffic_source?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Update: {
           campaign?: string | null
@@ -577,6 +579,7 @@ export type Database = {
           traffic_medium?: string | null
           traffic_source?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Relationships: []
       }

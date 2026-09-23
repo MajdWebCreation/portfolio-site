@@ -7,7 +7,7 @@ export type InquiryRow = Database["public"]["Tables"]["inquiries"]["Row"];
 /**
  * Row to domain. The union in `Inquiry` is reconstructed from `origin`; the
  * database enforces with a check constraint that a planner row carries its
- * payload and a contact row does not.
+ * payload, a websitecheck row its address, and a contact row neither.
  */
 /** The five columns as one value, or nothing: the database keeps them together, so a class without a path never occurs. */
 function attributionFromRow(row: InquiryRow): Attribution | undefined {
@@ -42,6 +42,15 @@ export function inquiryFromRow(row: InquiryRow): Inquiry {
       origin: "project_planner",
       ...(row.phone ? { phone: row.phone } : {}),
       planner: row.planner as unknown as PlannerSubmission,
+    };
+  }
+
+  if (row.origin === "websitecheck") {
+    return {
+      ...base,
+      origin: "websitecheck",
+      websiteUrl: row.website_url ?? "",
+      ...(row.phone ? { phone: row.phone } : {}),
     };
   }
 

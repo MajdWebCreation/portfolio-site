@@ -438,7 +438,7 @@ export function factRecordFromRow(row: { report: string; date: string; dims: unk
 export function inquiryRecordFromRow(row: { received_at: string; origin: string; traffic_class: string | null; traffic_source: string | null }): InquiryRecord {
   return {
     receivedAt: row.received_at,
-    origin: row.origin === "project_planner" ? "project_planner" : "contact",
+    origin: row.origin === "project_planner" || row.origin === "websitecheck" ? row.origin : "contact",
     trafficClass: isTrafficClass(row.traffic_class) ? row.traffic_class : null,
     trafficSource: row.traffic_source,
   };

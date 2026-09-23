@@ -130,7 +130,14 @@ export default function InquiryDetail({ inquiry, customerId }: { inquiry: Inquir
                 {inquiry.email}
               </a>
             </DetailRow>
-            {inquiry.origin === "project_planner" && inquiry.phone ? (
+            {inquiry.origin === "websitecheck" ? (
+              <DetailRow term="Website">
+                <a href={inquiry.websiteUrl} target="_blank" rel="noopener noreferrer" className="link-static break-all">
+                  {inquiry.websiteUrl}
+                </a>
+              </DetailRow>
+            ) : null}
+            {inquiry.origin !== "contact" && inquiry.phone ? (
               <DetailRow term="Telefoon">
                 <a href={`tel:${inquiry.phone.replace(/\s/g, "")}`} className="link-static tabular">
                   {inquiry.phone}
@@ -143,13 +150,16 @@ export default function InquiryDetail({ inquiry, customerId }: { inquiry: Inquir
           </DetailList>
         </AdminSection>
 
-        <AdminSection id="message" title={inquiry.origin === "project_planner" ? "Toelichting" : "Bericht"}>
-          {inquiry.message ? (
-            <p className="max-w-[64ch] whitespace-pre-line text-[0.98rem] leading-relaxed text-ink">{inquiry.message}</p>
-          ) : (
-            <p className="text-[0.95rem] text-muted">Geen toelichting meegegeven.</p>
-          )}
-        </AdminSection>
+        {/* A websitecheck asks for no message, so there is no section for one. */}
+        {inquiry.origin !== "websitecheck" ? (
+          <AdminSection id="message" title={inquiry.origin === "project_planner" ? "Toelichting" : "Bericht"}>
+            {inquiry.message ? (
+              <p className="max-w-[64ch] whitespace-pre-line text-[0.98rem] leading-relaxed text-ink">{inquiry.message}</p>
+            ) : (
+              <p className="text-[0.95rem] text-muted">Geen toelichting meegegeven.</p>
+            )}
+          </AdminSection>
+        ) : null}
 
         {inquiry.origin === "project_planner" ? <PlannerSummary inquiry={inquiry} /> : null}
 

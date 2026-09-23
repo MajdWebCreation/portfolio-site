@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { actionFailed, type ActionResult } from "@/lib/admin/action-result";
 import { adminDb } from "@/lib/admin/db";
-import { getLocalizedPath } from "@/lib/content/routes";
+import { campaignRoutes, getLocalizedPath } from "@/lib/content/routes";
 import { locales } from "@/lib/content/site-content";
 import {
   isValidDevelopmentDiscountPercent,
@@ -35,6 +35,9 @@ function revalidatePricing() {
     revalidatePath(getLocalizedPath(locale, "pricing"));
     revalidatePath(getLocalizedPath(locale, "projectPlanner"));
   }
+
+  /* The websitecheck landing page shows the campaign on development costs. */
+  revalidatePath(campaignRoutes.websitecheck);
 }
 
 export async function updatePackagePrice(

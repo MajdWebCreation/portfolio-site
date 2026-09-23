@@ -236,7 +236,7 @@ export type FactRecord = {
 /** The four columns of an inquiry the dashboard needs. Never a name or an address. */
 export type InquiryRecord = {
   receivedAt: string;
-  origin: "contact" | "project_planner";
+  origin: "contact" | "project_planner" | "websitecheck";
   trafficClass: TrafficClass | null;
   trafficSource: string | null;
 };

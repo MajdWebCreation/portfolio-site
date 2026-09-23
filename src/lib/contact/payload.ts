@@ -1,11 +1,14 @@
 /**
  * Contract of a submission to /api/contact, as posted by the public contact
- * form (mode "contact") and the project planner (mode "project_planner").
- * Shared by the API route and the admin, which reads planner submissions in
- * exactly this shape. Changing it changes the public payload.
+ * form (mode "contact"), the project planner (mode "project_planner") and
+ * the websitecheck landing page (mode "websitecheck"). Shared by the API
+ * route and the admin, which reads planner submissions in exactly this
+ * shape. Changing it changes the public payload.
  */
+export type ContactMode = "contact" | "project_planner" | "websitecheck";
+
 export type ContactPayload = {
-  mode?: "contact" | "project_planner";
+  mode?: ContactMode;
   locale?: "en" | "nl";
   /**
    * Where the visit came from, as the browser classified it
@@ -24,7 +27,13 @@ export type ContactPayload = {
   company?: string;
   phone?: string;
   message: string;
+  /** Honeypot. A filled value marks the submission as automated. */
   website?: string;
+  /**
+   * The website a websitecheck is requested for, as typed. The route
+   * normalises it (lib/contact/website-url) and stores the result.
+   */
+  websiteUrl?: string;
   planner?: {
     projectTypeKey?: string;
     selectedProjectType?: string;

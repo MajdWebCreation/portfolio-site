@@ -101,6 +101,15 @@ export const legalRoutes = {
   terms: "/nl/algemene-voorwaarden",
 } as const;
 
+/**
+ * Campaign landing pages. Dutch only and outside the localized route map for
+ * the same reason as the terms: there is no English counterpart, and they
+ * are not part of the site's navigation.
+ */
+export const campaignRoutes = {
+  websitecheck: "/nl/websitecheck",
+} as const;
+
 export function getLocalizedPath(locale: Locale, route: StaticRouteKey) {
   return localizedStaticRoutes[route][locale];
 }

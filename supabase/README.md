@@ -22,10 +22,14 @@ Three things reach a visitor straight from the database, as `anon`:
 - **Articles** — `articles`. Readable only while `status = 'published'` and
   `published_at` has arrived, so a draft never leaves the database and an
   article dated in the future is not handed out either. See *Scheduling*.
-- **Inquiries** — write only. `anon` holds an INSERT grant on eight named
-  columns; `status`, `received_at`, `internal_note` and `updated_at` are not
-  among them and can only take their defaults. There is no SELECT grant, so a
-  visitor cannot read back what was submitted.
+- **Inquiries** — write only. `anon` holds an INSERT grant on the named
+  columns a visitor may hand in (the request fields, the attribution columns
+  and, for a websitecheck, `website_url`); `status`, `received_at`,
+  `internal_note` and `updated_at` are not among them and can only take their
+  defaults. There is no SELECT grant, so a visitor cannot read back what was
+  submitted. Three origins: `contact`, `project_planner` and `websitecheck`
+  (the `/nl/websitecheck` landing page), each with its own shape enforced by
+  `inquiries_origin_shape`.
 
 No service role key is used anywhere in the application.
 

@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { getPublishedArticles } from "@/lib/content/articles";
 import { getCaseStudyPath, getPublishedCaseStudyPaths } from "@/lib/content/cases";
 import {
+  campaignRoutes,
   getLocalizedPath,
   legalRoutes,
   type StaticRouteKey,
@@ -103,8 +104,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ),
   ];
 
+  /* Campaign landing pages: Dutch only, no counterpart to point at. */
+  const campaignEntries: MetadataRoute.Sitemap = [{ url: absolute(campaignRoutes.websitecheck) }];
+
   return [
     ...staticEntries,
+    ...campaignEntries,
     ...serviceEntries,
     ...caseEntries,
     ...articleEntries,
