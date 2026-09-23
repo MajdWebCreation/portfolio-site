@@ -112,6 +112,9 @@ export default function ContactBlock({
             text: content.businessNote,
             termsLabel: content.termsLabel,
             termsHref: legalRoutes.terms,
+            privacyText: content.privacyNote,
+            privacyLabel: content.privacyLabel,
+            privacyHref: getLocalizedPath(locale, "privacy"),
           }}
         />
       </div>

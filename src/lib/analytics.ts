@@ -1,3 +1,5 @@
+import { hasAnalyticsConsent } from "@/lib/consent/store";
+
 export type AnalyticsEventName =
   | "contact_form_submit_success"
   | "primary_cta_click"
@@ -39,6 +41,16 @@ function pushToDataLayer(payload: Record<string, unknown>) {
 
 export function trackEvent(event: AnalyticsEvent) {
   if (typeof window === "undefined") {
+    return;
+  }
+
+  /*
+    Nothing before consent, not even a push to the data layer: gtag.js drains
+    that queue the moment it loads, so an event buffered now would be sent
+    the moment the visitor said yes, about something they did while the
+    answer was still no. Events from before the choice are simply lost.
+  */
+  if (!hasAnalyticsConsent()) {
     return;
   }
 

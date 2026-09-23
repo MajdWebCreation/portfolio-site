@@ -1,5 +1,6 @@
 import Link from "next/link";
 import BrandMark from "@/components/brand-mark";
+import ConsentSettingsButton from "@/components/consent/consent-settings-button";
 import { getCounterpartPath, getLocalizedPath, legalRoutes } from "@/lib/content/routes";
 import {
   businessInfo,
@@ -26,6 +27,8 @@ export default function SiteFooter({
   const alternateLocale: Locale = locale === "nl" ? "en" : "nl";
   const counterpartPath = getCounterpartPath(currentPath, locale, alternateLocale);
   const year = new Date().getFullYear();
+  const analyticsConfigured = Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID);
+  const legalLinkClass = "text-paper/70 transition-colors hover:text-paper";
 
   const navigation = [
     { href: getLocalizedPath(locale, "services"), label: content.nav.services },
@@ -99,15 +102,35 @@ export default function SiteFooter({
             © {year} {businessInfo.legalName}. {footer.rights}
           </p>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            {/* Legal documents are Dutch only; the English site links to the same page. */}
+            {/*
+              The terms are Dutch only, so both languages link to the same
+              page; the privacy and cookie statements follow the locale. The
+              settings button only exists when there is a choice to revisit,
+              which is when the deployment has an analytics property.
+            */}
             <nav aria-label={footer.legal}>
-              <Link
-                href={legalRoutes.terms}
-                hrefLang="nl"
-                className="text-paper/70 transition-colors hover:text-paper"
-              >
-                {footer.terms}
-              </Link>
+              <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                <li>
+                  <Link href={legalRoutes.terms} hrefLang="nl" className={legalLinkClass}>
+                    {footer.terms}
+                  </Link>
+                </li>
+                <li>
+                  <Link href={getLocalizedPath(locale, "privacy")} className={legalLinkClass}>
+                    {footer.privacy}
+                  </Link>
+                </li>
+                <li>
+                  <Link href={getLocalizedPath(locale, "cookies")} className={legalLinkClass}>
+                    {footer.cookies}
+                  </Link>
+                </li>
+                {analyticsConfigured ? (
+                  <li>
+                    <ConsentSettingsButton label={footer.cookieSettings} className={legalLinkClass} />
+                  </li>
+                ) : null}
+              </ul>
             </nav>
             <Link
               href={counterpartPath}

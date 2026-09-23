@@ -355,7 +355,9 @@ export async function POST(request: Request) {
     try {
       await storeInquiry({ origin: mode, locale, name, email, company, message, phone, planner });
     } catch (error) {
-      console.error("Storing inquiry failed", { mode, locale, customerEmail: email, error });
+      // No visitor data in the log line: Vercel keeps these, and an address
+      // does not help anyone read the failure.
+      console.error("Storing inquiry failed", { mode, locale, error });
       return Response.json(
         {
           error:
@@ -497,13 +499,7 @@ ${plannerText}
     });
 
     if (adminResult.error) {
-      console.error("Admin email failed", {
-        mode,
-        locale,
-        recipient: to,
-        customerEmail: email,
-        error: adminResult.error,
-      });
+      console.error("Admin email failed", { mode, locale, error: adminResult.error });
       return Response.json({ error: adminResult.error.message }, { status: 500 });
     }
 
@@ -596,12 +592,7 @@ ymcreations.com
     });
 
     if (autoReplyResult.error) {
-      console.error("Customer confirmation email failed", {
-        mode,
-        locale,
-        customerEmail: email,
-        error: autoReplyResult.error,
-      });
+      console.error("Customer confirmation email failed", { mode, locale, error: autoReplyResult.error });
       return Response.json(
         { error: autoReplyResult.error.message },
         { status: 500 }

@@ -1186,6 +1186,13 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
                     className="text-white/75 underline decoration-white/30 underline-offset-[0.2em] transition-colors hover:text-white"
                   >
                     {content.fields.termsLabel}
+                  </Link>{" "}
+                  {content.fields.privacyNote}{" "}
+                  <Link
+                    href={content.links.privacy}
+                    className="text-white/75 underline decoration-white/30 underline-offset-[0.2em] transition-colors hover:text-white"
+                  >
+                    {content.fields.privacyLabel}
                   </Link>
                 </p>
               </div>

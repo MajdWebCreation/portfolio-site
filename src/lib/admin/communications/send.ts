@@ -1,5 +1,6 @@
 import { recordCommunication, type CommunicationContext } from "@/lib/admin/communications/log";
 import { deliverEmail, type DeliveryResult, type OutboundEmail } from "@/lib/admin/communications/provider";
+import { redactSecrets } from "@/lib/admin/communications/redact";
 
 /**
  * The one way this system mails a customer.
@@ -34,11 +35,13 @@ export async function sendCustomerEmail(
   const delivery = await deliverEmail(email);
   if (!delivery.sent) return delivery;
 
+  // The copy in the log is the mail minus its secrets: an activation link
+  // keeps its shape but not its token. The mail itself went out unchanged.
   const communicationId = await recordCommunication(context, {
     recipient: email.to,
     subject: email.subject,
-    bodyText: email.text,
-    bodyHtml: email.html,
+    bodyText: redactSecrets(email.text),
+    bodyHtml: redactSecrets(email.html),
     sentAt: delivery.sentAt,
     ...(delivery.messageId ? { providerMessageId: delivery.messageId } : {}),
   });

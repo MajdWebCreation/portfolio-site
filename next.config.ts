@@ -9,7 +9,71 @@ const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
   : null;
 
+/*
+  Content Security Policy, in report-only mode.
+
+  Nothing is blocked yet. The browser applies the policy below as if it were
+  enforced, but instead of refusing a request it posts a report to
+  /api/csp-report and carries on. That is deliberate: the public pages are
+  static and Next injects inline scripts for hydration, so a strict nonce
+  policy is not available without making every page dynamic, and the fallback
+  ('unsafe-inline') has to be seen working against real traffic before it is
+  allowed to break anything. Move to `Content-Security-Policy` only once the
+  reports have been quiet.
+
+  What each source is for:
+    script   gtag.js, loaded only after analytics consent (consent/analytics-scripts.tsx)
+    connect  Google Analytics collection; the Supabase host for the admin's
+             browser-side image upload
+    img      the Supabase public bucket (admin preview), GA beacons, blob and
+             data URLs the admin's PDF preview and next/og use
+    frame    blob: for the admin's PDF preview iframes
+    form     server actions post to the site itself; a direct debit
+             activation then redirects to Mollie's checkout, and Chrome checks
+             that redirect against form-action as well
+  Development adds 'unsafe-eval', which the dev server's tooling needs.
+*/
+const cspReportOnly = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""} https://www.googletagmanager.com`,
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' data: blob: https://www.googletagmanager.com https://*.google-analytics.com${supabaseHost ? ` https://${supabaseHost}` : ""}`,
+  "font-src 'self'",
+  `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com${supabaseHost ? ` https://${supabaseHost}` : ""}`,
+  "frame-src blob:",
+  "frame-ancestors 'none'",
+  "form-action 'self' https://www.mollie.com",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "report-uri /api/csp-report",
+  "report-to csp",
+].join("; ");
+
+/*
+  The headers every response carries. None of them changes how the site
+  behaves today: HSTS only matters once the site is on https (it is), nosniff
+  stops content-type guessing, the referrer policy keeps full URLs off other
+  sites, the permissions policy declines APIs the site never asks for, and the
+  framing headers refuse embedding -- the admin's PDF preview frames are
+  same-document blob and srcdoc frames, which these do not touch.
+
+  HSTS is set without includeSubDomains on purpose: whether every subdomain of
+  the apex is served over https is not something this repository can know.
+*/
+const securityHeaders = [
+  { key: "Strict-Transport-Security", value: "max-age=31536000" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Reporting-Endpoints", value: 'csp="/api/csp-report"' },
+  { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
+];
+
 const nextConfig: NextConfig = {
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: supabaseHost
@@ -31,6 +95,8 @@ const nextConfig: NextConfig = {
       { source: "/blog", destination: "/nl/blog", permanent: true },
       { source: "/blog/:slug", destination: "/nl/blog/:slug", permanent: true },
       { source: "/algemene-voorwaarden", destination: "/nl/algemene-voorwaarden", permanent: true },
+      { source: "/privacy", destination: "/nl/privacy", permanent: true },
+      { source: "/cookies", destination: "/nl/cookies", permanent: true },
       // Unprefixed English routes.
       { source: "/services", destination: "/en/services", permanent: true },
       { source: "/services/:slug", destination: "/en/services/:slug", permanent: true },

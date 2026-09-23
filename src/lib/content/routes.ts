@@ -8,7 +8,9 @@ export type StaticRouteKey =
   | "process"
   | "projects"
   | "contact"
-  | "blog";
+  | "blog"
+  | "privacy"
+  | "cookies";
 
 const localizedStaticRoutes: Record<StaticRouteKey, Record<Locale, string>> = {
   home: {
@@ -42,6 +44,16 @@ const localizedStaticRoutes: Record<StaticRouteKey, Record<Locale, string>> = {
   blog: {
     en: "/en/blog",
     nl: "/nl/blog",
+  },
+  // The privacy and cookie statements exist in both languages, unlike the
+  // terms below, so they take part in the language switch like any page.
+  privacy: {
+    en: "/en/privacy",
+    nl: "/nl/privacy",
+  },
+  cookies: {
+    en: "/en/cookies",
+    nl: "/nl/cookies",
   },
 };
 

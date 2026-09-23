@@ -7,6 +7,8 @@ import {
   type StaticRouteKey,
 } from "@/lib/content/routes";
 import { serviceDefinitions, serviceKeys } from "@/lib/content/services";
+import { cookieStatement } from "@/lib/content/cookies";
+import { privacyStatement } from "@/lib/content/privacy";
 import { businessInfo, locales } from "@/lib/content/site-content";
 import { termsIndexable } from "@/lib/content/terms";
 
@@ -81,11 +83,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...(article.publishedAt ? { lastModified: new Date(article.publishedAt) } : {}),
   }));
 
-  // The terms page is Dutch only and is listed only once it is indexable
-  // (it is served with noindex until then).
-  const legalEntries: MetadataRoute.Sitemap = termsIndexable
-    ? [{ url: absolute(legalRoutes.terms) }]
-    : [];
+  // Legal pages are listed only once they are indexable (they are served
+  // with noindex until then). The terms are Dutch only; the privacy and
+  // cookie statements exist per locale, with alternates like any page.
+  const statementRoutes = [
+    ...(privacyStatement.indexable ? (["privacy"] as const) : []),
+    ...(cookieStatement.indexable ? (["cookies"] as const) : []),
+  ];
+  const legalEntries: MetadataRoute.Sitemap = [
+    ...(termsIndexable ? [{ url: absolute(legalRoutes.terms) }] : []),
+    ...statementRoutes.flatMap((route) =>
+      locales.map((locale) =>
+        withAlternates(
+          getLocalizedPath(locale, route),
+          getLocalizedPath("en", route),
+          getLocalizedPath("nl", route),
+        ),
+      ),
+    ),
+  ];
 
   return [
     ...staticEntries,

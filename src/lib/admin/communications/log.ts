@@ -50,6 +50,44 @@ export type CommunicationDelivery = {
  * of the send -- a reminder event, say -- can point at the same communication
  * instead of describing it a second time. Absent when nothing was written.
  */
+/**
+ * The retention side of the log, kept here because this module is the one
+ * place that writes the table. The daily job (lib/retention) asks which
+ * rows are old enough -- identifiers, category and timestamps only, never a
+ * body -- and then has the bodies of the rows the policy selected replaced by
+ * a marker. The rows themselves stay: that a mail went out, to whom and when
+ * remains on record; what it said does not.
+ */
+export type CommunicationRetentionCandidate = {
+  id: string;
+  category: string;
+  created_at: string;
+  sent_at: string | null;
+  body_text: string;
+};
+
+export async function listCommunicationsOlderThan(
+  db: CommunicationClient,
+  cutoff: string,
+  categories: readonly string[],
+): Promise<CommunicationRetentionCandidate[]> {
+  const { data, error } = await db
+    .from("customer_communications")
+    .select("id, category, created_at, sent_at, body_text")
+    .in("category", [...categories])
+    .lt("created_at", cutoff);
+  if (error) throw new Error(`Communicatie laden: ${error.message}`);
+  return data;
+}
+
+export async function redactCommunicationBodies(db: CommunicationClient, ids: string[], marker: string): Promise<void> {
+  const { error } = await db
+    .from("customer_communications")
+    .update({ body_text: marker, body_html: null })
+    .in("id", ids);
+  if (error) throw new Error(`Communicatie redigeren: ${error.message}`);
+}
+
 export async function recordCommunication(
   context: CommunicationContext,
   delivery: CommunicationDelivery,

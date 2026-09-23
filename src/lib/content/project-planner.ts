@@ -185,6 +185,9 @@ type PlannerPageContent = {
     /** A planner request is not an order; links to the terms. */
     requestNote: string;
     termsLabel: string;
+    /** What happens with the details entered; links to the privacy statement. */
+    privacyNote: string;
+    privacyLabel: string;
     placeholders: {
       name: string;
       email: string;
@@ -197,6 +200,7 @@ type PlannerPageContent = {
     pricing: string;
     contact: string;
     terms: string;
+    privacy: string;
   };
 };
 
@@ -368,6 +372,8 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
         "I am making this request on behalf of a business or in the course of a profession or trade.",
       requestNote: "A planner request is non-binding and not yet an order.",
       termsLabel: "General terms (Dutch)",
+      privacyNote: "We use your details only to answer your request. More in the",
+      privacyLabel: "privacy statement.",
       placeholders: {
         name: "Your name",
         email: "you@company.com",
@@ -380,6 +386,7 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       pricing: getLocalizedPath("en", "pricing"),
       contact: getLocalizedPath("en", "contact"),
       terms: legalRoutes.terms,
+      privacy: getLocalizedPath("en", "privacy"),
     },
   },
   nl: {
@@ -473,6 +480,8 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
         "Ik doe deze aanvraag namens een onderneming of in de uitoefening van beroep of bedrijf.",
       requestNote: "Een planner-aanvraag is vrijblijvend en nog geen opdracht.",
       termsLabel: "Algemene voorwaarden",
+      privacyNote: "Je gegevens gebruiken we alleen om je aanvraag te beantwoorden. Meer daarover in de",
+      privacyLabel: "privacyverklaring.",
       placeholders: {
         name: "Jouw naam",
         email: "jij@bedrijf.nl",
@@ -485,6 +494,7 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       pricing: getLocalizedPath("nl", "pricing"),
       contact: getLocalizedPath("nl", "contact"),
       terms: legalRoutes.terms,
+      privacy: getLocalizedPath("nl", "privacy"),
     },
   },
 };

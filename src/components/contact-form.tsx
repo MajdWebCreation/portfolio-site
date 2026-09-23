@@ -19,11 +19,18 @@ type ContactFormCopy = {
   errorMessage: string;
 };
 
-/** Short line under the form: who the form is for and where the terms are. */
+/**
+ * Short lines under the form: who the form is for and where the terms are,
+ * and what happens with what is typed in, with the privacy statement a link
+ * away. A note, not a checkbox: answering a request needs no consent.
+ */
 type ContactFormNote = {
   text: string;
   termsLabel: string;
   termsHref: string;
+  privacyText: string;
+  privacyLabel: string;
+  privacyHref: string;
 };
 
 type ContactFormProps = {
@@ -308,6 +315,11 @@ export default function ContactForm({
               {note.text}{" "}
               <Link href={note.termsHref} hrefLang="nl" className="link-static text-body">
                 {note.termsLabel}
+              </Link>
+              {" "}
+              {note.privacyText}{" "}
+              <Link href={note.privacyHref} className="link-static text-body">
+                {note.privacyLabel}
               </Link>
             </p>
           ) : null}

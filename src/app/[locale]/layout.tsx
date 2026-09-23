@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { grotesk, mono } from "@/app/fonts";
 import AnalyticsProvider from "@/components/analytics-provider";
+import AnalyticsScripts from "@/components/consent/analytics-scripts";
+import ConsentDialog from "@/components/consent/consent-dialog";
+import { getLocalizedPath } from "@/lib/content/routes";
 import {
   businessInfo,
   defaultLocale,
   isValidLocale,
   locales,
+  siteContent,
 } from "@/lib/content/site-content";
 import "../globals.css";
 
@@ -42,28 +45,27 @@ export default async function LocaleLayout({
   const lang = isValidLocale(locale) ? locale : defaultLocale;
   const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
+  /*
+    Analytics only exists when the deployment names a property, and then only
+    behind the visitor's choice: the consent card asks, and the script tags
+    are rendered by a client component that waits for the answer. Without a
+    property there is nothing to ask about, so neither is rendered.
+  */
   return (
     <html lang={lang} className={`${grotesk.variable} ${mono.variable}`}>
       <body>
-        {gaMeasurementId ? (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`}
-              strategy="afterInteractive"
-            />
-            <Script id="ym-ga-init" strategy="afterInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                window.gtag = gtag;
-                gtag('js', new Date());
-                gtag('config', '${gaMeasurementId}', { anonymize_ip: true });
-              `}
-            </Script>
-          </>
-        ) : null}
         <AnalyticsProvider />
         {children}
+        {gaMeasurementId ? (
+          <>
+            <ConsentDialog
+              copy={siteContent[lang].consent}
+              privacyHref={getLocalizedPath(lang, "privacy")}
+              cookiesHref={getLocalizedPath(lang, "cookies")}
+            />
+            <AnalyticsScripts measurementId={gaMeasurementId} />
+          </>
+        ) : null}
       </body>
     </html>
   );

@@ -123,6 +123,29 @@ describe("a mail that was accepted", () => {
     expect(rows().map((row) => row.sent_at)).toEqual(["2026-09-14T09:00:00.000Z", "2026-09-14T11:30:00.000Z"]);
   });
 
+  /*
+    The mail goes out with its activation link intact; the copy in the log
+    does not. The token is the one value the database keeps only as a hash,
+    and the log must not be the place where that decision quietly fails.
+  */
+  it("keeps no activation token in the copy it writes down", async () => {
+    const token = "wZ3v8Qm2Lk9pXa1bC4dE5fG6hJ7kL8mN9oP0qR1sT2u";
+    const activation = {
+      ...message,
+      subject: "Automatische incasso instellen",
+      html: `<a href="https://ymcreations.com/nl/incasso/${token}">Activeren</a>`,
+      text: `Activeren: https://ymcreations.com/nl/incasso/${token}`,
+    };
+
+    await sendCustomerEmail(activation, context({ category: "direct_debit_activation" }));
+
+    expect(deliverEmail).toHaveBeenCalledWith(activation);
+    const row = rows()[0];
+    expect(row.body_text).not.toContain(token);
+    expect(row.body_html).not.toContain(token);
+    expect(row.body_text).toContain("/nl/incasso/[token-verwijderd]");
+  });
+
   it("carries no provider id when the provider gave none", async () => {
     deliverEmail.mockResolvedValue({ sent: true, sentAt: "2026-09-14T09:00:00.000Z" });
 

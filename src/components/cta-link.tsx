@@ -1,15 +1,21 @@
 import Link from "next/link";
 import type { ComponentProps } from "react";
 
+export type CtaVariant = "primary" | "inverse" | "secondary" | "text" | "text-light";
+
 type CtaLinkProps = ComponentProps<typeof Link> & {
-  variant?: "primary" | "inverse" | "secondary" | "text" | "text-light";
+  variant?: CtaVariant;
   external?: boolean;
 };
 
 const base =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-sm px-5 text-[0.95rem] font-medium transition-colors duration-200";
 
-const variants = {
+/**
+ * The one set of action styles, shared by links (below) and real buttons
+ * (`CtaButton`), so a button next to a link cannot drift from it.
+ */
+export const ctaVariants = {
   primary: `${base} bg-ink text-paper hover:bg-accent`,
   inverse: `${base} bg-paper text-ink hover:bg-accent-soft`,
   secondary: `${base} border border-line-strong bg-transparent text-ink hover:border-ink`,
@@ -17,6 +23,8 @@ const variants = {
   "text-light":
     "link-line inline-flex items-center gap-1.5 text-[0.95rem] font-medium text-paper",
 } as const;
+
+const variants = ctaVariants;
 
 /**
  * Link styled as a button or as an inline text action. Text variants carry an
