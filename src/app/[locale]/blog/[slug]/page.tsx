@@ -6,7 +6,9 @@ import ArticleRichText from "@/components/article-rich-text";
 import Breadcrumbs from "@/components/breadcrumbs";
 import JsonLd from "@/components/json-ld";
 import NextStep from "@/components/next-step";
+import { ViewEvent } from "@/components/page-events";
 import SiteShell from "@/components/site-shell";
+import { ctaTargetForHref } from "@/lib/analytics/targets";
 import {
   getArticleBySlug,
   getArticleMetadataInput,
@@ -146,6 +148,7 @@ export default async function BlogArticlePage({
         ]}
       />
       <SiteShell locale={locale} content={content} currentPath={article.path}>
+        <ViewEvent event="article_view" params={{ article_slug: article.slug, article_category: article.category }} />
         <article className="container-x pt-12 sm:pt-16 lg:pt-20">
           <Breadcrumbs locale={locale} items={crumbs} className="mb-8 lg:mb-10" />
           <header className="grid gap-6 lg:grid-cols-12 lg:gap-8">
@@ -197,9 +200,9 @@ export default async function BlogArticlePage({
                         <Link
                           href={href}
                           data-track-event="article_cta_click"
-                          data-track-category="article"
-                          data-track-label={getRelatedLinkLabel(locale, href)}
-                          data-track-location="article-related-links"
+                          data-track-article-slug={article.slug}
+                          data-track-cta-target={ctaTargetForHref(href)}
+                          data-track-placement="article_related"
                           className="link-static text-[0.98rem] text-ink"
                         >
                           {getRelatedLinkLabel(locale, href)}
@@ -225,6 +228,7 @@ export default async function BlogArticlePage({
             }
             secondaryHref={article.ctaSecondaryLink ?? blogPath}
             trackingContext="article"
+            articleSlug={article.slug}
           />
         </div>
       </SiteShell>

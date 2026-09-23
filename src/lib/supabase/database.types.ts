@@ -4,6 +4,12 @@
  * Regenerate after every migration:
  *   npx supabase gen types typescript --project-id wbrqbuctwzpobnvcsomt \
  *     > src/lib/supabase/database.types.ts
+ *
+ * Exception, 23 September 2026: the inquiries attribution columns and the
+ * analytics_facts / analytics_sync_runs tables were written in by hand in
+ * the generator's own format, because their migrations (20260923120000 and
+ * 20260923120100) were authored but not yet applied to the remote project.
+ * Regenerate once they are, and this note goes.
  */
 
 export type Json =
@@ -68,6 +74,69 @@ export type Database = {
           is_active?: boolean
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      analytics_facts: {
+        Row: {
+          date: string
+          dims: Json
+          dims_key: string
+          metrics: Json
+          provider: string
+          report: string
+          synced_at: string
+        }
+        Insert: {
+          date: string
+          dims?: Json
+          dims_key?: never
+          metrics: Json
+          provider: string
+          report: string
+          synced_at?: string
+        }
+        Update: {
+          date?: string
+          dims?: Json
+          dims_key?: never
+          metrics?: Json
+          provider?: string
+          report?: string
+          synced_at?: string
+        }
+        Relationships: []
+      }
+      analytics_sync_runs: {
+        Row: {
+          error: string | null
+          finished_at: string | null
+          id: string
+          provider: string
+          report: string
+          rows_upserted: number | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          provider: string
+          report: string
+          rows_upserted?: number | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          provider?: string
+          report?: string
+          rows_upserted?: number | null
+          started_at?: string
+          status?: string
         }
         Relationships: []
       }
@@ -456,10 +525,12 @@ export type Database = {
       }
       inquiries: {
         Row: {
+          campaign: string | null
           company: string | null
           email: string
           id: string
           internal_note: string | null
+          landing_path: string | null
           locale: string
           message: string
           name: string
@@ -468,13 +539,18 @@ export type Database = {
           planner: Json | null
           received_at: string
           status: string
+          traffic_class: string | null
+          traffic_medium: string | null
+          traffic_source: string | null
           updated_at: string
         }
         Insert: {
+          campaign?: string | null
           company?: string | null
           email: string
           id?: string
           internal_note?: string | null
+          landing_path?: string | null
           locale: string
           message: string
           name: string
@@ -483,13 +559,18 @@ export type Database = {
           planner?: Json | null
           received_at?: string
           status?: string
+          traffic_class?: string | null
+          traffic_medium?: string | null
+          traffic_source?: string | null
           updated_at?: string
         }
         Update: {
+          campaign?: string | null
           company?: string | null
           email?: string
           id?: string
           internal_note?: string | null
+          landing_path?: string | null
           locale?: string
           message?: string
           name?: string
@@ -498,6 +579,9 @@ export type Database = {
           planner?: Json | null
           received_at?: string
           status?: string
+          traffic_class?: string | null
+          traffic_medium?: string | null
+          traffic_source?: string | null
           updated_at?: string
         }
         Relationships: []

@@ -7,6 +7,18 @@
 export type ContactPayload = {
   mode?: "contact" | "project_planner";
   locale?: "en" | "nl";
+  /**
+   * Where the visit came from, as the browser classified it
+   * (lib/attribution). Optional, untrusted: the route validates it against
+   * the same rules and stores nothing when it does not fit exactly.
+   */
+  attribution?: {
+    trafficClass?: string;
+    trafficSource?: string | null;
+    trafficMedium?: string | null;
+    campaign?: string | null;
+    landingPath?: string;
+  };
   name: string;
   email: string;
   company?: string;

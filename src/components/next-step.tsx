@@ -1,4 +1,5 @@
 import CtaLink from "@/components/cta-link";
+import { ctaTargetForHref } from "@/lib/analytics/targets";
 
 type NextStepProps = {
   title: string;
@@ -8,11 +9,17 @@ type NextStepProps = {
   secondaryLabel?: string;
   secondaryHref?: string;
   trackingContext?: "service" | "article" | "projects" | "pricing" | "process";
+  /** The article this block closes, so its clicks count for that article. */
+  articleSlug?: string;
 };
 
 /**
  * Closing block of a sub page: one question, one sentence, one primary action,
  * set on an ink panel so the page ends with a clear visual full stop.
+ *
+ * Measured as `cta_click` with an id that names the page kind and the
+ * button, and the target read from the href; on an article, as
+ * `article_cta_click` for that article instead.
  */
 export default function NextStep({
   title,
@@ -22,9 +29,22 @@ export default function NextStep({
   secondaryLabel,
   secondaryHref,
   trackingContext = "service",
+  articleSlug,
 }: NextStepProps) {
-  const eventName =
-    trackingContext === "article" ? "article_cta_click" : "contact_cta_click";
+  const tracking = (button: "primary" | "secondary", href: string) =>
+    trackingContext === "article" && articleSlug
+      ? {
+          "data-track-event": "article_cta_click",
+          "data-track-article-slug": articleSlug,
+          "data-track-cta-target": ctaTargetForHref(href),
+          "data-track-placement": "next_step",
+        }
+      : {
+          "data-track-event": "cta_click",
+          "data-track-cta-id": `${trackingContext}_next_step_${button}`,
+          "data-track-cta-target": ctaTargetForHref(href),
+          "data-track-placement": "next_step",
+        };
 
   return (
     <section className="container-x">
@@ -36,25 +56,11 @@ export default function NextStep({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-4 lg:col-span-5 lg:justify-end lg:self-end">
-          <CtaLink
-            href={primaryHref}
-            variant="inverse"
-            data-track-event={eventName}
-            data-track-category={trackingContext}
-            data-track-label={primaryLabel}
-            data-track-location="next-step-primary"
-          >
+          <CtaLink href={primaryHref} variant="inverse" {...tracking("primary", primaryHref)}>
             {primaryLabel}
           </CtaLink>
           {secondaryLabel && secondaryHref ? (
-            <CtaLink
-              href={secondaryHref}
-              variant="text-light"
-              data-track-event="primary_cta_click"
-              data-track-category={trackingContext}
-              data-track-label={secondaryLabel}
-              data-track-location="next-step-secondary"
-            >
+            <CtaLink href={secondaryHref} variant="text-light" {...tracking("secondary", secondaryHref)}>
               {secondaryLabel}
             </CtaLink>
           ) : null}

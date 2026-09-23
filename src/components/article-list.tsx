@@ -39,9 +39,9 @@ export default function ArticleList({
               <Link
                 href={article.path}
                 data-track-event="article_cta_click"
-                data-track-category="blog-overview"
-                data-track-label={article.title}
-                data-track-location="article-list"
+                data-track-article-slug={article.slug}
+                data-track-cta-target="article"
+                data-track-placement="article_list"
                 className="transition-colors hover:text-accent"
               >
                 {article.title}

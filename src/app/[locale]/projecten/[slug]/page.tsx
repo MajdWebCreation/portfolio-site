@@ -147,10 +147,7 @@ export default async function DutchProjectCasePage({
                 href={project.url}
                 variant="text"
                 external
-                data-track-event="primary_cta_click"
-                data-track-category="case"
-                data-track-label={project.name}
-                data-track-location="case-header"
+                data-track-link-context="project_live"
               >
                 {project.domain}
               </CtaLink>
@@ -158,10 +155,10 @@ export default async function DutchProjectCasePage({
             <Link
               href={projectsPath}
               className="link-static text-[0.95rem] text-muted"
-              data-track-event="primary_cta_click"
-              data-track-category="case"
-              data-track-label="projects"
-              data-track-location="case-header"
+              data-track-event="cta_click"
+              data-track-cta-id="case_header_projects"
+              data-track-cta-target="projects"
+              data-track-placement="case_header"
             >
               Alle projecten
             </Link>

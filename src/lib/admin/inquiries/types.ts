@@ -1,3 +1,4 @@
+import type { Attribution } from "@/lib/attribution/types";
 import type { ContactPayload } from "@/lib/contact/payload";
 
 /**
@@ -31,6 +32,8 @@ type InquiryBase = {
   company?: string;
   message: string;
   internalNote?: string;
+  /** Where the visit came from, when the website could establish it. */
+  attribution?: Attribution;
 };
 
 export type ContactInquiry = InquiryBase & {

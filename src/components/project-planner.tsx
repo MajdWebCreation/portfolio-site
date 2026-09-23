@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent } from "@/lib/analytics/track";
+import { plannerStepNames, type ErrorKind } from "@/lib/analytics/events";
+import { currentAttribution } from "@/lib/attribution/capture";
+import { attributionEventParams } from "@/lib/attribution/event-params";
 import {
   buildPlannerSummary,
   formatEuro,
@@ -43,6 +46,9 @@ type PlannerErrorKey =
   | "name"
   | "email"
   | "businessDeclaration";
+
+/* Thrown after a non-2xx response, so the catch can tell it from a network failure. */
+class PlannerRequestFailed extends Error {}
 
 const subscribeNoop = () => () => {};
 const readPackageParam = () => {
@@ -266,6 +272,35 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
     [form, preselected],
   );
 
+  /*
+    The funnel, as events. `planner_start` once, at the first thing the
+    visitor does; `planner_step` for every step completed or left; errors
+    by kind and field name; `planner_complete` after the server said yes.
+    What goes out is the project type and the option keys the visitor chose,
+    never the notes, the name, the address or the phone number.
+  */
+  const started = useRef(false);
+  const projectTypeParam = () => view.projectType || ("none" as const);
+
+  function markStarted() {
+    if (started.current) return;
+    started.current = true;
+    trackEvent("planner_start", {
+      entry: preselected ? "pricing_preselect" : "direct",
+      package_id: preselected ?? "none",
+    });
+  }
+
+  function trackPlannerError(stepIndex: number, kind: ErrorKind, fields: string[]) {
+    trackEvent("planner_error", {
+      step_index: stepIndex + 1,
+      step_name: plannerStepNames[stepIndex],
+      error_kind: kind,
+      /* Field keys are camelCase in this component; the register wants snake_case names. */
+      fields: fields.length > 0 ? fields.map((field) => field.replace(/[A-Z]/g, (l) => `_${l.toLowerCase()}`)).join(",") : "none",
+    });
+  }
+
   const addOnLabel = (packageId: PackageId, addOnId: string) =>
     getAddOn(catalog, locale, packageId, addOnId).label;
 
@@ -354,6 +389,7 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
   } as const;
 
   function update<K extends keyof PlannerState>(key: K, value: PlannerState[K]) {
+    markStarted();
     setForm((prev) => ({ ...prev, [key]: value }));
     if (status !== "idle") setStatus("idle");
     if (formError) setFormError("");
@@ -511,10 +547,12 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
   }
 
   function handleNext() {
+    markStarted();
     const errors = validateStep(step);
     setFieldErrors((prev) => ({ ...prev, ...errors }));
 
     if (Object.keys(errors).length > 0) {
+      trackPlannerError(step, "validation", Object.keys(errors));
       setStatus("error");
       setFormError(
         locale === "nl"
@@ -524,6 +562,12 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
       return;
     }
 
+    trackEvent("planner_step", {
+      step_index: step + 1,
+      step_name: plannerStepNames[step],
+      direction: "next",
+      project_type: projectTypeParam(),
+    });
     setStatus("idle");
     setFormError("");
     setStep((prev) => {
@@ -541,6 +585,7 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
     setFieldErrors((prev) => ({ ...prev, ...errors }));
 
     if (Object.keys(errors).length > 0 || isSubmitting) {
+      if (Object.keys(errors).length > 0) trackPlannerError(3, "validation", Object.keys(errors));
       setStatus("error");
       setFormError(
         locale === "nl"
@@ -563,6 +608,7 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
         body: JSON.stringify({
           mode: "project_planner",
           locale,
+          attribution: currentAttribution() ?? undefined,
           name: form.name,
           email: form.email,
           company: form.company,
@@ -640,21 +686,27 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
           setFormError(data.error);
         }
 
-        throw new Error("Request failed");
+        trackPlannerError(3, "server", Object.keys(data?.fieldErrors ?? {}));
+        throw new PlannerRequestFailed();
       }
 
+      /* Both keys were required to pass step 3; the check keeps the types honest. */
+      if (form.launchTimeline && form.priority) {
+        trackEvent("planner_complete", {
+          project_type: projectTypeParam(),
+          recommended_package: summary.recommendedPackage,
+          timeline_key: form.launchTimeline,
+          priority_key: form.priority,
+          ...attributionEventParams(currentAttribution()),
+        });
+      }
       setStatus("success");
       setForm({ ...initialPlannerState, locale });
       setStep(0);
       setFieldErrors({});
       setFormError("");
-      trackEvent({
-        name: "contact_form_submit_success",
-        category: "project-planner",
-        label: "project-planner",
-        location: "project-planner",
-      });
-    } catch {
+    } catch (error) {
+      if (!(error instanceof PlannerRequestFailed)) trackPlannerError(3, "network", []);
       setStatus("error");
       setFormError((prev) =>
         prev ||
@@ -1214,6 +1266,12 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
             <button
               type="button"
               onClick={() => {
+                trackEvent("planner_step", {
+                  step_index: step + 1,
+                  step_name: plannerStepNames[step],
+                  direction: "back",
+                  project_type: projectTypeParam(),
+                });
                 setStatus("idle");
                 setFormError("");
                 setStep((prev) => {

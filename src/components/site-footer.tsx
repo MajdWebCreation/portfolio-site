@@ -1,7 +1,7 @@
 import Link from "next/link";
 import BrandMark from "@/components/brand-mark";
 import ConsentSettingsButton from "@/components/consent/consent-settings-button";
-import { getCounterpartPath, getLocalizedPath, legalRoutes } from "@/lib/content/routes";
+import { getCounterpartPath, getLocalizedPath, legalRoutes, type StaticRouteKey } from "@/lib/content/routes";
 import {
   businessInfo,
   type Locale,
@@ -30,15 +30,17 @@ export default function SiteFooter({
   const analyticsConfigured = Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID);
   const legalLinkClass = "text-paper/70 transition-colors hover:text-paper";
 
-  const navigation = [
-    { href: getLocalizedPath(locale, "services"), label: content.nav.services },
-    { href: getLocalizedPath(locale, "process"), label: content.nav.process },
-    { href: getLocalizedPath(locale, "projects"), label: content.nav.projects },
-    { href: getLocalizedPath(locale, "pricing"), label: content.nav.pricing },
-    { href: getLocalizedPath(locale, "projectPlanner"), label: content.nav.planner },
-    { href: getLocalizedPath(locale, "blog"), label: content.nav.blog },
-    { href: getLocalizedPath(locale, "contact"), label: content.nav.contact },
-  ];
+  const navigation: Array<{ key: StaticRouteKey; href: string; label: string }> = (
+    [
+      ["services", content.nav.services],
+      ["process", content.nav.process],
+      ["projects", content.nav.projects],
+      ["pricing", content.nav.pricing],
+      ["projectPlanner", content.nav.planner],
+      ["blog", content.nav.blog],
+      ["contact", content.nav.contact],
+    ] as const
+  ).map(([key, label]) => ({ key, href: getLocalizedPath(locale, key), label }));
 
   return (
     <footer className="mt-24 bg-ink text-paper lg:mt-32">
@@ -62,6 +64,9 @@ export default function SiteFooter({
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    data-track-event="navigation_click"
+                    data-track-nav-item={item.key}
+                    data-track-placement="footer"
                     className="text-paper/85 transition-colors hover:text-paper"
                   >
                     {item.label}
@@ -136,6 +141,10 @@ export default function SiteFooter({
               href={counterpartPath}
               hrefLang={alternateLocale}
               lang={alternateLocale}
+              data-track-event="language_switch"
+              data-track-from-locale={locale}
+              data-track-to-locale={alternateLocale}
+              data-track-placement="footer"
               className="label-mono text-paper/55 transition-colors hover:text-paper"
             >
               {alternateLocale === "en" ? "English" : "Nederlands"}

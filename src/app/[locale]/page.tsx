@@ -75,20 +75,20 @@ export default async function HomePage({
             <div className="rise rise-delay-2 mt-9 flex flex-wrap items-center gap-x-6 gap-y-4 max-md:mt-7">
               <CtaLink
                 href={getLocalizedPath(locale, "contact")}
-                data-track-event="contact_cta_click"
-                data-track-category="homepage"
-                data-track-label={content.hero.primaryCta}
-                data-track-location="hero-primary"
+                data-track-event="cta_click"
+                data-track-cta-id="home_hero_contact"
+                data-track-cta-target="contact"
+                data-track-placement="hero"
               >
                 {content.hero.primaryCta}
               </CtaLink>
               <CtaLink
                 href={getLocalizedPath(locale, "projects")}
                 variant="text"
-                data-track-event="primary_cta_click"
-                data-track-category="homepage"
-                data-track-label={content.hero.secondaryCta}
-                data-track-location="hero-secondary"
+                data-track-event="cta_click"
+                data-track-cta-id="home_hero_projects"
+                data-track-cta-target="projects"
+                data-track-placement="hero"
               >
                 {content.hero.secondaryCta}
               </CtaLink>
@@ -134,10 +134,10 @@ export default async function HomePage({
                 <CtaLink
                   href={getLocalizedPath(locale, "process")}
                   variant="text"
-                  data-track-event="primary_cta_click"
-                  data-track-category="homepage"
-                  data-track-label={content.collaboration.linkLabel}
-                  data-track-location="collaboration"
+                  data-track-event="cta_click"
+                  data-track-cta-id="home_collaboration_process"
+                  data-track-cta-target="process"
+                  data-track-placement="collaboration"
                 >
                   {content.collaboration.linkLabel}
                 </CtaLink>
@@ -156,10 +156,10 @@ export default async function HomePage({
             <div className="lg:col-span-9 lg:col-start-4">
               <Link
                 href={getLocalizedPath(locale, "projects")}
-                data-track-event="primary_cta_click"
-                data-track-category="homepage"
-                data-track-label={content.pointers.projects.title}
-                data-track-location="pointer-projects"
+                data-track-event="cta_click"
+                data-track-cta-id="home_pointer_projects"
+                data-track-cta-target="projects"
+                data-track-placement="pointer"
                 className="group inline-flex flex-wrap items-baseline gap-x-4 max-md:inline"
               >
                 <span className="display-lg text-ink transition-colors group-hover:text-accent">
@@ -183,10 +183,10 @@ export default async function HomePage({
             <div className="lg:col-span-9 lg:col-start-4">
               <Link
                 href={getLocalizedPath(locale, "pricing")}
-                data-track-event="primary_cta_click"
-                data-track-category="homepage"
-                data-track-label={content.pointers.pricing.title}
-                data-track-location="pointer-pricing"
+                data-track-event="cta_click"
+                data-track-cta-id="home_pointer_pricing"
+                data-track-cta-target="pricing"
+                data-track-placement="pointer"
                 className="group inline-flex flex-wrap items-baseline gap-x-3 max-md:inline"
               >
                 <span className="display-sm text-ink transition-colors group-hover:text-accent">

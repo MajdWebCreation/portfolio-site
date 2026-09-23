@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { validateAttribution } from "@/lib/attribution/classify";
 import { storeInquiry } from "@/lib/contact/inquiry";
 import type { ContactPayload } from "@/lib/contact/payload";
 import {
@@ -348,12 +349,20 @@ export async function POST(request: Request) {
       );
     }
 
+    /*
+      Where the visit came from, as the browser reported it. Checked here
+      against the same rules the browser used; a value that does not fit
+      exactly is dropped as a whole and the request is stored without one.
+      Never logged: whatever a client put in there is not ours to keep.
+    */
+    const attribution = validateAttribution(body.attribution);
+
     // Stored before anything is sent, and a failure here is reported as a
     // failure: a visitor must never be told the request came through when
     // there is no record of it. The mail below is the notification, not the
     // record.
     try {
-      await storeInquiry({ origin: mode, locale, name, email, company, message, phone, planner });
+      await storeInquiry({ origin: mode, locale, name, email, company, message, phone, planner, attribution });
     } catch (error) {
       // No visitor data in the log line: Vercel keeps these, and an address
       // does not help anyone read the failure.

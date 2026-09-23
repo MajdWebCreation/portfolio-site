@@ -63,10 +63,10 @@ export default function BuildOverview({
           <CtaLink
             href={linkHref}
             variant="text-light"
-            data-track-event="primary_cta_click"
-            data-track-category="homepage"
-            data-track-label={linkLabel}
-            data-track-location="build-overview"
+            data-track-event="cta_click"
+            data-track-cta-id="home_build_overview_services"
+            data-track-cta-target="services"
+            data-track-placement="build_overview"
           >
             {linkLabel}
           </CtaLink>
@@ -84,9 +84,10 @@ export default function BuildOverview({
             <Link
               href={hrefFor(group.serviceKey)}
               data-track-event="service_cta_click"
-              data-track-category="homepage"
-              data-track-label={group.title}
-              data-track-location="build-overview"
+              data-track-service-id={group.serviceKey}
+              data-track-cta-id="build_overview_family"
+              data-track-cta-target="service"
+              data-track-placement="build_overview"
               className="group block"
             >
               <span className="flex items-baseline gap-4">
@@ -131,9 +132,10 @@ export default function BuildOverview({
                     <Link
                       href={hrefFor(item.serviceKey)}
                       data-track-event="service_cta_click"
-                      data-track-category="homepage"
-                      data-track-label={item.label}
-                      data-track-location="build-overview-more"
+                      data-track-service-id={item.serviceKey}
+                      data-track-cta-id="build_overview_more"
+                      data-track-cta-target="service"
+                      data-track-placement="build_overview"
                       className="text-[0.95rem] text-paper/80 underline decoration-paper/35 underline-offset-4 transition-colors hover:text-paper hover:decoration-paper max-md:text-[0.9rem]"
                     >
                       {item.label}

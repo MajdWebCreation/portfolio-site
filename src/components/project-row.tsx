@@ -40,6 +40,7 @@ export default function ProjectRow({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={`${project.name}, ${visitLabel}`}
+          data-track-link-context="project_live"
           className="block overflow-hidden rounded-sm border border-line bg-surface"
         >
           <Image
@@ -100,10 +101,10 @@ export default function ProjectRow({
             <CtaLink
               href={casePath}
               variant="text"
-              data-track-event="primary_cta_click"
-              data-track-category="projects"
-              data-track-label={project.name}
-              data-track-location="project-row-case"
+              data-track-event="cta_click"
+              data-track-cta-id="project_row_case"
+              data-track-cta-target="case"
+              data-track-placement="project_row"
             >
               {caseLabel}
             </CtaLink>
@@ -112,10 +113,7 @@ export default function ProjectRow({
             href={project.url}
             variant="text"
             external
-            data-track-event="primary_cta_click"
-            data-track-category="projects"
-            data-track-label={project.name}
-            data-track-location="project-row"
+            data-track-link-context="project_live"
           >
             {project.domain}
           </CtaLink>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import CtaLink from "@/components/cta-link";
+import { ctaTargetForHref } from "@/lib/analytics/targets";
 
 type ServiceCtaProps = {
   headingId: string;
@@ -40,20 +41,20 @@ export default function ServiceCta({
           <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
             <CtaLink
               href={primaryHref}
-              data-track-event="contact_cta_click"
-              data-track-category="services-overview"
-              data-track-label={primaryLabel}
-              data-track-location="services-cta"
+              data-track-event="cta_click"
+              data-track-cta-id="services_cta_primary"
+              data-track-cta-target={ctaTargetForHref(primaryHref)}
+              data-track-placement="services_cta"
             >
               {primaryLabel}
             </CtaLink>
             <Link
               href={secondaryHref}
               className="link-static text-[0.95rem] text-muted"
-              data-track-event="primary_cta_click"
-              data-track-category="services-overview"
-              data-track-label="project-planner"
-              data-track-location="services-cta"
+              data-track-event="cta_click"
+              data-track-cta-id="services_cta_secondary"
+              data-track-cta-target={ctaTargetForHref(secondaryHref)}
+              data-track-placement="services_cta"
             >
               {secondaryLabel}
             </Link>

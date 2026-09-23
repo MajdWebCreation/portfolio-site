@@ -1,4 +1,5 @@
 import type { Inquiry, InquiryStatus, PlannerSubmission } from "@/lib/admin/inquiries/types";
+import { isTrafficClass, type Attribution } from "@/lib/attribution/types";
 import type { Database } from "@/lib/supabase/database.types";
 
 export type InquiryRow = Database["public"]["Tables"]["inquiries"]["Row"];
@@ -8,7 +9,20 @@ export type InquiryRow = Database["public"]["Tables"]["inquiries"]["Row"];
  * database enforces with a check constraint that a planner row carries its
  * payload and a contact row does not.
  */
+/** The five columns as one value, or nothing: the database keeps them together, so a class without a path never occurs. */
+function attributionFromRow(row: InquiryRow): Attribution | undefined {
+  if (!isTrafficClass(row.traffic_class) || !row.landing_path) return undefined;
+  return {
+    trafficClass: row.traffic_class,
+    trafficSource: row.traffic_source,
+    trafficMedium: row.traffic_medium,
+    campaign: row.campaign,
+    landingPath: row.landing_path,
+  };
+}
+
 export function inquiryFromRow(row: InquiryRow): Inquiry {
+  const attribution = attributionFromRow(row);
   const base = {
     id: row.id,
     status: row.status as InquiryStatus,
@@ -19,6 +33,7 @@ export function inquiryFromRow(row: InquiryRow): Inquiry {
     message: row.message,
     ...(row.company ? { company: row.company } : {}),
     ...(row.internal_note ? { internalNote: row.internal_note } : {}),
+    ...(attribution ? { attribution } : {}),
   };
 
   if (row.origin === "project_planner") {

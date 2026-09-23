@@ -94,10 +94,10 @@ export default function ContactBlock({
           <Link
             href={getLocalizedPath(locale, "projectPlanner")}
             className="link-static"
-            data-track-event="primary_cta_click"
-            data-track-category="contact"
-            data-track-label="project-planner"
-            data-track-location="contact-block"
+            data-track-event="cta_click"
+            data-track-cta-id="contact_block_planner"
+            data-track-cta-target="planner"
+            data-track-placement="contact_block"
           >
             {content.plannerLabel}
           </Link>

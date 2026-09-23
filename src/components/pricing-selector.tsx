@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useRef, useState, useSyncExternalStore } from "react";
+import { trackEvent } from "@/lib/analytics/track";
 import CtaLink from "@/components/cta-link";
 import { isPackageId, type PackageId } from "@/lib/pricing";
 
@@ -75,6 +76,8 @@ export default function PricingSelector({ packages, labels, initialId }: Pricing
 
   const select = (id: PackageId) => {
     const next = active === id ? (isDesktop() ? active : null) : id;
+    /* Opening a package is interest; closing the same one again is not. */
+    if (next === id && active !== id) trackEvent("pricing_package_select", { package_id: id });
     setChoice(next);
     /* Keep the choice in the URL hash (no history entry), so back from the planner reopens it. */
     window.history.replaceState(null, "", next ? `#${next}` : window.location.pathname);
@@ -225,10 +228,10 @@ export default function PricingSelector({ packages, labels, initialId }: Pricing
                 <div className="mt-8 border-t border-line pt-6">
                   <CtaLink
                     href={pkg.plannerHref}
-                    data-track-event="primary_cta_click"
-                    data-track-category="pricing"
-                    data-track-label={pkg.id}
-                    data-track-location="pricing-selector"
+                    data-track-event="pricing_cta_click"
+                    data-track-package-id={pkg.id}
+                    data-track-cta-target="planner"
+                    data-track-placement="pricing_selector"
                   >
                     {labels.ctaLabel}
                   </CtaLink>

@@ -24,7 +24,8 @@ const mail = `[${businessInfo.email}](mailto:${businessInfo.email})`;
 const address = `${companyProfile.address.street}, ${companyProfile.address.postalCode} ${companyProfile.address.city}`;
 
 export const privacyStatement: LegalStatementSet = {
-  indexable: true,
+  /* False while the attribution passage (23 September 2026) awaits the owner's confirmation; see cookies.ts for the rule. */
+  indexable: false,
   content: {
     nl: {
       title: "Privacyverklaring",
@@ -52,6 +53,11 @@ export const privacyStatement: LegalStatementSet = {
           type: "paragraph",
           content:
             "Je aanvraag wordt opgeslagen in onze database en je ontvangt een bevestiging per e-mail. Wordt het geen samenwerking, dan verwijderen we de aanvraag twaalf maanden na de laatste activiteit.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "Bij een aanvraag leggen we ook vast via welk kanaal het bezoek aan de website begon: een verwijzende website, een zoekmachine, een AI-assistent zoals ChatGPT, of een campagne, en op welke pagina van onze site het bezoek begon. We gebruiken dat om te begrijpen welke kanalen tot zakelijke aanvragen leiden. De grondslag is ons gerechtvaardigd belang bij het beoordelen van onze eigen zichtbaarheid. We slaan hiervoor niet de volledige verwijzende webpagina op, geen bezoekers-id, geen browserkenmerken en geen IP-adres; alleen de naam van de bron, het kanaal, een eventuele campagnenaam en het pad van de eerste pagina. Deze gegevens horen bij de aanvraag en worden tegelijk daarmee verwijderd.",
         },
         { type: "heading", level: 3, content: "Klanten, offertes en facturen" },
         {
@@ -194,6 +200,11 @@ export const privacyStatement: LegalStatementSet = {
           type: "paragraph",
           content:
             "Your request is stored in our database and you receive a confirmation by email. If it does not lead to a collaboration, we delete the request twelve months after the last activity.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "With a request we also record through which channel the visit to the website began: a referring website, a search engine, an AI assistant such as ChatGPT, or a campaign, and on which page of our site the visit started. We use this to understand which channels lead to business requests. The legal basis is our legitimate interest in assessing our own visibility. For this we do not store the full referring web page, a visitor id, browser characteristics or an IP address; only the name of the source, the channel, a campaign name if there was one, and the path of the first page. This data belongs to the request and is deleted together with it.",
         },
         { type: "heading", level: 3, content: "Clients, quotes and invoices" },
         {

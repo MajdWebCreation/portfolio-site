@@ -24,14 +24,15 @@ type ServiceIndexProps = {
   buildTitle: string;
   improveTitle: string;
   improveText: string;
-  trackingLocation: string;
 };
 
-const tracking = (label: string, location: string) => ({
+/* Every link to a service on the index: the service it leads to, and which part of the index it sits in. */
+const tracking = (serviceKey: ServiceKey, ctaId: "service_index_family" | "service_index_entry" | "service_index_improve") => ({
   "data-track-event": "service_cta_click",
-  "data-track-category": "services",
-  "data-track-label": label,
-  "data-track-location": location,
+  "data-track-service-id": serviceKey,
+  "data-track-cta-id": ctaId,
+  "data-track-cta-target": "service",
+  "data-track-placement": "service_index",
 });
 
 function PriceLabel({
@@ -48,10 +49,10 @@ function PriceLabel({
       <Link
         href={pricingHref}
         className="label-mono link-static inline-block text-muted hover:text-ink"
-        data-track-event="primary_cta_click"
-        data-track-category="services"
-        data-track-label="pricing"
-        data-track-location="services-index-price"
+        data-track-event="cta_click"
+        data-track-cta-id="service_index_pricing"
+        data-track-cta-target="pricing"
+        data-track-placement="service_index"
       >
         {pricing.package}
       </Link>
@@ -70,11 +71,9 @@ function PriceLabel({
 function WebsiteEntries({
   family,
   services,
-  trackingLocation,
 }: {
   family: ServiceFamily;
   services: LocalizedService[];
-  trackingLocation: string;
 }) {
   return (
     <ul className="border-t border-line">
@@ -87,7 +86,7 @@ function WebsiteEntries({
           <li key={key} className="border-b border-line">
             <Link
               href={service.path}
-              {...tracking(service.navLabel, trackingLocation)}
+              {...tracking(service.key, "service_index_entry")}
               className={`svc-row group grid gap-x-6 gap-y-1 sm:grid-cols-[minmax(0,13rem)_1fr_auto] sm:items-baseline ${
                 minor ? "py-3.5" : "py-5"
               }`}
@@ -209,7 +208,6 @@ export default function ServiceIndex({
   buildTitle,
   improveTitle,
   improveText,
-  trackingLocation,
 }: ServiceIndexProps) {
   const families = serviceFamilies;
   const improveServices = services.filter((service) => service.group === "improve");
@@ -280,7 +278,7 @@ export default function ServiceIndex({
               <Link
                 key={family.key}
                 href={single.path}
-                {...tracking(copy.title, trackingLocation)}
+                {...tracking(single.key, "service_index_family")}
                 className="svc-family group relative grid gap-8 border-t-2 border-ink py-9 lg:grid-cols-12 lg:gap-8 lg:py-12"
               >
                 <div className="lg:col-span-5">{renderHead(family, copy, single, true)}</div>
@@ -300,11 +298,7 @@ export default function ServiceIndex({
             >
               <div className="lg:col-span-5">{renderHead(family, copy, first)}</div>
               <div className="lg:col-span-7">
-                <WebsiteEntries
-                  family={family}
-                  services={services}
-                  trackingLocation={trackingLocation}
-                />
+                <WebsiteEntries family={family} services={services} />
               </div>
             </div>
           );
@@ -320,7 +314,7 @@ export default function ServiceIndex({
               <Link
                 key={family.key}
                 href={service.path}
-                {...tracking(copy.title, trackingLocation)}
+                {...tracking(service.key, "service_index_family")}
                 className={`svc-family group relative flex flex-col justify-between gap-7 py-8 lg:py-10 ${
                   index === 0
                     ? "border-b border-line md:border-b-0 md:border-r md:pr-10 lg:pr-14"
@@ -351,7 +345,7 @@ export default function ServiceIndex({
               <li key={service.key} className="border-b border-line-strong">
                 <Link
                   href={service.path}
-                  {...tracking(service.navLabel, `${trackingLocation}-improve`)}
+                  {...tracking(service.key, "service_index_improve")}
                   className="svc-row group grid gap-x-6 gap-y-1.5 py-5 sm:grid-cols-[1fr_auto] sm:items-start"
                 >
                   <span>

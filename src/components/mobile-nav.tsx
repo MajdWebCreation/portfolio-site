@@ -10,6 +10,7 @@ import { lockPageScroll } from "@/lib/scroll-lock";
 type MobileNavProps = {
   navigation: NavigationItem[];
   homeHref: string;
+  locale: "nl" | "en";
   counterpartPath: string;
   alternateLocaleLabel: string;
   contactHref: string;
@@ -21,6 +22,7 @@ type MobileNavProps = {
 export default function MobileNav({
   navigation,
   homeHref,
+  locale,
   counterpartPath,
   alternateLocaleLabel,
   contactHref,
@@ -125,6 +127,9 @@ export default function MobileNav({
               href={item.href}
               onClick={() => setOpen(false)}
               aria-current={item.active ? "page" : undefined}
+              data-track-event="navigation_click"
+              data-track-nav-item={item.key}
+              data-track-placement="mobile_menu"
               className={`flex min-h-14 items-center justify-between border-b border-line text-[1.35rem] font-medium tracking-[-0.01em] ${
                 item.active ? "text-accent" : "text-ink"
               }`}
@@ -141,10 +146,10 @@ export default function MobileNav({
           <Link
             href={contactHref}
             onClick={() => setOpen(false)}
-            data-track-event="contact_cta_click"
-            data-track-category="navigation"
-            data-track-label={contactLabel}
-            data-track-location="mobile-menu"
+            data-track-event="cta_click"
+            data-track-cta-id="mobile_menu_contact"
+            data-track-cta-target="contact"
+            data-track-placement="mobile_menu"
             className="flex min-h-12 items-center justify-center rounded-sm bg-ink px-5 text-[1rem] font-medium text-paper"
           >
             {contactLabel}
@@ -152,6 +157,10 @@ export default function MobileNav({
           <Link
             href={counterpartPath}
             onClick={() => setOpen(false)}
+            data-track-event="language_switch"
+            data-track-from-locale={locale}
+            data-track-to-locale={locale === "nl" ? "en" : "nl"}
+            data-track-placement="mobile_menu"
             className="label-mono block py-2 text-center"
           >
             {alternateLocaleLabel}

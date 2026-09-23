@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { trackEvent } from "@/lib/analytics";
+import { useRef, useState } from "react";
+import { trackEvent } from "@/lib/analytics/track";
+import type { ErrorKind } from "@/lib/analytics/events";
+import { currentAttribution } from "@/lib/attribution/capture";
+import { attributionEventParams } from "@/lib/attribution/event-params";
 
 type ContactFormCopy = {
   nameLabel: string;
@@ -58,6 +61,9 @@ const initialState: FormState = {
 
 type ContactField = "name" | "email" | "message";
 
+/* Thrown after a non-2xx response, so the catch can tell it from a network failure. */
+class ContactRequestFailed extends Error {}
+
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -74,6 +80,22 @@ export default function ContactForm({
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<ContactField, string>>>({});
   const [formError, setFormError] = useState("");
+
+  /*
+    The funnel, as events: `contact_start` at the first character typed
+    (once), `contact_error` by kind with the names of the fields concerned,
+    `contact_submit` only after the server said yes. Nothing a visitor typed
+    is ever part of an event.
+  */
+  const started = useRef(false);
+
+  function trackContactError(kind: ErrorKind, fields: string[]) {
+    trackEvent("contact_error", {
+      form: "contact",
+      error_kind: kind,
+      fields: fields.length > 0 ? fields.join(",") : "none",
+    });
+  }
 
   function validateForm(values: FormState) {
     const errors: Partial<Record<ContactField, string>> = {};
@@ -100,6 +122,10 @@ export default function ContactForm({
   }
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    if (!started.current && key !== "website" && value.length > 0) {
+      started.current = true;
+      trackEvent("contact_start", { form: "contact" });
+    }
     setForm((prev) => ({ ...prev, [key]: value }));
     if (status !== "idle") setStatus("idle");
     if (formError) setFormError("");
@@ -120,6 +146,7 @@ export default function ContactForm({
     setFieldErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0 || isSubmitting) {
+      if (Object.keys(nextErrors).length > 0) trackContactError("validation", Object.keys(nextErrors));
       setStatus("error");
       setFormError(
         isDutch
@@ -139,7 +166,8 @@ export default function ContactForm({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ ...form, locale }),
+        /* Where the visit came from travels with the request; the server checks it again. */
+        body: JSON.stringify({ ...form, locale, attribution: currentAttribution() ?? undefined }),
       });
 
       if (!response.ok) {
@@ -158,20 +186,17 @@ export default function ContactForm({
           setFormError(data.error);
         }
 
-        throw new Error("Request failed");
+        trackContactError("server", Object.keys(data?.fieldErrors ?? {}));
+        throw new ContactRequestFailed();
       }
 
+      trackEvent("contact_submit", { form: "contact", ...attributionEventParams(currentAttribution()) });
       setStatus("success");
       setForm(initialState);
       setFieldErrors({});
       setFormError("");
-      trackEvent({
-        name: "contact_form_submit_success",
-        category: "contact",
-        label: "contact-form",
-        location: "contact-form",
-      });
-    } catch {
+    } catch (error) {
+      if (!(error instanceof ContactRequestFailed)) trackContactError("network", []);
       setStatus("error");
       setFormError((prev) => prev || copy.errorMessage);
     } finally {
@@ -291,10 +316,6 @@ export default function ContactForm({
             <button
               type="submit"
               disabled={isSubmitting}
-              data-track-event="contact_cta_click"
-              data-track-category="contact"
-              data-track-label={copy.submitLabel}
-              data-track-location="contact-form-submit"
               className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-sm bg-ink px-6 text-[0.95rem] font-medium text-paper transition-colors duration-200 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? copy.sendingLabel : copy.submitLabel}

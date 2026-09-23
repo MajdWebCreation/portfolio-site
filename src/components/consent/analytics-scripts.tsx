@@ -2,6 +2,7 @@
 
 import Script from "next/script";
 import { useEffect } from "react";
+import { flushPendingEvents } from "@/lib/analytics/track";
 import { hydrateConsent, useConsentSnapshot } from "@/lib/consent/store";
 
 /**
@@ -17,6 +18,20 @@ import { hydrateConsent, useConsentSnapshot } from "@/lib/consent/store";
  * nothing can -- so the store also flips Google's per-property kill switch;
  * see `decideConsent`. Granting again in the same session re-renders these
  * tags, which next/script de-duplicates, and clears the switch.
+ *
+ * The consent state is also told to the tag itself, right before `config`:
+ * analytics storage granted (the tag would not be here otherwise), every
+ * advertising signal denied. That is Google's "basic" consent mode -- tags
+ * blocked until the choice, no cookieless pings, no modelling -- made
+ * explicit, so the tag can never treat the missing signal as a default.
+ *
+ * No `anonymize_ip`: Google states GA4 does not log or store IP addresses
+ * of EU visitors and derives location on EU servers before discarding
+ * them, and the field does nothing in GA4. A no-op that reads like a
+ * safeguard is worse than none.
+ *
+ * When the tag has executed, events that were sent between the visitor's
+ * yes and this moment are handed over (see track.ts).
  */
 /**
  * How long Google's own cookies (`_ga`, `_ga_<id>`) live: ninety days rather
@@ -40,15 +55,24 @@ export default function AnalyticsScripts({ measurementId }: { measurementId: str
 
   return (
     <>
-      <Script src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`} strategy="afterInteractive" />
-      <Script id="ym-ga-init" strategy="afterInteractive">
+      <Script
+        src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`}
+        strategy="afterInteractive"
+        onLoad={flushPendingEvents}
+      />
+      <Script id="ym-ga-init" strategy="afterInteractive" onReady={flushPendingEvents}>
         {`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           window.gtag = gtag;
           gtag('js', new Date());
+          gtag('consent', 'default', {
+            analytics_storage: 'granted',
+            ad_storage: 'denied',
+            ad_user_data: 'denied',
+            ad_personalization: 'denied'
+          });
           gtag('config', '${measurementId}', {
-            anonymize_ip: true,
             cookie_expires: ${GA_COOKIE_MAX_AGE_SECONDS},
             cookie_update: false
           });

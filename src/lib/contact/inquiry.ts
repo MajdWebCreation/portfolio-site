@@ -1,3 +1,4 @@
+import type { Attribution } from "@/lib/attribution/types";
 import type { ContactPayload } from "@/lib/contact/payload";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import type { Json } from "@/lib/supabase/database.types";
@@ -15,6 +16,10 @@ import type { Json } from "@/lib/supabase/database.types";
  * A contact request has no phone number and no planner payload, matching the
  * table's own check constraint; the planner sends its structured block
  * verbatim, prices included as the formatted strings the visitor saw.
+ *
+ * The attribution is the route's already validated value or null; null
+ * writes null in all five columns. Nothing about a visitor is stored that
+ * was not checked first.
  */
 export type InquirySubmission = {
   origin: "contact" | "project_planner";
@@ -25,6 +30,7 @@ export type InquirySubmission = {
   message: string;
   phone: string;
   planner?: ContactPayload["planner"];
+  attribution: Attribution | null;
 };
 
 function orNull(value: string): string | null {
@@ -47,6 +53,11 @@ export async function storeInquiry(submission: InquirySubmission): Promise<void>
       message: submission.message,
       phone: isPlanner ? orNull(submission.phone) : null,
       planner: isPlanner ? ((submission.planner ?? {}) as unknown as Json) : null,
+      traffic_class: submission.attribution?.trafficClass ?? null,
+      traffic_source: submission.attribution?.trafficSource ?? null,
+      traffic_medium: submission.attribution?.trafficMedium ?? null,
+      campaign: submission.attribution?.campaign ?? null,
+      landing_path: submission.attribution?.landingPath ?? null,
     });
 
   if (error) {

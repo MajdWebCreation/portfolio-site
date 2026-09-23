@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import CtaButton from "@/components/cta-button";
+import { trackEvent } from "@/lib/analytics/track";
+import { syncAttributionStorage } from "@/lib/attribution/capture";
 import { closeConsentSettings, decideConsent, hydrateConsent, useConsentSnapshot } from "@/lib/consent/store";
 
 export type ConsentCopy = {
@@ -118,6 +120,20 @@ export default function ConsentDialog({ copy, privacyHref, cookiesHref }: Consen
     return null;
   }
 
+  /*
+    Records the choice, and when it is a yes, measures that it was given:
+    the one event that can only ever exist after consent. Where the card
+    was opened from is the only parameter. A no is never sent anywhere.
+  */
+  function decide(analytics: boolean) {
+    decideConsent(analytics);
+    /* The visit's origin follows the same choice: kept across a reload only with a yes. */
+    syncAttributionStorage(analytics);
+    if (analytics) {
+      trackEvent("consent_granted", { placement: settingsOpen ? "settings" : "banner" });
+    }
+  }
+
   function openPreferences() {
     setAnalytics(storedAnalytics);
     focusTitleOnLayer.current = true;
@@ -206,7 +222,7 @@ export default function ConsentDialog({ copy, privacyHref, cookiesHref }: Consen
             </div>
           </dl>
 
-          <CtaButton variant="primary" onClick={() => decideConsent(analytics)} className="mt-5 w-full">
+          <CtaButton variant="primary" onClick={() => decide(analytics)} className="mt-5 w-full">
             {copy.save}
           </CtaButton>
         </div>
@@ -221,10 +237,10 @@ export default function ConsentDialog({ copy, privacyHref, cookiesHref }: Consen
 
           {/* Two answers, one shape: the same variant, the same width, one Tab apart. */}
           <div className="mt-5 grid gap-3 xs:grid-cols-2">
-            <CtaButton variant="secondary" onClick={() => decideConsent(false)} className="w-full px-3">
+            <CtaButton variant="secondary" onClick={() => decide(false)} className="w-full px-3">
               {copy.necessaryOnly}
             </CtaButton>
-            <CtaButton variant="secondary" onClick={() => decideConsent(true)} className="w-full px-3">
+            <CtaButton variant="secondary" onClick={() => decide(true)} className="w-full px-3">
               {copy.acceptAll}
             </CtaButton>
           </div>

@@ -87,7 +87,6 @@ export function ServicesPageContent({ locale }: { locale: Locale }) {
             buildTitle={overview.build.title}
             improveTitle={overview.improve.title}
             improveText={overview.improve.text}
-            trackingLocation="services-overview-index"
           />
         </div>
 

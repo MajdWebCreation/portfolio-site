@@ -100,3 +100,52 @@ describe("the contact route's error log", () => {
     expect(logged).toHaveLength(0);
   });
 });
+
+describe("attribution on the request", () => {
+  it("stores a checked attribution with the inquiry", async () => {
+    storeInquiry.mockResolvedValue(undefined);
+    send.mockResolvedValue({ error: null });
+
+    const response = await POST(
+      request({
+        ...visitor,
+        attribution: { trafficClass: "ai_assistant", trafficSource: "chatgpt.com", trafficMedium: "ai-assistant", campaign: null, landingPath: "/nl/tarieven" },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(storeInquiry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attribution: { trafficClass: "ai_assistant", trafficSource: "chatgpt.com", trafficMedium: "ai-assistant", campaign: null, landingPath: "/nl/tarieven" },
+      }),
+    );
+  });
+
+  it("drops an attribution that does not fit and keeps the inquiry, without logging the value", async () => {
+    storeInquiry.mockResolvedValue(undefined);
+    send.mockResolvedValue({ error: null });
+
+    for (const attribution of [
+      { trafficClass: "unknown", trafficSource: null, trafficMedium: null, campaign: null, landingPath: "/nl" },
+      { trafficClass: "ai_assistant", trafficSource: "evil.example", trafficMedium: null, campaign: null, landingPath: "/nl" },
+      { trafficClass: "referral", trafficSource: "https://evil.example/?x=<script>", trafficMedium: null, campaign: null, landingPath: "/nl" },
+      { trafficClass: "direct", trafficSource: null, trafficMedium: null, campaign: null, landingPath: "https://evil.example/" },
+      "not-an-object",
+    ]) {
+      storeInquiry.mockClear();
+      const response = await POST(request({ ...visitor, attribution }));
+      expect(response.status).toBe(200);
+      expect(storeInquiry).toHaveBeenCalledTimes(1);
+      expect(storeInquiry.mock.calls[0][0]).toMatchObject({ attribution: null });
+    }
+    expect(loggedText()).not.toContain("evil.example");
+  });
+
+  it("stores no attribution when none was sent", async () => {
+    storeInquiry.mockResolvedValue(undefined);
+    send.mockResolvedValue({ error: null });
+    await POST(request(visitor));
+    expect(storeInquiry.mock.calls[0][0]).toMatchObject({ attribution: null });
+  });
+});
+

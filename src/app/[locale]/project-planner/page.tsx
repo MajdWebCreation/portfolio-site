@@ -79,10 +79,10 @@ export async function ProjectPlannerPageContent({ locale }: { locale: Locale }) 
           <CtaLink
             href={getLocalizedPath(locale, "contact")}
             variant="text"
-            data-track-event="contact_cta_click"
-            data-track-category="project-planner"
-            data-track-label="contact"
-            data-track-location="planner-header"
+            data-track-event="cta_click"
+            data-track-cta-id="planner_header_contact"
+            data-track-cta-target="contact"
+            data-track-placement="planner_header"
           >
             {locale === "nl"
               ? "Liever een kort bericht? Ga naar contact"

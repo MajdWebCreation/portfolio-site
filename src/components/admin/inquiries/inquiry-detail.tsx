@@ -9,6 +9,7 @@ import { SelectField, TextareaField } from "@/components/admin/form-field";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import StatusBadge from "@/components/admin/status-badge";
 import { formatDateTime } from "@/lib/admin/format";
+import { trafficClassLabels, type Attribution } from "@/lib/attribution/types";
 import { saveInquiryHandling } from "@/lib/admin/inquiries/actions";
 import {
   inquiryOriginLabels,
@@ -68,6 +69,42 @@ function PlannerSummary({ inquiry }: { inquiry: PlannerInquiry }) {
   );
 }
 
+/**
+ * Where the visit that led to this request came from, as the website
+ * classified it at the time. Five values at most; "Direct / onbekend" is
+ * shown with the caveat it deserves, and a request without a value says so
+ * instead of guessing.
+ */
+function AttributionSummary({ attribution }: { attribution: Attribution | undefined }) {
+  return (
+    <AdminSection id="attribution" title="Herkomst van het bezoek" note="Zoals de website het bij binnenkomst zag">
+      {attribution ? (
+        <DetailList>
+          <DetailRow term="Type">
+            {trafficClassLabels[attribution.trafficClass]}
+            {attribution.trafficClass === "direct" ? (
+              <span className="block text-[0.88rem] text-muted">
+                Geen verwijzende site en geen campagne gezien. Dat kan een ingetypt adres zijn, maar ook een link uit mail, een app of een browser die de verwijzer niet meestuurt.
+              </span>
+            ) : null}
+            {attribution.trafficClass === "internal" ? (
+              <span className="block text-[0.88rem] text-muted">De eerste gemeten pagina had de site zelf als verwijzer, bijvoorbeeld na een herlaad.</span>
+            ) : null}
+          </DetailRow>
+          {attribution.trafficSource ? <DetailRow term="Bron">{attribution.trafficSource}</DetailRow> : null}
+          {attribution.trafficMedium ? <DetailRow term="Medium">{attribution.trafficMedium}</DetailRow> : null}
+          {attribution.campaign ? <DetailRow term="Campagne">{attribution.campaign}</DetailRow> : null}
+          <DetailRow term="Landingspagina">
+            <span className="tabular break-all">{attribution.landingPath}</span>
+          </DetailRow>
+        </DetailList>
+      ) : (
+        <p className="text-[0.95rem] text-muted">Niet vastgelegd: de website kon de herkomst van dit bezoek niet betrouwbaar vaststellen.</p>
+      )}
+    </AdminSection>
+  );
+}
+
 export default function InquiryDetail({ inquiry, customerId }: { inquiry: Inquiry; customerId: string | null }) {
   // Local state while editing; the stored record is what the page was given.
   const [status, setStatus] = useState(isInquiryStatus(inquiry.status) ? inquiry.status : "new");
@@ -115,6 +152,8 @@ export default function InquiryDetail({ inquiry, customerId }: { inquiry: Inquir
         </AdminSection>
 
         {inquiry.origin === "project_planner" ? <PlannerSummary inquiry={inquiry} /> : null}
+
+        <AttributionSummary attribution={inquiry.attribution} />
       </div>
 
       <aside className="space-y-8 lg:border-l lg:border-line lg:pl-8" aria-labelledby="handling-heading">

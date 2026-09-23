@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import CtaLink from "@/components/cta-link";
 import JsonLd from "@/components/json-ld";
 import PageHeader from "@/components/page-header";
+import { PricingViewEvent } from "@/components/page-events";
 import PricingHeroSketch from "@/components/pricing-hero-sketch";
 import PricingSelector, {
   type SelectorAddOnGroup,
@@ -126,6 +127,7 @@ export async function PricingPageContent({ locale }: { locale: Locale }) {
         })}
       />
       <SiteShell locale={locale} content={content} currentPath={path}>
+        <PricingViewEvent />
         <PageHeader
           label={pricing.hero.label}
           title={pricing.hero.title}
@@ -203,10 +205,10 @@ export async function PricingPageContent({ locale }: { locale: Locale }) {
               <CtaLink
                 href={plannerPath}
                 variant="text"
-                data-track-event="primary_cta_click"
-                data-track-category="pricing"
-                data-track-label="planner"
-                data-track-location="pricing-closing"
+                data-track-event="pricing_cta_click"
+                data-track-package-id="none"
+                data-track-cta-target="planner"
+                data-track-placement="pricing_closing"
               >
                 {pricing.closing.plannerLabel}
               </CtaLink>
@@ -214,10 +216,10 @@ export async function PricingPageContent({ locale }: { locale: Locale }) {
                 href={getLocalizedPath(locale, "contact")}
                 variant="text"
                 className="text-muted"
-                data-track-event="contact_cta_click"
-                data-track-category="pricing"
-                data-track-label="contact"
-                data-track-location="pricing-closing"
+                data-track-event="pricing_cta_click"
+                data-track-package-id="none"
+                data-track-cta-target="contact"
+                data-track-placement="pricing_closing"
               >
                 {pricing.closing.contactLabel}
               </CtaLink>

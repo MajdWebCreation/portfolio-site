@@ -10,7 +10,8 @@ import type { Inquiry } from "@/lib/admin/inquiries/types";
  * again on the server. The pages check too, but a repository that is called
  * from a server action must not depend on its caller having done so.
  */
-const columns = "id, origin, status, received_at, locale, name, email, company, message, internal_note, phone, planner, updated_at";
+const columns =
+  "id, origin, status, received_at, locale, name, email, company, message, internal_note, phone, planner, updated_at, traffic_class, traffic_source, traffic_medium, campaign, landing_path";
 
 export async function listInquiries(): Promise<Inquiry[]> {
   const db = await adminDb();

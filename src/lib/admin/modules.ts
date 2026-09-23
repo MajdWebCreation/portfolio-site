@@ -5,6 +5,7 @@
  */
 export type AdminModuleKey =
   | "dashboard"
+  | "analytics"
   | "articles"
   | "inquiries"
   | "leads"
@@ -33,6 +34,13 @@ export const adminModules: readonly AdminModule[] = [
     slug: null,
     label: "Dashboard",
     description: "Wat aandacht vraagt, in één overzicht.",
+    status: "available",
+  },
+  {
+    key: "analytics",
+    slug: "analytics",
+    label: "Analytics",
+    description: "Bezoek, herkomst, interesse en aanvragen, uit Google Analytics en de eigen database.",
     status: "available",
   },
   {

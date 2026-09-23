@@ -1,4 +1,5 @@
 import CtaLink from "@/components/cta-link";
+import { ctaTargetForHref } from "@/lib/analytics/targets";
 
 type ProcessCtaProps = {
   headingId: string;
@@ -42,20 +43,20 @@ export default function ProcessCta({
         <div className="flex flex-wrap items-center gap-x-6 gap-y-4 lg:col-span-5 lg:justify-end lg:self-end">
           <CtaLink
             href={primaryHref}
-            data-track-event="contact_cta_click"
-            data-track-category="process"
-            data-track-label={primaryLabel}
-            data-track-location="process-cta-primary"
+            data-track-event="cta_click"
+            data-track-cta-id="process_cta_primary"
+            data-track-cta-target={ctaTargetForHref(primaryHref)}
+            data-track-placement="process_cta"
           >
             {primaryLabel}
           </CtaLink>
           <CtaLink
             href={secondaryHref}
             variant="text"
-            data-track-event="primary_cta_click"
-            data-track-category="process"
-            data-track-label={secondaryLabel}
-            data-track-location="process-cta-secondary"
+            data-track-event="cta_click"
+            data-track-cta-id="process_cta_secondary"
+            data-track-cta-target={ctaTargetForHref(secondaryHref)}
+            data-track-placement="process_cta"
           >
             {secondaryLabel}
           </CtaLink>

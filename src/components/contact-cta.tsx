@@ -30,20 +30,20 @@ export default function ContactCta({ locale, content, headingId }: ContactCtaPro
         <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4 max-md:mt-6">
           <CtaLink
             href={getLocalizedPath(locale, "contact")}
-            data-track-event="contact_cta_click"
-            data-track-category="homepage"
-            data-track-label={content.primaryLabel}
-            data-track-location="contact-cta"
+            data-track-event="cta_click"
+            data-track-cta-id="home_contact_cta_contact"
+            data-track-cta-target="contact"
+            data-track-placement="contact_cta"
           >
             {content.primaryLabel}
           </CtaLink>
           <Link
             href={getLocalizedPath(locale, "projectPlanner")}
             className="link-static text-[0.95rem] text-muted"
-            data-track-event="primary_cta_click"
-            data-track-category="homepage"
-            data-track-label="project-planner"
-            data-track-location="contact-cta"
+            data-track-event="cta_click"
+            data-track-cta-id="home_contact_cta_planner"
+            data-track-cta-target="planner"
+            data-track-placement="contact_cta"
           >
             {content.plannerLabel}
           </Link>

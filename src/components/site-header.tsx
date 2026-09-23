@@ -1,10 +1,12 @@
 import Link from "next/link";
 import BrandMark from "@/components/brand-mark";
 import MobileNav from "@/components/mobile-nav";
-import { getCounterpartPath, getLocalizedPath } from "@/lib/content/routes";
+import { getCounterpartPath, getLocalizedPath, type StaticRouteKey } from "@/lib/content/routes";
 import type { Locale, SiteContent } from "@/lib/content/site-content";
 
 export type NavigationItem = {
+  /** The route, as the stable `nav_item` in analytics. */
+  key: StaticRouteKey;
   href: string;
   label: string;
   active: boolean;
@@ -21,19 +23,23 @@ export function buildNavigation(
   content: SiteContent,
   currentPath: string,
 ): NavigationItem[] {
-  const items = [
-    { href: getLocalizedPath(locale, "services"), label: content.nav.services },
-    { href: getLocalizedPath(locale, "process"), label: content.nav.process },
-    { href: getLocalizedPath(locale, "projects"), label: content.nav.projects },
-    { href: getLocalizedPath(locale, "pricing"), label: content.nav.pricing },
-    { href: getLocalizedPath(locale, "blog"), label: content.nav.blog },
-    { href: getLocalizedPath(locale, "contact"), label: content.nav.contact },
+  const items: Array<{ key: StaticRouteKey; label: string }> = [
+    { key: "services", label: content.nav.services },
+    { key: "process", label: content.nav.process },
+    { key: "projects", label: content.nav.projects },
+    { key: "pricing", label: content.nav.pricing },
+    { key: "blog", label: content.nav.blog },
+    { key: "contact", label: content.nav.contact },
   ];
 
-  return items.map((item) => ({
-    ...item,
-    active: currentPath === item.href || currentPath.startsWith(`${item.href}/`),
-  }));
+  return items.map((item) => {
+    const href = getLocalizedPath(locale, item.key);
+    return {
+      ...item,
+      href,
+      active: currentPath === href || currentPath.startsWith(`${href}/`),
+    };
+  });
 }
 
 export default function SiteHeader({
@@ -65,6 +71,9 @@ export default function SiteHeader({
               key={item.href}
               href={item.href}
               aria-current={item.active ? "page" : undefined}
+              data-track-event="navigation_click"
+              data-track-nav-item={item.key}
+              data-track-placement="header"
               className={`text-[0.95rem] transition-colors duration-200 hover:text-ink ${
                 item.active
                   ? "text-ink underline decoration-accent decoration-1 underline-offset-[0.55em]"
@@ -82,16 +91,20 @@ export default function SiteHeader({
             hrefLang={alternateLocale}
             lang={alternateLocale}
             aria-label={content.nav.switchLocaleLabel}
+            data-track-event="language_switch"
+            data-track-from-locale={locale}
+            data-track-to-locale={alternateLocale}
+            data-track-placement="header"
             className="label-mono text-muted transition-colors hover:text-ink"
           >
             {alternateLocale.toUpperCase()}
           </Link>
           <Link
             href={contactPath}
-            data-track-event="contact_cta_click"
-            data-track-category="navigation"
-            data-track-label={content.nav.cta}
-            data-track-location="desktop-header"
+            data-track-event="cta_click"
+            data-track-cta-id="header_contact"
+            data-track-cta-target="contact"
+            data-track-placement="header"
             className="inline-flex min-h-10 items-center rounded-sm bg-ink px-4 text-[0.9rem] font-medium text-paper transition-colors duration-200 hover:bg-accent"
           >
             {content.nav.cta}
@@ -101,6 +114,7 @@ export default function SiteHeader({
         <MobileNav
           navigation={navigation}
           homeHref={homePath}
+          locale={locale}
           counterpartPath={counterpartPath}
           alternateLocaleLabel={
             alternateLocale === "en" ? "English" : "Nederlands"

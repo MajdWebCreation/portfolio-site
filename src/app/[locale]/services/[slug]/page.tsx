@@ -10,6 +10,7 @@ import PageHeader from "@/components/page-header";
 import ProcessSteps from "@/components/process-steps";
 import ProjectRow from "@/components/project-row";
 import ProseSections from "@/components/prose-sections";
+import { ViewEvent } from "@/components/page-events";
 import SiteShell from "@/components/site-shell";
 import { getServiceBreadcrumbs } from "@/lib/content/breadcrumbs";
 import { getCaseStudyPathForProject } from "@/lib/content/cases";
@@ -241,6 +242,10 @@ export function ServiceDetailContent({
         ]}
       />
       <SiteShell locale={locale} content={content} currentPath={service.path}>
+        <ViewEvent
+          event="service_view"
+          params={{ service_id: service.key, service_family: service.family, service_kind: service.kind }}
+        />
         <PageHeader
           breadcrumb={<Breadcrumbs locale={locale} items={crumbs} />}
           label={service.familyTitle}
@@ -250,10 +255,11 @@ export function ServiceDetailContent({
           <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
             <CtaLink
               href={service.contactPath}
-              data-track-event="contact_cta_click"
-              data-track-category="service-detail"
-              data-track-label={text.contact}
-              data-track-location="service-header"
+              data-track-event="service_cta_click"
+              data-track-service-id={service.key}
+              data-track-cta-id="service_header_contact"
+              data-track-cta-target="contact"
+              data-track-placement="service_header"
             >
               {text.contact}
             </CtaLink>
@@ -261,10 +267,11 @@ export function ServiceDetailContent({
               <CtaLink
                 href={getLocalizedPath(locale, "pricing")}
                 variant="text"
-                data-track-event="primary_cta_click"
-                data-track-category="service-detail"
-                data-track-label={text.pricing}
-                data-track-location="service-header"
+                data-track-event="service_cta_click"
+                data-track-service-id={service.key}
+                data-track-cta-id="service_header_pricing"
+                data-track-cta-target="pricing"
+                data-track-placement="service_header"
               >
                 {text.pricing}
               </CtaLink>
@@ -307,10 +314,11 @@ export function ServiceDetailContent({
               <CtaLink
                 href={getLocalizedPath(locale, "projects")}
                 variant="text"
-                data-track-event="primary_cta_click"
-                data-track-category="service-detail"
-                data-track-label="projects"
-                data-track-location="service-proof"
+                data-track-event="service_cta_click"
+                data-track-service-id={service.key}
+                data-track-cta-id="service_proof_projects"
+                data-track-cta-target="projects"
+                data-track-placement="service_proof"
               >
                 {text.allProjects}
               </CtaLink>
@@ -375,9 +383,10 @@ export function ServiceDetailContent({
                 <Link
                   href={item.path}
                   data-track-event="service_cta_click"
-                  data-track-category="service-detail"
-                  data-track-label={item.navLabel}
-                  data-track-location="related-services"
+                  data-track-service-id={item.key}
+                  data-track-cta-id="service_related"
+                  data-track-cta-target="service"
+                  data-track-placement="related"
                   className="link-static text-[0.98rem] text-ink"
                 >
                   {item.navLabel}
@@ -389,9 +398,10 @@ export function ServiceDetailContent({
                 href={service.overviewPath}
                 className="link-static text-[0.98rem] text-muted"
                 data-track-event="service_cta_click"
-                data-track-category="service-detail"
-                data-track-label="services-overview"
-                data-track-location="related-services"
+                data-track-service-id={service.key}
+                data-track-cta-id="service_related_overview"
+                data-track-cta-target="services"
+                data-track-placement="related"
               >
                 {text.services} →
               </Link>
