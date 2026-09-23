@@ -5,7 +5,12 @@ import { trackEvent } from "@/lib/analytics/track";
 import CtaLink from "@/components/cta-link";
 import { isPackageId, type PackageId } from "@/lib/pricing";
 
-export type SelectorAddOn = { label: string; price: string };
+export type SelectorAddOn = {
+  label: string;
+  price: string;
+  /** Base amount, struck through, while the development discount is active: "€75". */
+  originalPrice?: string;
+};
 export type SelectorAddOnGroup = { label: string; items: SelectorAddOn[] };
 
 export type SelectorPackage = {
@@ -17,6 +22,8 @@ export type SelectorPackage = {
   price: string;
   /** "€1.495" or "€4.995+" */
   priceAmount: string;
+  /** Base amount while the development discount is active: "€1.495" or "€4.995+". */
+  originalPriceAmount?: string;
   /** "vanaf €25 p/m" */
   monthly: string;
   scopeDriven: boolean;
@@ -38,11 +45,30 @@ export type SelectorLabels = {
   ctaLabel: string;
 };
 
+/** Copy for an active development discount; absent when there is none. */
+export type SelectorDiscount = {
+  /** "Tijdelijk 30% korting op de ontwikkelkosten" */
+  note: string;
+  /** Screen-reader label before a struck-through base amount. */
+  originalLabel: string;
+};
+
 type PricingSelectorProps = {
   packages: SelectorPackage[];
   labels: SelectorLabels;
   initialId: PackageId;
+  discount?: SelectorDiscount;
 };
+
+/* A base amount the development discount replaces: quiet, struck through. */
+function OriginalPrice({ amount, label }: { amount: string; label: string }) {
+  return (
+    <s className="text-faint decoration-[0.06em]">
+      <span className="sr-only">{label} </span>
+      {amount}
+    </s>
+  );
+}
 
 const DESKTOP = "(min-width: 64rem)";
 
@@ -65,7 +91,7 @@ const noHash = () => null;
  * only decides which one is shown. Selecting sends nothing: the call to
  * action leads to the project planner with the package preselected.
  */
-export default function PricingSelector({ packages, labels, initialId }: PricingSelectorProps) {
+export default function PricingSelector({ packages, labels, initialId, discount }: PricingSelectorProps) {
   const hashId = useSyncExternalStore(subscribeHash, readHash, noHash);
   /* undefined = no choice made yet; null = closed (narrow screens only). */
   const [choice, setChoice] = useState<PackageId | null | undefined>(undefined);
@@ -141,6 +167,11 @@ export default function PricingSelector({ packages, labels, initialId }: Pricing
                   </span>
                 </span>
                 <span className="flex shrink-0 items-baseline gap-3">
+                  {discount && pkg.originalPriceAmount ? (
+                    <span className="text-[0.85rem]">
+                      <OriginalPrice amount={pkg.originalPriceAmount} label={discount.originalLabel} />
+                    </span>
+                  ) : null}
                   <span className="text-[0.95rem] text-muted">{pkg.price}</span>
                   <span aria-hidden="true" className="ps-arrow text-faint">
                     →
@@ -163,9 +194,21 @@ export default function PricingSelector({ packages, labels, initialId }: Pricing
                   <dl className="ps-prices grid shrink-0 grid-cols-2 gap-x-6 lg:block lg:text-right">
                     <div>
                       <dt className="label-mono">{labels.onceLabel}</dt>
-                      <dd className="mt-1 text-[1.9rem] font-semibold leading-none tracking-[-0.03em] text-ink lg:text-[2.2rem]">
-                        {pkg.priceAmount}
+                      <dd className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 lg:justify-end">
+                        <span className="text-[1.9rem] font-semibold leading-none tracking-[-0.03em] text-ink lg:text-[2.2rem]">
+                          {pkg.priceAmount}
+                        </span>
+                        {discount && pkg.originalPriceAmount ? (
+                          <span className="text-[1rem] leading-none">
+                            <OriginalPrice amount={pkg.originalPriceAmount} label={discount.originalLabel} />
+                          </span>
+                        ) : null}
                       </dd>
+                      {discount && pkg.originalPriceAmount ? (
+                        <dd className="mt-2 max-w-[16rem] text-[0.82rem] leading-snug text-muted lg:ml-auto">
+                          {discount.note}
+                        </dd>
+                      ) : null}
                       {pkg.scopeDriven ? (
                         <dd className="label-mono mt-2 text-accent">{labels.scopeTag}</dd>
                       ) : null}
@@ -206,7 +249,14 @@ export default function PricingSelector({ packages, labels, initialId }: Pricing
                                 className="flex items-baseline justify-between gap-4 py-1.5 text-[0.92rem] leading-snug"
                               >
                                 <span className="text-body">{item.label}</span>
-                                <span className="shrink-0 text-ink">{item.price}</span>
+                                <span className="shrink-0 text-ink">
+                                  {discount && item.originalPrice ? (
+                                    <span className="mr-2 text-[0.85rem]">
+                                      <OriginalPrice amount={item.originalPrice} label={discount.originalLabel} />
+                                    </span>
+                                  ) : null}
+                                  {item.price}
+                                </span>
                               </li>
                             ))}
                           </ul>

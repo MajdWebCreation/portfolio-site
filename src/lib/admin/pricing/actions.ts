@@ -5,6 +5,11 @@ import { actionFailed, type ActionResult } from "@/lib/admin/action-result";
 import { adminDb } from "@/lib/admin/db";
 import { getLocalizedPath } from "@/lib/content/routes";
 import { locales } from "@/lib/content/site-content";
+import {
+  isValidDevelopmentDiscountPercent,
+  maxDevelopmentDiscountPercent,
+  minDevelopmentDiscountPercent,
+} from "@/lib/pricing/discount";
 
 /**
  * Saving a price. The editor works in whole euros, the database stores
@@ -44,6 +49,36 @@ export async function updatePackagePrice(
   const patch =
     field === "startingPrice" ? { starting_price_cents: cents } : { monthly_management_from_cents: cents };
   const { error } = await db.from("pricing_packages").update(patch).eq("id", packageId);
+
+  if (error) return actionFailed(error, "Opslaan mislukt.");
+
+  revalidatePricing();
+  return { ok: true };
+}
+
+/**
+ * The temporary discount on development costs. Only the setting is stored;
+ * no amount changes, so switching it off restores the base prices on the
+ * site. Validated here, whatever the form sent, and again by the CHECK on the
+ * column. The row is a singleton, so this writes id 1 and creates it if a
+ * database was set up without the seed.
+ */
+export async function updateDevelopmentDiscount(enabled: boolean, percent: number): Promise<ActionResult> {
+  if (typeof enabled !== "boolean") return { ok: false, error: "Ongeldige waarde voor aan/uit." };
+  if (!isValidDevelopmentDiscountPercent(percent)) {
+    return {
+      ok: false,
+      error: `Percentage moet een heel getal van ${minDevelopmentDiscountPercent} tot en met ${maxDevelopmentDiscountPercent} zijn.`,
+    };
+  }
+
+  const db = await adminDb();
+  const { error } = await db
+    .from("pricing_settings")
+    .upsert(
+      { id: 1, development_discount_enabled: enabled, development_discount_percent: percent },
+      { onConflict: "id" },
+    );
 
   if (error) return actionFailed(error, "Opslaan mislukt.");
 

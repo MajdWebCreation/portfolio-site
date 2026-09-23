@@ -25,6 +25,17 @@ export type AdminPricingPackage = {
   addOns: AdminAddOn[];
 };
 
+/**
+ * The temporary discount on development costs as the editor shows it.
+ * `percent` is `null` when there is no settings row yet; `loadError` is set
+ * when it could not be read, so the rest of the editor still works.
+ */
+export type AdminPricingSettings = {
+  developmentDiscountEnabled: boolean;
+  developmentDiscountPercent: number | null;
+  loadError: string | null;
+};
+
 /** Stable key for one editable amount, e.g. "business.startingPrice" or "business.addOn.seo-growth". */
 export type PricingFieldKey = `${PackageId}.startingPrice` | `${PackageId}.monthlyManagementFrom` | `${PackageId}.addOn.${string}`;
 
@@ -39,6 +50,13 @@ export const priceModeLabels: Record<PriceMode, string> = {
   "plus-from": "Vanaf, omvang verschilt",
   from: "Eigen traject, vanaf",
 };
+
+/** A whole percentage as typed; the range itself is checked by the server action. */
+export function parsePercentInput(value: string): number | null {
+  const trimmed = value.trim();
+  if (!/^\d{1,3}$/.test(trimmed)) return null;
+  return Number(trimmed);
+}
 
 /** Whole euros only, matching the source; empty or invalid input is rejected. */
 export function parseEuroInput(value: string): number | null {

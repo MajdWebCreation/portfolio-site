@@ -1,6 +1,8 @@
+import { getDevelopmentDiscountCopy } from "@/lib/content/pricing";
 import { getLocalizedPath, legalRoutes } from "@/lib/content/routes";
 import { type Locale } from "@/lib/content/site-content";
 import {
+  developmentPrice,
   formatEuro,
   formatMonthlyFrom,
   getAddOn,
@@ -106,13 +108,27 @@ export type PlannerSummary = {
   recommendedPackage: PlannerPackageKey;
   recommendedLabel: string;
   reason: string;
+  /** The one-time estimate shown: the base estimate, or the discounted one. */
   startingPrice: number;
-  /** Minimum monthly technical management for the recommended package. */
+  /**
+   * The one-time estimate before the development discount, exactly as the
+   * planner computes it without a campaign. Equal to `startingPrice` when
+   * there is no discount.
+   */
+  baseStartingPrice: number;
+  /** Minimum monthly technical management for the recommended package. Never discounted. */
   monthlyManagementFrom: number;
   range?: {
     min: number;
     max: number;
   };
+  /** The range before the development discount; present whenever `range` is. */
+  baseRange?: {
+    min: number;
+    max: number;
+  };
+  /** The development discount applied to the one-time estimate, or `null`. */
+  discountPercent: number | null;
   selectedFeatures: string[];
   selectedAddOns: string[];
   selectedAddOnTotal: number;
@@ -531,6 +547,12 @@ export function getPlannerPageContent(locale: Locale) {
  * and the amounts of the selected add-ons -- while the rules that combine
  * them (which type is recommended, which buffers apply, rounding to fifty)
  * are unchanged and live only here.
+ *
+ * The development discount comes last: the whole one-time estimate, range
+ * included, is built from base amounts first, and the discount is applied
+ * once to its final minimum and maximum. Discounting each part and adding up
+ * would drift by a euro per rounding. Technical management is recurring and
+ * never passes through it.
  */
 export function buildPlannerSummary(
   state: PlannerState,
@@ -820,8 +842,15 @@ export function buildPlannerSummary(
   if (selectedAddOns.length > 2) buffer += 150;
   if (selectedAddOns.length > 4) buffer += 250;
 
-  const startingPrice = getBasePrice(catalog, recommendedPackage) + addOnTotal;
-  const rangeMax = buffer > 0 ? roundToFifty(startingPrice + buffer) : undefined;
+  const baseStartingPrice = getBasePrice(catalog, recommendedPackage) + addOnTotal;
+  const baseRangeMax = buffer > 0 ? roundToFifty(baseStartingPrice + buffer) : undefined;
+  const baseRange =
+    baseRangeMax && baseRangeMax > baseStartingPrice
+      ? { min: baseStartingPrice, max: baseRangeMax }
+      : undefined;
+
+  const discount = catalog.developmentDiscount;
+  const starting = developmentPrice(baseStartingPrice, discount);
 
   if (reasons.length === 0) {
     reasons.push(
@@ -840,18 +869,79 @@ export function buildPlannerSummary(
     recommendedPackage,
     recommendedLabel: getPackageLabel(catalog, locale, recommendedPackage),
     reason,
-    startingPrice,
+    startingPrice: starting.amount,
+    baseStartingPrice,
     monthlyManagementFrom: getMonthlyManagementFrom(catalog, recommendedPackage),
-    range:
-      rangeMax && rangeMax > startingPrice
-        ? {
-            min: startingPrice,
-            max: rangeMax,
-          }
-        : undefined,
+    range: baseRange
+      ? {
+          min: starting.amount,
+          max: developmentPrice(baseRange.max, discount).amount,
+        }
+      : undefined,
+    baseRange,
+    discountPercent: starting.percent,
     selectedFeatures,
     selectedAddOns,
     selectedAddOnTotal: addOnTotal,
     disclaimer: plannerContent[locale].summary.disclaimer,
+  };
+}
+
+/**
+ * The one-time estimate of a summary as text: what the summary shows, and
+ * what is sent along with the request. While the development discount is
+ * active, the sent text carries its context ("€1.047 (30% korting op
+ * €1.495)"), so the stored inquiry and both emails say what the visitor saw.
+ * That text is a record of the page, not a quote. Technical management is
+ * not in here: it is recurring and formatted from its base amount.
+ */
+export type PlannerPriceText = {
+  startingPrice: string;
+  /** The base estimate, struck through beside the discounted one. */
+  originalStartingPrice: string | null;
+  range: string | null;
+  originalRange: string | null;
+  /** "Tijdelijk 30% korting op de ontwikkelkosten", or `null`. */
+  discountNote: string | null;
+  /** Screen-reader label for a struck-through base amount. */
+  originalLabel: string | null;
+  submittedStartingPrice: string;
+  submittedRange: string | null;
+};
+
+export function formatPlannerPrices(summary: PlannerSummary, locale: Locale): PlannerPriceText {
+  const euro = (amount: number) => formatEuro(amount, locale);
+  const span = (range: { min: number; max: number } | undefined) =>
+    range ? `${euro(range.min)} - ${euro(range.max)}` : null;
+
+  const startingPrice = euro(summary.startingPrice);
+  const range = span(summary.range);
+
+  if (summary.discountPercent === null) {
+    return {
+      startingPrice,
+      originalStartingPrice: null,
+      range,
+      originalRange: null,
+      discountNote: null,
+      originalLabel: null,
+      submittedStartingPrice: startingPrice,
+      submittedRange: range,
+    };
+  }
+
+  const copy = getDevelopmentDiscountCopy(locale, summary.discountPercent);
+  const originalStartingPrice = euro(summary.baseStartingPrice);
+  const originalRange = span(summary.baseRange);
+
+  return {
+    startingPrice,
+    originalStartingPrice,
+    range,
+    originalRange,
+    discountNote: copy.note,
+    originalLabel: copy.originalLabel,
+    submittedStartingPrice: `${startingPrice} (${copy.context(originalStartingPrice)})`,
+    submittedRange: range && originalRange ? `${range} (${copy.context(originalRange)})` : range,
   };
 }

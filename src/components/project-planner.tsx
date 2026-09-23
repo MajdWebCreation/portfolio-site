@@ -8,8 +8,8 @@ import { currentAttribution } from "@/lib/attribution/capture";
 import { attributionEventParams } from "@/lib/attribution/event-params";
 import {
   buildPlannerSummary,
-  formatEuro,
   formatMonthlyFrom,
+  formatPlannerPrices,
   getPlannerPageContent,
   getProjectTypeOptions,
   initialPlannerState,
@@ -306,9 +306,7 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
 
   const summary = useMemo(() => buildPlannerSummary(view, catalog), [view, catalog]);
 
-  const summaryRange = summary.range
-    ? `${formatEuro(summary.range.min, locale)} - ${formatEuro(summary.range.max, locale)}`
-    : null;
+  const prices = formatPlannerPrices(summary, locale);
   const helperCopy = {
     content:
       locale === "nl"
@@ -622,9 +620,9 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
               : "",
             recommendedPackage: summary.recommendedLabel,
             reason: summary.reason,
-            startingPrice: formatEuro(summary.startingPrice, locale),
+            startingPrice: prices.submittedStartingPrice,
             monthlyManagement: formatMonthlyFrom(summary.monthlyManagementFrom, locale),
-            indicativeRange: summaryRange,
+            indicativeRange: prices.submittedRange,
             selectedFeatures: summary.selectedFeatures,
             selectedAddOns: summary.selectedAddOns,
             pageCount: form.pageCount,
@@ -1342,13 +1340,31 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
               <p className="text-[10px] uppercase tracking-[0.24em] text-white/36">
                 {content.summary.priceLabel}
               </p>
-              <p className="mt-3 text-xl font-medium text-white">
-                {formatEuro(summary.startingPrice, locale)}
+              <p className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="text-xl font-medium text-white">{prices.startingPrice}</span>
+                {prices.originalStartingPrice ? (
+                  <s className="text-sm text-white/40">
+                    <span className="sr-only">{prices.originalLabel} </span>
+                    {prices.originalStartingPrice}
+                  </s>
+                ) : null}
               </p>
-              {summaryRange ? (
+              {prices.range ? (
                 <p className="mt-3 text-sm text-white/54">
-                  {content.summary.rangeLabel}: {summaryRange}
+                  {content.summary.rangeLabel}: {prices.range}
+                  {prices.originalRange ? (
+                    <>
+                      {" "}
+                      <s className="text-white/40">
+                        <span className="sr-only">{prices.originalLabel} </span>
+                        {prices.originalRange}
+                      </s>
+                    </>
+                  ) : null}
                 </p>
+              ) : null}
+              {prices.discountNote ? (
+                <p className="mt-3 text-sm leading-6 text-white/54">{prices.discountNote}</p>
               ) : null}
             </div>
 

@@ -1,10 +1,11 @@
 import { adminDb, failed } from "@/lib/admin/db";
-import type { AdminPricingPackage } from "@/lib/admin/pricing/model";
+import type { AdminPricingPackage, AdminPricingSettings } from "@/lib/admin/pricing/model";
 import {
   addOnGroupLabels,
   catalogFromRows,
   pricingAddOnColumns,
   pricingPackageColumns,
+  pricingSettingsColumns,
 } from "@/lib/pricing";
 
 /**
@@ -19,6 +20,31 @@ import {
  * The group labels stay in `@/lib/pricing`: those are display strings for a
  * fixed set of groups, not data that is edited here.
  */
+/**
+ * The stored campaign settings, as stored: the percentage is shown even while
+ * the discount is off, so switching it back on needs no retyping. A failed
+ * read is reported in the section rather than thrown, so the amounts above
+ * can still be edited.
+ */
+export async function getAdminPricingSettings(): Promise<AdminPricingSettings> {
+  const db = await adminDb();
+  const { data, error } = await db
+    .from("pricing_settings")
+    .select(pricingSettingsColumns)
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (error) {
+    return { developmentDiscountEnabled: false, developmentDiscountPercent: null, loadError: error.message };
+  }
+
+  return {
+    developmentDiscountEnabled: data?.development_discount_enabled ?? false,
+    developmentDiscountPercent: data?.development_discount_percent ?? null,
+    loadError: null,
+  };
+}
+
 export async function getAdminPricing(): Promise<AdminPricingPackage[]> {
   const db = await adminDb();
 

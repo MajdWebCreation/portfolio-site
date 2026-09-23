@@ -11,9 +11,10 @@ import PricingSelector, {
 } from "@/components/pricing-selector";
 import SiteShell from "@/components/site-shell";
 import { getLocalizedPath, getRouteAlternates } from "@/lib/content/routes";
-import { getPricingPageContent } from "@/lib/content/pricing";
+import { getDevelopmentDiscountCopy, getPricingPageContent } from "@/lib/content/pricing";
 import {
   addOnGroupLabels,
+  developmentPrice,
   formatAddOnPrice,
   formatEuro,
   formatMonthlyFrom,
@@ -22,6 +23,7 @@ import {
   getPackages,
   type AddOnGroup,
   type CatalogPackage,
+  type DevelopmentDiscount,
   type PricingCatalog,
 } from "@/lib/pricing";
 import { getPricingCatalog } from "@/lib/pricing/source";
@@ -71,11 +73,14 @@ export default async function PricingPage({
 
 /* One catalog package in the shape the selector renders: amounts from the
    database, the list of what is included and the boundary from the module
-   that describes what a project type is. */
+   that describes what a project type is. One-time amounts go through the
+   development discount here, once, so the selector only renders strings;
+   technical management is recurring and is formatted from the base amount. */
 function toSelectorPackage(
   pkg: CatalogPackage,
   locale: Locale,
   plannerPath: string,
+  discount: DevelopmentDiscount,
 ): SelectorPackage {
   const groups = new Map<AddOnGroup, SelectorAddOnGroup>();
   const metadata = getPackageMetadata(pkg.id);
@@ -85,19 +90,26 @@ function toSelectorPackage(
       label: addOnGroupLabels[addOn.group][locale],
       items: [],
     };
+    const addOnPrice = developmentPrice(addOn.amount, discount);
     group.items.push({
       label: addOn.label[locale],
-      price: formatAddOnPrice(addOn.amount, addOn.mode, locale),
+      price: formatAddOnPrice(addOnPrice.amount, addOn.mode, locale),
+      originalPrice: addOnPrice.percent === null ? undefined : formatEuro(addOnPrice.baseAmount, locale),
     });
     groups.set(addOn.group, group);
   }
+
+  const starting = developmentPrice(pkg.startingPrice, discount);
+  const openEnded = pkg.scopeDriven ? "+" : "";
 
   return {
     id: pkg.id,
     name: pkg.name[locale],
     tagline: pkg.tagline[locale],
-    price: formatStartingPrice(pkg.startingPrice, locale, pkg.scopeDriven),
-    priceAmount: `${formatEuro(pkg.startingPrice, locale)}${pkg.scopeDriven ? "+" : ""}`,
+    price: formatStartingPrice(starting.amount, locale, pkg.scopeDriven),
+    priceAmount: `${formatEuro(starting.amount, locale)}${openEnded}`,
+    originalPriceAmount:
+      starting.percent === null ? undefined : `${formatEuro(starting.baseAmount, locale)}${openEnded}`,
     monthly: formatMonthlyFrom(pkg.monthlyManagementFrom, locale),
     scopeDriven: pkg.scopeDriven,
     included: metadata.included[locale],
@@ -113,8 +125,14 @@ export async function PricingPageContent({ locale }: { locale: Locale }) {
   const path = getLocalizedPath(locale, "pricing");
   const plannerPath = getLocalizedPath(locale, "projectPlanner");
   const catalog: PricingCatalog = await getPricingCatalog();
-  const packages = getPackages(catalog).map((pkg) => toSelectorPackage(pkg, locale, plannerPath));
-  const lowest = formatEuro(Math.min(...getPackages(catalog).map((pkg) => pkg.startingPrice)), locale);
+  const discount = catalog.developmentDiscount;
+  const packages = getPackages(catalog).map((pkg) => toSelectorPackage(pkg, locale, plannerPath, discount));
+  /* The structured data states the lowest price a visitor actually sees. */
+  const lowest = formatEuro(
+    Math.min(...getPackages(catalog).map((pkg) => developmentPrice(pkg.startingPrice, discount).amount)),
+    locale,
+  );
+  const discountCopy = discount ? getDevelopmentDiscountCopy(locale, discount.percent) : null;
 
   return (
     <>
@@ -156,6 +174,11 @@ export async function PricingPageContent({ locale }: { locale: Locale }) {
               ctaLabel: pricing.selector.ctaLabel,
             }}
             initialId="business"
+            discount={
+              discountCopy
+                ? { note: discountCopy.note, originalLabel: discountCopy.originalLabel }
+                : undefined
+            }
           />
         </section>
 

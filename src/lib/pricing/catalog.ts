@@ -1,4 +1,8 @@
 import type { Locale } from "@/lib/content/site-content";
+import {
+  developmentDiscountFromSettings,
+  type DevelopmentDiscount,
+} from "@/lib/pricing/discount";
 import type { AddOnGroup, PackageId, PriceMode } from "@/lib/pricing/packages";
 
 /**
@@ -43,6 +47,13 @@ export type CatalogPackage = {
 
 export type PricingCatalog = {
   packages: CatalogPackage[];
+  /**
+   * The temporary discount on one-time development amounts, or `null`. The
+   * amounts above stay the base amounts either way; `developmentPrice` in
+   * `discount.ts` derives what is shown. `monthlyManagementFrom` is never
+   * eligible.
+   */
+  developmentDiscount: DevelopmentDiscount;
 };
 
 /**
@@ -73,11 +84,26 @@ export type PricingAddOnRow = {
   sort_order: number;
 };
 
+/** The singleton `pricing_settings` row. */
+export type PricingSettingsRow = {
+  development_discount_enabled: boolean;
+  development_discount_percent: number;
+};
+
 export const pricingPackageColumns =
   "id, starting_price_cents, scope_driven, monthly_management_from_cents, name_nl, name_en, tagline_nl, tagline_en, sort_order";
 
 export const pricingAddOnColumns =
   "package_id, addon_id, addon_group, amount_cents, mode, label_nl, label_en, sort_order";
+
+export const pricingSettingsColumns = "development_discount_enabled, development_discount_percent";
+
+/** The settings row as a campaign; a missing row means no discount. */
+export function developmentDiscountFromRow(row: PricingSettingsRow | null | undefined): DevelopmentDiscount {
+  return developmentDiscountFromSettings(
+    row ? { enabled: row.development_discount_enabled, percent: row.development_discount_percent } : null,
+  );
+}
 
 function euros(cents: number): number {
   return cents / 100;
@@ -85,10 +111,14 @@ function euros(cents: number): number {
 
 const bySortOrder = (a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order;
 
-/** Database rows as a catalog, ordered the way the rows say they are ordered. */
+/**
+ * Database rows as a catalog, ordered the way the rows say they are ordered.
+ * Without a settings row there is no campaign.
+ */
 export function catalogFromRows(
   packageRows: PricingPackageRow[],
   addOnRows: PricingAddOnRow[],
+  settingsRow: PricingSettingsRow | null = null,
 ): PricingCatalog {
   const addOnsByPackage = new Map<string, CatalogAddOn[]>();
 
@@ -114,6 +144,7 @@ export function catalogFromRows(
       tagline: { nl: row.tagline_nl, en: row.tagline_en },
       addOns: addOnsByPackage.get(row.id) ?? [],
     })),
+    developmentDiscount: developmentDiscountFromRow(settingsRow),
   };
 }
 

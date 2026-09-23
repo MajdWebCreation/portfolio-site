@@ -3,16 +3,28 @@
 import { useId, useState } from "react";
 import AdminSection from "@/components/admin/admin-section";
 import { inputClass } from "@/components/admin/form-field";
-import { useSave } from "@/components/admin/save-controls";
+import SaveControls, { useSave } from "@/components/admin/save-controls";
 import StatusBadge from "@/components/admin/status-badge";
-import { updateAddOnPrice, updatePackagePrice } from "@/lib/admin/pricing/actions";
+import { updateAddOnPrice, updateDevelopmentDiscount, updatePackagePrice } from "@/lib/admin/pricing/actions";
 import {
   parseEuroInput,
+  parsePercentInput,
   priceModeLabels,
   type AdminPricingPackage,
+  type AdminPricingSettings,
 } from "@/lib/admin/pricing/model";
 import type { ActionResult } from "@/lib/admin/action-result";
-import { formatAddOnPrice, formatMonthlyFrom, formatStartingPrice } from "@/lib/pricing";
+import {
+  developmentDiscountFromSettings,
+  developmentPrice,
+  formatAddOnPrice,
+  formatEuro,
+  formatMonthlyFrom,
+  formatStartingPrice,
+  isValidDevelopmentDiscountPercent,
+  maxDevelopmentDiscountPercent,
+  minDevelopmentDiscountPercent,
+} from "@/lib/pricing";
 
 type AmountFieldProps = {
   label: string;
@@ -94,9 +106,139 @@ function AmountField({ label, value, preview, save: saveAmount }: AmountFieldPro
   );
 }
 
-export default function PricingEditor({ packages }: { packages: AdminPricingPackage[] }) {
+/**
+ * The temporary discount on development costs: one switch and one percentage,
+ * saved together. The preview runs the typed values through the same rule the
+ * public site uses; what the site shows is decided by the stored values and
+ * the server action, not by this preview.
+ */
+function DevelopmentDiscountSettings({
+  packages,
+  settings,
+}: {
+  packages: AdminPricingPackage[];
+  settings: AdminPricingSettings;
+}) {
+  const switchId = useId();
+  const percentId = useId();
+  const [enabled, setEnabled] = useState(settings.developmentDiscountEnabled);
+  const [percentText, setPercentText] = useState(
+    settings.developmentDiscountPercent === null ? "" : String(settings.developmentDiscountPercent),
+  );
+  const { save, pending, error, savedAt } = useSave();
+
+  const percent = parsePercentInput(percentText);
+  const percentValid = isValidDevelopmentDiscountPercent(percent);
+  const changed =
+    enabled !== settings.developmentDiscountEnabled || percent !== settings.developmentDiscountPercent;
+  const preview = developmentDiscountFromSettings(percentValid ? { enabled, percent } : null);
+
+  return (
+    <AdminSection
+      id="development-discount"
+      title="Tijdelijke korting op ontwikkelkosten"
+      note="Alleen eenmalige bedragen; technisch beheer blijft ongewijzigd"
+    >
+      {settings.loadError ? (
+        <p role="alert" className="mb-4 border-l-2 border-danger pl-3 text-[0.85rem] text-danger">
+          Instelling niet gelezen: {settings.loadError}. De site toont nu de gewone prijzen.
+        </p>
+      ) : null}
+      <div className="grid gap-x-10 gap-y-6 xl:grid-cols-2">
+        <div className="space-y-5">
+          <label htmlFor={switchId} className="flex items-center gap-3 text-[0.95rem] text-ink">
+            <input
+              id={switchId}
+              type="checkbox"
+              role="switch"
+              checked={enabled}
+              disabled={pending}
+              onChange={(event) => setEnabled(event.target.checked)}
+              className="h-4 w-4 accent-ink"
+            />
+            Korting tonen op de site
+          </label>
+          <div className="max-w-[12rem]">
+            <label htmlFor={percentId} className="label-mono mb-1.5 block">
+              Percentage
+            </label>
+            <div className="relative">
+              <input
+                id={percentId}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                disabled={pending}
+                value={percentText}
+                onChange={(event) => setPercentText(event.target.value)}
+                aria-invalid={(percentText !== "" && !percentValid) || undefined}
+                aria-describedby={`${percentId}-hint`}
+                className={`${inputClass} tabular pr-8 text-right`}
+              />
+              <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[0.9rem] text-muted">
+                %
+              </span>
+            </div>
+            <p id={`${percentId}-hint`} className={`mt-1.5 text-[0.82rem] ${percentText !== "" && !percentValid ? "text-danger" : "text-muted"}`}>
+              Heel getal van {minDevelopmentDiscountPercent} tot en met {maxDevelopmentDiscountPercent}.
+            </p>
+          </div>
+          <SaveControls
+            label="Korting opslaan"
+            pending={pending}
+            error={error}
+            savedAt={savedAt}
+            disabled={!changed || !percentValid}
+            onSave={() => {
+              if (percent !== null) save(() => updateDevelopmentDiscount(enabled, percent));
+            }}
+            className="max-w-[16rem]"
+          />
+        </div>
+
+        <div>
+          <p className="label-mono">{preview ? "Voorbeeld eenmalig vanaf" : "Zonder korting"}</p>
+          <ul className="mt-2 divide-y divide-line border-y border-line">
+            {packages.map((pkg) => {
+              const price = developmentPrice(pkg.startingPrice, preview);
+              return (
+                <li key={pkg.id} className="flex items-baseline justify-between gap-4 py-2 text-[0.9rem]">
+                  <span className="text-body">{pkg.name}</span>
+                  <span className="tabular shrink-0 text-ink">
+                    {price.percent === null ? (
+                      formatEuro(price.amount, "nl")
+                    ) : (
+                      <>
+                        <span className="text-muted">{formatEuro(price.baseAmount, "nl")}</span>
+                        {" → "}
+                        {formatEuro(price.amount, "nl")}
+                      </>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 text-[0.82rem] text-muted">
+            De opgeslagen bedragen blijven ongewijzigd. Uitbreidingen en de planner volgen dezelfde regel.
+          </p>
+        </div>
+      </div>
+    </AdminSection>
+  );
+}
+
+export default function PricingEditor({
+  packages,
+  settings,
+}: {
+  packages: AdminPricingPackage[];
+  settings: AdminPricingSettings;
+}) {
   return (
     <div className="space-y-10">
+      <DevelopmentDiscountSettings packages={packages} settings={settings} />
+
       <AdminSection id="project-types" title="Projecttypes" note="Eenmalige vanafprijs en technisch beheer per type">
         <div className="grid gap-x-10 gap-y-8 xl:grid-cols-2">
           {packages.map((pkg) => (

@@ -1142,6 +1142,30 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_settings: {
+        Row: {
+          created_at: string
+          development_discount_enabled: boolean
+          development_discount_percent: number
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          development_discount_enabled?: boolean
+          development_discount_percent: number
+          id?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          development_discount_enabled?: boolean
+          development_discount_percent?: number
+          id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           created_at: string

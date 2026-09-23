@@ -131,3 +131,42 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
 export function getPricingPageContent(locale: Locale): PricingPageContent {
   return pricingPageContent[locale];
 }
+
+/**
+ * Words around the temporary discount on development costs, shared by the
+ * pricing page and the project planner. `{percent}` is filled in from the
+ * stored setting, so changing the percentage in the admin needs no change
+ * here; `{base}` is the formatted base amount.
+ */
+export type DevelopmentDiscountCopy = {
+  /** "Tijdelijk 30% korting op de ontwikkelkosten" */
+  note: string;
+  /** Screen-reader label for the struck-through base amount. */
+  originalLabel: string;
+  /** "30% korting op €1.495", for the planner summary that is sent along with a request. */
+  context: (base: string) => string;
+};
+
+const developmentDiscountTemplates: Record<Locale, { note: string; originalLabel: string; context: string }> = {
+  nl: {
+    note: "Tijdelijk {percent}% korting op de ontwikkelkosten",
+    originalLabel: "Normaal",
+    context: "{percent}% korting op {base}",
+  },
+  en: {
+    note: "Temporarily {percent}% off development costs",
+    originalLabel: "Normally",
+    context: "{percent}% off {base}",
+  },
+};
+
+export function getDevelopmentDiscountCopy(locale: Locale, percent: number): DevelopmentDiscountCopy {
+  const templates = developmentDiscountTemplates[locale];
+  const fill = (template: string) => template.replace("{percent}", String(percent));
+
+  return {
+    note: fill(templates.note),
+    originalLabel: templates.originalLabel,
+    context: (base) => fill(templates.context).replace("{base}", base),
+  };
+}

@@ -1,5 +1,6 @@
 export * from "@/lib/pricing/packages";
 export * from "@/lib/pricing/catalog";
+export * from "@/lib/pricing/discount";
 export * from "@/lib/pricing/format";
 
 /*
