@@ -4,11 +4,6 @@
  * Regenerate after every migration:
  *   npx supabase gen types typescript --project-id wbrqbuctwzpobnvcsomt \
  *     > src/lib/supabase/database.types.ts
- *
- * Exception, 23 September 2026: the analytics_facts / analytics_sync_runs
- * tables were written in by hand in the generator's own format, because
- * their migration (20260923120100) was authored but not yet applied to the
- * remote project. Regenerate once it is, and this note goes.
  */
 
 export type Json =
@@ -89,7 +84,7 @@ export type Database = {
         Insert: {
           date: string
           dims?: Json
-          dims_key?: never
+          dims_key?: string
           metrics: Json
           provider: string
           report: string
@@ -98,7 +93,7 @@ export type Database = {
         Update: {
           date?: string
           dims?: Json
-          dims_key?: never
+          dims_key?: string
           metrics?: Json
           provider?: string
           report?: string

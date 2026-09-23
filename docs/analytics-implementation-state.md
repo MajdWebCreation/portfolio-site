@@ -67,7 +67,7 @@ Bestanden: `src/lib/attribution/{types,sources,classify,capture,event-params}.ts
 
 ## 5. Analytics-database (fase 2)
 
-Migratie `supabase/migrations/20260923120100_analytics_facts.sql` (nog niet toegepast).
+Migratie `supabase/migrations/20260923225540_analytics_facts.sql` (toegepast op productie op 24 september 2026; geschreven als 20260923120100). Sync blijft dry-run zolang `ANALYTICS_SYNC_ENABLED` niet `true` is.
 
 ```
 analytics_facts
@@ -89,7 +89,7 @@ analytics_sync_runs
 
 Besluit: geen jsonb direct in de sleutel (btree-groottelimiet, PostgREST `on_conflict` wil kolomnamen); `dims_key` is deterministisch omdat jsonb canoniek opslaat. RLS forced op beide tabellen; `select` voor `authenticated` met policy `private.is_admin()`; geen enkele schrijf-grant of -policy; schrijven uitsluitend via `paymentsAdminClient()` (`src/lib/payments/admin-client.ts`, secret key) in de cron/action.
 
-`src/lib/supabase/database.types.ts` is met de hand bijgewerkt in het generatorformaat (kopnotitie zegt dat); regenereren na toepassen van beide migraties.
+`src/lib/supabase/database.types.ts` is na het toepassen gelijkgetrokken met de generator (24 september 2026); de handmatige uitzondering is weg.
 
 ## 6. Provider-interface, runner, store
 
@@ -153,7 +153,7 @@ Geen van de nieuwe waarden staat in Vercel. De Vercel MCP-koppeling toont het pr
 
 ## 11. Nog handmatig door de eigenaar
 
-1. Migraties toepassen, in volgorde: ~~`20260923120000_inquiry_attribution.sql`~~ (toegepast 24 september 2026 als `20260923223958`), `20260923120100_analytics_facts.sql` (ook nog open uit een eerdere fase: `20260923080000_redact_activation_tokens.sql`). Daarna `database.types.ts` regenereren.
+1. Migraties toepassen, in volgorde: ~~`20260923120000_inquiry_attribution.sql`~~ (toegepast 24 september 2026 als `20260923223958`), ~~`20260923120100_analytics_facts.sql`~~ (toegepast 24 september 2026 als `20260923225540`). Nog open uit een eerdere fase: `20260923080000_redact_activation_tokens.sql`.
 2. Vercel Production/Preview: de vier nieuwe variabelen; `ANALYTICS_SYNC_ENABLED=true` pas na een paar dry-runs.
 3. Google Cloud: project, Analytics Data API aan, service account + sleutel, Viewer op de GA4-property. Voor fase 3 tevens Search Console API aan en het service account als gebruiker "Beperkt" op de Search Console-property (community-gedocumenteerd, bevestigen met een eerste aanroep).
 4. GA4 UI: 29 custom dimensions + metric `step_index`, key events `contact_submit`/`planner_complete`, retentie 14 maanden, Google Signals uit, geen Ads, Enhanced Measurement history-changes aan en outbound/form uit, unwanted referral `mollie.com`, internal traffic.
