@@ -154,11 +154,14 @@ export default function PricingSelector({ packages, labels, initialId, discount 
                 aria-controls={panelId}
                 onClick={() => select(pkg.id)}
                 onKeyDown={(event) => onKeyDown(event, index)}
-                className={`ps-button group flex w-full flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-4 text-left ${
+                className={`ps-button group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2 py-4 text-left sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center ${
                   open ? "is-open" : ""
                 }`}
               >
-                <span className="min-w-0">
+                {/* Same three slots in every row, whatever the name's length:
+                    name and tagline, the build price, the arrow. Narrow
+                    screens put the price on its own line under the text. */}
+                <span className="col-start-1 row-start-1 min-w-0">
                   <span className="ps-name block text-[1.1rem] font-semibold leading-snug tracking-[-0.02em] text-ink lg:text-[1.05rem] xl:text-[1.2rem]">
                     {pkg.name}
                   </span>
@@ -166,16 +169,19 @@ export default function PricingSelector({ packages, labels, initialId, discount 
                     {pkg.tagline}
                   </span>
                 </span>
-                <span className="flex shrink-0 items-baseline gap-3">
+                <span className="col-start-1 row-start-2 flex items-baseline gap-x-3 whitespace-nowrap sm:col-start-2 sm:row-start-1 sm:flex-col sm:items-end sm:gap-y-0.5">
                   {discount && pkg.originalPriceAmount ? (
-                    <span className="text-[0.85rem]">
+                    <span className="text-[0.85rem] leading-snug">
                       <OriginalPrice amount={pkg.originalPriceAmount} label={discount.originalLabel} />
                     </span>
                   ) : null}
-                  <span className="text-[0.95rem] text-muted">{pkg.price}</span>
-                  <span aria-hidden="true" className="ps-arrow text-faint">
-                    →
-                  </span>
+                  <span className="text-[0.95rem] leading-snug text-muted">{pkg.price}</span>
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="ps-arrow col-start-2 row-start-1 leading-[1.6] text-faint sm:col-start-3"
+                >
+                  →
                 </span>
               </button>
             </h3>
