@@ -96,7 +96,9 @@ describe("the contact route's error log", () => {
 
     expect(response.status).toBe(200);
     expect(send).toHaveBeenCalledTimes(2);
-    expect(send.mock.calls[1][0]).toMatchObject({ to: "anna@example.com" });
+    expect(send.mock.calls[1][0]).toMatchObject({ to: "anna@example.com", subject: "Je bericht is ontvangen — YM Creations" });
+    /* The contact confirmation is sent as before: no reply-to was ever set on it. */
+    expect(send.mock.calls[1][0]).not.toHaveProperty("replyTo");
     expect(logged).toHaveLength(0);
   });
 });
@@ -243,9 +245,10 @@ describe("a websitecheck request", () => {
     expect(notification.html).toContain("New websitecheck request");
     expect(notification.html).not.toContain("Message:");
 
-    expect(confirmation).toMatchObject({ to: "anna@example.com", subject: "We hebben je websitecheck-aanvraag ontvangen — YM Creations" });
+    expect(confirmation).toMatchObject({ to: "anna@example.com", replyTo: "owner@example.com", subject: "Je websitecheck-aanvraag is ontvangen" });
+    expect(confirmation.text).toContain("Hallo Anna Voorbeeld,");
     expect(confirmation.text).toContain("example.nl");
-    expect(confirmation.text).not.toMatch(/24 uur/);
+    expect(confirmation.text).not.toMatch(/24 uur|korting|€/);
   });
 
   it("discards a submission that filled the honeypot", async () => {

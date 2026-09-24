@@ -3,6 +3,7 @@ import { validateAttribution } from "@/lib/attribution/classify";
 import { storeInquiry } from "@/lib/contact/inquiry";
 import type { ContactMode, ContactPayload } from "@/lib/contact/payload";
 import { normalizeWebsiteUrl, websiteUrlHost } from "@/lib/contact/website-url";
+import { buildWebsitecheckConfirmation } from "@/lib/email/websitecheck";
 import {
   emailLink,
   emailList,
@@ -334,63 +335,6 @@ ymcreations.com
   return { html, text };
 }
 
-/**
- * The confirmation a websitecheck requester receives. It repeats the two
- * things that matter to them: which site will be looked at, and that nothing
- * is owed for it. No response time is promised for the check itself.
- */
-function buildWebsitecheckCustomerEmail(params: { locale: "en" | "nl"; name: string; websiteUrl: string }) {
-  const { locale, name, websiteUrl } = params;
-  const isNl = locale === "nl";
-  const host = websiteUrlHost(websiteUrl);
-  const title = isNl ? "Je websitecheck-aanvraag is ontvangen" : "Your website check request has been received";
-  const intro = isNl
-    ? `Hi ${escapeHtml(name)}, bedankt voor je aanvraag. We bekijken ${escapeHtml(host)} persoonlijk en sturen je de bevindingen per e-mail op dit adres.`
-    : `Hi ${escapeHtml(name)}, thank you for your request. We will look at ${escapeHtml(host)} personally and send you our findings by email at this address.`;
-  const nextTitle = isNl ? "Wat gebeurt er nu?" : "What happens next?";
-  const nextText = isNl
-    ? "Iemand van YM Creations loopt door je website op eerste indruk, gebruik op mobiel, duidelijkheid, techniek en snelheid, vertrouwen en structuur. Je ontvangt een korte beoordeling in gewone taal: wat goed is, wat beter kan en wat het meest de moeite waard is om eerst op te pakken."
-    : "Someone at YM Creations goes through your website on first impression, mobile use, clarity, technical quality and speed, trust and structure. You receive a short assessment in plain language: what works, what could be better and what is most worth addressing first.";
-  const freeTitle = isNl ? "Gratis en vrijblijvend" : "Free and without obligation";
-  const freeText = isNl
-    ? "De websitecheck kost niets en verplicht je tot niets. Wil je daarna iets laten verbeteren of opnieuw laten bouwen, dan bespreken we dat pas als jij dat wilt."
-    : "The website check costs nothing and commits you to nothing. If you want something improved or rebuilt afterwards, we discuss that only when you want to.";
-
-  const html = emailShell({
-    locale,
-    title,
-    preheader: isNl ? `We bekijken ${host} persoonlijk.` : `We will look at ${host} personally.`,
-    content: [
-      emailText(intro, { top: 18 }),
-      emailMeta([{ label: "Website", value: websiteUrl }]),
-      emailSection({ label: nextTitle, html: escapeHtml(nextText) }),
-      emailDivider(),
-      emailPanel({ label: freeTitle, html: escapeHtml(freeText) }),
-    ].join(""),
-  });
-
-  const text = `
-${isNl ? `Hi ${name},` : `Hi ${name},`}
-
-${isNl
-  ? `Bedankt voor je aanvraag. We bekijken ${host} persoonlijk en sturen je de bevindingen per e-mail op dit adres.`
-  : `Thank you for your request. We will look at ${host} personally and send you our findings by email at this address.`}
-
-Website: ${websiteUrl}
-
-${nextTitle}
-${nextText}
-
-${freeTitle}
-${freeText}
-
-YM Creations
-ymcreations.com
-  `.trim();
-
-  return { html, text };
-}
-
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ContactPayload;
@@ -614,17 +558,23 @@ ${plannerText}
       return Response.json({ error: adminResult.error.message }, { status: 500 });
     }
 
+    /*
+      The websitecheck receipt is a short letter with YM's own address as
+      reply-to, so "reply to this e-mail" reaches a person. The other two
+      confirmations keep their shape and their sending as they were.
+    */
+    const websitecheckConfirmation =
+      mode === "websitecheck" ? buildWebsitecheckConfirmation({ locale, name, websiteUrl }) : null;
+
     const autoReplySubject =
       mode === "project_planner"
         ? locale === "nl"
           ? "We hebben je projectaanvraag ontvangen — YM Creations"
           : "We received your project request — YM Creations"
-        : mode === "websitecheck"
-          ? locale === "nl"
-            ? "We hebben je websitecheck-aanvraag ontvangen — YM Creations"
-            : "We received your website check request — YM Creations"
-        : locale === "nl"
-          ? "Je bericht is ontvangen — YM Creations"
+        : websitecheckConfirmation
+          ? websitecheckConfirmation.subject
+          : locale === "nl"
+            ? "Je bericht is ontvangen — YM Creations"
           : "We received your message — YM Creations";
 
     /*
@@ -693,9 +643,7 @@ ymcreations.com
     const customerEmail =
       mode === "project_planner"
         ? buildPlannerCustomerEmail({ locale, name, planner })
-        : mode === "websitecheck"
-          ? buildWebsitecheckCustomerEmail({ locale, name, websiteUrl })
-          : null;
+        : websitecheckConfirmation;
 
     const autoReplyHtml = customerEmail?.html ?? defaultAutoReplyHtml;
     const autoReplyText = customerEmail?.text ?? defaultAutoReplyText;
@@ -703,6 +651,7 @@ ymcreations.com
     const autoReplyResult = await resend.emails.send({
       from,
       to: email,
+      ...(websitecheckConfirmation ? { replyTo: to } : {}),
       subject: autoReplySubject,
       html: autoReplyHtml,
       text: autoReplyText,

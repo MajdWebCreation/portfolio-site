@@ -259,3 +259,59 @@ ${
 </body>
 </html>`;
 }
+
+/**
+ * The plain letter: the same sheet as `emailShell`, with only what a short
+ * confirmation needs. The letterhead stays as the brand identifier, the
+ * paragraphs follow it directly without a heading, and the sign-off is one
+ * line naming the site. No details table, no panel, no buttons: a mail that
+ * says "received" should look like a note from a person, not like a page.
+ */
+export function emailLetterShell(input: {
+  locale: "nl" | "en";
+  /** The `<title>` of the document; clients show it nowhere visible. */
+  title: string;
+  /** Paragraphs as already-escaped HTML, in order. */
+  paragraphs: string[];
+}): string {
+  const body = input.paragraphs.map((html, index) => emailText(html, { top: index === 0 ? 22 : 14 })).join("");
+
+  return `<!doctype html>
+<html lang="${input.locale}" bgcolor="${palette.paper}" style="background-color:${palette.paper};">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>${escapeEmailHtml(input.title)}</title>
+<style>
+  :root { color-scheme: light only; supported-color-schemes: light; }
+</style>
+</head>
+<body bgcolor="${palette.paper}" style="margin:0;padding:0;background-color:${palette.paper};-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;text-size-adjust:100%;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${palette.paper}" style="width:100%;background-color:${palette.paper};">
+  <tr>
+    <td align="center" bgcolor="${palette.paper}" style="background-color:${palette.paper};padding:22px 12px;">
+      <!--[if mso]><table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${palette.surface}" style="width:100%;max-width:560px;margin:0 auto;background-color:${palette.surface};border:1px solid ${palette.line};">
+        <tr>
+          <td bgcolor="${palette.surface}" style="background-color:${palette.surface};padding:28px;">
+
+            <p style="${label}margin:0;color:${palette.ink};letter-spacing:0.2em;">YM Creations</p>
+            <div style="margin-top:7px;width:28px;height:2px;background-color:${palette.accent};font-size:0;line-height:0;">&nbsp;</div>
+            ${body}
+
+            <div style="margin-top:28px;border-top:1px solid ${palette.line};padding-top:15px;font-family:${sans};font-size:13px;line-height:1.7;color:${palette.muted};">
+              YM Creations &middot; <a href="https://ymcreations.com" style="color:${palette.muted};text-decoration:none;">ymcreations.com</a>
+            </div>
+
+          </td>
+        </tr>
+      </table>
+      <!--[if mso]></td></tr></table><![endif]-->
+    </td>
+  </tr>
+</table>
+</body>
+</html>`;
+}
