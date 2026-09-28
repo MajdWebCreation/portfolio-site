@@ -20,8 +20,18 @@ vi.mock("resend", () => ({
   },
 }));
 
+/* Work scheduled with `after` (the Meta Conversions API call) is collected here and run by the test. */
+const scheduled: (() => unknown)[] = [];
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/server")>()),
+  after: (callback: () => unknown) => {
+    scheduled.push(callback);
+  },
+}));
+
 const { POST } = await import("@/app/api/contact/route");
 const { isLeadEventId } = await import("@/lib/meta/event-id");
+const { CONSENT_COOKIE, CONSENT_VERSION, serializeConsent } = await import("@/lib/consent/consent");
 
 const visitor = { name: "Anna Voorbeeld", email: "anna@example.com", message: "Een bericht van twaalf tekens of meer.", locale: "nl" };
 
@@ -356,5 +366,174 @@ describe("the lead event id", () => {
     const failedConfirmation = await POST(request(visitor));
     expect(failedConfirmation.status).toBe(500);
     expect(await failedConfirmation.json()).not.toHaveProperty("leadEventId");
+  });
+});
+
+/*
+  The server half of the Lead (lib/meta/capi.ts), through the route. Meta is
+  a vi.fn on the global fetch; nothing leaves the test.
+*/
+describe("the Conversions API Lead", () => {
+  const TOKEN = "fake-capi-token-for-route-tests";
+  const FBP = "fb.1.1759140000000.1116446470";
+  const FBC = "fb.1.1759140000000.IwAR2F4dbP0l7Mn1IawQQ";
+  let metaFetch: ReturnType<typeof vi.fn>;
+
+  function consentCookie(marketing: boolean) {
+    const value = serializeConsent({ version: CONSENT_VERSION, analytics: true, recordings: false, marketing, decidedAt: new Date().toISOString() });
+    return `${CONSENT_COOKIE}=${encodeURIComponent(value)}`;
+  }
+
+  function leadRequest(body: unknown, cookie?: string) {
+    return new Request("https://www.ymcreations.com/api/contact", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "Mozilla/5.0 (Macintosh) Chrome/140",
+        referer: "https://www.ymcreations.com/nl/contact",
+        "x-forwarded-for": "203.0.113.7",
+        ...(cookie ? { cookie } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  async function runScheduled() {
+    await Promise.all(scheduled.splice(0).map((callback) => callback()));
+  }
+
+  function metaBodies() {
+    return metaFetch.mock.calls.map(([, init]) => JSON.parse(String((init as RequestInit).body)));
+  }
+
+  beforeEach(() => {
+    scheduled.length = 0;
+    storeInquiry.mockResolvedValue(undefined);
+    send.mockResolvedValue({ data: { id: "m1" } });
+    process.env.NEXT_PUBLIC_META_PIXEL_ID = "1119790594057101";
+    process.env.META_CONVERSIONS_API_ACCESS_TOKEN = TOKEN;
+    metaFetch = vi.fn(async () => new Response(JSON.stringify({ events_received: 1, messages: [], fbtrace_id: "T1" }), { status: 200 }));
+    vi.stubGlobal("fetch", metaFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.NEXT_PUBLIC_META_PIXEL_ID;
+    delete process.env.META_CONVERSIONS_API_ACCESS_TOKEN;
+    delete process.env.META_CONVERSIONS_API_TEST_EVENT_CODE;
+  });
+
+  it("A: sends nothing to Meta without a consent cookie, while the inquiry succeeds", async () => {
+    const response = await POST(leadRequest(visitor, `_fbp=${FBP}`));
+    await runScheduled();
+    expect(response.status).toBe(200);
+    expect(scheduled).toEqual([]);
+    expect(metaFetch).not.toHaveBeenCalled();
+  });
+
+  it("B: sends nothing to Meta when marketing was refused", async () => {
+    await POST(leadRequest(visitor, `${consentCookie(false)}; _fbp=${FBP}`));
+    await runScheduled();
+    expect(metaFetch).not.toHaveBeenCalled();
+  });
+
+  it("C + L: sends exactly one website Lead under the very id the browser gets", async () => {
+    const response = await POST(leadRequest(visitor, consentCookie(true)));
+    const { leadEventId } = await response.json();
+    await runScheduled();
+
+    expect(metaFetch).toHaveBeenCalledTimes(1);
+    const [event] = metaBodies()[0].data;
+    expect(event).toMatchObject({ event_name: "Lead", action_source: "website", event_id: leadEventId, event_source_url: "https://www.ymcreations.com/nl/contact" });
+    expect(event.custom_data).toEqual({ content_name: "contact" });
+  });
+
+  it("sends no form content: the Lead's only visitor data is browser data", async () => {
+    await POST(leadRequest({ ...visitor, company: "Voorbeeld BV", phone: "0612345678" }, consentCookie(true)));
+    await runScheduled();
+    const sent = JSON.stringify(metaBodies());
+    for (const typed of ["Anna", "anna@example.com", "twaalf tekens", "Voorbeeld BV", "0612345678"]) expect(sent).not.toContain(typed);
+    expect(Object.keys(metaBodies()[0].data[0].user_data).sort()).toEqual(["client_ip_address", "client_user_agent"]);
+  });
+
+  it("D: sends no Lead when storing or mailing failed", async () => {
+    storeInquiry.mockRejectedValueOnce(new Error("db down"));
+    expect((await POST(leadRequest(visitor, consentCookie(true)))).status).toBe(500);
+
+    send.mockResolvedValueOnce({ error: { message: "rejected" } });
+    expect((await POST(leadRequest(visitor, consentCookie(true)))).status).toBe(500);
+
+    send.mockResolvedValueOnce({ data: { id: "m1" } }).mockResolvedValueOnce({ error: { message: "rejected" } });
+    expect((await POST(leadRequest(visitor, consentCookie(true)))).status).toBe(500);
+
+    expect((await POST(leadRequest({ ...visitor, email: "nope" }, consentCookie(true)))).status).toBe(400);
+
+    await runScheduled();
+    expect(metaFetch).not.toHaveBeenCalled();
+  });
+
+  it("E: sends no Lead for the honeypot's fake success", async () => {
+    const response = await POST(leadRequest({ ...visitor, website: "http://spam.example" }, consentCookie(true)));
+    await runScheduled();
+    expect(await response.json()).toEqual({ ok: true });
+    expect(metaFetch).not.toHaveBeenCalled();
+  });
+
+  it("F: keeps the inquiry successful when Meta refuses, and logs no secret", async () => {
+    metaFetch.mockResolvedValue(new Response(JSON.stringify({ error: { message: `bad ${TOKEN}`, code: 190, fbtrace_id: "T2" } }), { status: 401 }));
+
+    const response = await POST(leadRequest(visitor, consentCookie(true)));
+    expect(response.status).toBe(200);
+    expect((await response.json()).ok).toBe(true);
+    await expect(runScheduled()).resolves.toBeUndefined();
+
+    expect(metaFetch).toHaveBeenCalledTimes(1);
+    expect(loggedText()).toContain("Meta CAPI Lead failed");
+    expect(loggedText()).not.toContain(TOKEN);
+    expect(loggedText()).not.toMatch(/@/);
+  });
+
+  it("G: answers the visitor before Meta does, so a hanging Meta cannot hold the inquiry", async () => {
+    metaFetch.mockImplementation(() => new Promise<Response>(() => {}));
+
+    const response = await POST(leadRequest(visitor, consentCookie(true)));
+    expect(response.status).toBe(200);
+    expect(isLeadEventId((await response.json()).leadEventId)).toBe(true);
+    /* The Meta request only starts once the response exists; its own timeout is tested in capi.test.ts. */
+    expect(metaFetch).not.toHaveBeenCalled();
+    expect(scheduled).toHaveLength(1);
+    scheduled.length = 0;
+  });
+
+  it("H + I: passes _fbp and _fbc when the cookies exist, omits them when not", async () => {
+    await POST(leadRequest(visitor, `${consentCookie(true)}; _fbp=${FBP}; _fbc=${FBC}`));
+    await POST(leadRequest(visitor, consentCookie(true)));
+    await runScheduled();
+
+    const [withCookies, without] = metaBodies().map((body) => body.data[0].user_data);
+    expect(withCookies).toMatchObject({ fbp: FBP, fbc: FBC });
+    expect(without).not.toHaveProperty("fbp");
+    expect(without).not.toHaveProperty("fbc");
+  });
+
+  it("J + K: carries test_event_code only while the variable is set", async () => {
+    process.env.META_CONVERSIONS_API_TEST_EVENT_CODE = "TEST12345";
+    await POST(leadRequest(visitor, consentCookie(true)));
+    await runScheduled();
+    delete process.env.META_CONVERSIONS_API_TEST_EVENT_CODE;
+    await POST(leadRequest(visitor, consentCookie(true)));
+    await runScheduled();
+
+    const [test, production] = metaBodies();
+    expect(test.test_event_code).toBe("TEST12345");
+    expect(production).not.toHaveProperty("test_event_code");
+  });
+
+  it("sends nothing while the token is not configured", async () => {
+    delete process.env.META_CONVERSIONS_API_ACCESS_TOKEN;
+    const response = await POST(leadRequest(visitor, consentCookie(true)));
+    await runScheduled();
+    expect(response.status).toBe(200);
+    expect(metaFetch).not.toHaveBeenCalled();
   });
 });

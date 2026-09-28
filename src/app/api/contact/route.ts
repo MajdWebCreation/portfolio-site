@@ -3,6 +3,7 @@ import { validateAttribution } from "@/lib/attribution/classify";
 import { storeInquiry } from "@/lib/contact/inquiry";
 import type { ContactMode, ContactPayload } from "@/lib/contact/payload";
 import { normalizeWebsiteUrl, websiteUrlHost } from "@/lib/contact/website-url";
+import { reportMetaLead } from "@/lib/meta/capi";
 import { createLeadEventId } from "@/lib/meta/event-id";
 import { buildWebsitecheckConfirmation } from "@/lib/email/websitecheck";
 import {
@@ -670,12 +671,14 @@ ymcreations.com
       The one place a lead counts: stored, notified, confirmed. Only this
       answer carries `leadEventId`, and the browser reports a Meta Lead only
       when it gets one (lib/meta/track.ts) -- never for the honeypot's
-      `{ ok: true }` above, a refusal or a failure. A server-side Conversions
-      API event for this lead belongs here, with this same id as its
-      `event_id`, and only when the request's own consent cookie
-      (lib/consent/consent.ts) says yes to marketing.
+      `{ ok: true }` above, a refusal or a failure. The same id goes to the
+      Conversions API as `event_id` (lib/meta/capi.ts), only when this
+      request's own consent cookie says yes to marketing, and only after
+      this answer is sent, so Meta can never fail the inquiry.
     */
-    return Response.json({ ok: true, leadEventId: createLeadEventId() });
+    const leadEventId = createLeadEventId();
+    reportMetaLead({ request, eventId: leadEventId, form: mode });
+    return Response.json({ ok: true, leadEventId });
   } catch (error) {
     console.error("Unexpected contact route error", error);
     return Response.json({ error: "Unexpected error." }, { status: 500 });
