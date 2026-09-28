@@ -37,6 +37,10 @@ describe("the report-only policy", () => {
     );
     expect(directive("img-src")).toEqual(expect.arrayContaining(["https://abcd.supabase.co", "https://*.google-analytics.com"]));
     expect(directive("form-action")).toEqual(["'self'", "https://www.mollie.com"]);
+    expect(directive("script-src")).toContain("https://connect.facebook.net");
+    expect(directive("connect-src")).toContain("https://www.facebook.com");
+    expect(directive("img-src")).toContain("https://www.facebook.com");
+    expect(directive("script-src")).not.toContain("https://www.facebook.com");
     expect(directive("frame-ancestors")).toEqual(["'none'"]);
     expect(policy).toContain("report-uri /api/csp-report");
     expect(directive("script-src")).not.toContain("'unsafe-eval'");

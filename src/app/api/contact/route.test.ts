@@ -21,6 +21,7 @@ vi.mock("resend", () => ({
 }));
 
 const { POST } = await import("@/app/api/contact/route");
+const { isLeadEventId } = await import("@/lib/meta/event-id");
 
 const visitor = { name: "Anna Voorbeeld", email: "anna@example.com", message: "Een bericht van twaalf tekens of meer.", locale: "nl" };
 
@@ -171,7 +172,7 @@ describe("a websitecheck request", () => {
     const response = await POST(request(websitecheck));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true });
+    expect(await response.json()).toEqual({ ok: true, leadEventId: expect.stringMatching(/^[0-9a-f-]{36}$/) });
     expect(storeInquiry).toHaveBeenCalledTimes(1);
     expect(storeInquiry.mock.calls[0][0]).toMatchObject({
       origin: "websitecheck",
@@ -282,5 +283,78 @@ describe("the existing origins after the websitecheck extension", () => {
   it("treats an unknown mode as contact", async () => {
     await POST(request({ ...visitor, mode: "something_else" }));
     expect(storeInquiry.mock.calls[0][0]).toMatchObject({ origin: "contact" });
+  });
+});
+
+/*
+  The lead event id is what makes the browser report a Meta Lead
+  (lib/meta/track.ts). It must exist on a stored, notified, confirmed
+  inquiry, and on nothing else.
+*/
+describe("the lead event id", () => {
+  beforeEach(() => {
+    storeInquiry.mockResolvedValue(undefined);
+    send.mockResolvedValue({ data: { id: "m1" } });
+  });
+
+  it("comes with every accepted inquiry, one fresh id each time, for all three origins", async () => {
+    const ids = new Set<string>();
+    for (const body of [
+      visitor,
+      { mode: "websitecheck", locale: "nl", websiteUrl: "example.nl", name: "Anna", email: "anna@example.com" },
+      {
+        mode: "project_planner",
+        locale: "nl",
+        name: "Anna",
+        email: "anna@example.com",
+        message: "Een webapplicatie met boekingen.",
+        planner: {
+          projectTypeKey: "smart",
+          smartScopeSelected: true,
+          launchTimelineKey: "within_3_months",
+          contentReadyKey: "ready",
+          brandingReadyKey: "ready",
+          priorityKey: "conversion",
+          businessDeclaration: true,
+        },
+      },
+    ]) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const response = await POST(request(body));
+        const json = await response.json();
+        expect(response.status).toBe(200);
+        expect(isLeadEventId(json.leadEventId)).toBe(true);
+        ids.add(json.leadEventId);
+      }
+    }
+    expect(ids.size).toBe(6);
+  });
+
+  it("never comes with the honeypot's answer", async () => {
+    const response = await POST(request({ ...visitor, website: "http://spam.example" }));
+    expect(await response.json()).toEqual({ ok: true });
+  });
+
+  it("never comes with a refusal", async () => {
+    const response = await POST(request({ ...visitor, email: "nope" }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).not.toHaveProperty("leadEventId");
+  });
+
+  it("never comes with a failed store or a refused mail", async () => {
+    storeInquiry.mockRejectedValueOnce(new Error("db down"));
+    const failedStore = await POST(request(visitor));
+    expect(failedStore.status).toBe(500);
+    expect(await failedStore.json()).not.toHaveProperty("leadEventId");
+
+    send.mockResolvedValueOnce({ error: { message: "rejected" } });
+    const failedAdminMail = await POST(request(visitor));
+    expect(failedAdminMail.status).toBe(500);
+    expect(await failedAdminMail.json()).not.toHaveProperty("leadEventId");
+
+    send.mockResolvedValueOnce({ data: { id: "m1" } }).mockResolvedValueOnce({ error: { message: "rejected" } });
+    const failedConfirmation = await POST(request(visitor));
+    expect(failedConfirmation.status).toBe(500);
+    expect(await failedConfirmation.json()).not.toHaveProperty("leadEventId");
   });
 });

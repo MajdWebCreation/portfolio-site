@@ -8,8 +8,8 @@ import { businessInfo } from "@/lib/content/site-content";
 
   Everything stated here is backed by the code or by a decision the business
   owner took: which data the forms collect (api/contact/route.ts), where it
-  goes (Supabase, Resend, Vercel, Mollie, Google and Microsoft Clarity behind
-  their own consent categories), and how long
+  goes (Supabase, Resend, Vercel, Mollie, Google, Microsoft Clarity and the
+  Meta Pixel behind their own consent categories), and how long
   it is kept (lib/retention/policy.ts; for synced search terms
   and Clarity totals lib/analytics-admin/retention.ts, and the filter that keeps address-,
   number- and token-like terms out is lib/analytics-admin/query-filter.ts). What the statement deliberately does
@@ -27,7 +27,7 @@ const mail = `[${businessInfo.email}](mailto:${businessInfo.email})`;
 const address = `${companyProfile.address.street}, ${companyProfile.address.postalCode} ${companyProfile.address.city}`;
 
 export const privacyStatement: LegalStatementSet = {
-  /* False while the attribution passage (23 September 2026) awaits the owner's confirmation; see cookies.ts for the rule. */
+  /* False while the attribution passage (23 September 2026) and the Meta Pixel passage (29 September 2026) await the owner's confirmation; see cookies.ts for the rule. */
   indexable: false,
   content: {
     nl: {
@@ -36,8 +36,8 @@ export const privacyStatement: LegalStatementSet = {
         "Welke persoonsgegevens YM Creations verwerkt via ymcreations.com en in de dienstverlening, waarom, hoe lang, en welke rechten je hebt.",
       intro:
         "Deze verklaring beschrijft welke persoonsgegevens YM Creations verwerkt via ymcreations.com en in de dienstverlening, waarom dat gebeurt, hoe lang gegevens bewaard blijven en welke rechten je hebt.",
-      updatedIso: "2026-09-23",
-      updatedLabel: "23 september 2026",
+      updatedIso: "2026-09-29",
+      updatedLabel: "29 september 2026",
       blocks: [
         { type: "heading", level: 2, content: "Wie verantwoordelijk is" },
         {
@@ -111,6 +111,17 @@ export const privacyStatement: LegalStatementSet = {
           content:
             "Daarnaast halen we uit Clarity per pagina opgetelde cijfers op, zoals het aantal sessies, de gemiddelde scrolldiepte en het aantal herhaalde of vergeefse klikken. Die bewaren we zelf en gebruiken we alleen in onze eigen beheeromgeving; opnames of heatmaps kopiëren we niet.",
         },
+        { type: "heading", level: 3, content: "Advertentiemeting (Meta Pixel)" },
+        {
+          type: "paragraph",
+          content:
+            "Alleen als je daar apart toestemming voor geeft, onder marketing, laden we de Meta Pixel van Meta Platforms Ireland Limited. Daarmee meten we welke advertenties op Facebook en Instagram tot een bezoek aan de website of tot een aanvraag leiden, en gebruikt Meta die metingen om onze advertenties vaker te tonen aan mensen bij wie ze waarschijnlijk tot een aanvraag leiden. De pixel stuurt Meta bij elke pagina die je bekijkt het adres van die pagina, samen met technische gegevens zoals je IP-adres en browser en een pseudonieme code uit een cookie. Als je via het contactformulier, de projectplanner of de websitecheck een aanvraag verstuurt en wij die hebben ontvangen, melden we Meta dat er een aanvraag is gedaan en via welk formulier. Wat je in een formulier invult, zoals je naam, e-mailadres, telefoonnummer, websiteadres of bericht, sturen we niet naar Meta. Zonder die toestemming wordt de pixel niet geladen, ook niet als je toestemming voor statistieken of gedragsopnames gaf, en op de betaal- en incassopagina's wordt hij nooit geladen. De grondslag is je toestemming; je trekt die op elk moment in via Cookie-instellingen.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "Ben je bij Facebook of Instagram ingelogd, of staan er cookies van Meta in je browser, dan kan Meta je bezoek aan je Meta-account koppelen. Voor het verzamelen van deze gegevens op onze website en het doorgeven ervan aan Meta zijn YM Creations en Meta Platforms Ireland Limited gezamenlijk verwerkingsverantwoordelijke; de afspraken daarover staan in de aanvulling van Meta voor verwerkingsverantwoordelijken (Controller Addendum). Voor wat Meta daarna met de gegevens doet, waaronder het tonen en meten van advertenties en het verbeteren van zijn eigen diensten, is Meta zelfstandig verwerkingsverantwoordelijke; dat valt onder het [privacybeleid van Meta](https://www.facebook.com/privacy/policy/). Je kunt je rechten bij ons en bij Meta uitoefenen.",
+        },
         { type: "heading", level: 3, content: "Vindbaarheid in zoekmachines" },
         {
           type: "paragraph",
@@ -147,6 +158,7 @@ export const privacyStatement: LegalStatementSet = {
             "**Mollie** voor betalingen en automatische incasso; voor de betaalgegevens die Mollie voor zijn betaaldienst verwerkt is Mollie zelfstandig verwerkingsverantwoordelijke.",
             "**Google** voor statistieken via Google Analytics, uitsluitend met jouw toestemming.",
             "**Microsoft** voor gedragsopnames en heatmaps via Microsoft Clarity, uitsluitend met jouw toestemming voor gedragsopnames; Microsoft is daarvoor zelfstandig verwerkingsverantwoordelijke.",
+            "**Meta** voor advertentiemeting via de Meta Pixel, uitsluitend met jouw toestemming voor marketing; voor het verzamelen en doorgeven zijn we samen met Meta verantwoordelijk, voor het verdere gebruik is Meta zelfstandig verwerkingsverantwoordelijke.",
           ],
         },
 
@@ -154,7 +166,7 @@ export const privacyStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Voor onze website en dienstverlening gebruiken we externe dienstverleners, waaronder Vercel, Supabase, Resend, als je toestemming geeft voor statistieken Google Analytics, en als je toestemming geeft voor gedragsopnames Microsoft Clarity. Afhankelijk van de gebruikte infrastructuur kunnen deze partijen persoonsgegevens buiten de Europese Economische Ruimte verwerken.",
+            "Voor onze website en dienstverlening gebruiken we externe dienstverleners, waaronder Vercel, Supabase, Resend, als je toestemming geeft voor statistieken Google Analytics, als je toestemming geeft voor gedragsopnames Microsoft Clarity, en als je toestemming geeft voor marketing Meta. Afhankelijk van de gebruikte infrastructuur kunnen deze partijen persoonsgegevens buiten de Europese Economische Ruimte verwerken.",
         },
         {
           type: "paragraph",
@@ -213,8 +225,8 @@ export const privacyStatement: LegalStatementSet = {
         "Which personal data YM Creations processes through ymcreations.com and in its services, why, for how long, and what your rights are.",
       intro:
         "This statement describes which personal data YM Creations processes through ymcreations.com and in its services, why, how long it is kept, and what your rights are.",
-      updatedIso: "2026-09-23",
-      updatedLabel: "23 September 2026",
+      updatedIso: "2026-09-29",
+      updatedLabel: "29 September 2026",
       blocks: [
         { type: "heading", level: 2, content: "Who is responsible" },
         {
@@ -288,6 +300,17 @@ export const privacyStatement: LegalStatementSet = {
           content:
             "In addition, we retrieve per-page totals from Clarity, such as the number of sessions, the average scroll depth and the number of repeated or ineffective clicks. We keep these ourselves and use them only in our own admin area; we do not copy recordings or heatmaps.",
         },
+        { type: "heading", level: 3, content: "Advertising measurement (Meta Pixel)" },
+        {
+          type: "paragraph",
+          content:
+            "Only if you give separate consent for marketing do we load the Meta Pixel of Meta Platforms Ireland Limited. With it we measure which ads on Facebook and Instagram lead to a visit to the website or to an inquiry, and Meta uses those measurements to show our ads more often to people for whom they are likely to lead to an inquiry. For every page you view, the pixel sends Meta the address of that page, together with technical data such as your IP address and browser and a pseudonymous code from a cookie. When you send an inquiry through the contact form, the project planner or the websitecheck and we have received it, we tell Meta that an inquiry was made and through which form. What you type into a form, such as your name, email address, phone number, website address or message, is not sent to Meta. Without that consent the pixel is not loaded, not even if you consented to analytics or behaviour recordings, and it is never loaded on the payment and direct debit pages. The legal basis is your consent; you can withdraw it at any time under Cookie settings.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "If you are logged in to Facebook or Instagram, or your browser holds cookies from Meta, Meta may link your visit to your Meta account. For collecting this data on our website and passing it on to Meta, YM Creations and Meta Platforms Ireland Limited are joint controllers; the arrangements for this are set out in Meta's Controller Addendum. For what Meta does with the data afterwards, including showing and measuring ads and improving its own services, Meta is an independent controller; that is governed by [Meta's privacy policy](https://www.facebook.com/privacy/policy/). You can exercise your rights with us and with Meta.",
+        },
         { type: "heading", level: 3, content: "Visibility in search engines" },
         {
           type: "paragraph",
@@ -324,6 +347,7 @@ export const privacyStatement: LegalStatementSet = {
             "**Mollie** for payments and direct debit; for the payment data Mollie processes for its payment service, Mollie is an independent controller.",
             "**Google** for analytics through Google Analytics, only with your consent.",
             "**Microsoft** for behaviour recordings and heatmaps through Microsoft Clarity, only with your consent for behaviour recordings; Microsoft is an independent controller for this.",
+            "**Meta** for advertising measurement through the Meta Pixel, only with your consent for marketing; we are jointly responsible with Meta for the collection and transfer, and Meta is an independent controller for any further use.",
           ],
         },
 
@@ -331,7 +355,7 @@ export const privacyStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "We use external service providers for our website and services, including Vercel, Supabase, Resend, Google Analytics when you consent to analytics, and Microsoft Clarity when you consent to behaviour recordings. Depending on the infrastructure used, these providers may process personal data outside the European Economic Area.",
+            "We use external service providers for our website and services, including Vercel, Supabase, Resend, Google Analytics when you consent to analytics, Microsoft Clarity when you consent to behaviour recordings, and Meta when you consent to marketing. Depending on the infrastructure used, these providers may process personal data outside the European Economic Area.",
         },
         {
           type: "paragraph",

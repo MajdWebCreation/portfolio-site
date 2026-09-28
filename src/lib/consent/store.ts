@@ -8,6 +8,7 @@ import {
   type ConsentDecision,
 } from "@/lib/consent/consent";
 import { withdrawClarity } from "@/lib/clarity/client";
+import { withdrawMetaPixel } from "@/lib/meta/pixel";
 
 /**
  * The consent choice, live, for everything in the browser that needs it.
@@ -67,6 +68,11 @@ export function hasRecordingsConsent(): boolean {
   return snapshot.decision?.recordings === true;
 }
 
+/** Meta Pixel: advertising measurement, its own category. Never implied by the other two. */
+export function hasMarketingConsent(): boolean {
+  return snapshot.decision?.marketing === true;
+}
+
 /**
  * The GA property, when the deployment has one. Read here and in the layout;
  * `NEXT_PUBLIC_` values are inlined at build time, so this must stay a
@@ -110,23 +116,25 @@ function expireGoogleCookies() {
   }
 }
 
-export type ConsentChoice = { analytics: boolean; recordings: boolean };
+export type ConsentChoice = { analytics: boolean; recordings: boolean; marketing: boolean };
 
 /**
  * Records a choice: writes the cookie and lets every subscriber know.
  *
  * Each category is handled on its own. Withdrawing analytics stops Google
- * (kill switch, cookies) and leaves recordings as they are; withdrawing
- * recordings stops Clarity and leaves analytics as they are. A withdrawal of
- * recordings returns `reloadRequired`: Clarity's documented stop call is
- * made here, but the tag that already runs in this page is only truly gone
- * after a reload, which the caller then does.
+ * (kill switch, cookies) and leaves the others as they are; withdrawing
+ * recordings stops Clarity, and withdrawing marketing stops the Meta Pixel,
+ * each leaving the rest as it is. A withdrawal of recordings or marketing
+ * returns `reloadRequired`: the documented stop call is made here, but a tag
+ * that already runs in this page is only truly gone after a reload, which
+ * the caller then does.
  */
 export function decideConsent(choice: ConsentChoice): { reloadRequired: boolean } {
   const decision: ConsentDecision = {
     version: CONSENT_VERSION,
     analytics: choice.analytics,
     recordings: choice.recordings,
+    marketing: choice.marketing,
     decidedAt: new Date().toISOString(),
   };
   document.cookie = consentCookieString(decision, { secure: window.location.protocol === "https:" });
@@ -142,8 +150,11 @@ export function decideConsent(choice: ConsentChoice): { reloadRequired: boolean 
   const recordingsWithdrawn = snapshot.decision?.recordings === true && !choice.recordings;
   if (recordingsWithdrawn) withdrawClarity();
 
+  const marketingWithdrawn = snapshot.decision?.marketing === true && !choice.marketing;
+  if (marketingWithdrawn) withdrawMetaPixel();
+
   publish({ hydrated: true, decision, settingsOpen: false });
-  return { reloadRequired: recordingsWithdrawn };
+  return { reloadRequired: recordingsWithdrawn || marketingWithdrawn };
 }
 
 export function openConsentSettings(): void {

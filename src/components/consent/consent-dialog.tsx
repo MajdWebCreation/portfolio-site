@@ -14,6 +14,7 @@ export type ConsentCopy = {
   /** One sentence per optional category, shown only when the deployment has it. */
   bodyAnalytics: string;
   bodyRecordings: string;
+  bodyMarketing: string;
   /** How to change one's mind; always last. */
   bodyWithdraw: string;
   necessaryOnly: string;
@@ -33,6 +34,9 @@ export type ConsentCopy = {
   recordingsLabel: string;
   recordingsText: string;
   recordingsToggle: string;
+  marketingLabel: string;
+  marketingText: string;
+  marketingToggle: string;
   save: string;
 };
 
@@ -44,6 +48,8 @@ type ConsentDialogProps = {
   analyticsAvailable: boolean;
   /** Microsoft Clarity is configured for this deployment. */
   recordingsAvailable: boolean;
+  /** The Meta Pixel is configured for this deployment. */
+  marketingAvailable: boolean;
 };
 
 function Switch({ checked, onToggle, label, describedBy }: { checked: boolean; onToggle: () => void; label: string; describedBy: string }) {
@@ -84,27 +90,36 @@ function Switch({ checked, onToggle, label, describedBy }: { checked: boolean; o
  * opened from the footer, a close button and Escape as well -- there a choice
  * already exists and leaving it as it is means exactly that.
  *
- * The optional categories are independent: statistics (Google Analytics) and
- * behaviour recordings (Microsoft Clarity) each have their own switch, and
- * saying yes to one never turns on the other. "Accept all" means every
- * category this deployment actually has; a category it does not have is
- * neither shown nor recorded as accepted. Withdrawing recordings reloads the
- * page after the choice is stored, so the Clarity tag is gone rather than
- * merely told to stop.
+ * The optional categories are independent: statistics (Google Analytics),
+ * behaviour recordings (Microsoft Clarity) and marketing (Meta Pixel) each
+ * have their own switch, and saying yes to one never turns on another.
+ * "Accept all" means every category this deployment actually has; a category
+ * it does not have is neither shown nor recorded as accepted. Withdrawing
+ * recordings or marketing reloads the page after the choice is stored, so the
+ * tag is gone rather than merely told to stop.
  *
  * On its first appearance the card does not take focus: it is an offer, not
  * an interruption. Opened from the footer it is what the visitor asked for,
  * so focus moves to its title and returns to the footer button on close.
  */
-export default function ConsentDialog({ copy, privacyHref, cookiesHref, analyticsAvailable, recordingsAvailable }: ConsentDialogProps) {
+export default function ConsentDialog({
+  copy,
+  privacyHref,
+  cookiesHref,
+  analyticsAvailable,
+  recordingsAvailable,
+  marketingAvailable,
+}: ConsentDialogProps) {
   const { hydrated, decision, settingsOpen } = useConsentSnapshot();
   const [layer, setLayer] = useState<"choice" | "preferences">("choice");
   const [analytics, setAnalytics] = useState(false);
   const [recordings, setRecordings] = useState(false);
+  const [marketing, setMarketing] = useState(false);
   const titleId = useId();
   const bodyId = useId();
   const analyticsTextId = useId();
   const recordingsTextId = useId();
+  const marketingTextId = useId();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
@@ -116,6 +131,7 @@ export default function ConsentDialog({ copy, privacyHref, cookiesHref, analytic
   const showPreferences = settingsOpen || layer === "preferences";
   const storedAnalytics = decision?.analytics ?? false;
   const storedRecordings = decision?.recordings ?? false;
+  const storedMarketing = decision?.marketing ?? false;
 
   // Opened from the footer: the dialog starts on preferences and the switch
   // reflects the stored choice. State derived from a prop change is set
@@ -127,6 +143,7 @@ export default function ConsentDialog({ copy, privacyHref, cookiesHref, analytic
       setLayer("preferences");
       setAnalytics(storedAnalytics);
       setRecordings(storedRecordings);
+      setMarketing(storedMarketing);
     }
   }
 
@@ -171,23 +188,30 @@ export default function ConsentDialog({ copy, privacyHref, cookiesHref, analytic
     given: the one event that can only ever exist after consent. Where the
     card was opened from is the only parameter. A no is never sent anywhere,
     and a recordings choice is never told to Google. A category this
-    deployment does not have is recorded as not accepted.
+    deployment does not have is recorded as not accepted. Marketing is never
+    told to Google either; the Meta Pixel follows the stored choice by itself
+    (components/consent/meta-pixel.tsx).
   */
-  function decide(choice: { analytics: boolean; recordings: boolean }) {
-    const effective = { analytics: analyticsAvailable && choice.analytics, recordings: recordingsAvailable && choice.recordings };
+  function decide(choice: { analytics: boolean; recordings: boolean; marketing: boolean }) {
+    const effective = {
+      analytics: analyticsAvailable && choice.analytics,
+      recordings: recordingsAvailable && choice.recordings,
+      marketing: marketingAvailable && choice.marketing,
+    };
     const { reloadRequired } = decideConsent(effective);
     /* The visit's origin follows the analytics choice: kept across a reload only with a yes. */
     syncAttributionStorage(effective.analytics);
     if (effective.analytics) {
       trackEvent("consent_granted", { placement: settingsOpen ? "settings" : "banner" });
     }
-    /* Clarity was told to stop; the reload makes sure its tag is no longer in the page. */
+    /* Clarity or Meta was told to stop; the reload makes sure its tag is no longer in the page. */
     if (reloadRequired) window.location.reload();
   }
 
   function openPreferences() {
     setAnalytics(storedAnalytics);
     setRecordings(storedRecordings);
+    setMarketing(storedMarketing);
     focusTitleOnLayer.current = true;
     setLayer("preferences");
   }
@@ -270,9 +294,22 @@ export default function ConsentDialog({ copy, privacyHref, cookiesHref, analytic
                 </dd>
               </div>
             ) : null}
+            {marketingAvailable ? (
+              <div className="flex items-start justify-between gap-6 py-4">
+                <div>
+                  <dt className="label-mono text-ink">{copy.marketingLabel}</dt>
+                  <dd id={marketingTextId} className="mt-1.5 text-[0.9rem] leading-relaxed text-muted">
+                    {copy.marketingText}
+                  </dd>
+                </div>
+                <dd className="shrink-0 pt-0.5">
+                  <Switch checked={marketing} onToggle={() => setMarketing((value) => !value)} label={copy.marketingToggle} describedBy={marketingTextId} />
+                </dd>
+              </div>
+            ) : null}
           </dl>
 
-          <CtaButton variant="primary" onClick={() => decide({ analytics, recordings })} className="mt-5 w-full">
+          <CtaButton variant="primary" onClick={() => decide({ analytics, recordings, marketing })} className="mt-5 w-full">
             {copy.save}
           </CtaButton>
         </div>
@@ -282,15 +319,23 @@ export default function ConsentDialog({ copy, privacyHref, cookiesHref, analytic
             {copy.title}
           </h2>
           <p id={bodyId} className="mt-2 text-[0.9rem] leading-relaxed text-muted">
-            {[copy.body, analyticsAvailable ? copy.bodyAnalytics : null, recordingsAvailable ? copy.bodyRecordings : null, copy.bodyWithdraw].filter(Boolean).join(" ")}
+            {[
+              copy.body,
+              analyticsAvailable ? copy.bodyAnalytics : null,
+              recordingsAvailable ? copy.bodyRecordings : null,
+              marketingAvailable ? copy.bodyMarketing : null,
+              copy.bodyWithdraw,
+            ]
+              .filter(Boolean)
+              .join(" ")}
           </p>
 
           {/* Two answers, one shape: the same variant, the same width, one Tab apart. */}
           <div className="mt-5 grid gap-3 xs:grid-cols-2">
-            <CtaButton variant="secondary" onClick={() => decide({ analytics: false, recordings: false })} className="w-full px-3">
+            <CtaButton variant="secondary" onClick={() => decide({ analytics: false, recordings: false, marketing: false })} className="w-full px-3">
               {copy.necessaryOnly}
             </CtaButton>
-            <CtaButton variant="secondary" onClick={() => decide({ analytics: true, recordings: true })} className="w-full px-3">
+            <CtaButton variant="secondary" onClick={() => decide({ analytics: true, recordings: true, marketing: true })} className="w-full px-3">
               {copy.acceptAll}
             </CtaButton>
           </div>

@@ -218,6 +218,8 @@ export const siteContent = {
         "Met jouw toestemming verwerken we via Google Analytics persoonsgegevens over je gebruik en apparaat, om te begrijpen hoe de website wordt gebruikt en die te verbeteren; die gegevens worden gedeeld met Google.",
       bodyRecordings:
         "Met aparte toestemming legt Microsoft Clarity vast waar je klikt, hoe ver je scrolt en waar je mogelijk vastloopt, als heatmaps en gereconstrueerde sessieopnames; formulieren worden daarbij afgeschermd.",
+      bodyMarketing:
+        "Met aparte toestemming meten we via de Meta Pixel welke advertenties op Facebook en Instagram tot een bezoek of aanvraag leiden; die gegevens worden gedeeld met Meta.",
       bodyWithdraw: "Je kunt je toestemming later altijd intrekken via Cookie-instellingen.",
       necessaryOnly: "Alleen noodzakelijk",
       acceptAll: "Alles accepteren",
@@ -237,6 +239,10 @@ export const siteContent = {
       recordingsText:
         "Microsoft Clarity laat zien waar bezoekers klikken, hoe ver ze scrollen en waar ze mogelijk vastlopen, via heatmaps en gereconstrueerde sessieopnames. Formulieren en pagina's met klant- of betaalgegevens worden afgeschermd. Microsoft is voor deze gegevens zelf verantwoordelijk en gebruikt ze volgens zijn eigen voorwaarden ook voor eigen doeleinden. Staat uit totdat je het aanzet.",
       recordingsToggle: "Gedragsopnames via Microsoft Clarity",
+      marketingLabel: "Marketing",
+      marketingText:
+        "De Meta Pixel meet welke advertenties op Facebook en Instagram tot een bezoek of aanvraag leiden. Meta ontvangt daarbij welke pagina's je bekijkt en dat je een aanvraag hebt verstuurd, niet wat je in een formulier invult. Meta kan deze gegevens volgens zijn eigen voorwaarden ook voor eigen doeleinden gebruiken, zoals het tonen van advertenties. Staat uit totdat je het aanzet.",
+      marketingToggle: "Marketing via de Meta Pixel",
       save: "Voorkeuren opslaan",
     },
   },
@@ -387,6 +393,8 @@ export const siteContent = {
         "With your consent, we process personal data about your usage and device through Google Analytics, to understand how the website is used and to improve it; that data is shared with Google.",
       bodyRecordings:
         "With separate consent, Microsoft Clarity records where you click, how far you scroll and where you may get stuck, as heatmaps and reconstructed session recordings; forms are masked.",
+      bodyMarketing:
+        "With separate consent, we use the Meta Pixel to measure which ads on Facebook and Instagram lead to a visit or an inquiry; that data is shared with Meta.",
       bodyWithdraw: "You can withdraw your consent at any time under Cookie settings.",
       necessaryOnly: "Necessary only",
       acceptAll: "Accept all",
@@ -406,6 +414,10 @@ export const siteContent = {
       recordingsText:
         "Microsoft Clarity shows where visitors click, how far they scroll and where they may get stuck, through heatmaps and reconstructed session recordings. Forms and pages with customer or payment data are masked. Microsoft is itself responsible for this data and, under its own terms, also uses it for its own purposes. Off until you switch it on.",
       recordingsToggle: "Behaviour recordings via Microsoft Clarity",
+      marketingLabel: "Marketing",
+      marketingText:
+        "The Meta Pixel measures which ads on Facebook and Instagram lead to a visit or an inquiry. Meta receives which pages you view and that you sent an inquiry, not what you type into a form. Under its own terms, Meta may also use this data for its own purposes, such as showing ads. Off until you switch it on.",
+      marketingToggle: "Marketing via the Meta Pixel",
       save: "Save preferences",
     },
   },

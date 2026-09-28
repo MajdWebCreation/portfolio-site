@@ -13,6 +13,7 @@ const GA_ID = "G-TEST123";
 function fakeBrowser(initialCookies: Record<string, string> = {}) {
   const jar = new Map(Object.entries(initialCookies));
   const clarityCalls: unknown[][] = [];
+  const fbqCalls: unknown[][] = [];
   const document = {
     get cookie() {
       return [...jar.entries()].map(([name, value]) => `${name}=${value}`).join("; ");
@@ -27,10 +28,11 @@ function fakeBrowser(initialCookies: Record<string, string> = {}) {
   const window: Record<string, unknown> = {
     location: { protocol: "https:", hostname: "www.ymcreations.com", reload: vi.fn() },
     clarity: (...args: unknown[]) => clarityCalls.push(args),
+    fbq: (...args: unknown[]) => fbqCalls.push(args),
   };
   vi.stubGlobal("document", document);
   vi.stubGlobal("window", window);
-  return { jar, window, clarityCalls };
+  return { jar, window, clarityCalls, fbqCalls };
 }
 
 async function freshStore() {
@@ -50,31 +52,40 @@ afterEach(() => {
 });
 
 describe("choices", () => {
-  it("asks again for a version-1 choice", async () => {
-    fakeBrowser({ [CONSENT_COOKIE]: encodeURIComponent(`1.a1.${new Date().toISOString().replace(/\.\d{3}Z$/, "Z")}`) });
+  it.each([
+    ["version-1", "1.a1."],
+    ["version-2", "2.a1.r1."],
+  ])("asks again for a %s choice", async (_label, prefix) => {
+    fakeBrowser({ [CONSENT_COOKIE]: encodeURIComponent(`${prefix}${new Date().toISOString().replace(/\.\d{3}Z$/, "Z")}`) });
     const store = await freshStore();
     store.hydrateConsent();
     expect(store.hasAnalyticsConsent()).toBe(false);
     expect(store.hasRecordingsConsent()).toBe(false);
+    expect(store.hasMarketingConsent()).toBe(false);
   });
 
   it.each([
-    ["necessary only", false, false],
-    ["statistics only", true, false],
-    ["recordings only", false, true],
-    ["everything", true, true],
-  ] as const)("%s: GA %s, Clarity %s, nothing implied", async (_label, analytics, recordings) => {
+    ["necessary only", false, false, false],
+    ["statistics only", true, false, false],
+    ["recordings only", false, true, false],
+    ["marketing only", false, false, true],
+    ["everything", true, true, true],
+  ] as const)("%s: GA %s, Clarity %s, Meta %s, nothing implied", async (_label, analytics, recordings, marketing) => {
     const browser = fakeBrowser();
     const store = await freshStore();
     store.hydrateConsent();
-    const result = store.decideConsent({ analytics, recordings });
+    const result = store.decideConsent({ analytics, recordings, marketing });
 
     expect(store.hasAnalyticsConsent()).toBe(analytics);
     expect(store.hasRecordingsConsent()).toBe(recordings);
+    expect(store.hasMarketingConsent()).toBe(marketing);
     expect(clarityWouldLoad(store.hasRecordingsConsent())).toBe(recordings);
     expect(result.reloadRequired).toBe(false);
-    expect(readCookieValue(document.cookie, CONSENT_COOKIE)).toMatch(new RegExp(`^2\\.a${analytics ? 1 : 0}\\.r${recordings ? 1 : 0}\\.`));
+    expect(readCookieValue(document.cookie, CONSENT_COOKIE)).toMatch(
+      new RegExp(`^3\\.a${analytics ? 1 : 0}\\.r${recordings ? 1 : 0}\\.m${marketing ? 1 : 0}\\.`),
+    );
     expect(browser.clarityCalls).toEqual([]);
+    expect(browser.fbqCalls).toEqual([]);
   });
 });
 
@@ -83,9 +94,9 @@ describe("withdrawing recordings", () => {
     const browser = fakeBrowser({ _clck: "id|1", _clsk: "s|1", _ga: "GA1.1.1" });
     const store = await freshStore();
     store.hydrateConsent();
-    store.decideConsent({ analytics: true, recordings: true });
+    store.decideConsent({ analytics: true, recordings: true, marketing: false });
 
-    const result = store.decideConsent({ analytics: true, recordings: false });
+    const result = store.decideConsent({ analytics: true, recordings: false, marketing: false });
 
     expect(result.reloadRequired).toBe(true);
     expect(browser.clarityCalls).toEqual([["consent", false]]);
@@ -102,8 +113,8 @@ describe("withdrawing recordings", () => {
     delete browser.window.clarity;
     const store = await freshStore();
     store.hydrateConsent();
-    store.decideConsent({ analytics: false, recordings: true });
-    expect(store.decideConsent({ analytics: false, recordings: false }).reloadRequired).toBe(true);
+    store.decideConsent({ analytics: false, recordings: true, marketing: false });
+    expect(store.decideConsent({ analytics: false, recordings: false, marketing: false }).reloadRequired).toBe(true);
     expect(browser.jar.has("_clck")).toBe(false);
   });
 });
@@ -113,9 +124,9 @@ describe("withdrawing analytics", () => {
     const browser = fakeBrowser({ _ga: "GA1.1.1", _ga_TEST123: "x", _clck: "id|1" });
     const store = await freshStore();
     store.hydrateConsent();
-    store.decideConsent({ analytics: true, recordings: true });
+    store.decideConsent({ analytics: true, recordings: true, marketing: false });
 
-    const result = store.decideConsent({ analytics: false, recordings: true });
+    const result = store.decideConsent({ analytics: false, recordings: true, marketing: false });
 
     expect(result.reloadRequired).toBe(false);
     expect(browser.window[`ga-disable-${GA_ID}`]).toBe(true);
@@ -124,5 +135,37 @@ describe("withdrawing analytics", () => {
     expect(browser.jar.has("_clck")).toBe(true);
     expect(browser.clarityCalls).toEqual([]);
     expect(clarityWouldLoad(store.hasRecordingsConsent())).toBe(true);
+  });
+});
+
+describe("withdrawing marketing", () => {
+  it("revokes the Meta Pixel, clears its cookies, asks for a reload, and leaves the rest running", async () => {
+    const browser = fakeBrowser({ _fbp: "fb.1.1.1", _fbc: "fb.1.1.abc", _ga: "GA1.1.1", _clck: "id|1" });
+    const store = await freshStore();
+    store.hydrateConsent();
+    store.decideConsent({ analytics: true, recordings: true, marketing: true });
+
+    const result = store.decideConsent({ analytics: true, recordings: true, marketing: false });
+
+    expect(result.reloadRequired).toBe(true);
+    expect(browser.fbqCalls).toEqual([["consent", "revoke"]]);
+    expect(browser.jar.has("_fbp")).toBe(false);
+    expect(browser.jar.has("_fbc")).toBe(false);
+    expect(browser.jar.has("_ga")).toBe(true);
+    expect(browser.jar.has("_clck")).toBe(true);
+    expect(browser.clarityCalls).toEqual([]);
+    expect(store.hasAnalyticsConsent()).toBe(true);
+    expect(store.hasRecordingsConsent()).toBe(true);
+    expect(store.hasMarketingConsent()).toBe(false);
+  });
+
+  it("still clears the cookies when the pixel never loaded", async () => {
+    const browser = fakeBrowser({ _fbp: "fb.1.1.1" });
+    delete browser.window.fbq;
+    const store = await freshStore();
+    store.hydrateConsent();
+    store.decideConsent({ analytics: false, recordings: false, marketing: true });
+    expect(store.decideConsent({ analytics: false, recordings: false, marketing: false }).reloadRequired).toBe(true);
+    expect(browser.jar.has("_fbp")).toBe(false);
   });
 });

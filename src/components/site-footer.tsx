@@ -1,4 +1,5 @@
 import { clarityProjectId } from "@/lib/clarity/client";
+import { metaPixelId } from "@/lib/meta/pixel";
 import Link from "next/link";
 import BrandMark from "@/components/brand-mark";
 import ConsentSettingsButton from "@/components/consent/consent-settings-button";
@@ -28,8 +29,9 @@ export default function SiteFooter({
   const alternateLocale: Locale = locale === "nl" ? "en" : "nl";
   const counterpartPath = getCounterpartPath(currentPath, locale, alternateLocale);
   const year = new Date().getFullYear();
-  /* "Cookie-instellingen" exists whenever there is a choice to change: statistics, behaviour recordings, or both. */
-  const analyticsConfigured = Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID) || Boolean(clarityProjectId());
+  /* "Cookie-instellingen" exists whenever there is a choice to change: statistics, behaviour recordings, marketing, or any mix. */
+  const analyticsConfigured =
+    Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID) || Boolean(clarityProjectId()) || Boolean(metaPixelId());
   const legalLinkClass = "text-paper/70 transition-colors hover:text-paper";
 
   const navigation: Array<{ key: StaticRouteKey; href: string; label: string }> = (

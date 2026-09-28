@@ -4,8 +4,10 @@ import AnalyticsProvider from "@/components/analytics-provider";
 import AnalyticsScripts from "@/components/consent/analytics-scripts";
 import ClarityScript from "@/components/consent/clarity-script";
 import ConsentDialog from "@/components/consent/consent-dialog";
+import MetaPixel from "@/components/consent/meta-pixel";
 import { clarityProjectId } from "@/lib/clarity/client";
 import { getLocalizedPath } from "@/lib/content/routes";
+import { metaPixelId } from "@/lib/meta/pixel";
 import {
   businessInfo,
   defaultLocale,
@@ -47,14 +49,15 @@ export default async function LocaleLayout({
   const lang = isValidLocale(locale) ? locale : defaultLocale;
   const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   const clarityId = clarityProjectId();
+  const pixelId = metaPixelId();
 
   /*
     Each optional tool exists only when the deployment names it, and then
     only behind the visitor's choice: the consent card asks, and the script
     tags are rendered by client components that wait for the answer --
     Google Analytics under "statistics", Microsoft Clarity under "behaviour
-    recordings", independently. Without either there is nothing to ask
-    about, so no card is rendered. The admin has its own root layout and
+    recordings", the Meta Pixel under "marketing", independently. Without
+    any of them there is nothing to ask about, so no card is rendered. The admin has its own root layout and
     none of this.
   */
   return (
@@ -62,17 +65,19 @@ export default async function LocaleLayout({
       <body>
         <AnalyticsProvider />
         {children}
-        {gaMeasurementId || clarityId ? (
+        {gaMeasurementId || clarityId || pixelId ? (
           <ConsentDialog
             copy={siteContent[lang].consent}
             privacyHref={getLocalizedPath(lang, "privacy")}
             cookiesHref={getLocalizedPath(lang, "cookies")}
             analyticsAvailable={Boolean(gaMeasurementId)}
             recordingsAvailable={Boolean(clarityId)}
+            marketingAvailable={Boolean(pixelId)}
           />
         ) : null}
         {gaMeasurementId ? <AnalyticsScripts measurementId={gaMeasurementId} /> : null}
         {clarityId ? <ClarityScript projectId={clarityId} /> : null}
+        {pixelId ? <MetaPixel pixelId={pixelId} /> : null}
       </body>
     </html>
   );

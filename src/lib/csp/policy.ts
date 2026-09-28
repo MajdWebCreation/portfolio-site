@@ -14,10 +14,15 @@
     script   gtag.js, loaded only after analytics consent
              (consent/analytics-scripts.tsx); Microsoft Clarity's tag and
              script, loaded only after consent for behaviour recordings
-             (consent/clarity-script.tsx)
+             (consent/clarity-script.tsx); the Meta Pixel library and its
+             per-pixel configuration from connect.facebook.net, loaded only
+             after consent for marketing (lib/meta/pixel.ts)
     connect  Google Analytics collection; Clarity's collection endpoints;
-             the Supabase host for the admin's browser-side image upload
-    img      the Supabase public bucket (admin preview), GA beacons, blob and
+             Meta Pixel events sent with fetch or sendBeacon to
+             www.facebook.com; the Supabase host for the admin's
+             browser-side image upload
+    img      the Supabase public bucket (admin preview), GA beacons, Meta
+             Pixel events sent as an image to www.facebook.com, blob and
              data URLs the admin's PDF preview and next/og use
     frame    blob: for the admin's PDF preview iframes
     form     server actions post to the site itself; a direct debit
@@ -39,16 +44,20 @@
 */
 export const clarityOrigins = ["https://*.clarity.ms"] as const;
 
+/* Meta Pixel: two exact hosts, no wildcard. The library and its configuration, and the collection endpoint (/tr). */
+export const metaScriptOrigin = "https://connect.facebook.net";
+export const metaCollectOrigin = "https://www.facebook.com";
+
 export function buildReportOnlyPolicy(input: { development: boolean; supabaseHost: string | null }): string {
   const supabase = input.supabaseHost ? ` https://${input.supabaseHost}` : "";
   const clarity = clarityOrigins.join(" ");
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${input.development ? " 'unsafe-eval'" : ""} https://www.googletagmanager.com ${clarity}`,
+    `script-src 'self' 'unsafe-inline'${input.development ? " 'unsafe-eval'" : ""} https://www.googletagmanager.com ${clarity} ${metaScriptOrigin}`,
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: https://www.googletagmanager.com https://*.google-analytics.com${supabase}`,
+    `img-src 'self' data: blob: https://www.googletagmanager.com https://*.google-analytics.com ${metaCollectOrigin}${supabase}`,
     "font-src 'self'",
-    `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com ${clarity}${supabase}`,
+    `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com ${clarity} ${metaCollectOrigin}${supabase}`,
     "frame-src blob:",
     "frame-ancestors 'none'",
     "form-action 'self' https://www.mollie.com",

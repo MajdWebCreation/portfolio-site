@@ -23,9 +23,15 @@ import { getLocalizedPath } from "@/lib/content/routes";
   lifetimes, so none are stated here; they are to be read off a browser
   running the real tag and added then, together with any cookie that
   appears and is not listed.
+  The Meta Pixel (lib/meta/pixel.ts) is loaded only after consent for
+  marketing. `_fbp` and `_fbc` are the first-party cookies Meta documents for
+  the pixel ("fbp and fbc parameters", developers.facebook.com, checked 29
+  September 2026); `_fbc` only exists after a visit through an ad click
+  (fbclid). Their lifetimes are left to Meta here for the same reason as
+  Clarity's, until read off a browser running the real pixel.
 
-  `indexable` is false while the Clarity part awaits that check and the
-  owner's review; set it back to true only after both, so the sitemap and
+  `indexable` is false while the Clarity and Meta parts await that check
+  and the owner's review; set it back to true only after both, so the sitemap and
   robots meta follow the text rather than run ahead of it.
 */
 export const cookieStatement: LegalStatementSet = {
@@ -35,8 +41,8 @@ export const cookieStatement: LegalStatementSet = {
       title: "Cookieverklaring",
       description: "Welke cookies ymcreations.com plaatst, waarvoor, hoe lang, en hoe je je keuze aanpast.",
       intro: "Deze verklaring beschrijft welke cookies ymcreations.com plaatst, waarvoor ze dienen, hoe lang ze blijven staan en hoe je je keuze aanpast.",
-      updatedIso: "2026-09-23",
-      updatedLabel: "23 september 2026",
+      updatedIso: "2026-09-29",
+      updatedLabel: "29 september 2026",
       blocks: [
         { type: "heading", level: 2, content: "Wat cookies zijn" },
         {
@@ -76,6 +82,18 @@ export const cookieStatement: LegalStatementSet = {
             "Microsoft kan daarnaast op zijn eigen domeinen cookies plaatsen of uitlezen. Microsoft noemt daarvoor MUID, CLID, ANONCHK, MR en SM; die dienen er volgens Microsoft onder meer voor om een browser over sites heen te herkennen, en MUID wordt volgens Microsoft ook voor advertenties gebruikt. Wij geven Clarity het signaal dat opslag voor advertentiedoeleinden niet is toegestaan. Deze cookies staan op domeinen van Microsoft en vallen onder de [privacyverklaring van Microsoft](https://privacy.microsoft.com/nl-nl/privacystatement); wij kunnen ze niet uitlezen of verwijderen.",
         },
 
+        { type: "heading", level: 2, content: "Marketing, alleen met toestemming" },
+        {
+          type: "paragraph",
+          content:
+            "Alleen als je toestemming geeft voor marketing, laden we de Meta Pixel. Daarmee meten we welke advertenties op Facebook en Instagram tot een bezoek of een aanvraag leiden. Meta plaatst dan een cookie op onze website die je browser herkent aan een pseudonieme code, en als je via een advertentie van Meta binnenkomt een tweede cookie die die klik onthoudt. Zonder die toestemming wordt de pixel niet geladen en worden deze cookies niet geplaatst, ook niet als je toestemming voor statistieken of gedragsopnames gaf. Marketing staat standaard uit.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "Meta kan daarnaast op zijn eigen domeinen, zoals facebook.com, cookies uitlezen of plaatsen, bijvoorbeeld als je bij Facebook of Instagram bent ingelogd. Die cookies vallen onder het [cookiebeleid van Meta](https://www.facebook.com/privacy/policies/cookies/); wij kunnen ze niet uitlezen of verwijderen.",
+        },
+
         { type: "heading", level: 2, content: "Overzicht" },
         {
           type: "table",
@@ -87,6 +105,9 @@ export const cookieStatement: LegalStatementSet = {
             ["_clck", "Microsoft Clarity: herkent je browser bij een volgend bezoek aan een pseudonieme code en bewaart Clarity-voorkeuren.", "Gedragsopnames, Microsoft, alleen met toestemming", "Door Microsoft bepaald"],
             ["_clsk", "Microsoft Clarity: voegt de pagina's van één bezoek samen tot één opname.", "Gedragsopnames, Microsoft, alleen met toestemming", "Door Microsoft bepaald"],
             ["MUID, CLID, ANONCHK, MR, SM", "Microsoft: op Microsofts eigen domeinen, onder meer om een browser over sites heen te herkennen.", "Gedragsopnames, Microsoft, alleen met toestemming; cookies van Microsoft zelf", "Door Microsoft bepaald"],
+            ["_fbp", "Meta Pixel: herkent je browser aan een pseudonieme code, om advertenties te meten.", "Marketing, Meta, alleen met toestemming", "Door Meta bepaald"],
+            ["_fbc", "Meta Pixel: onthoudt de klik op een advertentie van Meta waarmee je binnenkwam; alleen na zo'n klik.", "Marketing, Meta, alleen met toestemming", "Door Meta bepaald"],
+            ["Cookies van Meta op facebook.com", "Meta: op Meta's eigen domeinen, onder meer om een bezoek aan een Meta-account te koppelen.", "Marketing, Meta, alleen met toestemming; cookies van Meta zelf", "Door Meta bepaald"],
             [
               "sb-*-auth-token",
               "Authenticatiecookie van de beheeromgeving: bewaart de ingelogde sessie van een medewerker.",
@@ -100,7 +121,7 @@ export const cookieStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Onderaan elke pagina staat Cookie-instellingen. Daar zet je statistieken en gedragsopnames elk afzonderlijk aan of uit. Zet je statistieken uit, dan stopt het meten direct en verwijderen we de Google Analytics-cookies voor zover dat vanuit de website kan. Zet je gedragsopnames uit, dan vragen we Clarity te stoppen en zijn cookies te wissen, verwijderen we de Clarity-cookies op onze website en laadt de pagina opnieuw zonder Clarity. Cookies op domeinen van Microsoft kunnen wij niet verwijderen. Na zes maanden vragen we je keuze opnieuw, en ook eerder als de cookies of de partijen die ze plaatsen wezenlijk veranderen.",
+            "Onderaan elke pagina staat Cookie-instellingen. Daar zet je statistieken, gedragsopnames en marketing elk afzonderlijk aan of uit. Zet je statistieken uit, dan stopt het meten direct en verwijderen we de Google Analytics-cookies voor zover dat vanuit de website kan. Zet je gedragsopnames uit, dan vragen we Clarity te stoppen en zijn cookies te wissen, verwijderen we de Clarity-cookies op onze website en laadt de pagina opnieuw zonder Clarity. Zet je marketing uit, dan vragen we de Meta Pixel te stoppen, verwijderen we de Meta-cookies op onze website en laadt de pagina opnieuw zonder pixel. Cookies op domeinen van Microsoft en Meta kunnen wij niet verwijderen. Na zes maanden vragen we je keuze opnieuw, en ook eerder als de cookies of de partijen die ze plaatsen wezenlijk veranderen.",
         },
         {
           type: "paragraph",
@@ -112,8 +133,8 @@ export const cookieStatement: LegalStatementSet = {
       title: "Cookie statement",
       description: "Which cookies ymcreations.com sets, what for, for how long, and how to change your choice.",
       intro: "This statement describes which cookies ymcreations.com sets, what they are for, how long they last, and how to change your choice.",
-      updatedIso: "2026-09-23",
-      updatedLabel: "23 September 2026",
+      updatedIso: "2026-09-29",
+      updatedLabel: "29 September 2026",
       blocks: [
         { type: "heading", level: 2, content: "What cookies are" },
         {
@@ -153,6 +174,18 @@ export const cookieStatement: LegalStatementSet = {
             "Microsoft may also set or read cookies on its own domains. Microsoft lists MUID, CLID, ANONCHK, MR and SM for this; according to Microsoft they serve, among other things, to recognise a browser across sites, and MUID is also used for advertising. We signal to Clarity that storage for advertising purposes is not allowed. These cookies live on Microsoft's domains and are governed by the [Microsoft privacy statement](https://privacy.microsoft.com/en-us/privacystatement); we cannot read or remove them.",
         },
 
+        { type: "heading", level: 2, content: "Marketing, only with consent" },
+        {
+          type: "paragraph",
+          content:
+            "Only if you consent to marketing do we load the Meta Pixel. With it we measure which ads on Facebook and Instagram lead to a visit or an inquiry. Meta then sets a cookie on our website that recognises your browser by a pseudonymous code, and, when you arrive through an ad from Meta, a second cookie that remembers that click. Without that consent the pixel is not loaded and these cookies are not set, not even if you consented to analytics or behaviour recordings. Marketing is off by default.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "Meta may also read or set cookies on its own domains, such as facebook.com, for example when you are logged in to Facebook or Instagram. Those cookies are governed by [Meta's cookie policy](https://www.facebook.com/privacy/policies/cookies/); we cannot read or remove them.",
+        },
+
         { type: "heading", level: 2, content: "Overview" },
         {
           type: "table",
@@ -164,6 +197,9 @@ export const cookieStatement: LegalStatementSet = {
             ["_clck", "Microsoft Clarity: recognises your browser on a later visit by a pseudonymous code and keeps Clarity preferences.", "Behaviour recordings, Microsoft, only with consent", "Set by Microsoft"],
             ["_clsk", "Microsoft Clarity: joins the pages of one visit into one recording.", "Behaviour recordings, Microsoft, only with consent", "Set by Microsoft"],
             ["MUID, CLID, ANONCHK, MR, SM", "Microsoft: on Microsoft's own domains, among other things to recognise a browser across sites.", "Behaviour recordings, Microsoft, only with consent; Microsoft's own cookies", "Set by Microsoft"],
+            ["_fbp", "Meta Pixel: recognises your browser by a pseudonymous code, to measure ads.", "Marketing, Meta, only with consent", "Set by Meta"],
+            ["_fbc", "Meta Pixel: remembers the click on an ad from Meta you arrived through; only after such a click.", "Marketing, Meta, only with consent", "Set by Meta"],
+            ["Meta's cookies on facebook.com", "Meta: on Meta's own domains, among other things to link a visit to a Meta account.", "Marketing, Meta, only with consent; Meta's own cookies", "Set by Meta"],
             [
               "sb-*-auth-token",
               "Authentication cookie of the admin area: holds a staff member's signed-in session.",
@@ -177,7 +213,7 @@ export const cookieStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Cookie settings sits at the bottom of every page. There you switch analytics and behaviour recordings on or off, each on its own. Switching analytics off stops measurement immediately and removes the Google Analytics cookies as far as the website can. Switching behaviour recordings off asks Clarity to stop and erase its cookies, removes the Clarity cookies on our website and reloads the page without Clarity. Cookies on Microsoft's domains cannot be removed by us. After six months we ask again, and sooner if the cookies or the parties setting them change materially.",
+            "Cookie settings sits at the bottom of every page. There you switch analytics, behaviour recordings and marketing on or off, each on its own. Switching analytics off stops measurement immediately and removes the Google Analytics cookies as far as the website can. Switching behaviour recordings off asks Clarity to stop and erase its cookies, removes the Clarity cookies on our website and reloads the page without Clarity. Switching marketing off asks the Meta Pixel to stop, removes the Meta cookies on our website and reloads the page without the pixel. Cookies on Microsoft's and Meta's domains cannot be removed by us. After six months we ask again, and sooner if the cookies or the parties setting them change materially.",
         },
         {
           type: "paragraph",

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { currentAttribution } from "@/lib/attribution/capture";
 import { normalizeWebsiteUrl, websiteUrlHost } from "@/lib/contact/website-url";
+import { trackMetaLead } from "@/lib/meta/track";
 import type { WebsitecheckFormCopy } from "@/lib/content/websitecheck";
 
 type Field = "websiteUrl" | "name" | "email" | "phone";
@@ -115,7 +116,7 @@ export default function WebsitecheckForm({ copy, privacyHref }: WebsitecheckForm
       });
 
       const data = (await response.json().catch(() => null)) as
-        | { ok?: boolean; error?: string; fieldErrors?: Partial<Record<Field, string>> }
+        | { ok?: boolean; leadEventId?: unknown; error?: string; fieldErrors?: Partial<Record<Field, string>> }
         | null;
 
       if (!response.ok || data?.ok !== true) {
@@ -125,6 +126,7 @@ export default function WebsitecheckForm({ copy, privacyHref }: WebsitecheckForm
       }
 
       /* The one success condition: the server confirmed the request is stored. */
+      trackMetaLead({ form: "websitecheck", eventId: data.leadEventId });
       setReceived({
         host: websiteUrlHost(normalizeWebsiteUrl(form.websiteUrl) ?? form.websiteUrl),
         email: form.email.trim().toLowerCase(),

@@ -6,6 +6,7 @@ import { trackEvent } from "@/lib/analytics/track";
 import { plannerStepNames, type ErrorKind } from "@/lib/analytics/events";
 import { currentAttribution } from "@/lib/attribution/capture";
 import { attributionEventParams } from "@/lib/attribution/event-params";
+import { trackMetaLead } from "@/lib/meta/track";
 import {
   buildPlannerSummary,
   formatMonthlyFrom,
@@ -687,6 +688,10 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
         trackPlannerError(3, "server", Object.keys(data?.fieldErrors ?? {}));
         throw new PlannerRequestFailed();
       }
+
+      /* Accepted by the server: the one moment a lead exists for Meta (lib/meta/track.ts). */
+      const accepted = (await response.json().catch(() => null)) as { leadEventId?: unknown } | null;
+      trackMetaLead({ form: "project_planner", eventId: accepted?.leadEventId });
 
       /* Both keys were required to pass step 3; the check keeps the types honest. */
       if (form.launchTimeline && form.priority) {

@@ -6,6 +6,7 @@ import { trackEvent } from "@/lib/analytics/track";
 import type { ErrorKind } from "@/lib/analytics/events";
 import { currentAttribution } from "@/lib/attribution/capture";
 import { attributionEventParams } from "@/lib/attribution/event-params";
+import { trackMetaLead } from "@/lib/meta/track";
 
 type ContactFormCopy = {
   nameLabel: string;
@@ -189,6 +190,10 @@ export default function ContactForm({
         trackContactError("server", Object.keys(data?.fieldErrors ?? {}));
         throw new ContactRequestFailed();
       }
+
+      /* Accepted by the server: the one moment a lead exists for Meta (lib/meta/track.ts). */
+      const accepted = (await response.json().catch(() => null)) as { leadEventId?: unknown } | null;
+      trackMetaLead({ form: "contact", eventId: accepted?.leadEventId });
 
       trackEvent("contact_submit", { form: "contact", ...attributionEventParams(currentAttribution()) });
       setStatus("success");

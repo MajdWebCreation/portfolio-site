@@ -3,6 +3,7 @@ import { validateAttribution } from "@/lib/attribution/classify";
 import { storeInquiry } from "@/lib/contact/inquiry";
 import type { ContactMode, ContactPayload } from "@/lib/contact/payload";
 import { normalizeWebsiteUrl, websiteUrlHost } from "@/lib/contact/website-url";
+import { createLeadEventId } from "@/lib/meta/event-id";
 import { buildWebsitecheckConfirmation } from "@/lib/email/websitecheck";
 import {
   emailLink,
@@ -665,7 +666,16 @@ ymcreations.com
       );
     }
 
-    return Response.json({ ok: true });
+    /*
+      The one place a lead counts: stored, notified, confirmed. Only this
+      answer carries `leadEventId`, and the browser reports a Meta Lead only
+      when it gets one (lib/meta/track.ts) -- never for the honeypot's
+      `{ ok: true }` above, a refusal or a failure. A server-side Conversions
+      API event for this lead belongs here, with this same id as its
+      `event_id`, and only when the request's own consent cookie
+      (lib/consent/consent.ts) says yes to marketing.
+    */
+    return Response.json({ ok: true, leadEventId: createLeadEventId() });
   } catch (error) {
     console.error("Unexpected contact route error", error);
     return Response.json({ error: "Unexpected error." }, { status: 500 });
