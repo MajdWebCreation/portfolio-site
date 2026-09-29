@@ -1287,3 +1287,241 @@ select {
   color: var(--color-faint);
   pointer-events: none;
 }
+
+/* ---------- Service landing ---------- */
+
+/*
+  Entrance on scroll. Elements are visible unless the scope has switched the
+  hidden state on (see reveal-scope.tsx), so the page is complete without
+  JavaScript and with reduced motion.
+*/
+[data-reveal] {
+  transition:
+    opacity 800ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+html[data-reveal-ready] [data-reveal]:not([data-revealed]) {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: none;
+}
+
+/* Drafting grid on the ink bands: hairlines that fade out towards the text. */
+.sl-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(244, 243, 238, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(244, 243, 238, 0.055) 1px, transparent 1px);
+  background-size: 4.5rem 4.5rem;
+  background-position: center top;
+  mask-image: radial-gradient(ellipse 75% 90% at 85% 40%, #000 0%, transparent 72%);
+}
+
+.sl-grid-low {
+  mask-image: radial-gradient(ellipse 70% 100% at 15% 100%, #000 0%, transparent 70%);
+}
+
+.sl-title {
+  font-size: clamp(2.3rem, 1.35rem + 3.3vw, 4rem);
+  line-height: 1.04;
+  letter-spacing: -0.034em;
+  font-weight: 600;
+}
+
+/* The trail on ink: same component, lighter tones. */
+.sl-crumbs .label-mono {
+  color: rgba(244, 243, 238, 0.55);
+}
+
+.sl-crumbs .label-mono .text-faint {
+  color: rgba(244, 243, 238, 0.3);
+}
+
+.sl-crumbs .label-mono .text-ink,
+.sl-crumbs .label-mono a:hover {
+  color: var(--color-paper);
+}
+
+/* Primary action on ink: the arrow moves, the button does not. */
+.sl-cta {
+  min-height: 3.25rem;
+  padding-inline: 1.6rem;
+  font-size: 1rem;
+}
+
+.sl-cta-arrow {
+  display: inline-block;
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sl-cta:hover .sl-cta-arrow {
+  transform: translateX(4px);
+}
+
+/* Page capture in a plain frame: a bar with the domain, no window buttons. */
+.sl-frame {
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(244, 243, 238, 0.14);
+  background: var(--color-ink-soft);
+  box-shadow:
+    0 1px 0 rgba(244, 243, 238, 0.06) inset,
+    0 40px 80px -32px rgba(0, 0, 0, 0.7);
+}
+
+.sl-frame-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 2.1rem;
+  padding-inline: 0.9rem;
+  border-bottom: 1px solid rgba(244, 243, 238, 0.1);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: rgba(244, 243, 238, 0.6);
+}
+
+.sl-live-dot {
+  display: block;
+  height: 6px;
+  width: 6px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+}
+
+.sl-frame-view {
+  position: relative;
+  aspect-ratio: 16 / 11;
+  overflow: hidden;
+}
+
+/*
+  The capture is twice as tall as it is wide and the view shows 11/16 of its
+  width, so moving it up by 65.6% of its own height ends at its last screen.
+*/
+.sl-pan {
+  display: block;
+  animation: sl-pan 46s cubic-bezier(0.45, 0, 0.55, 1) 2.4s infinite alternate;
+  will-change: transform;
+}
+
+.sl-frame:hover .sl-pan {
+  animation-play-state: paused;
+}
+
+@keyframes sl-pan {
+  0%,
+  6% {
+    transform: translateY(0);
+  }
+  94%,
+  100% {
+    transform: translateY(-65.6%);
+  }
+}
+
+.sl-phone {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 27%;
+  overflow: hidden;
+  border-radius: clamp(0.9rem, 2.2vw, 1.5rem);
+  border: clamp(3px, 0.45vw, 5px) solid var(--color-ink-soft);
+  outline: 1px solid rgba(244, 243, 238, 0.18);
+  background: var(--color-ink-soft);
+  box-shadow: 0 32px 60px -20px rgba(0, 0, 0, 0.75);
+}
+
+/* Rows of the build ledger: a short accent rule that grows on hover. */
+.sl-ledger-row {
+  position: relative;
+  padding-left: 0;
+  transition:
+    padding-left 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 800ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: 0ms, var(--reveal-delay, 0ms), var(--reveal-delay, 0ms);
+}
+
+.sl-ledger-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 1px;
+  width: 0;
+  background: var(--color-accent);
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (hover: hover) {
+  .sl-ledger-row:hover {
+    padding-left: 2.25rem;
+  }
+
+  .sl-ledger-row:hover::before {
+    width: 1.5rem;
+  }
+}
+
+/* Project captures in the proof band. */
+.sl-shot {
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-image);
+}
+
+/* The rail of the trajectory: drawn once, from the left. */
+.sl-rail {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  height: 1px;
+  width: 100%;
+  background: var(--color-line-strong);
+  transform-origin: left center;
+  transition: transform 1100ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+html[data-reveal-ready] [data-reveal]:not([data-revealed]) .sl-rail {
+  transform: scaleX(0);
+  transition: none;
+}
+
+.sl-rail-node {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  height: 9px;
+  width: 9px;
+  border-radius: 999px;
+}
+
+@media (max-width: 63.99rem) {
+  .sl-rail {
+    width: 100%;
+  }
+}
+
+.sl-card {
+  box-shadow:
+    0 1px 2px rgba(16, 24, 39, 0.06),
+    0 40px 80px -40px rgba(16, 24, 39, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-pan {
+    animation: none;
+  }
+}

@@ -13,6 +13,7 @@ import ProcessSteps from "@/components/process-steps";
 import ProjectRow from "@/components/project-row";
 import ProseSections from "@/components/prose-sections";
 import { ViewEvent } from "@/components/page-events";
+import ServiceLanding from "@/components/service-landing";
 import SiteShell from "@/components/site-shell";
 import { getServiceBreadcrumbs } from "@/lib/content/breadcrumbs";
 import { getCaseStudyPathForProject } from "@/lib/content/cases";
@@ -106,6 +107,7 @@ const labels = {
     or: "of stuur een",
     whatsappLabel: "Stuur een bericht",
     whatsappText: "Hallo YM Creations, ik wil graag een website laten maken.",
+    liveWork: "Live werk",
   },
   en: {
     services: "Services",
@@ -124,6 +126,7 @@ const labels = {
     or: "or send a",
     whatsappLabel: "Send a message",
     whatsappText: "Hello YM Creations, I would like to have a website built.",
+    liveWork: "Live work",
   },
 } as const;
 
@@ -283,6 +286,23 @@ export async function ServiceDetailContent({
           event="service_view"
           params={{ service_id: service.key, service_family: service.family, service_kind: service.kind }}
         />
+        {service.contactOnPage ? (
+          <ServiceLanding
+            locale={locale}
+            service={service}
+            content={content}
+            text={text}
+            breadcrumb={<Breadcrumbs locale={locale} items={crumbs} />}
+            priceLine={priceLine}
+            proofProjects={proofProjects.map((project) => ({
+              ...project,
+              casePath: getCaseStudyPathForProject(locale, project.id),
+            }))}
+            whatsappHref={whatsappHref}
+            showReviews={Boolean(showReviews)}
+          />
+        ) : (
+          <>
         <PageHeader
           breadcrumb={<Breadcrumbs locale={locale} items={crumbs} />}
           label={service.familyTitle}
@@ -449,6 +469,9 @@ export async function ServiceDetailContent({
               trackingContext="service"
             />
           </div>
+        )}
+
+          </>
         )}
 
         {/* Related services, as plain links. */}

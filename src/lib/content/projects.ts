@@ -28,6 +28,13 @@ export type Project = {
   built: Record<Locale, string[]>;
   image: ProjectImage;
   detailImage?: ProjectImage;
+  /**
+   * A tall capture of the live homepage, from the top down. Shown inside a
+   * frame that moves slowly over it, so it has to be a clean page capture.
+   */
+  pageImage?: ProjectImage;
+  /** The live site on a phone, top of the homepage. */
+  mobileImage?: ProjectImage;
 };
 
 /**
@@ -121,6 +128,15 @@ export const projects: Project[] = [
         en: "Taxi De Polder homepage with booking button and fixed rates",
       },
     },
+    pageImage: {
+      src: "/images/projects/taxi-de-polder-page.webp",
+      width: 1280,
+      height: 2560,
+      alt: {
+        nl: "De homepage van Taxi De Polder van boven naar beneden: reserveerknop, reservering in vier stappen en de diensten",
+        en: "The Taxi De Polder homepage from top to bottom: booking button, four-step booking and the services",
+      },
+    },
   },
   {
     id: "dos-slotenmaker",
@@ -157,6 +173,15 @@ export const projects: Project[] = [
       alt: {
         nl: "Homepage van D.O.S Slotenmaker met bel- en WhatsApp-knoppen",
         en: "D.O.S Slotenmaker homepage with call and WhatsApp buttons",
+      },
+    },
+    mobileImage: {
+      src: "/images/projects/dos-slotenmaker-mobile.webp",
+      width: 780,
+      height: 1688,
+      alt: {
+        nl: "De homepage van D.O.S Slotenmaker op een telefoon, met bel- en WhatsApp-knop bovenaan",
+        en: "The D.O.S Slotenmaker homepage on a phone, with call and WhatsApp buttons at the top",
       },
     },
   },

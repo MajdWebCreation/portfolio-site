@@ -77,6 +77,11 @@ type LocalizedServiceContent = {
   metaTitle: string;
   metaDescription: string;
   title: string;
+  /**
+   * The opening words of `title`, set brighter than the rest where a page
+   * shows its title in two tones. Ignored when the title does not start with it.
+   */
+  titleLead?: string;
   intro: string;
   /** One line for the services index. */
   summary: string;
@@ -150,6 +155,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
           "Een zakelijke website laten maken in eigen code: dienstenpagina's, een contactflow met formulier, bellen en WhatsApp, technische SEO vanaf de eerste versie en technisch beheer na livegang.",
         title:
           "Een website laten maken die vertelt wat je doet en de weg naar contact kort houdt.",
+        titleLead: "Een website laten maken",
         intro:
           "De structuur volgt uit wat je aanbiedt en hoe klanten contact opnemen. Gebouwd in eigen code, zodat de site snel blijft en meegroeit als je aanbod verandert.",
         summary: "Dienstenpagina's, contactflow en lokale vindbaarheid.",
@@ -260,6 +266,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
           "A custom business website in custom code: service pages, a contact flow with form, phone and WhatsApp, and technical SEO from the first version.",
         title:
           "A business website that explains what you do and keeps the way to contact short.",
+        titleLead: "A business website",
         intro:
           "The structure follows from what you offer and how customers get in touch. Built in custom code, so the site stays fast and grows with your offer.",
         summary: "Service pages, contact flow and local findability.",
