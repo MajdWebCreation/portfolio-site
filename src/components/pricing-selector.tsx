@@ -11,20 +11,25 @@ export type SelectorAddOn = {
   /** Base amount, struck through, while the development discount is active: "€75". */
   originalPrice?: string;
 };
-export type SelectorAddOnGroup = { label: string; items: SelectorAddOn[] };
+export type SelectorAddOnGroup = {
+  label: string;
+  /** Context under the group, e.g. that app amounts cover a first version. */
+  note?: string;
+  items: SelectorAddOn[];
+};
 
 export type SelectorPackage = {
   id: PackageId;
   name: string;
   /** One short line: who the type is for. Shown once, in the header. */
   tagline: string;
-  /** "vanaf €1.495" */
+  /** "€ 1.495", or "vanaf € 4.995" for scope-driven work */
   price: string;
-  /** "€1.495" or "€4.995+" */
+  /** "€ 1.495"; the label above it says whether it is a starting price */
   priceAmount: string;
-  /** Base amount while the development discount is active: "€1.495" or "€4.995+". */
+  /** Base amount while the development discount is active: "€ 1.495". */
   originalPriceAmount?: string;
-  /** "vanaf €25 p/m" */
+  /** "€ 29 p/m" */
   monthly: string;
   scopeDriven: boolean;
   included: string[];
@@ -36,8 +41,9 @@ export type SelectorPackage = {
 
 export type SelectorLabels = {
   onceLabel: string;
+  onceFromLabel: string;
   monthlyLabel: string;
-  scopeTag: string;
+  scopeNote: string;
   includedLabel: string;
   addOnsLabel: string;
   boundaryLabel: string;
@@ -197,9 +203,11 @@ export default function PricingSelector({ packages, labels, initialId, discount 
                 <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 lg:flex-nowrap">
                   <p className="display-sm hidden lg:block">{pkg.name}</p>
                   {/* Two different amounts: the build once, management per month. */}
-                  <dl className="ps-prices grid shrink-0 grid-cols-2 gap-x-6 lg:block lg:text-right">
+                  <dl className="ps-prices grid w-full shrink-0 grid-cols-2 gap-x-6 lg:block lg:w-auto lg:text-right">
                     <div>
-                      <dt className="label-mono">{labels.onceLabel}</dt>
+                      <dt className="label-mono">
+                        {pkg.scopeDriven ? labels.onceFromLabel : labels.onceLabel}
+                      </dt>
                       <dd className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 lg:justify-end">
                         <span className="text-[1.9rem] font-semibold leading-none tracking-[-0.03em] text-ink lg:text-[2.2rem]">
                           {pkg.priceAmount}
@@ -216,7 +224,9 @@ export default function PricingSelector({ packages, labels, initialId, discount 
                         </dd>
                       ) : null}
                       {pkg.scopeDriven ? (
-                        <dd className="label-mono mt-2 text-accent">{labels.scopeTag}</dd>
+                        <dd className="mt-2 max-w-[16rem] text-[0.82rem] leading-snug text-muted lg:ml-auto">
+                          {labels.scopeNote}
+                        </dd>
                       ) : null}
                     </div>
                     <div className="border-l border-line pl-6 lg:mt-3 lg:border-l-0 lg:border-t lg:pl-0 lg:pt-3">
@@ -266,6 +276,9 @@ export default function PricingSelector({ packages, labels, initialId, discount 
                               </li>
                             ))}
                           </ul>
+                          {group.note ? (
+                            <p className="mt-1.5 text-[0.82rem] leading-snug text-muted">{group.note}</p>
+                          ) : null}
                         </div>
                       ))}
                     </div>

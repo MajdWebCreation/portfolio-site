@@ -1,4 +1,5 @@
 import { companyProfile } from "@/lib/admin/documents/company";
+import { whatsappUrl } from "@/lib/content/site-content";
 import { emailButtonSecondary, emailLink, emailNote, emailSection, escapeEmailHtml } from "@/lib/email/shell";
 
 /**
@@ -18,7 +19,7 @@ import { emailButtonSecondary, emailLink, emailNote, emailSection, escapeEmailHt
  */
 
 /** WhatsApp Business, from the one place the phone number is written down. */
-export const whatsappUrl = `https://wa.me/${companyProfile.phone.replace(/\D/g, "")}`;
+export { whatsappUrl };
 
 export const whatsappLabel = "WhatsApp ons";
 

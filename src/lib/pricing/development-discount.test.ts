@@ -16,7 +16,7 @@ const campaigns: [string, PricingSettingsRow | null][] = [
   ["90%", settingsRow(true, 90)],
 ];
 
-const seededMonthly = { starter: 10, business: 25, smart: 35, webshop: 25, platform: 49 };
+const seededMonthly = { starter: 15, business: 29, smart: 39, webshop: 35, platform: 69 };
 
 describe("the catalog and the campaign setting", () => {
   it("carries no discount without a settings row", () => {

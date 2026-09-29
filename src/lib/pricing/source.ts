@@ -24,9 +24,17 @@ import { createSupabasePublicClient } from "@/lib/supabase/public";
  * Server-side only. A client component receives a catalog as a prop rather
  * than calling this, so no Supabase query is ever made from the browser for
  * something every visitor sees identically.
+ *
+ * Freshness: the queries are cached for at most `pricingRevalidateSeconds`,
+ * and every static page that renders a price inherits that interval. An admin
+ * save does not wait for it (`revalidatePricing` refreshes the pages at
+ * once); the interval is what brings a change made directly in the database,
+ * such as a migration, onto the site without anyone saving in the admin.
  */
+export const pricingRevalidateSeconds = 3600;
+
 export const getPricingCatalog = cache(async (): Promise<PricingCatalog> => {
-  const db = createSupabasePublicClient();
+  const db = createSupabasePublicClient({ revalidate: pricingRevalidateSeconds });
 
   const [packages, addOns, settings] = await Promise.all([
     db.from("pricing_packages").select(pricingPackageColumns).order("sort_order"),

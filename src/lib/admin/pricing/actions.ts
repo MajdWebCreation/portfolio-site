@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { actionFailed, type ActionResult } from "@/lib/admin/action-result";
 import { adminDb } from "@/lib/admin/db";
-import { campaignRoutes, getLocalizedPath } from "@/lib/content/routes";
-import { locales } from "@/lib/content/site-content";
+import { pricingPaths } from "@/lib/admin/pricing/paths";
 import {
   isValidDevelopmentDiscountPercent,
   maxDevelopmentDiscountPercent,
@@ -24,20 +23,13 @@ function toCents(euros: number): number | null {
 }
 
 /**
- * The public pages that render an amount. They read the same rows, so a saved
- * price has to invalidate their cached output as well as the editor's, or the
- * site would keep showing the old number until the next deploy.
+ * The pages that render an amount. They read the same rows, so a saved price
+ * has to invalidate their cached output as well as the editor's, or the site
+ * would keep showing the old number until the catalog's regular revalidation
+ * (`pricingRevalidateSeconds` in `lib/pricing/source.ts`).
  */
 function revalidatePricing() {
-  revalidatePath("/admin/prijzen");
-
-  for (const locale of locales) {
-    revalidatePath(getLocalizedPath(locale, "pricing"));
-    revalidatePath(getLocalizedPath(locale, "projectPlanner"));
-  }
-
-  /* The websitecheck landing page shows the campaign on development costs. */
-  revalidatePath(campaignRoutes.websitecheck);
+  for (const path of pricingPaths()) revalidatePath(path);
 }
 
 export async function updatePackagePrice(

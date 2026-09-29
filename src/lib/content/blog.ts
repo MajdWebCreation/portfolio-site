@@ -84,9 +84,9 @@ const articleExtras: Record<string, ArticleExtras> = {
       "Wil je helder krijgen wat jouw website echt nodig heeft en waar de investering naartoe gaat? Dan is een korte intake vaak waardevoller dan een snelle prijsindicatie zonder context.",
     ctaPrimaryLink: "/nl/contact",
     ctaSecondaryText: "Bekijk de dienst Bedrijfswebsite",
-    ctaSecondaryLink: "/nl/diensten/bedrijfswebsite",
+    ctaSecondaryLink: "/nl/diensten/website-laten-maken",
     relatedServices: [
-      "/nl/diensten/bedrijfswebsite",
+      "/nl/diensten/website-laten-maken",
       "/nl/diensten/landingspagina",
       "/nl/diensten/redesign-optimalisatie",
       "/nl/diensten/performance",
@@ -102,7 +102,7 @@ const articleExtras: Record<string, ArticleExtras> = {
     relatedServices: [
       "/nl/diensten/redesign-optimalisatie",
       "/nl/diensten/performance",
-      "/nl/diensten/bedrijfswebsite",
+      "/nl/diensten/website-laten-maken",
     ],
   },
   "webapplicatie-laten-maken-stappenplan": {
@@ -128,7 +128,7 @@ const articleExtras: Record<string, ArticleExtras> = {
     relatedServices: [
       "/nl/diensten/performance",
       "/nl/diensten/redesign-optimalisatie",
-      "/nl/diensten/bedrijfswebsite",
+      "/nl/diensten/website-laten-maken",
     ],
   },
   "website-of-webshop": {
@@ -138,7 +138,7 @@ const articleExtras: Record<string, ArticleExtras> = {
     ctaSecondaryText: "Bekijk Webshop laten maken",
     ctaSecondaryLink: "/nl/diensten/webshop-laten-maken",
     relatedServices: [
-      "/nl/diensten/bedrijfswebsite",
+      "/nl/diensten/website-laten-maken",
       "/nl/diensten/webshop-laten-maken",
       "/nl/diensten/webapplicatie-laten-maken",
     ],
@@ -181,9 +181,9 @@ const articleExtras: Record<string, ArticleExtras> = {
       "Wil je offertes eerlijk kunnen vergelijken? Zet eerst de scope op papier: welke templates, content, koppelingen en migratie er echt bij horen. Pas daarna zegt een bedrag iets.",
     ctaPrimaryLink: "/nl/contact",
     ctaSecondaryText: "Bekijk Bedrijfswebsite",
-    ctaSecondaryLink: "/nl/diensten/bedrijfswebsite",
+    ctaSecondaryLink: "/nl/diensten/website-laten-maken",
     relatedServices: [
-      "/nl/diensten/bedrijfswebsite",
+      "/nl/diensten/website-laten-maken",
       "/nl/diensten/webshop-laten-maken",
       "/nl/diensten/landingspagina",
       "/nl/tarieven",
@@ -244,7 +244,7 @@ const articleExtras: Record<string, ArticleExtras> = {
     relatedServices: [
       "/nl/diensten/redesign-optimalisatie",
       "/nl/diensten/performance",
-      "/nl/diensten/bedrijfswebsite",
+      "/nl/diensten/website-laten-maken",
     ],
   },
   "wat-kost-een-webapplicatie": {
@@ -303,7 +303,7 @@ const articleExtras: Record<string, ArticleExtras> = {
     relatedServices: [
       "/nl/diensten/performance",
       "/nl/diensten/redesign-optimalisatie",
-      "/nl/diensten/bedrijfswebsite",
+      "/nl/diensten/website-laten-maken",
     ],
   },
   "klantportaal-laten-maken": {
@@ -325,7 +325,7 @@ const articleExtras: Record<string, ArticleExtras> = {
     ctaSecondaryLink: "/nl/diensten/koppelingen-automatisering",
     relatedServices: [
       "/nl/diensten/koppelingen-automatisering",
-      "/nl/diensten/bedrijfswebsite",
+      "/nl/diensten/website-laten-maken",
     ],
   },
   "technisch-onderhoud-website-webapp-na-livegang": {
@@ -361,7 +361,7 @@ const articleExtras: Record<string, ArticleExtras> = {
     relatedServices: [
       "/nl/werkwijze",
       "/nl/diensten/webapplicatie-laten-maken",
-      "/nl/diensten/bedrijfswebsite",
+      "/nl/diensten/website-laten-maken",
     ],
   },
 };

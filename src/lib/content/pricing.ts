@@ -16,8 +16,12 @@ export type PricingPageContent = {
     label: string;
     title: string;
     onceLabel: string;
+    /** Above a scope-driven amount only; fixed prices get `onceLabel`. */
+    onceFromLabel: string;
     monthlyLabel: string;
-    scopeTag: string;
+    /** Under a scope-driven amount: what the starting price covers. */
+    scopeNote: string;
+    vatNote: string;
     includedLabel: string;
     addOnsLabel: string;
     boundaryLabel: string;
@@ -41,7 +45,7 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
   nl: {
     metaTitle: "Tarieven",
     metaDescription:
-      "Tarieven van YM Creations: een vanafprijs per projecttype, van compacte website tot maatwerkplatform, met uitbreidingen die bij dat type horen.",
+      "Tarieven van YM Creations: een duidelijke prijs per projecttype, van compacte website tot maatwerkplatform, met uitbreidingen die bij dat type horen.",
     hero: {
       label: "Tarieven",
       title: "Een duidelijke basisprijs. Meer alleen als de scope erom vraagt.",
@@ -51,9 +55,11 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
     selector: {
       label: "Projecttypes",
       title: "Van compacte website tot maatwerkplatform.",
-      onceLabel: "Eenmalig vanaf",
+      onceLabel: "Eenmalig",
+      onceFromLabel: "Eenmalig vanaf",
       monthlyLabel: "Technisch beheer",
-      scopeTag: "Ondergrens",
+      scopeNote: "Voor een afgebakende eerste versie. Functionaliteit en omvang bepalen de uiteindelijke prijs.",
+      vatNote: "Alle bedragen zijn exclusief btw.",
       includedLabel: "Inbegrepen",
       addOnsLabel: "Uitbreidingen bij dit type",
       boundaryLabel: "Ander projecttype als",
@@ -65,7 +71,7 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
       once: {
         label: "Eenmalig",
         title: "Bouw",
-        text: "Eén vanafprijs per projecttype die de basis van dat type dekt. Uitbreidingen horen bij een type; vraagt het product om meer, dan hoort het bij een ander type. Maatwerk wordt per project bepaald.",
+        text: "Eén vaste prijs per projecttype die de basis van dat type dekt. Uitbreidingen horen bij een type; vraagt het product om meer, dan hoort het bij een ander type. Maatwerk wordt per project bepaald.",
       },
       monthly: {
         label: "Per maand",
@@ -74,7 +80,7 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
         outside: "Nieuwe functionaliteit, inhoudelijke wijzigingen en werk buiten de afgesproken scope worden apart geoffreerd.",
         external: "Betaalde diensten of infrastructuur van derden die het project nodig heeft, vallen buiten het standaardbeheer en worden apart doorberekend.",
       },
-      note: "Alle bedragen zijn vanafprijzen. Het voorstel na de intake is leidend.",
+      note: "Het voorstel na de intake is leidend.",
     },
     closing: {
       title: "Weet je nog niet welk type past?",
@@ -85,7 +91,7 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
   en: {
     metaTitle: "Pricing",
     metaDescription:
-      "Pricing at YM Creations: one starting price per project type, from compact website to custom platform, with extensions that belong to that type.",
+      "Pricing at YM Creations: one clear price per project type, from compact website to custom platform, with extensions that belong to that type.",
     hero: {
       label: "Pricing",
       title: "A clear base price. More only when the scope asks for it.",
@@ -95,9 +101,11 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
     selector: {
       label: "Project types",
       title: "From compact website to custom platform.",
-      onceLabel: "One-off from",
+      onceLabel: "One-off",
+      onceFromLabel: "One-off from",
       monthlyLabel: "Technical management",
-      scopeTag: "Lower bound",
+      scopeNote: "For a clearly scoped first version. Functionality and size determine the final price.",
+      vatNote: "All amounts exclude VAT.",
       includedLabel: "Included",
       addOnsLabel: "Extensions for this type",
       boundaryLabel: "Another project type when",
@@ -109,7 +117,7 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
       once: {
         label: "One-off",
         title: "Build",
-        text: "One starting price per project type that covers the basis of that type. Extensions belong to a type; if the product asks for more, it belongs to another type. Custom work is defined per project.",
+        text: "One fixed price per project type that covers the basis of that type. Extensions belong to a type; if the product asks for more, it belongs to another type. Custom work is defined per project.",
       },
       monthly: {
         label: "Per month",
@@ -118,7 +126,7 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
         outside: "New functionality, content changes and work outside the agreed scope are quoted separately.",
         external: "Paid third-party services or infrastructure the project needs fall outside standard management and are charged separately.",
       },
-      note: "All amounts are starting prices. The proposal after the intake is what counts.",
+      note: "The proposal after the intake is what counts.",
     },
     closing: {
       title: "Not sure yet which type fits?",

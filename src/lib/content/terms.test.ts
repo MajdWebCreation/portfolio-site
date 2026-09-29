@@ -311,3 +311,27 @@ describe("the published PDF", () => {
     expect(source).not.toContain("Algemene Voorwaarden B2B —");
   });
 });
+
+describe("the archive of published sets", () => {
+  const archiveDir = join(process.cwd(), "docs/legal/voorwaarden");
+  const archived = (dateIso: string) =>
+    doc.pdf.fileName.replace(/\.pdf$/, `_gepubliceerd-${dateIso}.pdf`);
+
+  /* Article 29.5: which set applied to an agreement has to stay provable, so
+     the set that is published now is archived under its own date. */
+  it("holds the current set under its publication date", () => {
+    expect(existsSync(join(archiveDir, archived(doc.dateIso)))).toBe(true);
+  });
+
+  it("keeps the first 2026 set, which earlier agreements may rely on", () => {
+    expect(existsSync(join(archiveDir, archived("2026-09-14")))).toBe(true);
+  });
+
+  it("lists every archived set in the register", () => {
+    const register = readFileSync(join(archiveDir, "README.md"), "utf8");
+    const files = readdirSync(archiveDir).filter((name) => name.endsWith(".pdf"));
+
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) expect(register, file).toContain(file);
+  });
+});

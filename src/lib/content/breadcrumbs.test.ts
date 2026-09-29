@@ -15,13 +15,13 @@ import { getServiceBySlug } from "@/lib/content/services";
 
 describe("service breadcrumbs", () => {
   it("walks home, the Dutch services index and the service itself", () => {
-    const service = getServiceBySlug("nl", "bedrijfswebsite");
+    const service = getServiceBySlug("nl", "website-laten-maken");
     expect(service).not.toBeNull();
 
     expect(getServiceBreadcrumbs("nl", service!)).toEqual([
       { name: "Home", path: "/nl" },
       { name: "Diensten", path: "/nl/diensten" },
-      { name: "Bedrijfswebsite", path: "/nl/diensten/bedrijfswebsite" },
+      { name: "Bedrijfswebsite", path: "/nl/diensten/website-laten-maken" },
     ]);
   });
 

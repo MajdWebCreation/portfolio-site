@@ -14,10 +14,11 @@ import { getLocalizedPath, getRouteAlternates } from "@/lib/content/routes";
 import { getDevelopmentDiscountCopy, getPricingPageContent } from "@/lib/content/pricing";
 import {
   addOnGroupLabels,
+  addOnGroupNotes,
   developmentPrice,
   formatAddOnPrice,
   formatEuro,
-  formatMonthlyFrom,
+  formatMonthly,
   formatStartingPrice,
   getPackageMetadata,
   getPackages,
@@ -88,6 +89,7 @@ function toSelectorPackage(
   for (const addOn of pkg.addOns) {
     const group = groups.get(addOn.group) ?? {
       label: addOnGroupLabels[addOn.group][locale],
+      note: addOnGroupNotes[addOn.group]?.[locale],
       items: [],
     };
     const addOnPrice = developmentPrice(addOn.amount, discount);
@@ -100,17 +102,15 @@ function toSelectorPackage(
   }
 
   const starting = developmentPrice(pkg.startingPrice, discount);
-  const openEnded = pkg.scopeDriven ? "+" : "";
 
   return {
     id: pkg.id,
     name: pkg.name[locale],
     tagline: pkg.tagline[locale],
     price: formatStartingPrice(starting.amount, locale, pkg.scopeDriven),
-    priceAmount: `${formatEuro(starting.amount, locale)}${openEnded}`,
-    originalPriceAmount:
-      starting.percent === null ? undefined : `${formatEuro(starting.baseAmount, locale)}${openEnded}`,
-    monthly: formatMonthlyFrom(pkg.monthlyManagementFrom, locale),
+    priceAmount: formatEuro(starting.amount, locale),
+    originalPriceAmount: starting.percent === null ? undefined : formatEuro(starting.baseAmount, locale),
+    monthly: formatMonthly(pkg.monthlyManagementFrom, locale),
     scopeDriven: pkg.scopeDriven,
     included: metadata.included[locale],
     addOnGroups: [...groups.values()],
@@ -157,16 +157,20 @@ export async function PricingPageContent({ locale }: { locale: Locale }) {
         <section className="container-x pt-12 lg:pt-16" aria-labelledby="pricing-levels">
           <div className="grid gap-4 border-b border-ink pb-5 lg:grid-cols-12 lg:gap-8">
             <p className="label-mono lg:col-span-4">{pricing.selector.label}</p>
-            <h2 id="pricing-levels" className="display-sm max-w-[22ch] lg:col-span-8">
-              {pricing.selector.title}
-            </h2>
+            <div className="lg:col-span-8">
+              <h2 id="pricing-levels" className="display-sm max-w-[22ch]">
+                {pricing.selector.title}
+              </h2>
+              <p className="mt-3 text-[0.95rem] leading-snug text-muted">{pricing.selector.vatNote}</p>
+            </div>
           </div>
           <PricingSelector
             packages={packages}
             labels={{
               onceLabel: pricing.selector.onceLabel,
+              onceFromLabel: pricing.selector.onceFromLabel,
               monthlyLabel: pricing.selector.monthlyLabel,
-              scopeTag: pricing.selector.scopeTag,
+              scopeNote: pricing.selector.scopeNote,
               includedLabel: pricing.selector.includedLabel,
               addOnsLabel: pricing.selector.addOnsLabel,
               boundaryLabel: pricing.selector.boundaryLabel,

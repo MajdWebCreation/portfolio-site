@@ -50,6 +50,11 @@ const nextConfig: NextConfig = {
       { source: "/", destination: "/nl", permanent: true },
       // Unprefixed Dutch routes.
       { source: "/diensten", destination: "/nl/diensten", permanent: true },
+      // Former service slugs (`formerSlugs` in src/lib/content/services.ts),
+      // straight to the current page in one hop. Before the generic rule
+      // below, which would otherwise add a second redirect.
+      { source: "/nl/diensten/bedrijfswebsite", destination: "/nl/diensten/website-laten-maken", permanent: true },
+      { source: "/diensten/bedrijfswebsite", destination: "/nl/diensten/website-laten-maken", permanent: true },
       { source: "/diensten/:slug", destination: "/nl/diensten/:slug", permanent: true },
       { source: "/tarieven", destination: "/nl/tarieven", permanent: true },
       { source: "/projecten", destination: "/nl/projecten", permanent: true },

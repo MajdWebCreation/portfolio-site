@@ -13,6 +13,11 @@
  * publication date stays below for the administration, because which set a
  * customer accepted has to remain provable; it is not a second version name
  * and a correction does not make a new edition of it.
+ *
+ * Publishing a new set: edit this file, move the date, rebuild the PDF, and
+ * copy that PDF into docs/legal/voorwaarden under its publication date with a
+ * line in the register there. public/legal only ever holds the current set;
+ * every set that was ever published stays in that archive, never overwritten.
  */
 
 export type TermsClause = { number: string; text: string };
@@ -36,8 +41,8 @@ export const termsDocument = {
   /** The outward name of this set: the year, and nothing else. */
   edition: "2026",
   /** Internal publication date of this edition, for the administration. */
-  dateIso: "2026-09-14",
-  dateLabel: "14 september 2026",
+  dateIso: "2026-09-29",
+  dateLabel: "29 september 2026",
   /** Full title, as the page and the PDF show it. */
   documentTitle: "YM Creations — Algemene Voorwaarden B2B — 2026",
   /** Short form, for a reference in an offer or a footer. */
@@ -945,25 +950,25 @@ export const termsDocument = {
     [
       "Basis",
       "Eenvoudige statische/lichte website",
-      "vanaf EUR 10 p/m"
+      "vanaf EUR 15 p/m"
     ],
     [
       "Website / commerce",
       "Grotere website of eenvoudige webshop",
-      "vanaf EUR 25 p/m"
+      "vanaf EUR 29 p/m"
     ],
     [
       "Reservering / integratie",
       "Reserveringsflow of extra operationele afhankelijkheden",
-      "vanaf EUR 35 p/m"
+      "vanaf EUR 39 p/m"
     ],
     [
       "Maatwerk operations",
       "Portal, SaaS, configurator of complex platform",
-      "vanaf EUR 49 p/m"
+      "vanaf EUR 69 p/m"
     ]
   ],
-  "note": "* Alleen ter referentie voor het huidige YM-model. De offerteprijs is bindend; EUR 49 is geen plafond voor complexe infrastructuur."
+  "note": "* Alleen ter referentie voor het huidige YM-model. De offerteprijs is bindend; EUR 69 is geen plafond voor complexe infrastructuur."
 } as TermsTable,
     included: {
   "caption": "A2. Standaard inbegrepen / niet inbegrepen",

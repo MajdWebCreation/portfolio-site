@@ -89,6 +89,8 @@ export default function ContactForm({
     is ever part of an event.
   */
   const started = useRef(false);
+  /* Set synchronously on submit, before React re-renders the disabled button. */
+  const submitting = useRef(false);
 
   function trackContactError(kind: ErrorKind, fields: string[]) {
     trackEvent("contact_error", {
@@ -143,11 +145,14 @@ export default function ContactForm({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    /* A second press while the first is on its way does nothing: one request, one lead. */
+    if (submitting.current) return;
+
     const nextErrors = validateForm(form);
     setFieldErrors(nextErrors);
 
-    if (Object.keys(nextErrors).length > 0 || isSubmitting) {
-      if (Object.keys(nextErrors).length > 0) trackContactError("validation", Object.keys(nextErrors));
+    if (Object.keys(nextErrors).length > 0) {
+      trackContactError("validation", Object.keys(nextErrors));
       setStatus("error");
       setFormError(
         isDutch
@@ -157,6 +162,7 @@ export default function ContactForm({
       return;
     }
 
+    submitting.current = true;
     setIsSubmitting(true);
     setStatus("idle");
     setFormError("");
@@ -205,6 +211,7 @@ export default function ContactForm({
       setStatus("error");
       setFormError((prev) => prev || copy.errorMessage);
     } finally {
+      submitting.current = false;
       setIsSubmitting(false);
     }
   }

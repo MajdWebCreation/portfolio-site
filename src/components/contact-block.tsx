@@ -11,6 +11,8 @@ type ContactBlockProps = {
   locale: Locale;
   content: SiteContent["contact"];
   kvkLabel: string;
+  /** A WhatsApp row under the phone number; only where a page asks for it. */
+  whatsapp?: { href: string; label: string };
 };
 
 const formCopy = {
@@ -56,6 +58,7 @@ export default function ContactBlock({
   locale,
   content,
   kvkLabel,
+  whatsapp,
 }: ContactBlockProps) {
   return (
     <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
@@ -84,6 +87,16 @@ export default function ContactBlock({
               </a>
             </dd>
           </div>
+          {whatsapp ? (
+            <div className="grid grid-cols-[5.5rem_1fr] gap-4 py-3 text-[0.98rem]">
+              <dt className="text-muted">WhatsApp</dt>
+              <dd>
+                <a href={whatsapp.href} target="_blank" rel="noopener noreferrer" className="link-static text-ink">
+                  {whatsapp.label}
+                </a>
+              </dd>
+            </div>
+          ) : null}
           <div className="grid grid-cols-[5.5rem_1fr] gap-4 py-3 text-[0.98rem]">
             <dt className="text-muted">{kvkLabel}</dt>
             <dd className="tabular text-ink">{businessInfo.kvk}</dd>

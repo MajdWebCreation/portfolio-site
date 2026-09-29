@@ -1,6 +1,7 @@
 import { businessInfo, type Locale } from "@/lib/content/site-content";
 import { getLocalizedPath } from "@/lib/content/routes";
 import type { ProjectId } from "@/lib/content/projects";
+import type { PackageId } from "@/lib/pricing/packages";
 
 /**
  * Service architecture.
@@ -112,6 +113,22 @@ type ServiceDefinition = {
   partsLayout?: "layers" | "flow";
   /** Live projects that show this kind of work. */
   proof: ProjectId[];
+  /**
+   * The project type whose starting price the page states in its header. The
+   * amount is read from the pricing catalog; only the choice is made here.
+   */
+  pricePackage?: PackageId;
+  /**
+   * Slugs this service was published under before. They are not served: each
+   * one has a permanent redirect in next.config.ts to the current slug, and
+   * analytics still attributes historical traffic on them to this service.
+   */
+  formerSlugs?: Partial<Record<Locale, string[]>>;
+  /**
+   * The page takes the enquiry itself: the contact form, phone, WhatsApp and
+   * Google reviews on the page, instead of only a link to the contact page.
+   */
+  contactOnPage?: boolean;
   locale: Record<Locale, LocalizedServiceContent>;
 };
 
@@ -121,15 +138,18 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
     kind: "package",
     family: "websites",
     proof: ["taxi-de-polder", "dos-slotenmaker"],
+    pricePackage: "business",
+    formerSlugs: { nl: ["bedrijfswebsite"] },
+    contactOnPage: true,
     locale: {
       nl: {
-        slug: "bedrijfswebsite",
+        slug: "website-laten-maken",
         navLabel: "Bedrijfswebsite",
-        metaTitle: "Bedrijfswebsite laten maken",
+        metaTitle: "Website laten maken voor je bedrijf",
         metaDescription:
           "Een zakelijke website laten maken in eigen code: dienstenpagina's, een contactflow met formulier, bellen en WhatsApp, technische SEO vanaf de eerste versie en technisch beheer na livegang.",
         title:
-          "Een bedrijfswebsite laten maken die vertelt wat je doet en de weg naar contact kort houdt.",
+          "Een website laten maken die vertelt wat je doet en de weg naar contact kort houdt.",
         intro:
           "De structuur volgt uit wat je aanbiedt en hoe klanten contact opnemen. Gebouwd in eigen code, zodat de site snel blijft en meegroeit als je aanbod verandert.",
         summary: "Dienstenpagina's, contactflow en lokale vindbaarheid.",
@@ -334,7 +354,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
             paragraphs: [
               "De vraag is zelden of je online kunt verkopen, maar hoeveel de shop onderdeel van je website moet zijn. Verkoop je producten naast je diensten, dan wil je meestal niet dat een bezoeker halverwege in een andere omgeving met een andere huisstijl belandt. Een shop in dezelfde code als de rest van de site voorkomt dat, en scheelt een tweede plek om bij te houden.",
               "Deze opzet past het beste bij een klein of gecureerd assortiment, waar de productpagina's iets uit te leggen hebben en het aantal artikelen overzichtelijk is. Gaat het om honderden producten, dan is dat geen blokkade, maar kijken we in de intake eerst naar de structuur van de catalogus: categorieën, filters en beheer bepalen dan meer dan het ontwerp.",
-              "Heb je nog geen site waar de shop op kan staan, dan begint het bij een [bedrijfswebsite](/nl/diensten/bedrijfswebsite) en komt de shop daar als onderdeel op. Draait je huidige site op een ander platform, dan bekijken we of een aparte shop op een subdomein beter past.",
+              "Heb je nog geen site waar de shop op kan staan, dan begint het bij een [bedrijfswebsite](/nl/diensten/website-laten-maken) en komt de shop daar als onderdeel op. Draait je huidige site op een ander platform, dan bekijken we of een aparte shop op een subdomein beter past.",
             ],
           },
           {
@@ -1813,6 +1833,8 @@ export type LocalizedService = LocalizedServiceContent & {
   familyTitle: string;
   partsLayout?: "layers" | "flow";
   proof: ProjectId[];
+  pricePackage?: PackageId;
+  contactOnPage: boolean;
   path: string;
   overviewPath: string;
   contactPath: string;
@@ -1842,6 +1864,8 @@ export function getServicesForLocale(locale: Locale): LocalizedService[] {
       familyTitle: familyTitle(locale, definition.family),
       partsLayout: definition.partsLayout,
       proof: definition.proof,
+      pricePackage: definition.pricePackage,
+      contactOnPage: definition.contactOnPage ?? false,
       path:
         locale === "en"
           ? `/en/services/${localized.slug}`
@@ -1859,6 +1883,19 @@ export function getServiceBySlug(
   return (
     getServicesForLocale(locale).find((service) => service.slug === slug) ?? null
   );
+}
+
+/**
+ * The service a slug belongs to, current or former. For reading paths that
+ * were recorded before a slug changed (analytics); pages are only ever served
+ * under the current slug, see `getServiceBySlug`.
+ */
+export function getServiceKeyForSlug(locale: Locale, slug: string): ServiceKey | null {
+  const current = getServiceBySlug(locale, slug);
+  if (current) return current.key;
+
+  const former = serviceKeys.find((key) => serviceDefinitions[key].formerSlugs?.[locale]?.includes(slug));
+  return former ?? null;
 }
 
 export function getServiceAlternates(serviceKey: ServiceKey) {

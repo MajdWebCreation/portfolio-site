@@ -1,6 +1,6 @@
 import { localeFromPath, pageTypeFromPath } from "@/lib/analytics/page-type";
 import type { PageType } from "@/lib/analytics/events";
-import { getServiceBySlug, serviceDefinitions, type ServiceKey } from "@/lib/content/services";
+import { getServiceKeyForSlug, serviceDefinitions, type ServiceKey } from "@/lib/content/services";
 import { plannerStepNames, type PlannerStepName } from "@/lib/analytics/events";
 
 /**
@@ -69,7 +69,7 @@ export function describeSearchPage(url: string): SearchPageInfo {
   const pageType = pageTypeFromPath(path);
   const segments = path.split("/").filter(Boolean);
   const slug = segments[2] ?? null;
-  const serviceId = pageType === "service" && slug ? (getServiceBySlug(localeFromPath(path), slug)?.key ?? null) : null;
+  const serviceId = pageType === "service" && slug ? getServiceKeyForSlug(localeFromPath(path), slug) : null;
   const articleSlug = pageType === "article" && slug ? slug : null;
   return { path, pageType, serviceId, articleSlug };
 }

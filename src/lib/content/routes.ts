@@ -60,7 +60,7 @@ const localizedStaticRoutes: Record<StaticRouteKey, Record<Locale, string>> = {
 const localizedServiceSlugs = [
   {
     en: "business-websites",
-    nl: "bedrijfswebsite",
+    nl: "website-laten-maken",
   },
   {
     en: "web-app-development",

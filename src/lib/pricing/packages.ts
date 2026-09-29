@@ -58,6 +58,14 @@ export const addOnGroupLabels: Record<AddOnGroup, LocalizedText> = {
   app: { nl: "App", en: "App" },
 };
 
+/** A line under a group whose amounts need context the label cannot carry. */
+export const addOnGroupNotes: Partial<Record<AddOnGroup, LocalizedText>> = {
+  app: {
+    nl: "Vanafprijzen voor een afgebakende eerste versie van de app. Functionaliteit en omvang bepalen de uiteindelijke prijs.",
+    en: "Starting prices for a clearly scoped first version of the app. Functionality and size determine the final price.",
+  },
+};
+
 const packageMetadata: Record<PackageId, PackageMetadata> = {
   starter: {
     id: "starter",

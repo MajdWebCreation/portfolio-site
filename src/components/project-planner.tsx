@@ -9,7 +9,7 @@ import { attributionEventParams } from "@/lib/attribution/event-params";
 import { trackMetaLead } from "@/lib/meta/track";
 import {
   buildPlannerSummary,
-  formatMonthlyFrom,
+  formatMonthly,
   formatPlannerPrices,
   getPlannerPageContent,
   getProjectTypeOptions,
@@ -622,7 +622,7 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
             recommendedPackage: summary.recommendedLabel,
             reason: summary.reason,
             startingPrice: prices.submittedStartingPrice,
-            monthlyManagement: formatMonthlyFrom(summary.monthlyManagementFrom, locale),
+            monthlyManagement: formatMonthly(summary.monthlyManagementFrom, locale),
             indicativeRange: prices.submittedRange,
             selectedFeatures: summary.selectedFeatures,
             selectedAddOns: summary.selectedAddOns,
@@ -1378,7 +1378,7 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
                 {content.summary.monthlyLabel}
               </p>
               <p className="mt-3 text-base font-medium text-white">
-                {formatMonthlyFrom(summary.monthlyManagementFrom, locale)}
+                {formatMonthly(summary.monthlyManagementFrom, locale)}
               </p>
             </div>
 

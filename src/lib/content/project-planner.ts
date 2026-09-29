@@ -4,7 +4,7 @@ import { type Locale } from "@/lib/content/site-content";
 import {
   developmentPrice,
   formatEuro,
-  formatMonthlyFrom,
+  formatMonthly,
   getAddOn,
   getMonthlyManagementFrom,
   getPackageName,
@@ -14,7 +14,7 @@ import {
   type PricingCatalog,
 } from "@/lib/pricing";
 
-export { formatEuro, formatMonthlyFrom };
+export { formatEuro, formatMonthly };
 
 /** Planner project types are the pricing packages. */
 export type PlannerPackageKey = PackageId;
@@ -327,7 +327,7 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       selectedAddOnsLabel: "Relevant add-ons",
       reasonLabel: "Why this fits",
       disclaimer:
-        "Indicative starting price only. Final quote depends on scope and review.",
+        "Indicative starting price, excluding VAT. Final quote depends on scope and review.",
     },
     questions: {
       projectType: "What do you need?",
@@ -435,7 +435,7 @@ const plannerContent: Record<Locale, PlannerPageContent> = {
       selectedAddOnsLabel: "Relevante add-ons",
       reasonLabel: "Waarom dit past",
       disclaimer:
-        "Indicatieve vanaf-prijs. Definitieve offerte hangt af van scope en review.",
+        "Indicatieve vanaf-prijs, excl. btw. Definitieve offerte hangt af van scope en review.",
     },
     questions: {
       projectType: "Wat heb je nodig?",

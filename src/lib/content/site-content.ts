@@ -18,6 +18,14 @@ export const businessInfo = {
   websiteUrl: "https://ymcreations.com",
 } as const;
 
+/** WhatsApp Business runs on the business number: one place, for the site and the mails. */
+export const whatsappUrl = `https://wa.me/${businessInfo.phone.replace(/\D/g, "")}`;
+
+/** A WhatsApp link that opens with a first line already typed. */
+export function whatsappLink(text?: string): string {
+  return text ? `${whatsappUrl}?text=${encodeURIComponent(text)}` : whatsappUrl;
+}
+
 /** The four project phases, shown in full on service pages and the werkwijze page. */
 export const processSteps = {
   nl: [

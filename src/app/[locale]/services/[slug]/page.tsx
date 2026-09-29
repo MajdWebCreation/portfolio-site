@@ -2,8 +2,10 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Breadcrumbs from "@/components/breadcrumbs";
+import ContactBlock from "@/components/contact-block";
 import CtaLink from "@/components/cta-link";
 import FaqList from "@/components/faq-list";
+import GoogleReviews from "@/components/google-reviews";
 import JsonLd from "@/components/json-ld";
 import NextStep from "@/components/next-step";
 import PageHeader from "@/components/page-header";
@@ -26,9 +28,18 @@ import {
   type ServicePart,
   type ServiceSection,
 } from "@/lib/content/services";
+import { placesConfig } from "@/lib/google/places";
+import { developmentPrice, formatEuro, getPackage } from "@/lib/pricing";
+import { getPricingCatalog } from "@/lib/pricing/source";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
 import { breadcrumbListSchema, serviceSchema, webPageSchema } from "@/lib/schema";
-import { isValidLocale, siteContent, type Locale } from "@/lib/content/site-content";
+import {
+  businessInfo,
+  isValidLocale,
+  siteContent,
+  whatsappLink,
+  type Locale,
+} from "@/lib/content/site-content";
 
 export async function generateStaticParams() {
   return serviceKeys.map((key) => ({
@@ -89,6 +100,12 @@ const labels = {
     contact: "Neem contact op",
     planner: "Gebruik de projectplanner",
     pricing: "Bekijk tarieven",
+    startingPrice: (name: string, price: string) => `${name} vanaf ${price} excl. btw`,
+    directLead: "Liever direct?",
+    call: "Bel",
+    or: "of stuur een",
+    whatsappLabel: "Stuur een bericht",
+    whatsappText: "Hallo YM Creations, ik wil graag een website laten maken.",
   },
   en: {
     services: "Services",
@@ -101,6 +118,12 @@ const labels = {
     contact: "Get in touch",
     planner: "Use the project planner",
     pricing: "View pricing",
+    startingPrice: (name: string, price: string) => `${name} from ${price} excl. VAT`,
+    directLead: "Prefer direct contact?",
+    call: "Call",
+    or: "or send a",
+    whatsappLabel: "Send a message",
+    whatsappText: "Hello YM Creations, I would like to have a website built.",
   },
 } as const;
 
@@ -189,7 +212,7 @@ function PartsFlow({ parts }: { parts: ServicePart[] }) {
   );
 }
 
-export function ServiceDetailContent({
+export async function ServiceDetailContent({
   locale,
   slug,
 }: {
@@ -213,7 +236,21 @@ export function ServiceDetailContent({
   const supportsPlanner =
     service.kind === "package" || service.key === "web-app-development";
   const pageUrl = getCanonicalUrl(service.path);
+  /* Name and amount come from the pricing catalog, through the same
+     development-price rule as the pricing page, so both always agree. */
+  let priceLine: string | null = null;
+  if (service.pricePackage) {
+    const catalog = await getPricingCatalog();
+    const pkg = getPackage(catalog, service.pricePackage);
+    const amount = developmentPrice(pkg.startingPrice, catalog.developmentDiscount).amount;
+    priceLine = text.startingPrice(pkg.name[locale], formatEuro(amount, locale));
+  }
   const crumbs = getServiceBreadcrumbs(locale, service);
+  /* A page that takes the enquiry itself points its header button at its own form. */
+  const contactHref = service.contactOnPage ? "#contact" : service.contactPath;
+  const whatsappHref = whatsappLink(text.whatsappText);
+  /* Configuration only: whether the block exists. The reviews themselves load live. */
+  const showReviews = service.contactOnPage && placesConfig() !== null;
 
   return (
     <>
@@ -252,9 +289,12 @@ export function ServiceDetailContent({
           title={service.title}
           intro={service.intro}
         >
+          {priceLine ? (
+            <p className="mb-6 text-[1.05rem] font-medium leading-snug text-ink">{priceLine}</p>
+          ) : null}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
             <CtaLink
-              href={service.contactPath}
+              href={contactHref}
               data-track-event="service_cta_click"
               data-track-service-id={service.key}
               data-track-cta-id="service_header_contact"
@@ -282,7 +322,23 @@ export function ServiceDetailContent({
               </p>
             ) : null}
           </div>
+          {service.contactOnPage ? (
+            <p className="mt-5 text-[0.95rem] leading-relaxed text-muted">
+              {text.directLead} {text.call}{" "}
+              <a href={`tel:${businessInfo.phone}`} className="link-static tabular whitespace-nowrap text-ink">
+                {businessInfo.phoneDisplay}
+              </a>{" "}
+              {text.or}{" "}
+              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="link-static text-ink">
+                WhatsApp
+              </a>
+              .
+            </p>
+          ) : null}
         </PageHeader>
+
+        {/* Google reviews, close to the header's call to action. */}
+        {showReviews ? <GoogleReviews locale={locale} className="container-x pt-10 lg:pt-12" /> : null}
 
         {/* The buying question, answered in running text before the lists. */}
         {service.sections && service.sections.length > 0 ? (
@@ -359,20 +415,41 @@ export function ServiceDetailContent({
           </div>
         </section>
 
-        {/* Closing step. */}
-        <div className="mt-20 lg:mt-28">
-          <NextStep
-            title={service.ctaTitle}
-            text={service.ctaText}
-            primaryLabel={text.contact}
-            primaryHref={service.contactPath}
-            secondaryLabel={supportsPlanner ? text.planner : undefined}
-            secondaryHref={
-              supportsPlanner ? getLocalizedPath(locale, "projectPlanner") : undefined
-            }
-            trackingContext="service"
-          />
-        </div>
+        {/* Closing step: the enquiry on the page itself, or a way to it. */}
+        {service.contactOnPage ? (
+          <section id="contact" className="container-x mt-20 scroll-mt-24 lg:mt-28" aria-labelledby="contact-heading">
+            <div className="grid gap-4 border-t border-ink pt-8 lg:grid-cols-12 lg:gap-8">
+              <h2 id="contact-heading" className="display-md lg:col-span-6">
+                {service.ctaTitle}
+              </h2>
+              <p className="reading text-[1.05rem] leading-relaxed text-body lg:col-span-5 lg:col-start-8 lg:self-end">
+                {service.ctaText}
+              </p>
+            </div>
+            <div className="mt-10">
+              <ContactBlock
+                locale={locale}
+                content={content.contact}
+                kvkLabel={content.footer.kvkLabel}
+                whatsapp={{ href: whatsappHref, label: text.whatsappLabel }}
+              />
+            </div>
+          </section>
+        ) : (
+          <div className="mt-20 lg:mt-28">
+            <NextStep
+              title={service.ctaTitle}
+              text={service.ctaText}
+              primaryLabel={text.contact}
+              primaryHref={service.contactPath}
+              secondaryLabel={supportsPlanner ? text.planner : undefined}
+              secondaryHref={
+                supportsPlanner ? getLocalizedPath(locale, "projectPlanner") : undefined
+              }
+              trackingContext="service"
+            />
+          </div>
+        )}
 
         {/* Related services, as plain links. */}
         <nav aria-label={text.related} className="container-x mt-16 lg:mt-20">

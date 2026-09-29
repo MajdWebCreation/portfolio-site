@@ -7,7 +7,7 @@ import {
 } from "@/lib/content/project-planner";
 import { catalogFromRows, type PricingSettingsRow } from "@/lib/pricing/catalog";
 import { developmentPrice } from "@/lib/pricing/discount";
-import { formatMonthlyFrom } from "@/lib/pricing/format";
+import { formatMonthly } from "@/lib/pricing/format";
 import { seedAddOnRows, seedPackageRows, settingsRow } from "@/lib/pricing/test-fixtures";
 
 const catalogWith = (settings: PricingSettingsRow | null) => catalogFromRows(seedPackageRows, seedAddOnRows, settings);
@@ -46,7 +46,21 @@ describe("buildPlannerSummary without a campaign", () => {
     expect(summary.range).toEqual({ min: 870, max: 1050 });
     expect(summary.baseRange).toEqual({ min: 870, max: 1050 });
     expect(summary.discountPercent).toBeNull();
-    expect(summary.monthlyManagementFrom).toBe(10);
+    expect(summary.monthlyManagementFrom).toBe(15);
+  });
+
+  it.each([
+    ["starter", 15],
+    ["business", 29],
+    ["smart", 39],
+    ["webshop", 35],
+    ["platform", 69],
+  ] as const)("uses the catalog's technical management for %s (€ %i p/m)", (projectType, monthly) => {
+    const summary = buildPlannerSummary({ ...initialPlannerState, locale: "nl", projectType }, catalogWith(null));
+
+    expect(summary.recommendedPackage).toBe(projectType);
+    expect(summary.monthlyManagementFrom).toBe(monthly);
+    expect(formatMonthly(summary.monthlyManagementFrom, "nl").replace(/\u00a0/g, " ")).toBe(`€ ${monthly} p/m`);
   });
 
   it("is identical when the campaign is switched off", () => {
@@ -93,8 +107,8 @@ describe("buildPlannerSummary with a campaign", () => {
       const base = buildPlannerSummary(state, catalogWith(null));
       const summary = buildPlannerSummary(state, catalogWith(settings));
       expect(summary.monthlyManagementFrom).toBe(base.monthlyManagementFrom);
-      expect(formatMonthlyFrom(summary.monthlyManagementFrom, "nl")).toBe(
-        formatMonthlyFrom(base.monthlyManagementFrom, "nl"),
+      expect(formatMonthly(summary.monthlyManagementFrom, "nl")).toBe(
+        formatMonthly(base.monthlyManagementFrom, "nl"),
       );
     }
   });

@@ -19,7 +19,7 @@ import {
   developmentPrice,
   formatAddOnPrice,
   formatEuro,
-  formatMonthlyFrom,
+  formatMonthly,
   formatStartingPrice,
   isValidDevelopmentDiscountPercent,
   maxDevelopmentDiscountPercent,
@@ -239,7 +239,7 @@ export default function PricingEditor({
     <div className="space-y-10">
       <DevelopmentDiscountSettings packages={packages} settings={settings} />
 
-      <AdminSection id="project-types" title="Projecttypes" note="Eenmalige vanafprijs en technisch beheer per type">
+      <AdminSection id="project-types" title="Projecttypes" note="Eenmalige prijs en technisch beheer per type, excl. btw">
         <div className="grid gap-x-10 gap-y-8 xl:grid-cols-2">
           {packages.map((pkg) => (
             <div key={pkg.id}>
@@ -250,15 +250,15 @@ export default function PricingEditor({
               <p className="mt-0.5 text-[0.85rem] text-muted">{pkg.tagline}</p>
               <div className="mt-2 border-t border-line">
                 <AmountField
-                  label="Eenmalig vanaf"
+                  label={pkg.scopeDriven ? "Eenmalig vanaf" : "Eenmalig"}
                   value={pkg.startingPrice}
                   preview={(amount) => formatStartingPrice(amount, "nl", pkg.scopeDriven)}
                   save={(euros) => updatePackagePrice(pkg.id, "startingPrice", euros)}
                 />
                 <AmountField
-                  label="Technisch beheer vanaf"
+                  label="Technisch beheer"
                   value={pkg.monthlyManagementFrom}
-                  preview={(amount) => formatMonthlyFrom(amount, "nl")}
+                  preview={(amount) => formatMonthly(amount, "nl")}
                   save={(euros) => updatePackagePrice(pkg.id, "monthlyManagementFrom", euros)}
                 />
               </div>
