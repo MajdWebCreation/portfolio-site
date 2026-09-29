@@ -102,11 +102,11 @@ function setAnalyticsDisabled(disabled: boolean) {
  * domain, so both spellings are tried. A cookie that survives this is
  * harmless: the kill switch above means nothing is sent anyway.
  */
-function expireGoogleCookies() {
+function expireGoogleCookies(match: (name: string) => boolean = isAnalyticsCookie) {
   const names = document.cookie
     .split(";")
     .map((part) => part.split("=")[0]?.trim() ?? "")
-    .filter((name) => name === "_ga" || name.startsWith("_ga_") || name === "_gid");
+    .filter(match);
   const host = window.location.hostname;
   const domains = [undefined, host, `.${host}`, `.${host.split(".").slice(-2).join(".")}`];
   for (const name of names) {
@@ -116,6 +116,15 @@ function expireGoogleCookies() {
   }
 }
 
+function isAnalyticsCookie(name: string): boolean {
+  return name === "_ga" || name.startsWith("_ga_") || name === "_gid";
+}
+
+/** Google Ads' first-party conversion cookies (`_gcl_au`, `_gcl_aw`, …). */
+function isAdsCookie(name: string): boolean {
+  return name.startsWith("_gcl_");
+}
+
 export type ConsentChoice = { analytics: boolean; recordings: boolean; marketing: boolean };
 
 /**
@@ -123,8 +132,9 @@ export type ConsentChoice = { analytics: boolean; recordings: boolean; marketing
  *
  * Each category is handled on its own. Withdrawing analytics stops Google
  * (kill switch, cookies) and leaves the others as they are; withdrawing
- * recordings stops Clarity, and withdrawing marketing stops the Meta Pixel,
- * each leaving the rest as it is. A withdrawal of recordings or marketing
+ * recordings stops Clarity, and withdrawing marketing stops the Meta Pixel
+ * and removes Google Ads' cookies, each leaving the rest as it is. The
+ * Google tag hears every change as a Consent Mode update (lib/google/tag.ts). A withdrawal of recordings or marketing
  * returns `reloadRequired`: the documented stop call is made here, but a tag
  * that already runs in this page is only truly gone after a reload, which
  * the caller then does.
@@ -151,7 +161,10 @@ export function decideConsent(choice: ConsentChoice): { reloadRequired: boolean 
   if (recordingsWithdrawn) withdrawClarity();
 
   const marketingWithdrawn = snapshot.decision?.marketing === true && !choice.marketing;
-  if (marketingWithdrawn) withdrawMetaPixel();
+  if (marketingWithdrawn) {
+    withdrawMetaPixel();
+    expireGoogleCookies(isAdsCookie);
+  }
 
   publish({ hydrated: true, decision, settingsOpen: false });
   return { reloadRequired: recordingsWithdrawn || marketingWithdrawn };

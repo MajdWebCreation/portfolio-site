@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { hydrateConsent, useConsentSnapshot } from "@/lib/consent/store";
 import { syncMetaPixel } from "@/lib/meta/pixel";
+import { trackingDebugLog, trackingDryRun } from "@/lib/tracking/debug";
 
 /**
  * The Meta Pixel, behind its own consent category.
@@ -26,6 +27,11 @@ export default function MetaPixel({ pixelId }: { pixelId: string }) {
   }, []);
 
   useEffect(() => {
+    /* A dry run never loads Meta's library; it only says what would happen. */
+    if (trackingDryRun()) {
+      trackingDebugLog(`meta pixel dry run: ${marketingConsent ? `PageView ${pathname}` : "not started, no marketing consent"}`);
+      return;
+    }
     syncMetaPixel({ pixelId, marketingConsent, pathname });
   }, [pixelId, marketingConsent, pathname]);
 

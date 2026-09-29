@@ -343,7 +343,7 @@ export async function ServiceDetailContent({
             ) : null}
           </div>
           {service.contactOnPage ? (
-            <p className="mt-5 text-[0.95rem] leading-relaxed text-muted">
+            <p className="mt-5 text-[0.95rem] leading-relaxed text-muted" data-track-placement="service_header">
               {text.directLead} {text.call}{" "}
               <a href={`tel:${businessInfo.phone}`} className="link-static tabular whitespace-nowrap text-ink">
                 {businessInfo.phoneDisplay}

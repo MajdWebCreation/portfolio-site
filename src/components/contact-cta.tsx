@@ -61,7 +61,7 @@ export default function ContactCta({ locale, content, headingId }: ContactCtaPro
         <div className="border-t border-line pt-3">
           <dt className="label-mono">{locale === "nl" ? "Telefoon" : "Phone"}</dt>
           <dd className="mt-1">
-            <a href={`tel:${businessInfo.phone}`} className="link-static tabular text-ink">
+            <a href={`tel:${businessInfo.phone}`} className="link-static tabular text-ink" data-track-placement="contact_cta">
               {businessInfo.phoneDisplay}
             </a>
           </dd>

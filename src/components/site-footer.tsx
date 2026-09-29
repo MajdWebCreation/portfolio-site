@@ -1,8 +1,7 @@
-import { clarityProjectId } from "@/lib/clarity/client";
-import { metaPixelId } from "@/lib/meta/pixel";
 import Link from "next/link";
 import BrandMark from "@/components/brand-mark";
 import ConsentSettingsButton from "@/components/consent/consent-settings-button";
+import { hasConsentTools } from "@/lib/consent/tools";
 import { getCounterpartPath, getLocalizedPath, legalRoutes, type StaticRouteKey } from "@/lib/content/routes";
 import {
   businessInfo,
@@ -30,8 +29,7 @@ export default function SiteFooter({
   const counterpartPath = getCounterpartPath(currentPath, locale, alternateLocale);
   const year = new Date().getFullYear();
   /* "Cookie-instellingen" exists whenever there is a choice to change: statistics, behaviour recordings, marketing, or any mix. */
-  const analyticsConfigured =
-    Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID) || Boolean(clarityProjectId()) || Boolean(metaPixelId());
+  const analyticsConfigured = hasConsentTools();
   const legalLinkClass = "text-paper/70 transition-colors hover:text-paper";
 
   const navigation: Array<{ key: StaticRouteKey; href: string; label: string }> = (
@@ -95,6 +93,7 @@ export default function SiteFooter({
                 <a
                   href={`tel:${businessInfo.phone}`}
                   className="tabular text-paper/85 transition-colors hover:text-paper"
+                  data-track-placement="footer"
                 >
                   {businessInfo.phoneDisplay}
                 </a>

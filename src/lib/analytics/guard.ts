@@ -74,6 +74,7 @@ export const paramShapes: Record<ParamKey, Shape> = {
   link_domain: { kind: "hostname" },
   link_context: { kind: "enum", values: linkContexts },
   form: { kind: "enum", values: ["contact"] },
+  contact_method: { kind: "enum", values: ["phone", "whatsapp"] },
   error_kind: { kind: "enum", values: errorKinds },
   fields: { kind: "fields" },
   entry: { kind: "enum", values: plannerEntries },

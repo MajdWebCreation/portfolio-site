@@ -227,7 +227,7 @@ export const siteContent = {
       bodyRecordings:
         "Met aparte toestemming legt Microsoft Clarity vast waar je klikt, hoe ver je scrolt en waar je mogelijk vastloopt, als heatmaps en gereconstrueerde sessieopnames; formulieren worden daarbij afgeschermd.",
       bodyMarketing:
-        "Met aparte toestemming meten we via de Meta Pixel welke advertenties op Facebook en Instagram tot een bezoek of aanvraag leiden; die gegevens worden gedeeld met Meta.",
+        "Met aparte toestemming meten we via Google Ads en de Meta Pixel welke advertenties bij Google, Facebook en Instagram tot een bezoek, aanvraag of contact leiden, en kunnen we eerdere bezoekers later opnieuw een advertentie tonen; die gegevens worden gedeeld met Google en Meta.",
       bodyWithdraw: "Je kunt je toestemming later altijd intrekken via Cookie-instellingen.",
       necessaryOnly: "Alleen noodzakelijk",
       acceptAll: "Alles accepteren",
@@ -249,8 +249,8 @@ export const siteContent = {
       recordingsToggle: "Gedragsopnames via Microsoft Clarity",
       marketingLabel: "Marketing",
       marketingText:
-        "De Meta Pixel meet welke advertenties op Facebook en Instagram tot een bezoek of aanvraag leiden. Meta ontvangt daarbij welke pagina's je bekijkt en dat je een aanvraag hebt verstuurd, niet wat je in een formulier invult. Meta kan deze gegevens volgens zijn eigen voorwaarden ook voor eigen doeleinden gebruiken, zoals het tonen van advertenties. Staat uit totdat je het aanzet.",
-      marketingToggle: "Marketing via de Meta Pixel",
+        "Google Ads en de Meta Pixel meten welke advertenties bij Google, Facebook en Instagram tot een bezoek of aanvraag leiden, en maken het mogelijk eerdere bezoekers later opnieuw een advertentie te tonen. Google en Meta ontvangen daarbij welke pagina's je bekijkt en dat je een aanvraag hebt verstuurd; Google ook dat je op ons telefoonnummer of de WhatsApp-link tikte. Wat je in een formulier invult ontvangen ze niet. Google en Meta kunnen deze gegevens volgens hun eigen voorwaarden ook voor eigen doeleinden gebruiken, zoals het tonen van advertenties. Staat uit totdat je het aanzet.",
+      marketingToggle: "Marketing via Google Ads en de Meta Pixel",
       save: "Voorkeuren opslaan",
     },
   },
@@ -402,7 +402,7 @@ export const siteContent = {
       bodyRecordings:
         "With separate consent, Microsoft Clarity records where you click, how far you scroll and where you may get stuck, as heatmaps and reconstructed session recordings; forms are masked.",
       bodyMarketing:
-        "With separate consent, we use the Meta Pixel to measure which ads on Facebook and Instagram lead to a visit or an inquiry; that data is shared with Meta.",
+        "With separate consent, we use Google Ads and the Meta Pixel to measure which ads on Google, Facebook and Instagram lead to a visit, an inquiry or contact, and we can show earlier visitors an ad again later; that data is shared with Google and Meta.",
       bodyWithdraw: "You can withdraw your consent at any time under Cookie settings.",
       necessaryOnly: "Necessary only",
       acceptAll: "Accept all",
@@ -424,8 +424,8 @@ export const siteContent = {
       recordingsToggle: "Behaviour recordings via Microsoft Clarity",
       marketingLabel: "Marketing",
       marketingText:
-        "The Meta Pixel measures which ads on Facebook and Instagram lead to a visit or an inquiry. Meta receives which pages you view and that you sent an inquiry, not what you type into a form. Under its own terms, Meta may also use this data for its own purposes, such as showing ads. Off until you switch it on.",
-      marketingToggle: "Marketing via the Meta Pixel",
+        "Google Ads and the Meta Pixel measure which ads on Google, Facebook and Instagram lead to a visit or an inquiry, and make it possible to show earlier visitors an ad again later. Google and Meta receive which pages you view and that you sent an inquiry; Google also that you tapped our phone number or the WhatsApp link. They do not receive what you type into a form. Under their own terms, Google and Meta may also use this data for their own purposes, such as showing ads. Off until you switch it on.",
+      marketingToggle: "Marketing via Google Ads and the Meta Pixel",
       save: "Save preferences",
     },
   },

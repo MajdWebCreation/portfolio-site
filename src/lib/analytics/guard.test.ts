@@ -33,6 +33,7 @@ const validSamples: { [K in ParamKey]: AllParams[K] } = {
   link_domain: "flexorabouw.nl",
   link_context: "project_live",
   form: "contact",
+  contact_method: "whatsapp",
   error_kind: "validation",
   fields: "name,email",
   entry: "pricing_preselect",
@@ -64,8 +65,8 @@ describe("the register", () => {
     }
   });
 
-  it("names contact_submit and planner_complete as the key events", () => {
-    expect(keyEventNames).toEqual(["contact_submit", "planner_complete"]);
+  it("names contact_submit, contact_click and planner_complete as the key events", () => {
+    expect(keyEventNames).toEqual(["contact_submit", "contact_click", "planner_complete"]);
   });
 
   it("keeps every event and parameter name within GA4's 40 characters", () => {

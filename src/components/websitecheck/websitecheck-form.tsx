@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { currentAttribution } from "@/lib/attribution/capture";
 import { normalizeWebsiteUrl, websiteUrlHost } from "@/lib/contact/website-url";
-import { trackMetaLead } from "@/lib/meta/track";
+import { reportLead } from "@/lib/tracking/conversions";
 import type { WebsitecheckFormCopy } from "@/lib/content/websitecheck";
 
 type Field = "websiteUrl" | "name" | "email" | "phone";
@@ -126,7 +126,7 @@ export default function WebsitecheckForm({ copy, privacyHref }: WebsitecheckForm
       }
 
       /* The one success condition: the server confirmed the request is stored. */
-      trackMetaLead({ form: "websitecheck", eventId: data.leadEventId });
+      reportLead({ form: "websitecheck", eventId: data.leadEventId });
       setReceived({
         host: websiteUrlHost(normalizeWebsiteUrl(form.websiteUrl) ?? form.websiteUrl),
         email: form.email.trim().toLowerCase(),

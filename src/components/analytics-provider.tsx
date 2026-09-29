@@ -5,19 +5,26 @@ import { captureAttribution } from "@/lib/attribution/capture";
 import { trackedElementFromDataset } from "@/lib/analytics/dataset";
 import { linkContexts, type LinkContext } from "@/lib/analytics/events";
 import { trackEvent, trackUntypedEvent } from "@/lib/analytics/track";
+import { contactMethodForHref, reportContactClick } from "@/lib/tracking/conversions";
 
 /**
  * One listener for every tracked click on the public site.
  *
- * Two things are read off the element a click lands in:
+ * Three things are read off the element a click lands in:
  *
  *  - `data-track-event` with its `data-track-*` parameters, on links and
  *    buttons that server components mark up (they cannot call `trackEvent`
  *    themselves). The attributes are handed to the guard, which knows the
  *    register; nothing in here does.
- *  - an `href` to another host, which becomes an `outbound_click` with the
- *    hostname and a context the markup may name (`data-track-link-context`).
- *    The path, query and fragment of the external URL are never sent.
+ *  - a `tel:` or WhatsApp link, which is a direct contact: a `contact_click`
+ *    and, with marketing consent, a Google Ads conversion (see
+ *    lib/tracking/conversions.ts). Every such link on the site counts,
+ *    whichever component renders it; `data-track-placement` on the link or
+ *    an ancestor says where it sat.
+ *  - any other `href` to another host, which becomes an `outbound_click` with
+ *    the hostname and a context the markup may name
+ *    (`data-track-link-context`). The path, query and fragment of the
+ *    external URL are never sent.
  *
  * It also reads the visit's origin once (lib/attribution/capture.ts): the
  * referrer and the UTM values of the first page, kept in memory for the two
@@ -50,6 +57,13 @@ export default function AnalyticsProvider() {
 
       const anchor = event.target.closest<HTMLAnchorElement>("a[href]");
       if (!anchor) return;
+
+      const contactMethod = contactMethodForHref(anchor.href);
+      if (contactMethod) {
+        const placement = anchor.closest<HTMLElement>("[data-track-placement]")?.dataset.trackPlacement;
+        reportContactClick(contactMethod, placement);
+        return;
+      }
 
       let url: URL;
       try {

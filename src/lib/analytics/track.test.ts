@@ -5,6 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * is a switch. `window` is stubbed with just what track.ts touches.
  */
 let consent = false;
+/* Read by track.ts when it loads, so it is set before the import below. */
+vi.hoisted(() => {
+  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID = "G-TEST123456";
+});
 vi.mock("@/lib/consent/store", () => ({
   hasAnalyticsConsent: () => consent,
 }));
@@ -57,6 +61,7 @@ describe("trackEvent", () => {
           service_id: "business-websites",
           service_family: "websites",
           service_kind: "package",
+          send_to: "G-TEST123456",
         },
       ],
     ]);
@@ -124,7 +129,14 @@ describe("trackEvent", () => {
       [
         "event",
         "article_cta_click",
-        { locale: "nl", page_type: "article", article_slug: "artikel", cta_target: "service", placement: "article_related" },
+        {
+          locale: "nl",
+          page_type: "article",
+          article_slug: "artikel",
+          cta_target: "service",
+          placement: "article_related",
+          send_to: "G-TEST123456",
+        },
       ],
     ]);
   });

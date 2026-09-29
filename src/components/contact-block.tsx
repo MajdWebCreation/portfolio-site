@@ -64,7 +64,7 @@ export default function ContactBlock({
     <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
       <div className="lg:col-span-4">
         <p className="label-mono">{content.directLabel}</p>
-        <dl className="mt-3 divide-y divide-line border-y border-line">
+        <dl className="mt-3 divide-y divide-line border-y border-line" data-track-placement="contact_block">
           <div className="grid grid-cols-[5.5rem_1fr] gap-4 py-3 text-[0.98rem]">
             <dt className="text-muted">E-mail</dt>
             <dd>

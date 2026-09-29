@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { grotesk, mono } from "@/app/fonts";
 import AnalyticsProvider from "@/components/analytics-provider";
-import AnalyticsScripts from "@/components/consent/analytics-scripts";
 import ClarityScript from "@/components/consent/clarity-script";
 import ConsentDialog from "@/components/consent/consent-dialog";
+import GoogleTag from "@/components/consent/google-tag";
 import MetaPixel from "@/components/consent/meta-pixel";
 import { clarityProjectId } from "@/lib/clarity/client";
 import { getLocalizedPath } from "@/lib/content/routes";
+import { configuredConsentTools, hasConsentTools } from "@/lib/consent/tools";
+import { googleTagConfig } from "@/lib/google/tag";
 import { metaPixelId } from "@/lib/meta/pixel";
 import {
   businessInfo,
@@ -47,16 +49,18 @@ export default async function LocaleLayout({
   // Unknown locales fall through to the segment's not-found boundary; the
   // document itself still needs a valid language.
   const lang = isValidLocale(locale) ? locale : defaultLocale;
-  const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+  const { measurementId: gaMeasurementId, adsId: googleAdsId } = googleTagConfig();
   const clarityId = clarityProjectId();
   const pixelId = metaPixelId();
+  const consentTools = configuredConsentTools();
 
   /*
     Each optional tool exists only when the deployment names it, and then
     only behind the visitor's choice: the consent card asks, and the script
     tags are rendered by client components that wait for the answer --
     Google Analytics under "statistics", Microsoft Clarity under "behaviour
-    recordings", the Meta Pixel under "marketing", independently. Without
+    recordings", Google Ads and the Meta Pixel under "marketing",
+    independently. Without
     any of them there is nothing to ask about, so no card is rendered. The admin has its own root layout and
     none of this.
   */
@@ -65,17 +69,17 @@ export default async function LocaleLayout({
       <body>
         <AnalyticsProvider />
         {children}
-        {gaMeasurementId || clarityId || pixelId ? (
+        {hasConsentTools(consentTools) ? (
           <ConsentDialog
             copy={siteContent[lang].consent}
             privacyHref={getLocalizedPath(lang, "privacy")}
             cookiesHref={getLocalizedPath(lang, "cookies")}
-            analyticsAvailable={Boolean(gaMeasurementId)}
-            recordingsAvailable={Boolean(clarityId)}
-            marketingAvailable={Boolean(pixelId)}
+            analyticsAvailable={consentTools.analytics}
+            recordingsAvailable={consentTools.recordings}
+            marketingAvailable={consentTools.marketing}
           />
         ) : null}
-        {gaMeasurementId ? <AnalyticsScripts measurementId={gaMeasurementId} /> : null}
+        {gaMeasurementId || googleAdsId ? <GoogleTag measurementId={gaMeasurementId} adsId={googleAdsId} /> : null}
         {clarityId ? <ClarityScript projectId={clarityId} /> : null}
         {pixelId ? <MetaPixel pixelId={pixelId} /> : null}
       </body>

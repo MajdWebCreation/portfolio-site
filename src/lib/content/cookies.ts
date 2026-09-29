@@ -6,7 +6,7 @@ import { getLocalizedPath } from "@/lib/content/routes";
 
   It describes exactly what the code does: one first-party cookie for the
   choice itself (lib/consent/consent.ts, six months), Google Analytics only
-  after consent (components/consent/analytics-scripts.tsx) with its cookies
+  after consent (components/consent/google-tag.tsx, lib/google/tag.ts) with its cookies
   configured for ninety days -- `_ga` not renewed on a later visit
   (cookie_update: false), `_ga_<id>` rewritten by GA4 with fresh session
   state on every hit and therefore ninety days from the last visit -- and
@@ -29,6 +29,12 @@ import { getLocalizedPath } from "@/lib/content/routes";
   September 2026); `_fbc` only exists after a visit through an ad click
   (fbclid). Their lifetimes are left to Meta here for the same reason as
   Clarity's, until read off a browser running the real pixel.
+  Google Ads is loaded through the same Google tag, only after consent for
+  marketing. `_gcl_au` and `_gcl_aw` are the first-party cookies Google
+  documents for Ads conversion measurement ("How Google uses cookies in
+  advertising", business.safety.google/adscookies); `_gcl_aw` only exists
+  after a visit through an ad click (gclid). Lifetimes are left to Google
+  here for the same reason, until read off a browser running the real tag.
 
   `indexable` is false while the Clarity and Meta parts await that check
   and the owner's review; set it back to true only after both, so the sitemap and
@@ -93,6 +99,11 @@ export const cookieStatement: LegalStatementSet = {
           content:
             "Meta kan daarnaast op zijn eigen domeinen, zoals facebook.com, cookies uitlezen of plaatsen, bijvoorbeeld als je bij Facebook of Instagram bent ingelogd. Die cookies vallen onder het [cookiebeleid van Meta](https://www.facebook.com/privacy/policies/cookies/); wij kunnen ze niet uitlezen of verwijderen.",
         },
+        {
+          type: "paragraph",
+          content:
+            "Met dezelfde toestemming voor marketing laden we ook Google Ads. Daarmee meten we welke advertenties bij Google tot een bezoek, een aanvraag, een telefoontje of een WhatsApp-bericht leiden, en kunnen we eerdere bezoekers later opnieuw een advertentie tonen. Google plaatst dan cookies op onze website die een bezoek en, na een klik op een advertentie van Google, die klik onthouden. Google kan ook op zijn eigen domeinen, zoals google.com en doubleclick.net, cookies uitlezen of plaatsen; die vallen onder het [privacybeleid van Google](https://policies.google.com/technologies/cookies). Zonder toestemming voor marketing wordt Google Ads niet geladen, ook niet als je toestemming voor statistieken gaf.",
+        },
 
         { type: "heading", level: 2, content: "Overzicht" },
         {
@@ -108,6 +119,9 @@ export const cookieStatement: LegalStatementSet = {
             ["_fbp", "Meta Pixel: herkent je browser aan een pseudonieme code, om advertenties te meten.", "Marketing, Meta, alleen met toestemming", "Door Meta bepaald"],
             ["_fbc", "Meta Pixel: onthoudt de klik op een advertentie van Meta waarmee je binnenkwam; alleen na zo'n klik.", "Marketing, Meta, alleen met toestemming", "Door Meta bepaald"],
             ["Cookies van Meta op facebook.com", "Meta: op Meta's eigen domeinen, onder meer om een bezoek aan een Meta-account te koppelen.", "Marketing, Meta, alleen met toestemming; cookies van Meta zelf", "Door Meta bepaald"],
+            ["_gcl_au", "Google Ads: koppelt een aanvraag, telefoontje of WhatsApp-bericht aan een bezoek, om advertenties te meten.", "Marketing, Google, alleen met toestemming", "Door Google bepaald"],
+            ["_gcl_aw", "Google Ads: onthoudt de klik op een advertentie van Google waarmee je binnenkwam; alleen na zo'n klik.", "Marketing, Google, alleen met toestemming", "Door Google bepaald"],
+            ["Cookies van Google op google.com en doubleclick.net", "Google: op Googles eigen domeinen, onder meer voor advertentiemeting en remarketing.", "Marketing, Google, alleen met toestemming; cookies van Google zelf", "Door Google bepaald"],
             [
               "sb-*-auth-token",
               "Authenticatiecookie van de beheeromgeving: bewaart de ingelogde sessie van een medewerker.",
@@ -121,7 +135,7 @@ export const cookieStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Onderaan elke pagina staat Cookie-instellingen. Daar zet je statistieken, gedragsopnames en marketing elk afzonderlijk aan of uit. Zet je statistieken uit, dan stopt het meten direct en verwijderen we de Google Analytics-cookies voor zover dat vanuit de website kan. Zet je gedragsopnames uit, dan vragen we Clarity te stoppen en zijn cookies te wissen, verwijderen we de Clarity-cookies op onze website en laadt de pagina opnieuw zonder Clarity. Zet je marketing uit, dan vragen we de Meta Pixel te stoppen, verwijderen we de Meta-cookies op onze website en laadt de pagina opnieuw zonder pixel. Cookies op domeinen van Microsoft en Meta kunnen wij niet verwijderen. Na zes maanden vragen we je keuze opnieuw, en ook eerder als de cookies of de partijen die ze plaatsen wezenlijk veranderen.",
+            "Onderaan elke pagina staat Cookie-instellingen. Daar zet je statistieken, gedragsopnames en marketing elk afzonderlijk aan of uit. Zet je statistieken uit, dan stopt het meten direct en verwijderen we de Google Analytics-cookies voor zover dat vanuit de website kan. Zet je gedragsopnames uit, dan vragen we Clarity te stoppen en zijn cookies te wissen, verwijderen we de Clarity-cookies op onze website en laadt de pagina opnieuw zonder Clarity. Zet je marketing uit, dan vragen we de Meta Pixel te stoppen, geven we Google door dat advertentietoestemming is ingetrokken, verwijderen we de Meta- en Google Ads-cookies op onze website en laadt de pagina opnieuw zonder pixel en zonder Google Ads. Cookies op domeinen van Microsoft, Meta en Google kunnen wij niet verwijderen. Na zes maanden vragen we je keuze opnieuw, en ook eerder als de cookies of de partijen die ze plaatsen wezenlijk veranderen.",
         },
         {
           type: "paragraph",
@@ -185,6 +199,11 @@ export const cookieStatement: LegalStatementSet = {
           content:
             "Meta may also read or set cookies on its own domains, such as facebook.com, for example when you are logged in to Facebook or Instagram. Those cookies are governed by [Meta's cookie policy](https://www.facebook.com/privacy/policies/cookies/); we cannot read or remove them.",
         },
+        {
+          type: "paragraph",
+          content:
+            "With the same consent for marketing we also load Google Ads. With it we measure which Google ads lead to a visit, an inquiry, a phone call or a WhatsApp message, and we can show earlier visitors an ad again later. Google then sets cookies on our website that remember a visit and, after a click on a Google ad, that click. Google may also read or set cookies on its own domains, such as google.com and doubleclick.net; those are governed by [Google's privacy policy](https://policies.google.com/technologies/cookies). Without consent for marketing Google Ads is not loaded, not even if you consented to analytics.",
+        },
 
         { type: "heading", level: 2, content: "Overview" },
         {
@@ -200,6 +219,9 @@ export const cookieStatement: LegalStatementSet = {
             ["_fbp", "Meta Pixel: recognises your browser by a pseudonymous code, to measure ads.", "Marketing, Meta, only with consent", "Set by Meta"],
             ["_fbc", "Meta Pixel: remembers the click on an ad from Meta you arrived through; only after such a click.", "Marketing, Meta, only with consent", "Set by Meta"],
             ["Meta's cookies on facebook.com", "Meta: on Meta's own domains, among other things to link a visit to a Meta account.", "Marketing, Meta, only with consent; Meta's own cookies", "Set by Meta"],
+            ["_gcl_au", "Google Ads: links an inquiry, phone call or WhatsApp message to a visit, to measure ads.", "Marketing, Google, only with consent", "Set by Google"],
+            ["_gcl_aw", "Google Ads: remembers the click on a Google ad you arrived through; only after such a click.", "Marketing, Google, only with consent", "Set by Google"],
+            ["Google's cookies on google.com and doubleclick.net", "Google: on Google's own domains, among other things for ad measurement and remarketing.", "Marketing, Google, only with consent; Google's own cookies", "Set by Google"],
             [
               "sb-*-auth-token",
               "Authentication cookie of the admin area: holds a staff member's signed-in session.",
@@ -213,7 +235,7 @@ export const cookieStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Cookie settings sits at the bottom of every page. There you switch analytics, behaviour recordings and marketing on or off, each on its own. Switching analytics off stops measurement immediately and removes the Google Analytics cookies as far as the website can. Switching behaviour recordings off asks Clarity to stop and erase its cookies, removes the Clarity cookies on our website and reloads the page without Clarity. Switching marketing off asks the Meta Pixel to stop, removes the Meta cookies on our website and reloads the page without the pixel. Cookies on Microsoft's and Meta's domains cannot be removed by us. After six months we ask again, and sooner if the cookies or the parties setting them change materially.",
+            "Cookie settings sits at the bottom of every page. There you switch analytics, behaviour recordings and marketing on or off, each on its own. Switching analytics off stops measurement immediately and removes the Google Analytics cookies as far as the website can. Switching behaviour recordings off asks Clarity to stop and erase its cookies, removes the Clarity cookies on our website and reloads the page without Clarity. Switching marketing off asks the Meta Pixel to stop, tells Google that advertising consent was withdrawn, removes the Meta and Google Ads cookies on our website and reloads the page without the pixel and without Google Ads. Cookies on Microsoft's, Meta's and Google's domains cannot be removed by us. After six months we ask again, and sooner if the cookies or the parties setting them change materially.",
         },
         {
           type: "paragraph",

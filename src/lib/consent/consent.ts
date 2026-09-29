@@ -6,8 +6,9 @@
  * nothing at all beyond this cookie -- the admin's session cookies live
  * behind a login and are outside this choice. "Analytics" is Google
  * Analytics. "Recordings" (gedragsopnames) is Microsoft Clarity: heatmaps and
- * reconstructed session recordings. "Marketing" is the Meta Pixel: measuring
- * which Meta (Facebook, Instagram) ads lead to a visit and an inquiry. All
+ * reconstructed session recordings. "Marketing" is Google Ads and the Meta
+ * Pixel: measuring which ads lead to a visit, an inquiry or a phone or
+ * WhatsApp contact, and remarketing to earlier visitors. All
  * three are off until the visitor turns them on, and each is its own choice:
  * one never implies another.
  *
@@ -24,7 +25,9 @@
  * Version 2 added the recordings category (23 September 2026), so every
  * version-1 choice (`1.a1.<moment>`) is asked again; version 3 added the
  * marketing category (29 September 2026), so every version-2 choice
- * (`2.a1.r0.<moment>`) is asked again too. `storedConsentVersion` still reads
+ * (`2.a1.r0.<moment>`) is asked again too; version 4 added Google Ads as a
+ * recipient under marketing, with remarketing (29 September 2026), so every
+ * version-3 choice is asked again. `storedConsentVersion` still reads
  * the version out of both, so that is a decision, not an accident of a
  * regex. Values from before the timestamp existed (`1.a1`, `1.a0`) are
  * treated the same way.
@@ -34,7 +37,7 @@
  * from a storage API that private windows may refuse.
  */
 export const CONSENT_COOKIE = "ym_consent";
-export const CONSENT_VERSION = 3;
+export const CONSENT_VERSION = 4;
 
 /** Six months, after which the question is asked again. */
 export const CONSENT_MAX_AGE_SECONDS = 182 * 24 * 60 * 60;
@@ -51,7 +54,7 @@ export type ConsentDecision = {
   decidedAt: string;
 };
 
-/** `3.a1.r0.m1.2026-09-29T10:15:00Z`: version, analytics, recordings, marketing, moment. */
+/** `4.a1.r0.m1.2026-09-29T10:15:00Z`: version, analytics, recordings, marketing, moment. */
 export function serializeConsent(decision: ConsentDecision): string {
   const flag = (value: boolean) => (value ? 1 : 0);
   return `${decision.version}.a${flag(decision.analytics)}.r${flag(decision.recordings)}.m${flag(decision.marketing)}.${toSecond(decision.decidedAt)}`;

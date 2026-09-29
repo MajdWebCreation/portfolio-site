@@ -239,7 +239,7 @@ export default function ServiceLanding({
                 ) : null}
               </div>
 
-              <p className="rise rise-delay-3 mt-7 text-[0.95rem] leading-relaxed text-paper/60">
+              <p className="rise rise-delay-3 mt-7 text-[0.95rem] leading-relaxed text-paper/60" data-track-placement="service_header">
                 {text.directLead} {text.call}{" "}
                 <a
                   href={`tel:${businessInfo.phone}`}

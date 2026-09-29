@@ -2,6 +2,8 @@ import { type AnalyticsEventName, type EventParams } from "@/lib/analytics/event
 import { guardEvent } from "@/lib/analytics/guard";
 import { localeFromPath, pageTypeFromPath } from "@/lib/analytics/page-type";
 import { hasAnalyticsConsent } from "@/lib/consent/store";
+import { normalizeMeasurementId } from "@/lib/google/tag";
+import { trackingDebugLog } from "@/lib/tracking/debug";
 
 declare global {
   interface Window {
@@ -32,6 +34,11 @@ declare global {
  * `locale` and `page_type` are added here from the current path, so no call
  * site has to know or repeat them. The event goes through `gtag` only: no
  * separate object push on `dataLayer`, which gtag.js would ignore anyway.
+ *
+ * Every event is addressed to the GA property (`send_to`). The same tag also
+ * carries Google Ads when marketing is allowed, and an unaddressed event
+ * would go to every destination; site events are for GA alone, Ads only
+ * receives the conversions in lib/tracking/conversions.ts.
  */
 const pending: Array<{ name: string; params: Record<string, string | number> }> = [];
 const isDev = process.env.NODE_ENV !== "production";
@@ -41,10 +48,18 @@ function commonParams(): Record<string, string> {
   return { locale: localeFromPath(path), page_type: pageTypeFromPath(path) };
 }
 
+const measurementId = normalizeMeasurementId(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID);
+
+function send(name: string, params: Record<string, string | number>): void {
+  if (!measurementId || typeof window.gtag !== "function") return;
+  window.gtag("event", name, { ...params, send_to: measurementId });
+  trackingDebugLog(`ga event ${name}`, params);
+}
+
 function deliver(name: string, params: Record<string, string | number>): void {
   if (typeof window.gtag === "function") {
     flushPendingEvents();
-    window.gtag("event", name, params);
+    send(name, params);
     return;
   }
   pending.push({ name, params });
@@ -95,7 +110,7 @@ export function flushPendingEvents(): void {
   if (typeof window.gtag !== "function") return;
   while (pending.length > 0) {
     const next = pending.shift();
-    if (next) window.gtag("event", next.name, next.params);
+    if (next) send(next.name, next.params);
   }
 }
 

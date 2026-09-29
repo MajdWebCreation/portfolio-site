@@ -13,7 +13,7 @@ export default function WebsitecheckHeader() {
     <header className="bg-paper-deep">
       <div className="container-x flex h-16 items-center justify-between gap-6 lg:h-[4.5rem]">
         <BrandMark href={getLocalizedPath("nl", "home")} priority className="h-8 w-[112px] sm:h-9 sm:w-[124px]" />
-        <a href={`tel:${businessInfo.phone}`} className="link-static tabular text-[0.95rem] text-ink">
+        <a href={`tel:${businessInfo.phone}`} className="link-static tabular text-[0.95rem] text-ink" data-track-placement="header">
           {businessInfo.phoneDisplay}
         </a>
       </div>

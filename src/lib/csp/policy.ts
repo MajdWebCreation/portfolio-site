@@ -11,20 +11,24 @@
   reports have been quiet.
 
   What each source is for:
-    script   gtag.js, loaded only after analytics consent
-             (consent/analytics-scripts.tsx); Microsoft Clarity's tag and
+    script   gtag.js, loaded only after consent for analytics or marketing
+             (lib/google/tag.ts), and the Google Ads scripts it pulls in
+             with marketing consent; Microsoft Clarity's tag and
              script, loaded only after consent for behaviour recordings
              (consent/clarity-script.tsx); the Meta Pixel library and its
              per-pixel configuration from connect.facebook.net, loaded only
              after consent for marketing (lib/meta/pixel.ts)
-    connect  Google Analytics collection; Clarity's collection endpoints;
+    connect  Google Analytics collection; Google Ads conversion and
+             remarketing endpoints (marketing only); Clarity's collection endpoints;
              Meta Pixel events sent with fetch or sendBeacon to
              www.facebook.com; the Supabase host for the admin's
              browser-side image upload
-    img      the Supabase public bucket (admin preview), GA beacons, Meta
+    img      the Supabase public bucket (admin preview), GA and Google Ads
+             beacons, Meta
              Pixel events sent as an image to www.facebook.com, blob and
              data URLs the admin's PDF preview and next/og use
-    frame    blob: for the admin's PDF preview iframes
+    frame    blob: for the admin's PDF preview iframes; the Google tag's
+             own frame (googletagmanager.com) for Ads
     form     server actions post to the site itself; a direct debit
              activation then redirects to Mollie's checkout, and Chrome checks
              that redirect against form-action as well
@@ -44,6 +48,21 @@
 */
 export const clarityOrigins = ["https://*.clarity.ms"] as const;
 
+/*
+  Google Ads through the Google tag, as Google documents them for
+  conversions and remarketing ("Content Security Policy guide", Tag
+  Platform, checked 29 September 2026). Google TLDs cannot be wildcarded, so
+  the country domain visitors of this Dutch site get is listed explicitly.
+*/
+export const googleAdsScriptOrigins = ["https://www.googleadservices.com", "https://www.google.com"] as const;
+export const googleAdsOrigins = [
+  "https://www.googleadservices.com",
+  "https://googleads.g.doubleclick.net",
+  "https://pagead2.googlesyndication.com",
+  "https://www.google.com",
+  "https://www.google.nl",
+] as const;
+
 /* Meta Pixel: two exact hosts, no wildcard. The library and its configuration, and the collection endpoint (/tr). */
 export const metaScriptOrigin = "https://connect.facebook.net";
 export const metaCollectOrigin = "https://www.facebook.com";
@@ -51,14 +70,16 @@ export const metaCollectOrigin = "https://www.facebook.com";
 export function buildReportOnlyPolicy(input: { development: boolean; supabaseHost: string | null }): string {
   const supabase = input.supabaseHost ? ` https://${input.supabaseHost}` : "";
   const clarity = clarityOrigins.join(" ");
+  const adsScripts = googleAdsScriptOrigins.join(" ");
+  const ads = googleAdsOrigins.join(" ");
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${input.development ? " 'unsafe-eval'" : ""} https://www.googletagmanager.com ${clarity} ${metaScriptOrigin}`,
+    `script-src 'self' 'unsafe-inline'${input.development ? " 'unsafe-eval'" : ""} https://www.googletagmanager.com ${adsScripts} ${clarity} ${metaScriptOrigin}`,
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: https://www.googletagmanager.com https://*.google-analytics.com ${metaCollectOrigin}${supabase}`,
+    `img-src 'self' data: blob: https://www.googletagmanager.com https://*.google-analytics.com ${ads} ${metaCollectOrigin}${supabase}`,
     "font-src 'self'",
-    `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com ${clarity} ${metaCollectOrigin}${supabase}`,
-    "frame-src blob:",
+    `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com ${ads} https://ad.doubleclick.net ${clarity} ${metaCollectOrigin}${supabase}`,
+    "frame-src blob: https://www.googletagmanager.com",
     "frame-ancestors 'none'",
     "form-action 'self' https://www.mollie.com",
     "base-uri 'self'",

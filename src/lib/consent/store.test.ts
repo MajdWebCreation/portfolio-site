@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { shouldLoadClarity } from "@/lib/clarity/client";
-import { CONSENT_COOKIE, readCookieValue } from "@/lib/consent/consent";
+import { CONSENT_COOKIE, CONSENT_VERSION, readCookieValue } from "@/lib/consent/consent";
 
 /*
   The consent store against a small stand-in browser: a cookie jar that
@@ -82,7 +82,7 @@ describe("choices", () => {
     expect(clarityWouldLoad(store.hasRecordingsConsent())).toBe(recordings);
     expect(result.reloadRequired).toBe(false);
     expect(readCookieValue(document.cookie, CONSENT_COOKIE)).toMatch(
-      new RegExp(`^3\\.a${analytics ? 1 : 0}\\.r${recordings ? 1 : 0}\\.m${marketing ? 1 : 0}\\.`),
+      new RegExp(`^${CONSENT_VERSION}\\.a${analytics ? 1 : 0}\\.r${recordings ? 1 : 0}\\.m${marketing ? 1 : 0}\\.`),
     );
     expect(browser.clarityCalls).toEqual([]);
     expect(browser.fbqCalls).toEqual([]);

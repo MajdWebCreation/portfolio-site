@@ -6,7 +6,7 @@ import { trackEvent } from "@/lib/analytics/track";
 import { plannerStepNames, type ErrorKind } from "@/lib/analytics/events";
 import { currentAttribution } from "@/lib/attribution/capture";
 import { attributionEventParams } from "@/lib/attribution/event-params";
-import { trackMetaLead } from "@/lib/meta/track";
+import { reportLead } from "@/lib/tracking/conversions";
 import {
   buildPlannerSummary,
   formatMonthly,
@@ -689,9 +689,9 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
         throw new PlannerRequestFailed();
       }
 
-      /* Accepted by the server: the one moment a lead exists for Meta (lib/meta/track.ts). */
+      /* Accepted by the server: the one moment a lead exists for Meta and Google Ads (lib/tracking/conversions.ts). */
       const accepted = (await response.json().catch(() => null)) as { leadEventId?: unknown } | null;
-      trackMetaLead({ form: "project_planner", eventId: accepted?.leadEventId });
+      reportLead({ form: "project_planner", eventId: accepted?.leadEventId });
 
       /* Both keys were required to pass step 3; the check keeps the types honest. */
       if (form.launchTimeline && form.priority) {

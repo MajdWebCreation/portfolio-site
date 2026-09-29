@@ -27,7 +27,7 @@ const mail = `[${businessInfo.email}](mailto:${businessInfo.email})`;
 const address = `${companyProfile.address.street}, ${companyProfile.address.postalCode} ${companyProfile.address.city}`;
 
 export const privacyStatement: LegalStatementSet = {
-  /* False while the attribution passage (23 September 2026) and the Meta Pixel passage (29 September 2026) await the owner's confirmation; see cookies.ts for the rule. */
+  /* False while the attribution passage (23 September 2026), the Meta Pixel passage and the Google Ads passage (both 29 September 2026) await the owner's confirmation; see cookies.ts for the rule. */
   indexable: false,
   content: {
     nl: {
@@ -115,12 +115,23 @@ export const privacyStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Alleen als je daar apart toestemming voor geeft, onder marketing, laden we de Meta Pixel van Meta Platforms Ireland Limited. Daarmee meten we welke advertenties op Facebook en Instagram tot een bezoek aan de website of tot een aanvraag leiden, en gebruikt Meta die metingen om onze advertenties vaker te tonen aan mensen bij wie ze waarschijnlijk tot een aanvraag leiden. De pixel stuurt Meta bij elke pagina die je bekijkt het adres van die pagina, samen met technische gegevens zoals je IP-adres en browser en een pseudonieme code uit een cookie. Als je via het contactformulier, de projectplanner of de websitecheck een aanvraag verstuurt en wij die hebben ontvangen, melden we Meta dat er een aanvraag is gedaan en via welk formulier. Wat je in een formulier invult, zoals je naam, e-mailadres, telefoonnummer, websiteadres of bericht, sturen we niet naar Meta. Zonder die toestemming wordt de pixel niet geladen, ook niet als je toestemming voor statistieken of gedragsopnames gaf, en op de betaal- en incassopagina's wordt hij nooit geladen. De grondslag is je toestemming; je trekt die op elk moment in via Cookie-instellingen.",
+            "Alleen als je daar apart toestemming voor geeft, onder marketing, laden we de Meta Pixel van Meta Platforms Ireland Limited. Daarmee meten we welke advertenties op Facebook en Instagram tot een bezoek aan de website of tot een aanvraag leiden, en gebruikt Meta die metingen om onze advertenties vaker te tonen aan mensen bij wie ze waarschijnlijk tot een aanvraag leiden. Ook kunnen we mensen die de website bezochten later opnieuw een advertentie tonen (remarketing). De pixel stuurt Meta bij elke pagina die je bekijkt het adres van die pagina, samen met technische gegevens zoals je IP-adres en browser en een pseudonieme code uit een cookie. Als je via het contactformulier, de projectplanner of de websitecheck een aanvraag verstuurt en wij die hebben ontvangen, melden we Meta dat er een aanvraag is gedaan en via welk formulier. Wat je in een formulier invult, zoals je naam, e-mailadres, telefoonnummer, websiteadres of bericht, sturen we niet naar Meta. Zonder die toestemming wordt de pixel niet geladen, ook niet als je toestemming voor statistieken of gedragsopnames gaf, en op de betaal- en incassopagina's wordt hij nooit geladen. De grondslag is je toestemming; je trekt die op elk moment in via Cookie-instellingen.",
         },
         {
           type: "paragraph",
           content:
             "Ben je bij Facebook of Instagram ingelogd, of staan er cookies van Meta in je browser, dan kan Meta je bezoek aan je Meta-account koppelen. Voor het verzamelen van deze gegevens op onze website en het doorgeven ervan aan Meta zijn YM Creations en Meta Platforms Ireland Limited gezamenlijk verwerkingsverantwoordelijke; de afspraken daarover staan in de aanvulling van Meta voor verwerkingsverantwoordelijken (Controller Addendum). Voor wat Meta daarna met de gegevens doet, waaronder het tonen en meten van advertenties en het verbeteren van zijn eigen diensten, is Meta zelfstandig verwerkingsverantwoordelijke; dat valt onder het [privacybeleid van Meta](https://www.facebook.com/privacy/policy/). Je kunt je rechten bij ons en bij Meta uitoefenen.",
+        },
+        { type: "heading", level: 3, content: "Advertentiemeting (Google Ads)" },
+        {
+          type: "paragraph",
+          content:
+            "Alleen als je daar apart toestemming voor geeft, onder marketing, laden we de Google-tag voor Google Ads van Google Ireland Limited. Daarmee meten we welke advertenties bij Google tot een bezoek, een aanvraag, een telefoontje of een WhatsApp-bericht leiden, en kunnen we mensen die de website bezochten later opnieuw een advertentie tonen (remarketing). Google ontvangt daarbij het adres van de pagina, technische gegevens zoals je IP-adres en browser, een pseudonieme code uit een cookie en, als je via een advertentie binnenkwam, de code van die advertentieklik. Als je een aanvraag verstuurt die wij hebben ontvangen, of op ons telefoonnummer of de WhatsApp-link tikt, melden we Google dat dat gebeurde. Wat je in een formulier invult sturen we niet naar Google. Zonder die toestemming wordt Google Ads niet geladen, ook niet als je toestemming voor statistieken gaf, en staan de toestemmingssignalen die we aan Google doorgeven (Consent Mode) voor advertenties op geweigerd. De grondslag is je toestemming; je trekt die op elk moment in via Cookie-instellingen.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "Voor wat Google met deze gegevens doet, waaronder het meten en tonen van advertenties, is Google zelfstandig verwerkingsverantwoordelijke; dat valt onder het [privacybeleid van Google](https://policies.google.com/privacy).",
         },
         { type: "heading", level: 3, content: "Vindbaarheid in zoekmachines" },
         {
@@ -156,7 +167,7 @@ export const privacyStatement: LegalStatementSet = {
             "**Resend** voor het versturen van e-mail, zoals bevestigingen, offertes en facturen.",
             "**Vercel** voor de hosting van de website en de technische logbestanden.",
             "**Mollie** voor betalingen en automatische incasso; voor de betaalgegevens die Mollie voor zijn betaaldienst verwerkt is Mollie zelfstandig verwerkingsverantwoordelijke.",
-            "**Google** voor statistieken via Google Analytics, uitsluitend met jouw toestemming.",
+            "**Google** voor statistieken via Google Analytics, uitsluitend met jouw toestemming, en voor advertentiemeting en remarketing via Google Ads, uitsluitend met jouw toestemming voor marketing; voor Google Ads is Google zelfstandig verwerkingsverantwoordelijke.",
             "**Microsoft** voor gedragsopnames en heatmaps via Microsoft Clarity, uitsluitend met jouw toestemming voor gedragsopnames; Microsoft is daarvoor zelfstandig verwerkingsverantwoordelijke.",
             "**Meta** voor advertentiemeting via de Meta Pixel, uitsluitend met jouw toestemming voor marketing; voor het verzamelen en doorgeven zijn we samen met Meta verantwoordelijk, voor het verdere gebruik is Meta zelfstandig verwerkingsverantwoordelijke.",
           ],
@@ -166,7 +177,7 @@ export const privacyStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Voor onze website en dienstverlening gebruiken we externe dienstverleners, waaronder Vercel, Supabase, Resend, als je toestemming geeft voor statistieken Google Analytics, als je toestemming geeft voor gedragsopnames Microsoft Clarity, en als je toestemming geeft voor marketing Meta. Afhankelijk van de gebruikte infrastructuur kunnen deze partijen persoonsgegevens buiten de Europese Economische Ruimte verwerken.",
+            "Voor onze website en dienstverlening gebruiken we externe dienstverleners, waaronder Vercel, Supabase, Resend, als je toestemming geeft voor statistieken Google Analytics, als je toestemming geeft voor gedragsopnames Microsoft Clarity, en als je toestemming geeft voor marketing Meta en Google Ads. Afhankelijk van de gebruikte infrastructuur kunnen deze partijen persoonsgegevens buiten de Europese Economische Ruimte verwerken.",
         },
         {
           type: "paragraph",
@@ -304,12 +315,23 @@ export const privacyStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Only if you give separate consent for marketing do we load the Meta Pixel of Meta Platforms Ireland Limited. With it we measure which ads on Facebook and Instagram lead to a visit to the website or to an inquiry, and Meta uses those measurements to show our ads more often to people for whom they are likely to lead to an inquiry. For every page you view, the pixel sends Meta the address of that page, together with technical data such as your IP address and browser and a pseudonymous code from a cookie. When you send an inquiry through the contact form, the project planner or the websitecheck and we have received it, we tell Meta that an inquiry was made and through which form. What you type into a form, such as your name, email address, phone number, website address or message, is not sent to Meta. Without that consent the pixel is not loaded, not even if you consented to analytics or behaviour recordings, and it is never loaded on the payment and direct debit pages. The legal basis is your consent; you can withdraw it at any time under Cookie settings.",
+            "Only if you give separate consent for marketing do we load the Meta Pixel of Meta Platforms Ireland Limited. With it we measure which ads on Facebook and Instagram lead to a visit to the website or to an inquiry, and Meta uses those measurements to show our ads more often to people for whom they are likely to lead to an inquiry. We can also show people who visited the website an ad again later (remarketing). For every page you view, the pixel sends Meta the address of that page, together with technical data such as your IP address and browser and a pseudonymous code from a cookie. When you send an inquiry through the contact form, the project planner or the websitecheck and we have received it, we tell Meta that an inquiry was made and through which form. What you type into a form, such as your name, email address, phone number, website address or message, is not sent to Meta. Without that consent the pixel is not loaded, not even if you consented to analytics or behaviour recordings, and it is never loaded on the payment and direct debit pages. The legal basis is your consent; you can withdraw it at any time under Cookie settings.",
         },
         {
           type: "paragraph",
           content:
             "If you are logged in to Facebook or Instagram, or your browser holds cookies from Meta, Meta may link your visit to your Meta account. For collecting this data on our website and passing it on to Meta, YM Creations and Meta Platforms Ireland Limited are joint controllers; the arrangements for this are set out in Meta's Controller Addendum. For what Meta does with the data afterwards, including showing and measuring ads and improving its own services, Meta is an independent controller; that is governed by [Meta's privacy policy](https://www.facebook.com/privacy/policy/). You can exercise your rights with us and with Meta.",
+        },
+        { type: "heading", level: 3, content: "Advertising measurement (Google Ads)" },
+        {
+          type: "paragraph",
+          content:
+            "Only if you give separate consent for marketing do we load the Google tag for Google Ads of Google Ireland Limited. With it we measure which Google ads lead to a visit, an inquiry, a phone call or a WhatsApp message, and we can show people who visited the website an ad again later (remarketing). Google then receives the address of the page, technical data such as your IP address and browser, a pseudonymous code from a cookie and, if you arrived through an ad, the code of that ad click. When you send an inquiry that we have received, or tap our phone number or the WhatsApp link, we tell Google that this happened. What you type into a form is not sent to Google. Without that consent Google Ads is not loaded, not even if you consented to analytics, and the consent signals we pass to Google (Consent Mode) are set to denied for advertising. The legal basis is your consent; you can withdraw it at any time under Cookie settings.",
+        },
+        {
+          type: "paragraph",
+          content:
+            "For what Google does with this data, including measuring and showing ads, Google is an independent controller; that is governed by [Google's privacy policy](https://policies.google.com/privacy).",
         },
         { type: "heading", level: 3, content: "Visibility in search engines" },
         {
@@ -345,7 +367,7 @@ export const privacyStatement: LegalStatementSet = {
             "**Resend** for sending email, such as confirmations, quotes and invoices.",
             "**Vercel** for hosting the website and its technical logs.",
             "**Mollie** for payments and direct debit; for the payment data Mollie processes for its payment service, Mollie is an independent controller.",
-            "**Google** for analytics through Google Analytics, only with your consent.",
+            "**Google** for analytics through Google Analytics, only with your consent, and for advertising measurement and remarketing through Google Ads, only with your consent for marketing; for Google Ads, Google is an independent controller.",
             "**Microsoft** for behaviour recordings and heatmaps through Microsoft Clarity, only with your consent for behaviour recordings; Microsoft is an independent controller for this.",
             "**Meta** for advertising measurement through the Meta Pixel, only with your consent for marketing; we are jointly responsible with Meta for the collection and transfer, and Meta is an independent controller for any further use.",
           ],
@@ -355,7 +377,7 @@ export const privacyStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "We use external service providers for our website and services, including Vercel, Supabase, Resend, Google Analytics when you consent to analytics, Microsoft Clarity when you consent to behaviour recordings, and Meta when you consent to marketing. Depending on the infrastructure used, these providers may process personal data outside the European Economic Area.",
+            "We use external service providers for our website and services, including Vercel, Supabase, Resend, Google Analytics when you consent to analytics, Microsoft Clarity when you consent to behaviour recordings, and Meta and Google Ads when you consent to marketing. Depending on the infrastructure used, these providers may process personal data outside the European Economic Area.",
         },
         {
           type: "paragraph",

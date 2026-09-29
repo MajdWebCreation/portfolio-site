@@ -137,6 +137,8 @@ export type AllParams = {
   link_context: LinkContext;
 
   form: "contact";
+  /** How a visitor reached out directly: the number itself is never sent. */
+  contact_method: "phone" | "whatsapp";
   error_kind: ErrorKind;
   /** Names of the fields that failed, comma separated. Never their values. */
   fields: string;
@@ -193,6 +195,8 @@ export const analyticsEvents = {
   contact_start: { params: ["form"] },
   contact_submit: { params: ["form", "traffic_class", "traffic_source"], keyEvent: true },
   contact_error: { params: ["form", "error_kind", "fields"] },
+  /* A tap on the business phone number or the WhatsApp link (lib/tracking/conversions.ts). */
+  contact_click: { params: ["contact_method", "placement"], keyEvent: true },
 
   /* Project planner funnel. */
   planner_start: { params: ["entry", "package_id"] },
