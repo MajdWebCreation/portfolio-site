@@ -4,12 +4,14 @@ import { notFound } from "next/navigation";
 import BuildOverview from "@/components/build-overview";
 import ContactCta from "@/components/contact-cta";
 import CtaLink from "@/components/cta-link";
+import GoogleReviews from "@/components/google-reviews";
 import HeroFlow from "@/components/hero-flow";
 import JsonLd from "@/components/json-ld";
 import SiteShell from "@/components/site-shell";
 import { getLocalizedPath } from "@/lib/content/routes";
 import { getServicesForLocale, type ServiceKey } from "@/lib/content/services";
 import { isValidLocale, siteContent } from "@/lib/content/site-content";
+import { placesConfig } from "@/lib/google/places";
 import { getCanonicalUrl, getHomeMetadata } from "@/lib/seo";
 import { organizationSchema, websiteSchema, webPageSchema } from "@/lib/schema";
 
@@ -203,6 +205,16 @@ export default async function HomePage({
             </div>
           </div>
         </section>
+
+        {/*
+          Google reviews, as on the service page: the same component and live
+          route, rendered only when the deployment has Places configured; the
+          reviews themselves load in the browser and the block disappears
+          when Google has nothing.
+        */}
+        {placesConfig() !== null ? (
+          <GoogleReviews locale={locale} className="container-x pt-16 max-md:pt-12 lg:pt-24" />
+        ) : null}
 
         {/* Closing step. */}
         <section className="container-x pt-20 max-md:pt-14 lg:pt-28" aria-labelledby="contact-heading">

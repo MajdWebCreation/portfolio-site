@@ -138,6 +138,9 @@ function ReviewCard({ review, text, locale }: { review: PlaceReview; text: Copy;
   );
 }
 
+/* Literal class names, so Tailwind sees them. One review keeps a readable measure. */
+const reviewColumns: Record<number, string> = { 1: "max-w-2xl", 2: "md:grid-cols-2", 3: "md:grid-cols-3" };
+
 function ReviewsPanel({ place, locale }: { place: PlaceReviews; locale: Locale }) {
   const text = copy[locale];
 
@@ -177,7 +180,8 @@ function ReviewsPanel({ place, locale }: { place: PlaceReviews; locale: Locale }
 
       {place.reviews.length > 0 ? (
         <>
-          <ul className="mt-6 grid gap-6 md:grid-cols-3 md:gap-8">
+          {/* As many columns as reviews (at most three), so two reviews share the width instead of leaving a gap. */}
+          <ul className={`mt-6 grid gap-6 md:gap-8 ${reviewColumns[Math.min(place.reviews.length, 3)]}`}>
             {place.reviews.map((review, index) => (
               <ReviewCard key={`${review.authorName}-${index}`} review={review} text={text} locale={locale} />
             ))}
