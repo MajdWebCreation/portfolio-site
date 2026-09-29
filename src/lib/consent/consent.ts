@@ -27,7 +27,10 @@
  * marketing category (29 September 2026), so every version-2 choice
  * (`2.a1.r0.<moment>`) is asked again too; version 4 added Google Ads as a
  * recipient under marketing, with remarketing (29 September 2026), so every
- * version-3 choice is asked again. `storedConsentVersion` still reads
+ * version-3 choice is asked again; version 5 added the hashed email address
+ * and phone number of an accepted enquiry for Google Ads (enhanced
+ * conversions, 30 September 2026), which the version-4 text said Google
+ * would not get, so every version-4 choice is asked again. `storedConsentVersion` still reads
  * the version out of both, so that is a decision, not an accident of a
  * regex. Values from before the timestamp existed (`1.a1`, `1.a0`) are
  * treated the same way.
@@ -37,7 +40,7 @@
  * from a storage API that private windows may refuse.
  */
 export const CONSENT_COOKIE = "ym_consent";
-export const CONSENT_VERSION = 4;
+export const CONSENT_VERSION = 5;
 
 /** Six months, after which the question is asked again. */
 export const CONSENT_MAX_AGE_SECONDS = 182 * 24 * 60 * 60;
@@ -54,7 +57,7 @@ export type ConsentDecision = {
   decidedAt: string;
 };
 
-/** `4.a1.r0.m1.2026-09-29T10:15:00Z`: version, analytics, recordings, marketing, moment. */
+/** `5.a1.r0.m1.2026-09-29T10:15:00Z`: version, analytics, recordings, marketing, moment. */
 export function serializeConsent(decision: ConsentDecision): string {
   const flag = (value: boolean) => (value ? 1 : 0);
   return `${decision.version}.a${flag(decision.analytics)}.r${flag(decision.recordings)}.m${flag(decision.marketing)}.${toSecond(decision.decidedAt)}`;

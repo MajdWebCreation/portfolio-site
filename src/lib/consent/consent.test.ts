@@ -22,8 +22,8 @@ const choice = (analytics: boolean, recordings: boolean, marketing = false, at =
 });
 
 describe("a stored choice", () => {
-  it("is version 4 since Google Ads joined marketing", () => {
-    expect(CONSENT_VERSION).toBe(4);
+  it("is version 5 since marketing includes enhanced conversions", () => {
+    expect(CONSENT_VERSION).toBe(5);
   });
 
   it("round-trips every combination of the three categories", () => {
@@ -37,20 +37,20 @@ describe("a stored choice", () => {
   });
 
   it("is the version, three flags and the moment, nothing more", () => {
-    expect(serializeConsent(choice(true, false))).toBe("4.a1.r0.m0.2026-09-23T10:15:00Z");
-    expect(serializeConsent(choice(false, true))).toBe("4.a0.r1.m0.2026-09-23T10:15:00Z");
-    expect(serializeConsent(choice(false, false, true))).toBe("4.a0.r0.m1.2026-09-23T10:15:00Z");
-    expect(serializeConsent(choice(true, true, true))).toBe("4.a1.r1.m1.2026-09-23T10:15:00Z");
+    expect(serializeConsent(choice(true, false))).toBe("5.a1.r0.m0.2026-09-23T10:15:00Z");
+    expect(serializeConsent(choice(false, true))).toBe("5.a0.r1.m0.2026-09-23T10:15:00Z");
+    expect(serializeConsent(choice(false, false, true))).toBe("5.a0.r0.m1.2026-09-23T10:15:00Z");
+    expect(serializeConsent(choice(true, true, true))).toBe("5.a1.r1.m1.2026-09-23T10:15:00Z");
   });
 
   it("reads analytics, recordings and marketing separately", () => {
-    expect(parseConsent("4.a1.r0.m0.2026-09-23T10:15:00Z", now)).toMatchObject({ analytics: true, recordings: false, marketing: false });
-    expect(parseConsent("4.a0.r1.m0.2026-09-23T10:15:00Z", now)).toMatchObject({ analytics: false, recordings: true, marketing: false });
-    expect(parseConsent("4.a0.r0.m1.2026-09-23T10:15:00Z", now)).toMatchObject({ analytics: false, recordings: false, marketing: true });
+    expect(parseConsent("5.a1.r0.m0.2026-09-23T10:15:00Z", now)).toMatchObject({ analytics: true, recordings: false, marketing: false });
+    expect(parseConsent("5.a0.r1.m0.2026-09-23T10:15:00Z", now)).toMatchObject({ analytics: false, recordings: true, marketing: false });
+    expect(parseConsent("5.a0.r0.m1.2026-09-23T10:15:00Z", now)).toMatchObject({ analytics: false, recordings: false, marketing: true });
   });
 
   it("writes the moment to the second, in UTC", () => {
-    expect(serializeConsent(choice(true, false, false, "2026-09-23T12:15:00.789+02:00"))).toBe("4.a1.r0.m0.2026-09-23T10:15:00Z");
+    expect(serializeConsent(choice(true, false, false, "2026-09-23T12:15:00.789+02:00"))).toBe("5.a1.r0.m0.2026-09-23T10:15:00Z");
   });
 
   /* Recordings and marketing were each a new processing: every older choice is asked again, including a yes to analytics. */
@@ -66,7 +66,10 @@ describe("a stored choice", () => {
     /* Version 3 (marketing without Google Ads) has the current shape and is still refused. */
     expect(storedConsentVersion("3.a1.r1.m1.2026-09-23T10:15:00Z")).toBe(3);
     expect(parseConsent("3.a1.r1.m1.2026-09-23T10:15:00Z", now)).toBeNull();
+    /* Version 4 (Google Ads without enhanced conversions) is refused the same way. */
     expect(storedConsentVersion("4.a1.r1.m1.2026-09-23T10:15:00Z")).toBe(4);
+    expect(parseConsent("4.a1.r1.m1.2026-09-23T10:15:00Z", now)).toBeNull();
+    expect(storedConsentVersion("5.a1.r1.m1.2026-09-23T10:15:00Z")).toBe(5);
     expect(storedConsentVersion("garbage")).toBeNull();
   });
 
@@ -77,7 +80,7 @@ describe("a stored choice", () => {
 
   /* The values from before the moment was recorded: ask again. */
   it("counts a legacy value without a moment as no choice", () => {
-    expect(parseConsent("4.a1.r1.m1", now)).toBeNull();
+    expect(parseConsent("5.a1.r1.m1", now)).toBeNull();
     expect(parseConsent("1.a1", now)).toBeNull();
     expect(parseConsent("1.a0", now)).toBeNull();
   });
@@ -89,18 +92,18 @@ describe("a stored choice", () => {
       "",
       "3",
       "a1",
-      "4.a1.2026-09-23T10:15:00Z",
-      "4.a1.r0.2026-09-23T10:15:00Z",
-      "4.a2.r0.m0.2026-09-23T10:15:00Z",
-      "4.a1.r2.m0.2026-09-23T10:15:00Z",
-      "4.a1.r0.m2.2026-09-23T10:15:00Z",
-      "4.a1.x1.m0.2026-09-23T10:15:00Z",
+      "5.a1.2026-09-23T10:15:00Z",
+      "5.a1.r0.2026-09-23T10:15:00Z",
+      "5.a2.r0.m0.2026-09-23T10:15:00Z",
+      "5.a1.r2.m0.2026-09-23T10:15:00Z",
+      "5.a1.r0.m2.2026-09-23T10:15:00Z",
+      "5.a1.x1.m0.2026-09-23T10:15:00Z",
       "3.m1.r1.a1.2026-09-23T10:15:00Z",
       "x.a1.r0.m0.2026-09-23T10:15:00Z",
-      "4.a1.r0.m0.2026-09-23",
-      "4.a1.r0.m0.2026-09-23T10:15:00.000Z",
-      "4.a1.r0.m0.2026-13-45T10:15:00Z",
-      "4.a1.r0.m0.2026-09-23T10:15:00Z.extra",
+      "5.a1.r0.m0.2026-09-23",
+      "5.a1.r0.m0.2026-09-23T10:15:00.000Z",
+      "5.a1.r0.m0.2026-13-45T10:15:00Z",
+      "5.a1.r0.m0.2026-09-23T10:15:00Z.extra",
       "true",
     ]) {
       expect(parseConsent(value, now), String(value)).toBeNull();
@@ -128,7 +131,7 @@ describe("the cookie itself", () => {
     const cookie = consentCookieString(choice(false, true), { secure: true });
 
     expect(cookie).toBe(
-      `${CONSENT_COOKIE}=${encodeURIComponent("4.a0.r1.m0.2026-09-23T10:15:00Z")}; Path=/; Max-Age=${CONSENT_MAX_AGE_SECONDS}; SameSite=Lax; Secure`,
+      `${CONSENT_COOKIE}=${encodeURIComponent("5.a0.r1.m0.2026-09-23T10:15:00Z")}; Path=/; Max-Age=${CONSENT_MAX_AGE_SECONDS}; SameSite=Lax; Secure`,
     );
     expect(CONSENT_MAX_AGE_SECONDS).toBe(182 * 24 * 60 * 60);
   });
@@ -138,8 +141,8 @@ describe("the cookie itself", () => {
   });
 
   it("is found among other cookies, decoded, and left alone when absent", () => {
-    const encoded = encodeURIComponent("4.a1.r0.m0.2026-09-23T10:15:00Z");
-    expect(readCookieValue(`_ga=GA1.1.1; ${CONSENT_COOKIE}=${encoded}; other=x`, CONSENT_COOKIE)).toBe("4.a1.r0.m0.2026-09-23T10:15:00Z");
+    const encoded = encodeURIComponent("5.a1.r0.m0.2026-09-23T10:15:00Z");
+    expect(readCookieValue(`_ga=GA1.1.1; ${CONSENT_COOKIE}=${encoded}; other=x`, CONSENT_COOKIE)).toBe("5.a1.r0.m0.2026-09-23T10:15:00Z");
     expect(readCookieValue("_ga=GA1.1.1", CONSENT_COOKIE)).toBeUndefined();
     expect(readCookieValue("", CONSENT_COOKIE)).toBeUndefined();
   });

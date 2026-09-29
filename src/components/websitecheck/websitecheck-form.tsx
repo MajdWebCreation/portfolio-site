@@ -126,7 +126,7 @@ export default function WebsitecheckForm({ copy, privacyHref }: WebsitecheckForm
       }
 
       /* The one success condition: the server confirmed the request is stored. */
-      reportLead({ form: "websitecheck", eventId: data.leadEventId });
+      reportLead({ form: "websitecheck", eventId: data.leadEventId, contact: { email: form.email, phone: form.phone } });
       setReceived({
         host: websiteUrlHost(normalizeWebsiteUrl(form.websiteUrl) ?? form.websiteUrl),
         email: form.email.trim().toLowerCase(),

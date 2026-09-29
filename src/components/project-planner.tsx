@@ -691,7 +691,7 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
 
       /* Accepted by the server: the one moment a lead exists for Meta and Google Ads (lib/tracking/conversions.ts). */
       const accepted = (await response.json().catch(() => null)) as { leadEventId?: unknown } | null;
-      reportLead({ form: "project_planner", eventId: accepted?.leadEventId });
+      reportLead({ form: "project_planner", eventId: accepted?.leadEventId, contact: { email: form.email, phone: form.phone } });
 
       /* Both keys were required to pass step 3; the check keeps the types honest. */
       if (form.launchTimeline && form.priority) {

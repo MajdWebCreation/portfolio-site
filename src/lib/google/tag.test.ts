@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   adsConversionTarget,
   deniedGoogleConsent,
+  googleAdsConsentGranted,
   googleConsentFor,
   googleTagAllowed,
   normalizeAdsId,
@@ -158,5 +159,21 @@ describe("syncGoogleTag", () => {
     expect(page.commands().length).toBeGreaterThan(4);
     expect(page.scripts).toEqual([]);
     info.mockRestore();
+  });
+});
+
+describe("googleAdsConsentGranted", () => {
+  it("is true only while the tag was told ad_storage and ad_user_data are granted", () => {
+    const page = fakePage();
+    expect(googleAdsConsentGranted()).toBe(false);
+
+    syncGoogleTag({ config: both, choice: { analytics: true, marketing: false }, win: page.win, doc: page.doc });
+    expect(googleAdsConsentGranted()).toBe(false);
+
+    syncGoogleTag({ config: both, choice: { analytics: true, marketing: true }, win: page.win, doc: page.doc });
+    expect(googleAdsConsentGranted()).toBe(true);
+
+    syncGoogleTag({ config: both, choice: { analytics: true, marketing: false }, win: page.win, doc: page.doc });
+    expect(googleAdsConsentGranted()).toBe(false);
   });
 });

@@ -121,6 +121,8 @@ type TagWindow = Window & { dataLayer?: unknown[]; gtag?: (...args: unknown[]) =
 
 let started = false;
 let lastConsent: string | null = null;
+/* What the tag was last told, so conversions can check the signal itself rather than assume it. */
+let currentConsent: GoogleConsentState = deniedGoogleConsent;
 const configured = new Set<string>();
 
 /**
@@ -161,6 +163,7 @@ export function syncGoogleTag(input: {
   const consentKey = JSON.stringify(consent);
   if (consentKey !== lastConsent) {
     gtag("consent", "update", consent);
+    currentConsent = consent;
     gtag("set", "ads_data_redaction", consent.ad_storage === "denied");
     if (lastConsent === null) gtag("js", new Date());
     lastConsent = consentKey;
@@ -196,6 +199,16 @@ export function syncGoogleTag(input: {
   doc.head.appendChild(script);
 }
 
+/**
+ * Whether the running tag was told that advertising storage and advertising
+ * user data are granted. Google Ads conversions, and above all the
+ * user-provided data of an enhanced conversion, are only ever sent when this
+ * is true.
+ */
+export function googleAdsConsentGranted(): boolean {
+  return started && currentConsent.ad_storage === "granted" && currentConsent.ad_user_data === "granted";
+}
+
 /** Whether a destination is configured on the running tag. */
 export function googleDestinationActive(id: string | undefined): boolean {
   return Boolean(id && configured.has(id));
@@ -205,5 +218,6 @@ export function googleDestinationActive(id: string | undefined): boolean {
 export function resetGoogleTag(): void {
   started = false;
   lastConsent = null;
+  currentConsent = deniedGoogleConsent;
   configured.clear();
 }

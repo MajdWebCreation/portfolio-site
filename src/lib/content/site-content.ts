@@ -249,7 +249,7 @@ export const siteContent = {
       recordingsToggle: "Gedragsopnames via Microsoft Clarity",
       marketingLabel: "Marketing",
       marketingText:
-        "Google Ads en de Meta Pixel meten welke advertenties bij Google, Facebook en Instagram tot een bezoek of aanvraag leiden, en maken het mogelijk eerdere bezoekers later opnieuw een advertentie te tonen. Google en Meta ontvangen daarbij welke pagina's je bekijkt en dat je een aanvraag hebt verstuurd; Google ook dat je op ons telefoonnummer of de WhatsApp-link tikte. Wat je in een formulier invult ontvangen ze niet. Google en Meta kunnen deze gegevens volgens hun eigen voorwaarden ook voor eigen doeleinden gebruiken, zoals het tonen van advertenties. Staat uit totdat je het aanzet.",
+        "Google Ads en de Meta Pixel meten welke advertenties bij Google, Facebook en Instagram tot een bezoek of aanvraag leiden, en maken het mogelijk eerdere bezoekers later opnieuw een advertentie te tonen. Google en Meta ontvangen daarbij welke pagina's je bekijkt en dat je een aanvraag hebt verstuurd; Google ook dat je op ons telefoonnummer of de WhatsApp-link tikte. Bij een verstuurde aanvraag krijgt Google ook je e-mailadres en, als je dat invulde, je telefoonnummer, gehasht, om de aanvraag aan een advertentie te koppelen; de rest van het formulier ontvangen ze niet. Google en Meta kunnen deze gegevens volgens hun eigen voorwaarden ook voor eigen doeleinden gebruiken, zoals het tonen van advertenties. Staat uit totdat je het aanzet.",
       marketingToggle: "Marketing via Google Ads en de Meta Pixel",
       save: "Voorkeuren opslaan",
     },
@@ -424,7 +424,7 @@ export const siteContent = {
       recordingsToggle: "Behaviour recordings via Microsoft Clarity",
       marketingLabel: "Marketing",
       marketingText:
-        "Google Ads and the Meta Pixel measure which ads on Google, Facebook and Instagram lead to a visit or an inquiry, and make it possible to show earlier visitors an ad again later. Google and Meta receive which pages you view and that you sent an inquiry; Google also that you tapped our phone number or the WhatsApp link. They do not receive what you type into a form. Under their own terms, Google and Meta may also use this data for their own purposes, such as showing ads. Off until you switch it on.",
+        "Google Ads and the Meta Pixel measure which ads on Google, Facebook and Instagram lead to a visit or an inquiry, and make it possible to show earlier visitors an ad again later. Google and Meta receive which pages you view and that you sent an inquiry; Google also that you tapped our phone number or the WhatsApp link. With a sent inquiry Google also gets your email address and, if you entered it, your phone number, hashed, to link the inquiry to an ad; they do not receive the rest of the form. Under their own terms, Google and Meta may also use this data for their own purposes, such as showing ads. Off until you switch it on.",
       marketingToggle: "Marketing via Google Ads and the Meta Pixel",
       save: "Save preferences",
     },

@@ -1,10 +1,11 @@
 import { placements } from "@/lib/analytics/events";
 import { trackUntypedEvent } from "@/lib/analytics/track";
 import { hasMarketingConsent } from "@/lib/consent/store";
-import { adsConversionTarget, googleTagConfig, type AdsConversion } from "@/lib/google/tag";
+import { adsConversionTarget, googleAdsConsentGranted, googleTagConfig, type AdsConversion } from "@/lib/google/tag";
 import { isLeadEventId, type LeadForm } from "@/lib/meta/event-id";
 import { trackMetaLead } from "@/lib/meta/track";
 import { trackingDebugLog } from "@/lib/tracking/debug";
+import { googleUserData, type GoogleUserData, type LeadContact } from "@/lib/tracking/user-data";
 
 /**
  * The three moments that count as a conversion, in one place.
@@ -20,6 +21,20 @@ import { trackingDebugLog } from "@/lib/tracking/debug";
  *
  * Every destination keeps its own consent gate: Google Ads and Meta need
  * marketing, the GA event needs statistics (inside `trackUntypedEvent`).
+ * For Google Ads that is checked twice: the visitor's stored choice, and
+ * what the running tag was actually told (`ad_storage` and `ad_user_data`
+ * granted) -- a conversion never goes out on an assumption.
+ *
+ * A lead is also an enhanced conversion: the email address and phone number
+ * the visitor just submitted, normalised (lib/tracking/user-data.ts), travel
+ * as the `user_data` parameter of that one conversion event, and the tag
+ * hashes them before sending. Deliberately an event parameter and not
+ * `gtag('set', 'user_data', …)`: a `set` stays on the tag for every later
+ * event of the page, so a phone or WhatsApp tap after an enquiry would carry
+ * the enquiry's details. As an event parameter they belong to the lead
+ * conversion alone and, through `send_to`, to Google Ads alone. Never for a
+ * click, never before the server accepted the enquiry, never without
+ * marketing consent, and never into a log.
  * A destination that is not configured -- no Ads ID, no label for this
  * action -- is skipped quietly; the site never depends on it.
  */
@@ -32,9 +47,13 @@ const reportedLeads = new Set<string>();
 export type ContactMethod = "phone" | "whatsapp";
 
 /** Sends one Google Ads conversion, or says why not. */
-export function sendAdsConversion(kind: AdsConversion, extra: { transaction_id?: string } = {}): boolean {
+export function sendAdsConversion(
+  kind: AdsConversion,
+  extra: { transaction_id?: string } = {},
+  userData: GoogleUserData | null = null,
+): boolean {
   if (typeof window === "undefined") return false;
-  if (!hasMarketingConsent()) {
+  if (!hasMarketingConsent() || !googleAdsConsentGranted()) {
     trackingDebugLog(`ads conversion ${kind} skipped: no marketing consent`);
     return false;
   }
@@ -49,18 +68,24 @@ export function sendAdsConversion(kind: AdsConversion, extra: { transaction_id?:
     return false;
   }
 
-  gtag("event", "conversion", { send_to: target, ...extra });
-  trackingDebugLog(`ads conversion ${kind}`, { send_to: target, ...extra });
+  /* User data scoped to this one event; nothing is `set` globally on the tag. */
+  gtag("event", "conversion", { send_to: target, ...extra, ...(userData ? { user_data: userData } : {}) });
+  /* Field names only: an address or number never reaches a log. */
+  trackingDebugLog(`ads conversion ${kind}`, { send_to: target, ...extra, user_data: userData ? Object.keys(userData) : [] });
   return true;
 }
 
-/** An accepted enquiry, from any of the three forms. */
-export function reportLead(input: { form: LeadForm; eventId: unknown }): void {
+/**
+ * An accepted enquiry, from any of the three forms, with the contact details
+ * that were submitted in it. Meta gets exactly what it got before (no
+ * contact details); Google Ads gets them as an enhanced conversion.
+ */
+export function reportLead(input: { form: LeadForm; eventId: unknown; contact?: LeadContact }): void {
   if (!isLeadEventId(input.eventId) || reportedLeads.has(input.eventId)) return;
   reportedLeads.add(input.eventId);
 
   trackMetaLead({ form: input.form, eventId: input.eventId });
-  sendAdsConversion("lead", { transaction_id: input.eventId });
+  sendAdsConversion("lead", { transaction_id: input.eventId }, googleUserData(input.contact));
 }
 
 const whatsappHosts = new Set(["wa.me", "api.whatsapp.com"]);

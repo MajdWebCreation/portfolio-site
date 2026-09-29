@@ -199,7 +199,7 @@ export default function ContactForm({
 
       /* Accepted by the server: the one moment a lead exists for Meta and Google Ads (lib/tracking/conversions.ts). */
       const accepted = (await response.json().catch(() => null)) as { leadEventId?: unknown } | null;
-      reportLead({ form: "contact", eventId: accepted?.leadEventId });
+      reportLead({ form: "contact", eventId: accepted?.leadEventId, contact: { email: form.email } });
 
       trackEvent("contact_submit", { form: "contact", ...attributionEventParams(currentAttribution()) });
       setStatus("success");
