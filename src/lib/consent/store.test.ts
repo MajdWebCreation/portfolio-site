@@ -168,4 +168,77 @@ describe("withdrawing marketing", () => {
     expect(store.decideConsent({ analytics: false, recordings: false, marketing: false }).reloadRequired).toBe(true);
     expect(browser.jar.has("_fbp")).toBe(false);
   });
+
+  /*
+    What Google's and Meta's libraries keep in localStorage once marketing was
+    allowed: gtag mirrors the click id in `_gcl_ls`, fbevents remembers the last
+    external referrer. A withdrawal removes exactly those; everything else in
+    storage, including the visit's own `ym_attr`, is none of this code's business.
+  */
+  function fakeLocalStorage(entries: Record<string, string>) {
+    const map = new Map(Object.entries(entries));
+    return {
+      keys: () => [...map.keys()].sort(),
+      api: {
+        getItem: (key: string) => map.get(key) ?? null,
+        setItem: (key: string, value: string) => void map.set(key, value),
+        removeItem: (key: string) => void map.delete(key),
+      },
+    };
+  }
+  const marketingStorage = {
+    _gcl_ls: '{"schema":"gcl","version":1,"gclid":{"value":{"value":"Cj0abc"}}}',
+    lastExternalReferrer: "empty",
+    lastExternalReferrerTime: "1790730738907",
+  };
+  const otherStorage = { "ym:tracking-debug": "1", unrelated: "keep" };
+
+  it("removes the Ads and Meta localStorage entries and leaves the rest alone", async () => {
+    const browser = fakeBrowser({ _fbp: "fb.1.1.1", _gcl_aw: "GCL.1.Cj0abc", _gcl_au: "1.1.1" });
+    const storage = fakeLocalStorage({ ...marketingStorage, ...otherStorage });
+    browser.window.localStorage = storage.api;
+    const store = await freshStore();
+    store.hydrateConsent();
+    store.decideConsent({ analytics: true, recordings: false, marketing: true });
+    expect(storage.keys()).toEqual(Object.keys({ ...marketingStorage, ...otherStorage }).sort());
+
+    store.decideConsent({ analytics: true, recordings: false, marketing: false });
+
+    expect(storage.keys()).toEqual(Object.keys(otherStorage).sort());
+    expect(browser.jar.has("_gcl_aw")).toBe(false);
+    expect(browser.jar.has("_gcl_au")).toBe(false);
+    expect(browser.jar.has("_fbp")).toBe(false);
+  });
+
+  it("does not touch localStorage when marketing was never on or stays on", async () => {
+    const browser = fakeBrowser();
+    const storage = fakeLocalStorage({ ...marketingStorage, ...otherStorage });
+    browser.window.localStorage = storage.api;
+    const store = await freshStore();
+    store.hydrateConsent();
+    store.decideConsent({ analytics: true, recordings: true, marketing: true });
+    store.decideConsent({ analytics: false, recordings: false, marketing: true });
+    store.decideConsent({ analytics: false, recordings: false, marketing: false });
+    /* The last call withdrew marketing; the two before it did not. */
+    expect(storage.keys()).toEqual(Object.keys(otherStorage).sort());
+
+    const again = fakeLocalStorage({ ...marketingStorage, ...otherStorage });
+    browser.window.localStorage = again.api;
+    store.decideConsent({ analytics: true, recordings: false, marketing: false });
+    expect(again.keys()).toEqual(Object.keys({ ...marketingStorage, ...otherStorage }).sort());
+  });
+
+  it("survives a browser that refuses storage", async () => {
+    const browser = fakeBrowser({ _fbp: "fb.1.1.1" });
+    browser.window.localStorage = {
+      removeItem: () => {
+        throw new Error("SecurityError");
+      },
+    };
+    const store = await freshStore();
+    store.hydrateConsent();
+    store.decideConsent({ analytics: false, recordings: false, marketing: true });
+    expect(store.decideConsent({ analytics: false, recordings: false, marketing: false }).reloadRequired).toBe(true);
+    expect(browser.jar.has("_fbp")).toBe(false);
+  });
 });

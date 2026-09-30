@@ -96,7 +96,7 @@ const categoryByCluster = {
    import says so instead of publishing it.
 */
 const servicePaths = [
-  "/nl/diensten/bedrijfswebsite",
+  "/nl/diensten/website-laten-maken",
   "/nl/diensten/webshop-laten-maken",
   "/nl/diensten/landingspagina",
   "/nl/diensten/webapplicatie-laten-maken",
@@ -283,7 +283,7 @@ const serviceLinks = {
   "website-of-webshop": [
     [
       "De professionele keuze is de kleinste digitale oplossing die het commerciële proces betrouwbaar ondersteunt.",
-      "De professionele keuze is de kleinste digitale oplossing die het commerciële proces betrouwbaar ondersteunt. Praktisch splitst dat zich bij ons in een [bedrijfswebsite](/nl/diensten/bedrijfswebsite) of een [webshop](/nl/diensten/webshop-laten-maken).",
+      "De professionele keuze is de kleinste digitale oplossing die het commerciële proces betrouwbaar ondersteunt. Praktisch splitst dat zich bij ons in een [bedrijfswebsite](/nl/diensten/website-laten-maken) of een [webshop](/nl/diensten/webshop-laten-maken).",
     ],
   ],
   "van-excel-naar-maatwerksoftware": [
@@ -307,7 +307,7 @@ const serviceLinks = {
   "wat-kost-een-website-of-webshop": [
     [
       "Als die scope duidelijk is, kun je offertes inhoudelijk vergelijken en krijgt de prijs pas echte betekenis.",
-      "Als die scope duidelijk is, kun je offertes inhoudelijk vergelijken en krijgt de prijs pas echte betekenis. Wat er in een [bedrijfswebsite](/nl/diensten/bedrijfswebsite) of [webshop](/nl/diensten/webshop-laten-maken) zit, staat per dienst uitgeschreven.",
+      "Als die scope duidelijk is, kun je offertes inhoudelijk vergelijken en krijgt de prijs pas echte betekenis. Wat er in een [bedrijfswebsite](/nl/diensten/website-laten-maken) of [webshop](/nl/diensten/webshop-laten-maken) zit, staat per dienst uitgeschreven.",
     ],
   ],
   "technische-kwaliteit-website-webapp-beoordelen": [
@@ -337,7 +337,7 @@ const serviceLinks = {
   "website-vernieuwen-optimaliseren-redesign-herbouwen-replatformen": [
     [
       "Dat is uiteindelijk een betere basis voor een website-investering dan simpelweg besluiten dat de huidige site “oud” is.",
-      "Dat is uiteindelijk een betere basis voor een website-investering dan simpelweg besluiten dat de huidige site “oud” is. Voor de kleinere ingrepen is er [redesign en optimalisatie](/nl/diensten/redesign-optimalisatie); voor een volledige herbouw een nieuwe [bedrijfswebsite](/nl/diensten/bedrijfswebsite).",
+      "Dat is uiteindelijk een betere basis voor een website-investering dan simpelweg besluiten dat de huidige site “oud” is. Voor de kleinere ingrepen is er [redesign en optimalisatie](/nl/diensten/redesign-optimalisatie); voor een volledige herbouw een nieuwe [bedrijfswebsite](/nl/diensten/website-laten-maken).",
     ],
   ],
   "wat-kost-een-webapplicatie": [
@@ -397,7 +397,7 @@ const serviceLinks = {
   "website-code-data-eigendom-vendor-lock-in": [
     [
       "Het is juist een teken dat de samenwerking professioneel is ingericht.",
-      "Het is juist een teken dat de samenwerking professioneel is ingericht. Voor een [maatwerk webapplicatie](/nl/diensten/webapplicatie-laten-maken) of [bedrijfswebsite](/nl/diensten/bedrijfswebsite) hoort die afspraak bij de opdracht, niet bij het afscheid.",
+      "Het is juist een teken dat de samenwerking professioneel is ingericht. Voor een [maatwerk webapplicatie](/nl/diensten/webapplicatie-laten-maken) of [bedrijfswebsite](/nl/diensten/website-laten-maken) hoort die afspraak bij de opdracht, niet bij het afscheid.",
     ],
   ],
 };

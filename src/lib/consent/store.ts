@@ -125,6 +125,21 @@ function isAdsCookie(name: string): boolean {
   return name.startsWith("_gcl_");
 }
 
+/**
+ * gtag's localStorage copy of the same click data (`_gcl_ls`, the ad click
+ * id with its time). Removed together with the cookies on a withdrawal of
+ * marketing, best effort, so no click identifier outlives the choice.
+ */
+export const ADS_LOCAL_STORAGE_KEY = "_gcl_ls";
+
+function removeAdsStorage() {
+  try {
+    window.localStorage.removeItem(ADS_LOCAL_STORAGE_KEY);
+  } catch {
+    /* Storage refused: then nothing was written there either. */
+  }
+}
+
 export type ConsentChoice = { analytics: boolean; recordings: boolean; marketing: boolean };
 
 /**
@@ -164,6 +179,7 @@ export function decideConsent(choice: ConsentChoice): { reloadRequired: boolean 
   if (marketingWithdrawn) {
     withdrawMetaPixel();
     expireGoogleCookies(isAdsCookie);
+    removeAdsStorage();
   }
 
   publish({ hydrated: true, decision, settingsOpen: false });

@@ -223,3 +223,36 @@ describe("a Lead", () => {
     expect(() => track.trackMetaLead({ form: "contact", eventId: leadId })).not.toThrow();
   });
 });
+
+describe("withdrawal", () => {
+  it("revokes, expires the cookies and removes the library's localStorage entries, nothing else", async () => {
+    const browser = fakeBrowser({ marketing: true, path: "/nl" });
+    const storage = new Map([
+      ["lastExternalReferrer", "empty"],
+      ["lastExternalReferrerTime", "1790730738907"],
+      ["ym:tracking-debug", "1"],
+      ["_gcl_ls", "{}"],
+    ]);
+    browser.window.localStorage = { removeItem: (key: string) => void storage.delete(key), getItem: (key: string) => storage.get(key) ?? null };
+    document.cookie = "_fbp=fb.1.1.1";
+    document.cookie = "_fbc=fb.1.1.abc";
+    const { pixel } = await freshModules();
+    pixel.syncMetaPixel({ pixelId: PIXEL, marketingConsent: true, pathname: "/nl" });
+
+    pixel.withdrawMetaPixel();
+
+    expect(browser.calls().some((call) => call[0] === "consent" && call[1] === "revoke")).toBe(true);
+    expect([...storage.keys()].sort()).toEqual(["_gcl_ls", "ym:tracking-debug"]);
+  });
+
+  it("does not fail when storage is refused or the pixel never ran", async () => {
+    const browser = fakeBrowser({ marketing: false, path: "/nl" });
+    browser.window.localStorage = {
+      removeItem: () => {
+        throw new Error("SecurityError");
+      },
+    };
+    const { pixel } = await freshModules();
+    expect(() => pixel.withdrawMetaPixel()).not.toThrow();
+  });
+});

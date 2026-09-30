@@ -117,6 +117,30 @@ const GA_COOKIE_MAX_AGE_SECONDS = GA_COOKIE_MAX_AGE_DAYS * 24 * 60 * 60;
 
 export const GOOGLE_TAG_SCRIPT_ID = "ym-google-tag";
 
+/**
+ * Google's advertising click identifiers: the query parameters
+ * `ads_data_redaction` removes from advertising requests. Without a yes to
+ * marketing they are kept out of what Google Analytics is told as well (see
+ * `syncGooglePage`). The address bar is not touched, and the UTM values
+ * stay: they name a campaign, not a click.
+ */
+export const adClickParams = ["gclid", "gbraid", "wbraid", "dclid", "gclsrc"] as const;
+
+/** The same URL without Google's ad click identifiers; unchanged when there are none or it does not parse. */
+export function stripAdClickIds(href: string): string {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return href;
+  }
+  const params = url.searchParams;
+  if (!adClickParams.some((name) => params.has(name))) return href;
+  for (const name of adClickParams) params.delete(name);
+  url.search = params.toString();
+  return url.toString();
+}
+
 type TagWindow = Window & { dataLayer?: unknown[]; gtag?: (...args: unknown[]) => void };
 
 let started = false;
@@ -171,6 +195,8 @@ export function syncGoogleTag(input: {
   }
 
   if (choice?.analytics && config.measurementId && !configured.has(config.measurementId)) {
+    /* Before the config, so the first page view already carries the cleaned address. */
+    syncGooglePage({ choice, win });
     gtag("config", config.measurementId, { cookie_expires: GA_COOKIE_MAX_AGE_SECONDS, cookie_update: false });
     configured.add(config.measurementId);
     trackingDebugLog(`google config ${config.measurementId}`);
@@ -199,6 +225,43 @@ export function syncGoogleTag(input: {
   doc.head.appendChild(script);
 }
 
+/* The address GA was last told about, and whether it was ever told one explicitly. */
+let lastHref: string | null = null;
+let pageContextSet = false;
+
+/**
+ * What Google Analytics is told the page is. gtag reads `location.href`
+ * itself; that is left alone as long as the address carries no ad click
+ * identifier or marketing is allowed. Without marketing, a landing address
+ * with a `gclid` (or one of its siblings) is handed to the tag with those
+ * parameters removed -- as `page_location` before the first page view, and
+ * kept in step on every client-side navigation afterwards, together with the
+ * `page_referrer` of the page before, so no later event carries the click id
+ * or a stale address. Once the tag has been given an explicit address it
+ * keeps getting the current one, also after marketing is granted later in the
+ * same page; a visit that never needed the cleaning is never touched.
+ * Called by the tag component on every path change; a no-op before GA runs.
+ */
+export function syncGooglePage(input: { choice: GoogleConsentChoice; win?: TagWindow }): void {
+  const win = input.win ?? (window as TagWindow);
+  const gtag = win.gtag;
+  if (!started || !gtag || !input.choice?.analytics) return;
+
+  const href = win.location?.href ?? "";
+  const previous = lastHref;
+  if (previous === href) return;
+  lastHref = href;
+
+  const clean = (value: string) => (input.choice?.marketing ? value : stripAdClickIds(value));
+  const location = clean(href);
+  const referrer = previous === null ? null : clean(previous);
+  if (!pageContextSet && location === href && referrer === previous) return;
+
+  pageContextSet = true;
+  gtag("set", { page_location: location, ...(referrer !== null ? { page_referrer: referrer } : {}) });
+  trackingDebugLog("google page context", { page_location: location, page_referrer: referrer ?? undefined });
+}
+
 /**
  * Whether the running tag was told that advertising storage and advertising
  * user data are granted. Google Ads conversions, and above all the
@@ -220,4 +283,6 @@ export function resetGoogleTag(): void {
   lastConsent = null;
   currentConsent = deniedGoogleConsent;
   configured.clear();
+  lastHref = null;
+  pageContextSet = false;
 }

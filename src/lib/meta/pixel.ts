@@ -164,11 +164,15 @@ export function sendMetaLead(form: LeadForm, eventId: string): boolean {
 /** Meta's first-party cookies: the browser id, and the ad click id when a visit came from an ad. */
 export const metaFirstPartyCookies = ["_fbp", "_fbc"] as const;
 
+/** What fbevents.js keeps in localStorage: the last referrer from outside the site, and when it was seen. */
+export const metaLocalStorageKeys = ["lastExternalReferrer", "lastExternalReferrerTime"] as const;
+
 /**
  * Withdrawal. `fbq('consent', 'revoke')` is Meta's documented call that stops
- * the pixel from sending; the first-party cookies are expired as well, best
- * effort. The caller then reloads the page, so the library is not in the
- * document any more and nothing depends on a running script keeping the no.
+ * the pixel from sending; the first-party cookies and the library's
+ * localStorage entries are removed as well, best effort. The caller then
+ * reloads the page, so the library is not in the document any more and
+ * nothing depends on a running script keeping the no.
  */
 export function withdrawMetaPixel(): void {
   if (typeof window === "undefined") return;
@@ -188,5 +192,11 @@ export function withdrawMetaPixel(): void {
     for (const domain of domains) {
       document.cookie = `${name}=; Path=/; Max-Age=0${domain ? `; Domain=${domain}` : ""}`;
     }
+  }
+
+  try {
+    for (const key of metaLocalStorageKeys) window.localStorage.removeItem(key);
+  } catch {
+    /* Storage refused (private window, blocked site data): then there is nothing in it either. */
   }
 }

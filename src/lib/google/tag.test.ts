@@ -9,14 +9,16 @@ import {
   normalizeConversionLabel,
   normalizeMeasurementId,
   resetGoogleTag,
+  stripAdClickIds,
+  syncGooglePage,
   syncGoogleTag,
   type GoogleTagConfig,
 } from "@/lib/google/tag";
 
 /* A stand-in page: a window with a data layer, a document with a head. */
-function fakePage() {
+function fakePage(href = "https://ymcreations.com/nl/tarieven") {
   const scripts: Array<{ id: string; src: string; async: boolean }> = [];
-  const win = {} as Window & { dataLayer?: unknown[]; gtag?: (...args: unknown[]) => void };
+  const win = { location: { href } } as Window & { dataLayer?: unknown[]; gtag?: (...args: unknown[]) => void };
   const doc = {
     getElementById: (id: string) => scripts.find((script) => script.id === id) ?? null,
     createElement: () => ({ id: "", src: "", async: false, addEventListener: () => {} }),
@@ -159,6 +161,91 @@ describe("syncGoogleTag", () => {
     expect(page.commands().length).toBeGreaterThan(4);
     expect(page.scripts).toEqual([]);
     info.mockRestore();
+  });
+});
+
+describe("ad click identifiers and Google Analytics", () => {
+  const paid = "https://ymcreations.com/nl/diensten/website-laten-maken?utm_source=google&utm_medium=cpc&utm_campaign=1&utm_term=website%20laten%20maken&gclid=Cj0abc&gbraid=1x&wbraid=2y";
+  const clean = "https://ymcreations.com/nl/diensten/website-laten-maken?utm_source=google&utm_medium=cpc&utm_campaign=1&utm_term=website+laten+maken";
+  const gaConfigAt = (page: ReturnType<typeof fakePage>) => page.commands().findIndex((command) => command[0] === "config" && command[1] === "G-ABC123DEF4");
+  const sets = (page: ReturnType<typeof fakePage>) => page.commands().filter((command) => command[0] === "set" && typeof command[1] === "object");
+  const navigate = (page: ReturnType<typeof fakePage>, href: string, choice: { analytics: boolean; marketing: boolean }) => {
+    (page.win.location as { href: string }).href = href;
+    syncGooglePage({ choice, win: page.win });
+  };
+
+  it("stripAdClickIds removes Google's click ids and nothing else", () => {
+    expect(stripAdClickIds(paid)).toBe(clean);
+    expect(stripAdClickIds("https://ymcreations.com/nl?dclid=1&gclsrc=aw.ds&x=1")).toBe("https://ymcreations.com/nl?x=1");
+    expect(stripAdClickIds("https://ymcreations.com/nl/contact")).toBe("https://ymcreations.com/nl/contact");
+    expect(stripAdClickIds("https://ymcreations.com/nl?utm_source=google#top")).toBe("https://ymcreations.com/nl?utm_source=google#top");
+    expect(stripAdClickIds("not a url")).toBe("not a url");
+  });
+
+  it("with statistics only, GA is told the address minus the click ids before its config; the address bar is untouched", () => {
+    const page = fakePage(paid);
+    syncGoogleTag({ config: both, choice: { analytics: true, marketing: false }, win: page.win, doc: page.doc });
+    const commands = page.commands();
+    const at = gaConfigAt(page);
+    expect(commands[at - 1]).toEqual(["set", { page_location: clean }]);
+    expect(commands[at][2]).toEqual({ cookie_expires: 90 * 24 * 60 * 60, cookie_update: false });
+    expect(page.win.location.href).toBe(paid);
+    expect(commands.some((command) => command[0] === "config" && command[1] === "AW-123456789")).toBe(false);
+  });
+
+  it("keeps the address and the referrer in step on client-side navigation, both without click ids", () => {
+    const page = fakePage(paid);
+    const choice = { analytics: true, marketing: false };
+    syncGoogleTag({ config: both, choice, win: page.win, doc: page.doc });
+    navigate(page, "https://ymcreations.com/nl/werkwijze", choice);
+    navigate(page, "https://ymcreations.com/nl/werkwijze", choice);
+    navigate(page, "https://ymcreations.com/nl/contact", choice);
+    expect(sets(page)).toEqual([
+      ["set", { page_location: clean }],
+      ["set", { page_location: "https://ymcreations.com/nl/werkwijze", page_referrer: clean }],
+      ["set", { page_location: "https://ymcreations.com/nl/contact", page_referrer: "https://ymcreations.com/nl/werkwijze" }],
+    ]);
+    expect(JSON.stringify(page.commands())).not.toContain("gclid");
+  });
+
+  it("with statistics and marketing, nothing is set and GA is configured exactly as before", () => {
+    const page = fakePage(paid);
+    const choice = { analytics: true, marketing: true };
+    syncGoogleTag({ config: both, choice, win: page.win, doc: page.doc });
+    navigate(page, "https://ymcreations.com/nl/werkwijze", choice);
+    navigate(page, "https://ymcreations.com/nl/contact", choice);
+    expect(sets(page)).toEqual([]);
+    expect(page.commands()[gaConfigAt(page)][2]).toEqual({ cookie_expires: 90 * 24 * 60 * 60, cookie_update: false });
+    expect(page.commands().some((command) => command[0] === "config" && command[1] === "AW-123456789")).toBe(true);
+  });
+
+  it("touches nothing for a statistics-only visit whose address carries no click id", () => {
+    const page = fakePage("https://ymcreations.com/nl/contact?utm_source=newsletter&utm_medium=email");
+    const choice = { analytics: true, marketing: false };
+    syncGoogleTag({ config: both, choice, win: page.win, doc: page.doc });
+    navigate(page, "https://ymcreations.com/nl/tarieven", choice);
+    expect(sets(page)).toEqual([]);
+  });
+
+  it("keeps telling GA the current address after marketing is granted later in the same page", () => {
+    const page = fakePage(paid);
+    syncGoogleTag({ config: both, choice: { analytics: true, marketing: false }, win: page.win, doc: page.doc });
+    syncGoogleTag({ config: both, choice: { analytics: true, marketing: true }, win: page.win, doc: page.doc });
+    navigate(page, "https://ymcreations.com/nl/contact", { analytics: true, marketing: true });
+    expect(sets(page)).toEqual([
+      ["set", { page_location: clean }],
+      ["set", { page_location: "https://ymcreations.com/nl/contact", page_referrer: paid }],
+    ]);
+    expect(page.commands().filter((command) => command[0] === "config" && command[1] === "G-ABC123DEF4")).toHaveLength(1);
+  });
+
+  it("does nothing before the tag runs or without statistics", () => {
+    const page = fakePage(paid);
+    syncGooglePage({ choice: { analytics: true, marketing: false }, win: page.win });
+    expect(page.win.dataLayer).toBeUndefined();
+    syncGoogleTag({ config: both, choice: { analytics: false, marketing: true }, win: page.win, doc: page.doc });
+    navigate(page, "https://ymcreations.com/nl/contact", { analytics: false, marketing: true });
+    expect(sets(page)).toEqual([]);
   });
 });
 
