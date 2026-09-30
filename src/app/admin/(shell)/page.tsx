@@ -34,6 +34,11 @@ const dateFormatter = new Intl.DateTimeFormat("nl-NL", {
 
 type QueueRow = { key: string; label: string; state: string; count: number; tone: StatusTone; href: string };
 
+/** Whole days between an ISO timestamp and now; for the "still waiting" queues. */
+function daysSince(iso: string, now: Date): number {
+  return Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000);
+}
+
 export default async function AdminDashboardPage() {
   await requireAdminAccess();
 
@@ -94,11 +99,19 @@ export default async function AdminDashboardPage() {
       href: "/admin/aanvragen",
     },
     {
-      key: "inquiries-follow-up",
+      key: "inquiries-contacted-stale",
       label: "Aanvragen",
-      state: "Opvolgen",
-      count: inquiries.filter((inquiry) => inquiry.status === "follow_up").length,
+      state: "Benaderd, langer dan 3 dagen stil",
+      count: inquiries.filter((inquiry) => inquiry.status === "contacted" && daysSince(inquiry.statusChangedAt, now) > 3).length,
       tone: "neutral",
+      href: "/admin/aanvragen",
+    },
+    {
+      key: "inquiries-quote-stale",
+      label: "Aanvragen",
+      state: "Offerte verstuurd, langer dan 7 dagen open",
+      count: inquiries.filter((inquiry) => inquiry.status === "quote_sent" && daysSince(inquiry.statusChangedAt, now) > 7).length,
+      tone: "accent",
       href: "/admin/aanvragen",
     },
     {

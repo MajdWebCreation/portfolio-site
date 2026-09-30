@@ -40,6 +40,10 @@ export type Attribution = {
   term?: string | null;
   /** `utm_content` (the ad or link variant), when a link carried one. */
   content?: string | null;
+  /** `adgroup_id` (Google Ads `{adgroupid}`): the ad group of the click, when the landing URL carried it. */
+  adgroupId?: string | null;
+  /** `match_type` (Google Ads `{matchtype}`: `e`, `p` or `b`), when the landing URL carried it. */
+  matchType?: string | null;
   /** The path of the first page in the session; never its query string. */
   landingPath: string;
 };
@@ -63,6 +67,8 @@ export const attributionLimits = {
   campaign: 100,
   term: 100,
   content: 100,
+  adgroupId: 40,
+  matchType: 20,
   landingPath: 200,
   adClickId: 256,
 } as const;

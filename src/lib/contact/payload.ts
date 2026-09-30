@@ -22,6 +22,8 @@ export type ContactPayload = {
     campaign?: string | null;
     term?: string | null;
     content?: string | null;
+    adgroupId?: string | null;
+    matchType?: string | null;
     landingPath?: string;
   };
   /**

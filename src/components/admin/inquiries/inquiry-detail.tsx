@@ -1,25 +1,12 @@
-"use client";
-
-import { useState } from "react";
-import AdminButton from "@/components/admin/admin-button";
 import AdminSection from "@/components/admin/admin-section";
 import ConvertToCustomer from "@/components/admin/customers/convert-to-customer";
 import { DetailList, DetailRow } from "@/components/admin/detail-list";
-import { SelectField, TextareaField } from "@/components/admin/form-field";
-import SaveControls, { useSave } from "@/components/admin/save-controls";
-import StatusBadge from "@/components/admin/status-badge";
+import InquiryPipeline from "@/components/admin/inquiries/inquiry-pipeline";
 import { formatDateTime } from "@/lib/admin/format";
 import { trafficClassLabels, type AdClickIds, type Attribution } from "@/lib/attribution/types";
-import { saveInquiryHandling } from "@/lib/admin/inquiries/actions";
-import {
-  inquiryOriginLabels,
-  inquiryStatusLabels,
-  inquiryStatusOrder,
-  inquiryStatusTone,
-  isInquiryStatus,
-  type Inquiry,
-  type PlannerInquiry,
-} from "@/lib/admin/inquiries/types";
+import type { InquiryValuePrefill } from "@/lib/admin/inquiries/repository";
+import { inquiryOriginLabels, type ConsentAtCapture, type Inquiry, type InquiryStatusEvent, type PlannerInquiry } from "@/lib/admin/inquiries/types";
+import type { ServiceKey } from "@/lib/content/services";
 
 function List({ items }: { items: string[] | undefined }) {
   if (!items?.length) return <span className="text-muted">Geen</span>;
@@ -94,8 +81,15 @@ function AttributionSummary({ attribution, adClickIds }: { attribution: Attribut
           {attribution.trafficSource ? <DetailRow term="Bron">{attribution.trafficSource}</DetailRow> : null}
           {attribution.trafficMedium ? <DetailRow term="Medium">{attribution.trafficMedium}</DetailRow> : null}
           {attribution.campaign ? <DetailRow term="Campagne">{attribution.campaign}</DetailRow> : null}
-          {attribution.term ? <DetailRow term="Zoekwoord (utm_term)">{attribution.term}</DetailRow> : null}
-          {attribution.content ? <DetailRow term="Advertentie (utm_content)">{attribution.content}</DetailRow> : null}
+          {attribution.term ? (
+            <DetailRow term="Gematcht zoekwoord">
+              {attribution.term}
+              <span className="block text-[0.85rem] text-muted">Het zoekwoord dat Google Ads matchte (utm_term), niet de zoekopdracht van de bezoeker.</span>
+            </DetailRow>
+          ) : null}
+          {attribution.content ? <DetailRow term="Advertentie-id">{attribution.content}</DetailRow> : null}
+          {attribution.adgroupId ? <DetailRow term="Advertentiegroep-id">{attribution.adgroupId}</DetailRow> : null}
+          {attribution.matchType ? <DetailRow term="Matchtype">{matchTypeLabel(attribution.matchType)}</DetailRow> : null}
           <DetailRow term="Landingspagina">
             <span className="tabular break-all">{attribution.landingPath}</span>
           </DetailRow>
@@ -114,19 +108,50 @@ function AttributionSummary({ attribution, adClickIds }: { attribution: Attribut
   );
 }
 
-export default function InquiryDetail({ inquiry, customerId }: { inquiry: Inquiry; customerId: string | null }) {
-  // Local state while editing; the stored record is what the page was given.
-  const [status, setStatus] = useState(isInquiryStatus(inquiry.status) ? inquiry.status : "new");
-  const [internalNote, setInternalNote] = useState(inquiry.internalNote ?? "");
-  const { save, pending, error, savedAt } = useSave();
+/** Google's `{matchtype}` values, spelled out; anything else as received. */
+function matchTypeLabel(value: string): string {
+  const labels: Record<string, string> = { e: "Exact (e)", p: "Zinsdeel (p)", b: "Breed (b)" };
+  return labels[value] ?? value;
+}
 
-  const dirty = status !== inquiry.status || internalNote !== (inquiry.internalNote ?? "");
+/**
+ * The consent choice the request itself carried, and the id the browser
+ * reported to Google Ads and Meta for it. Provenance for any later sharing
+ * of an outcome: nothing here is a decision, only what was recorded.
+ */
+function ProvenanceSummary({ consent, leadEventId }: { consent: ConsentAtCapture | undefined; leadEventId: string | undefined }) {
+  return (
+    <AdminSection id="provenance" title="Toestemming bij binnenkomst" note="Zoals het verzoek zelf het meestuurde">
+      <DetailList>
+        <DetailRow term="Marketing">
+          {consent ? (
+            <>
+              {consent.marketing ? "Toegestaan" : "Niet toegestaan"}
+              <span className="block text-[0.85rem] text-muted">
+                Keuze van {formatDateTime(consent.decidedAt)}, tekstversie {consent.version}
+              </span>
+            </>
+          ) : (
+            <span className="text-muted">Geen geldige keuze meegestuurd</span>
+          )}
+        </DetailRow>
+        <DetailRow term="Lead-id (Ads/Meta)">
+          {leadEventId ? <span className="tabular break-all text-[0.88rem]">{leadEventId}</span> : <span className="text-muted">—</span>}
+        </DetailRow>
+      </DetailList>
+    </AdminSection>
+  );
+}
 
-  const reset = () => {
-    setStatus(isInquiryStatus(inquiry.status) ? inquiry.status : "new");
-    setInternalNote(inquiry.internalNote ?? "");
-  };
+type InquiryDetailProps = {
+  inquiry: Inquiry;
+  customerId: string | null;
+  prefill: InquiryValuePrefill;
+  suggestedService?: ServiceKey;
+  events: InquiryStatusEvent[];
+};
 
+export default function InquiryDetail({ inquiry, customerId, prefill, suggestedService, events }: InquiryDetailProps) {
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12">
       <div className="space-y-10">
@@ -173,53 +198,12 @@ export default function InquiryDetail({ inquiry, customerId }: { inquiry: Inquir
         {inquiry.origin === "project_planner" ? <PlannerSummary inquiry={inquiry} /> : null}
 
         <AttributionSummary attribution={inquiry.attribution} adClickIds={inquiry.adClickIds} />
+
+        <ProvenanceSummary consent={inquiry.consent} leadEventId={inquiry.leadEventId} />
       </div>
 
       <aside className="space-y-8 lg:border-l lg:border-line lg:pl-8" aria-labelledby="handling-heading">
-        <div>
-          <h2 id="handling-heading" className="label-mono text-ink">
-            Afhandeling
-          </h2>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <StatusBadge tone={inquiryStatusTone[status]}>{inquiryStatusLabels[status]}</StatusBadge>
-            {dirty ? <StatusBadge tone="accent">Niet opgeslagen</StatusBadge> : null}
-          </div>
-          <div className="mt-5 space-y-5">
-            <SelectField
-              id="inquiry-status"
-              label="Status"
-              value={status}
-              onChange={(event) => (isInquiryStatus(event.target.value) ? setStatus(event.target.value) : null)}
-            >
-              {inquiryStatusOrder.map((value) => (
-                <option key={value} value={value}>
-                  {inquiryStatusLabels[value]}
-                </option>
-              ))}
-            </SelectField>
-            <TextareaField
-              id="inquiry-note"
-              label="Interne notitie"
-              optional
-              value={internalNote}
-              onChange={(event) => setInternalNote(event.target.value)}
-              placeholder="Alleen zichtbaar in de admin"
-            />
-            <SaveControls
-              label="Opslaan"
-              pending={pending}
-              error={error}
-              savedAt={savedAt}
-              disabled={!dirty}
-              onSave={() => save(() => saveInquiryHandling(inquiry.id, { status, internalNote }))}
-            />
-            {dirty ? (
-              <AdminButton variant="secondary" onClick={reset}>
-                Wijzigingen ongedaan maken
-              </AdminButton>
-            ) : null}
-          </div>
-        </div>
+        <InquiryPipeline inquiry={inquiry} prefill={prefill} suggestedService={suggestedService} events={events} />
 
         <ConvertToCustomer source="inquiry" sourceId={inquiry.id} customerId={customerId} />
       </aside>

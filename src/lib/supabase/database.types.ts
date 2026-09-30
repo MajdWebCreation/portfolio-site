@@ -2,7 +2,7 @@
  * Generated from the Supabase schema; do not edit by hand.
  *
  * Regenerate after every migration:
- *   npx supabase gen types typescript --project-id wbrqbuctwzpobnvcsomt \
+ *   npx supabase gen types typescript --project-id wbrqbuctwzpobnvcsomt --schema public \
  *     > src/lib/supabase/database.types.ts
  */
 
@@ -19,31 +19,6 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
   }
   public: {
     Tables: {
@@ -258,6 +233,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "customer_communications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
+          {
             foreignKeyName: "customer_communications_invoice_same_customer"
             columns: ["invoice_id", "customer_id"]
             isOneToOne: false
@@ -322,6 +304,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_payment_providers_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
           },
         ]
       }
@@ -389,6 +378,13 @@ export type Database = {
             columns: ["source_inquiry_id"]
             isOneToOne: false
             referencedRelation: "inquiries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_source_inquiry_id_fkey"
+            columns: ["source_inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
             referencedColumns: ["id"]
           },
           {
@@ -467,6 +463,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "debit_prenotifications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
+          {
             foreignKeyName: "debit_prenotifications_invoice_id_fkey"
             columns: ["invoice_id"]
             isOneToOne: false
@@ -519,84 +522,177 @@ export type Database = {
       }
       inquiries: {
         Row: {
+          adgroup_id: string | null
           campaign: string | null
           company: string | null
+          consent_decided_at: string | null
+          consent_version: number | null
+          currency: string
           email: string
           gbraid: string | null
           gclid: string | null
           id: string
           internal_note: string | null
           landing_path: string | null
+          lead_event_id: string | null
           locale: string
+          lost_reason: string | null
+          marketing_consent: boolean | null
+          match_type: string | null
           message: string
           name: string
           origin: string
           phone: string | null
           planner: Json | null
+          quoted_value_cents: number | null
           received_at: string
+          recurring_monthly_cents: number | null
+          service_interest: string | null
           status: string
+          status_changed_at: string
           traffic_class: string | null
           traffic_medium: string | null
           traffic_source: string | null
           updated_at: string
           utm_content: string | null
           utm_term: string | null
-          website_url: string | null
           wbraid: string | null
+          website_url: string | null
+          won_value_cents: number | null
         }
         Insert: {
+          adgroup_id?: string | null
           campaign?: string | null
           company?: string | null
+          consent_decided_at?: string | null
+          consent_version?: number | null
+          currency?: string
           email: string
           gbraid?: string | null
           gclid?: string | null
           id?: string
           internal_note?: string | null
           landing_path?: string | null
+          lead_event_id?: string | null
           locale: string
+          lost_reason?: string | null
+          marketing_consent?: boolean | null
+          match_type?: string | null
           message: string
           name: string
           origin: string
           phone?: string | null
           planner?: Json | null
+          quoted_value_cents?: number | null
           received_at?: string
+          recurring_monthly_cents?: number | null
+          service_interest?: string | null
           status?: string
+          status_changed_at?: string
           traffic_class?: string | null
           traffic_medium?: string | null
           traffic_source?: string | null
           updated_at?: string
           utm_content?: string | null
           utm_term?: string | null
-          website_url?: string | null
           wbraid?: string | null
+          website_url?: string | null
+          won_value_cents?: number | null
         }
         Update: {
+          adgroup_id?: string | null
           campaign?: string | null
           company?: string | null
+          consent_decided_at?: string | null
+          consent_version?: number | null
+          currency?: string
           email?: string
           gbraid?: string | null
           gclid?: string | null
           id?: string
           internal_note?: string | null
           landing_path?: string | null
+          lead_event_id?: string | null
           locale?: string
+          lost_reason?: string | null
+          marketing_consent?: boolean | null
+          match_type?: string | null
           message?: string
           name?: string
           origin?: string
           phone?: string | null
           planner?: Json | null
+          quoted_value_cents?: number | null
           received_at?: string
+          recurring_monthly_cents?: number | null
+          service_interest?: string | null
           status?: string
+          status_changed_at?: string
           traffic_class?: string | null
           traffic_medium?: string | null
           traffic_source?: string | null
           updated_at?: string
           utm_content?: string | null
           utm_term?: string | null
-          website_url?: string | null
           wbraid?: string | null
+          website_url?: string | null
+          won_value_cents?: number | null
         }
         Relationships: []
+      }
+      inquiry_status_events: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          currency: string | null
+          from_status: string | null
+          id: string
+          inquiry_id: string
+          lost_reason: string | null
+          recurring_monthly_cents: number | null
+          to_status: string
+          value_cents: number | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          currency?: string | null
+          from_status?: string | null
+          id?: string
+          inquiry_id: string
+          lost_reason?: string | null
+          recurring_monthly_cents?: number | null
+          to_status: string
+          value_cents?: number | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          currency?: string | null
+          from_status?: string | null
+          id?: string
+          inquiry_id?: string
+          lost_reason?: string | null
+          recurring_monthly_cents?: number | null
+          to_status?: string
+          value_cents?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_status_events_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "inquiries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inquiry_status_events_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_collection_events: {
         Row: {
@@ -786,6 +882,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invoice_payment_links_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
+          {
             foreignKeyName: "invoice_payment_links_invoice_same_customer"
             columns: ["invoice_id", "customer_id"]
             isOneToOne: false
@@ -910,6 +1013,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
           },
           {
             foreignKeyName: "invoices_project_same_customer"
@@ -1042,6 +1152,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
           },
           {
             foreignKeyName: "payments_invoice_id_fkey"
@@ -1220,6 +1337,13 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "projects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
         ]
       }
       quote_lines: {
@@ -1348,6 +1472,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "quotes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
+          {
             foreignKeyName: "quotes_project_same_customer"
             columns: ["project_id", "customer_id"]
             isOneToOne: false
@@ -1462,6 +1593,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "recurring_services_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
+          {
             foreignKeyName: "recurring_services_project_same_customer"
             columns: ["project_id", "customer_id"]
             isOneToOne: false
@@ -1472,7 +1610,45 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      inquiry_funnel: {
+        Row: {
+          ads_adgroup_id: string | null
+          ads_campaign_id: string | null
+          ads_creative_id: string | null
+          ads_match_type: string | null
+          ads_matched_keyword: string | null
+          campaign: string | null
+          consent_version: number | null
+          currency: string | null
+          customer_id: string | null
+          explicit_contacted_at: string | null
+          genuine: boolean | null
+          has_ads_click: boolean | null
+          id: string | null
+          invoiced_net_cents: number | null
+          landing_path: string | null
+          lost_at: string | null
+          lost_reason: string | null
+          marketing_consent: boolean | null
+          origin: string | null
+          paid_gross_cents: number | null
+          quote_sent_at: string | null
+          quoted_value_cents: number | null
+          reached_contacted_at: string | null
+          reached_qualified_at: string | null
+          received_at: string | null
+          recurring_monthly_cents: number | null
+          service_interest: string | null
+          status: string | null
+          status_changed_at: string | null
+          traffic_class: string | null
+          traffic_medium: string | null
+          traffic_source: string | null
+          won_at: string | null
+          won_value_cents: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       assign_quote_number: { Args: { p_quote_id: string }; Returns: string }
@@ -1625,9 +1801,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

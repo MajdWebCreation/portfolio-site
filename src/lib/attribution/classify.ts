@@ -31,6 +31,9 @@ export type ClassifyInput = {
   utmCampaign?: string | null;
   utmTerm?: string | null;
   utmContent?: string | null;
+  /** `adgroup_id` and `match_type` of the landing URL: Google Ads' ad group and match type, next to the UTM values. */
+  adgroupId?: string | null;
+  matchType?: string | null;
   /** Whether the URL carried a Google Ads click identifier; the value itself is not needed here. */
   googleAdClick?: boolean;
   /** The site's own hostname, so its own pages are recognised as internal. */
@@ -77,9 +80,26 @@ function sameSite(hostname: string, ownHostname: string): boolean {
   return host === own || (own !== "" && host.endsWith(`.${own}`));
 }
 
-/** `utm_term` and `utm_content`, only when present: an attribution without them keeps its old shape. */
-function termAndContent(term: string | null, content: string | null): Pick<Attribution, "term" | "content"> {
-  return { ...(term ? { term } : {}), ...(content ? { content } : {}) };
+/**
+ * `utm_term`, `utm_content`, `adgroup_id` and `match_type`, each only when
+ * present: an attribution without them keeps its old shape. Vocabulary, so
+ * the four are never confused later: `term` is the keyword Google matched
+ * (`{keyword}`), not the search term the visitor typed, which no landing URL
+ * carries; `content` is the ad (creative) id; `adgroupId` the ad group;
+ * `matchType` Google's `e`, `p` or `b`.
+ */
+function extras(
+  term: string | null,
+  content: string | null,
+  adgroupId: string | null,
+  matchType: string | null,
+): Pick<Attribution, "term" | "content" | "adgroupId" | "matchType"> {
+  return {
+    ...(term ? { term } : {}),
+    ...(content ? { content } : {}),
+    ...(adgroupId ? { adgroupId } : {}),
+    ...(matchType ? { matchType } : {}),
+  };
 }
 
 export function classifyAttribution(input: ClassifyInput): Attribution | null {
@@ -89,9 +109,11 @@ export function classifyAttribution(input: ClassifyInput): Attribution | null {
   const utmSource = cleanUtmValue(input.utmSource, attributionLimits.trafficSource);
   const utmMedium = cleanUtmValue(input.utmMedium, attributionLimits.trafficMedium);
   const campaign = cleanUtmValue(input.utmCampaign, attributionLimits.campaign);
-  const extra = termAndContent(
+  const extra = extras(
     cleanUtmValue(input.utmTerm, attributionLimits.term),
     cleanUtmValue(input.utmContent, attributionLimits.content),
+    cleanUtmValue(input.adgroupId, attributionLimits.adgroupId),
+    cleanUtmValue(input.matchType, attributionLimits.matchType),
   );
 
   if (utmSource) {
@@ -173,6 +195,12 @@ export function validateAttribution(input: unknown): Attribution | null {
   const content = validOptional(raw.content, attributionLimits.content);
   if (content === false) return null;
 
+  const adgroupId = validOptional(raw.adgroupId, attributionLimits.adgroupId);
+  if (adgroupId === false) return null;
+
+  const matchType = validOptional(raw.matchType, attributionLimits.matchType);
+  if (matchType === false) return null;
+
   const landingPath = typeof raw.landingPath === "string" ? cleanLandingPath(raw.landingPath) : null;
   if (!landingPath || landingPath !== raw.landingPath) return null;
 
@@ -182,7 +210,7 @@ export function validateAttribution(input: unknown): Attribution | null {
     if (!known || known.trafficClass !== trafficClass || known.source !== trafficSource) return null;
   }
 
-  return { trafficClass, trafficSource, trafficMedium, campaign, ...termAndContent(term, content), landingPath };
+  return { trafficClass, trafficSource, trafficMedium, campaign, ...extras(term, content, adgroupId, matchType), landingPath };
 }
 
 /*

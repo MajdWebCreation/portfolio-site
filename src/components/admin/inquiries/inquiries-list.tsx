@@ -11,7 +11,7 @@ import {
   inquiryStatusLabels,
   inquiryStatusOrder,
   inquiryStatusTone,
-  isInquiryStatus,
+  openInquiryStatuses,
   summarizeInquiry,
   type Inquiry,
   type InquiryOrigin,
@@ -28,7 +28,8 @@ const originOptions: readonly { value: OriginFilter; label: string }[] = [
 
 export default function InquiriesList({ inquiries }: { inquiries: Inquiry[] }) {
   const [origin, setOrigin] = useState<OriginFilter>("all");
-  const [status, setStatus] = useState<string>("all");
+  /* Open work first: what still needs a call, a quote or a decision. "Alle" shows won and lost as well. */
+  const [status, setStatus] = useState<string>("open");
   const [trafficClass, setTrafficClass] = useState<string>("all");
   const [trafficSource, setTrafficSource] = useState<string>("all");
   const [query, setQuery] = useState("");
@@ -39,10 +40,10 @@ export default function InquiriesList({ inquiries }: { inquiries: Inquiry[] }) {
     [inquiries],
   );
 
-  const filtered = origin !== "all" || status !== "all" || trafficClass !== "all" || trafficSource !== "all" || query.trim() !== "";
+  const filtered = origin !== "all" || status !== "open" || trafficClass !== "all" || trafficSource !== "all" || query.trim() !== "";
   function reset() {
     setOrigin("all");
-    setStatus("all");
+    setStatus("open");
     setTrafficClass("all");
     setTrafficSource("all");
     setQuery("");
@@ -52,7 +53,7 @@ export default function InquiriesList({ inquiries }: { inquiries: Inquiry[] }) {
     const needle = query.trim().toLowerCase();
     return inquiries
       .filter((inquiry) => origin === "all" || inquiry.origin === origin)
-      .filter((inquiry) => status === "all" || inquiry.status === status)
+      .filter((inquiry) => status === "all" || (status === "open" ? openInquiryStatuses.includes(inquiry.status) : inquiry.status === status))
       .filter((inquiry) =>
         trafficClass === "all" ? true : trafficClass === "none" ? !inquiry.attribution : inquiry.attribution?.trafficClass === trafficClass,
       )
@@ -72,6 +73,7 @@ export default function InquiriesList({ inquiries }: { inquiries: Inquiry[] }) {
       <FilterBar label="Aanvragen filteren">
         <SegmentedField name="origin" label="Herkomst" value={origin} options={originOptions} onChange={setOrigin} />
         <FilterSelect id="inquiry-status" label="Status" value={status} onChange={setStatus}>
+          <option value="open">Open</option>
           <option value="all">Alle statussen</option>
           {inquiryStatusOrder.map((value) => (
             <option key={value} value={value}>
@@ -121,6 +123,7 @@ export default function InquiriesList({ inquiries }: { inquiries: Inquiry[] }) {
               <th scope="col">Ontvangen</th>
               <th scope="col">Bezoek via</th>
               <th scope="col">Status</th>
+              <th scope="col">Laatste wijziging</th>
               <th scope="col" className="adm-xl">
                 Samenvatting
               </th>
@@ -159,9 +162,10 @@ export default function InquiriesList({ inquiries }: { inquiries: Inquiry[] }) {
                   )}
                 </td>
                 <td data-label="Status">
-                  <StatusBadge tone={inquiryStatusTone[isInquiryStatus(inquiry.status) ? inquiry.status : "new"]}>
-                    {inquiryStatusLabels[inquiry.status]}
-                  </StatusBadge>
+                  <StatusBadge tone={inquiryStatusTone[inquiry.status]}>{inquiryStatusLabels[inquiry.status]}</StatusBadge>
+                </td>
+                <td data-label="Laatste wijziging">
+                  <time dateTime={inquiry.statusChangedAt}>{formatDateTime(inquiry.statusChangedAt)}</time>
                 </td>
                 <td data-label="Samenvatting" className="adm-xl max-w-[26rem] text-muted">
                   {summarizeInquiry(inquiry)}

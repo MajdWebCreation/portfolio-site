@@ -599,6 +599,55 @@ describe("Google Ads attribution on the request", () => {
     }
   });
 
+  it("stores the same lead event id it returns, so the row and Google Ads / Meta name one event", async () => {
+    const response = await POST(withConsent({ ...visitor, attribution: paid, adClickIds: { gclid: GCLID } }, true));
+    const json = await response.json();
+    expect(isLeadEventId(json.leadEventId)).toBe(true);
+    expect(storeInquiry).toHaveBeenCalledWith(expect.objectContaining({ leadEventId: json.leadEventId }));
+  });
+
+  it("stores the consent snapshot the request carried: yes, no, or nothing", async () => {
+    const decidedAt = "2026-09-30T18:00:00Z";
+    for (const marketing of [true, false]) {
+      storeInquiry.mockClear();
+      const value = serializeConsent({ version: CONSENT_VERSION, analytics: false, recordings: false, marketing, decidedAt });
+      await POST(
+        new Request("http://localhost/api/contact", {
+          method: "POST",
+          headers: { "content-type": "application/json", cookie: `${CONSENT_COOKIE}=${encodeURIComponent(value)}` },
+          body: JSON.stringify(visitor),
+        }),
+      );
+      expect(storeInquiry).toHaveBeenCalledWith(expect.objectContaining({ consent: { marketing, version: CONSENT_VERSION, decidedAt } }));
+    }
+
+    storeInquiry.mockClear();
+    await POST(withConsent(visitor, null));
+    expect(storeInquiry).toHaveBeenCalledWith(expect.objectContaining({ consent: null }));
+
+    /* An outdated version is no current choice. */
+    storeInquiry.mockClear();
+    const stale = serializeConsent({ version: CONSENT_VERSION - 1, analytics: true, recordings: true, marketing: true, decidedAt });
+    await POST(
+      new Request("http://localhost/api/contact", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: `${CONSENT_COOKIE}=${encodeURIComponent(stale)}` },
+        body: JSON.stringify({ ...visitor, adClickIds: { gclid: GCLID } }),
+      }),
+    );
+    expect(storeInquiry).toHaveBeenCalledWith(expect.objectContaining({ consent: null, adClickIds: null }));
+  });
+
+  it("keeps the ad group id and match type of an attributed request, and refuses them tampered", async () => {
+    await POST(withConsent({ ...visitor, attribution: { ...paid, adgroupId: "112233445566", matchType: "e" } }, true));
+    expect(storeInquiry).toHaveBeenCalledWith(expect.objectContaining({ attribution: { ...paid, adgroupId: "112233445566", matchType: "e" } }));
+
+    storeInquiry.mockClear();
+    await POST(withConsent({ ...visitor, attribution: { ...paid, adgroupId: "<script>" } }, true));
+    expect(storeInquiry).toHaveBeenCalledWith(expect.objectContaining({ attribution: null }));
+    expect(loggedText()).not.toContain("script");
+  });
+
   it("drops a click id that is not shaped like one, and never logs it", async () => {
     await POST(withConsent({ ...visitor, adClickIds: { gclid: "<script>alert(1)</script>", wbraid: "short" } }, true));
     expect(storeInquiry).toHaveBeenCalledWith(expect.objectContaining({ adClickIds: null }));

@@ -1,51 +1,65 @@
--- Lead quality per channel: inquiry -> qualified -> quote -> won -> paid revenue.
+-- Lead quality per channel, from the reporting contract `inquiry_funnel`
+-- (migration 20260930193617_inquiry_lifecycle).
 --
--- Run in the Supabase SQL editor (read-only). Every step comes from data the
--- admin already keeps; nothing extra has to be filled in:
+-- Run in the Supabase SQL editor (read-only). Vocabulary, so nothing is
+-- confused later:
 --
---   inquiry    public.inquiries (date = received_at, channel = traffic_*,
---              campaign/utm_term, Google Ads click = gclid/gbraid/wbraid)
---   qualified  inquiry status set to "qualified" in the admin, or converted
---              to a customer ("Klant aanmaken" sets customers.source_inquiry_id)
---   quoted     a quote for that customer that was sent (sent/accepted/
---              rejected/expired)
---   won        a quote for that customer with status "accepted"
---   revenue    payments with status "paid" for that customer (euros, incl.
---              VAT as charged); swap in invoice lines for an excl.-VAT figure
+--   genuine               not lost as spam or duplicate: the base of every rate
+--   reached_qualified_at  earliest evidence of qualified or later (a won lead
+--                         was qualified); reached_contacted_at likewise
+--   explicit_contacted_at the RECORDED contact only: use it for response
+--                         time, never reached_contacted_at
+--   quote_sent_at         an explicit "Offerte verstuurd" only
+--   won_at / lost_at      only while the current status is won / lost
+--   quoted / won / recurring value
+--                         business snapshots at the row (current), EUR excl.
+--                         VAT; the value at the moment of the outcome is on
+--                         inquiry_status_events
+--   invoiced_net_cents / paid_gross_cents
+--                         realised revenue through the customer: accounting
+--                         truth, kept apart from the snapshots
+--   ads_campaign_id       Google Ads campaign id (utm_campaign={campaignid})
+--   ads_matched_keyword   the keyword Google MATCHED (utm_term={keyword}),
+--                         not the search term the visitor typed, which is
+--                         not captured per inquiry (Google Ads' search terms
+--                         report is the only source of that)
+--   ads_creative_id       the ad id (utm_content={creative})
+--   ads_adgroup_id / ads_match_type
+--                         {adgroupid} / {matchtype} from the landing URL
 --
--- The one manual habit this needs: convert a real prospect to a customer from
--- the inquiry (not by creating a fresh customer), and mark quotes accepted.
 -- Adjust the date filter to the campaign period.
 
-with base as (
-  select i.id, i.received_at::date as day, i.origin, i.status,
-         coalesce(i.traffic_class, 'unknown') as traffic_class,
-         i.traffic_source, i.traffic_medium, i.campaign, i.utm_term,
-         (i.gclid is not null or i.gbraid is not null or i.wbraid is not null) as has_ads_click,
-         c.id as customer_id
-  from public.inquiries i
-  left join public.customers c on c.source_inquiry_id = i.id
-  where i.received_at >= date '2026-10-01'
-), quotes_agg as (
-  select q.customer_id,
-         count(*) filter (where q.status in ('sent', 'accepted', 'rejected', 'expired')) as quotes_sent,
-         count(*) filter (where q.status = 'accepted') as quotes_accepted
-  from public.quotes q
-  group by q.customer_id
-), revenue as (
-  select p.customer_id, sum(p.amount_cents) filter (where p.status = 'paid') as paid_cents
-  from public.payments p
-  group by p.customer_id
+with f as (
+  select *
+  from public.inquiry_funnel
+  where received_at >= date '2026-10-01'
 )
-select b.traffic_class, b.traffic_source, b.traffic_medium, b.campaign,
-       count(*) as inquiries,
-       count(*) filter (where b.has_ads_click) as with_ads_click,
-       count(*) filter (where b.status = 'qualified' or b.customer_id is not null) as qualified,
-       count(*) filter (where coalesce(qa.quotes_sent, 0) > 0) as quoted,
-       count(*) filter (where coalesce(qa.quotes_accepted, 0) > 0) as won,
-       coalesce(sum(r.paid_cents), 0) / 100.0 as paid_revenue_eur
-from base b
-left join quotes_agg qa on qa.customer_id = b.customer_id
-left join revenue r on r.customer_id = b.customer_id
-group by 1, 2, 3, 4
-order by inquiries desc;
+select
+  coalesce(traffic_class, 'unknown') as traffic_class,
+  traffic_source,
+  traffic_medium,
+  ads_campaign_id,
+  ads_matched_keyword,
+  ads_match_type,
+  count(*) filter (where genuine)                                                  as leads,
+  count(*) filter (where not genuine)                                              as spam_or_duplicate,
+  count(*) filter (where has_ads_click)                                            as with_ads_click,
+  count(*) filter (where genuine and reached_qualified_at is not null)             as qualified,
+  count(*) filter (where quote_sent_at is not null)                                as quoted,
+  count(*) filter (where won_at is not null)                                       as won,
+  count(*) filter (where lost_at is not null and genuine)                          as lost,
+  round(avg(extract(epoch from (explicit_contacted_at - received_at)) / 3600.0) filter (where explicit_contacted_at is not null), 1)
+                                                                                   as hours_to_recorded_contact,
+  coalesce(sum(quoted_value_cents), 0) / 100.0                                     as quoted_value_eur,
+  coalesce(sum(won_value_cents) filter (where won_at is not null), 0) / 100.0      as won_one_off_eur,
+  coalesce(sum(recurring_monthly_cents) filter (where won_at is not null), 0) / 100.0
+                                                                                   as won_monthly_eur,
+  coalesce(sum(invoiced_net_cents), 0) / 100.0                                     as invoiced_net_eur,
+  coalesce(sum(paid_gross_cents), 0) / 100.0                                       as paid_gross_eur
+from f
+group by 1, 2, 3, 4, 5, 6
+order by leads desc;
+
+-- Per lost reason, to see what a keyword brings in.
+-- select lost_reason, ads_matched_keyword, count(*) from public.inquiry_funnel
+-- where lost_at is not null group by 1, 2 order by 3 desc;

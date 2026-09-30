@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { cleanAdClickIds, validateAttribution } from "@/lib/attribution/classify";
 import { CONSENT_COOKIE, parseConsent, readCookieValue } from "@/lib/consent/consent";
-import { storeInquiry } from "@/lib/contact/inquiry";
+import { storeInquiry, type ConsentSnapshot } from "@/lib/contact/inquiry";
 import type { ContactMode, ContactPayload } from "@/lib/contact/payload";
 import { normalizeWebsiteUrl, websiteUrlHost } from "@/lib/contact/website-url";
 import { reportMetaLead } from "@/lib/meta/capi";
@@ -100,12 +100,18 @@ function normalizeSubmission(body: ContactPayload): NormalizedSubmission {
 */
 export const CONTACT_RATE_LIMIT = { requests: 6, windowSeconds: 10 * 60 } as const;
 
-/** Whether this request's own consent cookie holds a current yes to marketing. */
-function hasMarketingConsent(request: Request): boolean {
+/**
+ * The current choice in this request's own consent cookie, as the three
+ * facts the cookie holds: marketing yes or no, the text version, the moment.
+ * Null for no cookie, an outdated version or a garbled value -- all of which
+ * mean "no current choice" to the site.
+ */
+function consentSnapshot(request: Request): ConsentSnapshot | null {
   try {
-    return parseConsent(readCookieValue(request.headers.get("cookie") ?? "", CONSENT_COOKIE))?.marketing === true;
+    const decision = parseConsent(readCookieValue(request.headers.get("cookie") ?? "", CONSENT_COOKIE));
+    return decision ? { marketing: decision.marketing, version: decision.version, decidedAt: decision.decidedAt } : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -432,14 +438,22 @@ export async function POST(request: Request) {
       Without it the inquiry still records the channel above (a paid Google
       click is `campaign` / `google` / `cpc` either way), just not the click.
     */
-    const adClickIds = hasMarketingConsent(request) ? cleanAdClickIds(body.adClickIds) : null;
+    const consent = consentSnapshot(request);
+    const adClickIds = consent?.marketing === true ? cleanAdClickIds(body.adClickIds) : null;
+
+    /*
+      The id of this lead for the outside world, made before the row exists
+      so the row carries the same value the browser gets: Google Ads holds it
+      as transaction_id, Meta as event_id (lib/tracking/conversions.ts).
+    */
+    const leadEventId = createLeadEventId();
 
     // Stored before anything is sent, and a failure here is reported as a
     // failure: a visitor must never be told the request came through when
     // there is no record of it. The mail below is the notification, not the
     // record.
     try {
-      await storeInquiry({ origin: mode, locale, name, email, company, message, phone, planner, websiteUrl, attribution, adClickIds });
+      await storeInquiry({ origin: mode, locale, name, email, company, message, phone, planner, websiteUrl, attribution, adClickIds, leadEventId, consent });
     } catch (error) {
       // No visitor data in the log line: Vercel keeps these, and an address
       // does not help anyone read the failure.
@@ -484,7 +498,6 @@ export async function POST(request: Request) {
       only when this request's own consent cookie says yes to marketing, and
       only after this answer is sent, so Meta can never fail the inquiry.
     */
-    const leadEventId = createLeadEventId();
     reportMetaLead({ request, eventId: leadEventId, form: mode });
     return Response.json({ ok: true, leadEventId });
   } catch (error) {

@@ -199,6 +199,38 @@ describe("a Google Ads click", () => {
     expect(validateAttribution(value)).toEqual(value);
   });
 
+  it("keeps the ad group id and match type next to the matched keyword, cleaned, and validates them on the server", () => {
+    const value = classify({
+      referrer: "https://www.google.nl/",
+      googleAdClick: true,
+      utmSource: "google",
+      utmMedium: "cpc",
+      utmCampaign: "123456",
+      utmTerm: "website laten maken",
+      utmContent: "987654",
+      adgroupId: "112233445566",
+      matchType: "E",
+    });
+    expect(value).toEqual({
+      trafficClass: "campaign",
+      trafficSource: "google",
+      trafficMedium: "cpc",
+      campaign: "123456",
+      term: "website laten maken",
+      content: "987654",
+      adgroupId: "112233445566",
+      matchType: "e",
+      landingPath: base.landingPath,
+    });
+    expect(validateAttribution(value)).toEqual(value);
+    /* A click id alone carries them too. */
+    expect(classify({ referrer: "", googleAdClick: true, adgroupId: "1", matchType: "b" })).toMatchObject({ adgroupId: "1", matchType: "b" });
+    /* Tampered values are dropped in the browser and refuse the whole payload on the server. */
+    expect(classify({ referrer: "", utmSource: "google", adgroupId: "<x>", matchType: "e" })).not.toHaveProperty("adgroupId");
+    expect(validateAttribution({ ...value, adgroupId: "<x>" })).toBeNull();
+    expect(validateAttribution({ ...value, matchType: "a".repeat(21) })).toBeNull();
+  });
+
   it("drops a term with characters a UTM value does not have, without losing the rest", () => {
     const value = classify({ referrer: "", utmSource: "google", utmTerm: "<b>x</b>" });
     expect(value).toMatchObject({ trafficClass: "campaign", trafficSource: "google" });

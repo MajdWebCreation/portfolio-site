@@ -56,7 +56,11 @@ function writeStored(value: Attribution | null): void {
   }
 }
 
-/** Only the five UTM keys and Google's click identifiers are read; everything else in the query is left alone. */
+/**
+ * Only the five UTM keys, Google Ads' `adgroup_id` and `match_type` (the
+ * account's Final URL suffix appends them) and Google's click identifiers are
+ * read; everything else in the query is left alone.
+ */
 function utmFrom(search: string) {
   const params = new URLSearchParams(search);
   return {
@@ -65,6 +69,8 @@ function utmFrom(search: string) {
     campaign: params.get("utm_campaign"),
     term: params.get("utm_term"),
     content: params.get("utm_content"),
+    adgroupId: params.get("adgroup_id"),
+    matchType: params.get("match_type"),
     clickIds: cleanAdClickIds({ gclid: params.get("gclid"), gbraid: params.get("gbraid"), wbraid: params.get("wbraid") }),
   };
 }
@@ -103,6 +109,8 @@ export function captureAttribution(): Attribution | null {
     utmCampaign: utm.campaign,
     utmTerm: utm.term,
     utmContent: utm.content,
+    adgroupId: utm.adgroupId,
+    matchType: utm.matchType,
     googleAdClick: clickIds !== null,
     ownHostname: window.location.hostname,
     landingPath: window.location.pathname,

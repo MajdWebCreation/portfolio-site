@@ -5,6 +5,8 @@ import AdminPageHeader from "@/components/admin/admin-page-header";
 import InquiryDetail from "@/components/admin/inquiries/inquiry-detail";
 import { requireAdminAccess } from "@/lib/admin/access";
 import { getCustomerIdForSource } from "@/lib/admin/customers/repository";
+import { listInquiryStatusEvents, loadInquiryValuePrefill } from "@/lib/admin/inquiries/repository";
+import { suggestServiceInterest } from "@/lib/admin/inquiries/service-interest";
 import { inquiryOriginLabels } from "@/lib/admin/inquiries/types";
 import { readInquiry } from "@/lib/admin/readers";
 
@@ -27,6 +29,9 @@ export default async function InquiryPage({ params }: PageProps) {
   }
 
   const customerId = await getCustomerIdForSource("inquiry", inquiry.id);
+  /* The history and the value proposals need nothing from each other. */
+  const [events, prefill] = await Promise.all([listInquiryStatusEvents(inquiry.id), loadInquiryValuePrefill(customerId)]);
+  const suggestedService = suggestServiceInterest(inquiry);
 
   return (
     <div className="space-y-8">
@@ -39,7 +44,7 @@ export default async function InquiryPage({ params }: PageProps) {
           </Link>
         }
       />
-      <InquiryDetail inquiry={inquiry} customerId={customerId} />
+      <InquiryDetail inquiry={inquiry} customerId={customerId} prefill={prefill} suggestedService={suggestedService} events={events} />
     </div>
   );
 }

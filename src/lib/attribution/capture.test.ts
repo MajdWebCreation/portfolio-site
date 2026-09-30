@@ -130,6 +130,16 @@ describe("captureAttribution", () => {
     });
   });
 
+  it("reads adgroup_id and match_type from the landing URL and sends them with the inquiry", () => {
+    stubBrowser({
+      referrer: "https://www.google.com/",
+      path: "/nl/diensten/website-laten-maken",
+      search: "?gclid=Cj0KCQjw_test-GCLID_abc123BwE&utm_source=google&utm_medium=cpc&utm_campaign=123456&utm_term=website%20laten%20maken&utm_content=987654&adgroup_id=112233&match_type=p",
+    });
+    expect(captureAttribution()).toMatchObject({ campaign: "123456", term: "website laten maken", content: "987654", adgroupId: "112233", matchType: "p" });
+    expect(attributionPayload().attribution).toMatchObject({ adgroupId: "112233", matchType: "p" });
+  });
+
   it("keeps the ad click through client-side navigation to another page", () => {
     stubBrowser({ referrer: "https://www.google.com/", path: "/nl/diensten/website-laten-maken", search: "?gclid=Cj0KCQjw_test-GCLID_abc123BwE" });
     captureAttribution();

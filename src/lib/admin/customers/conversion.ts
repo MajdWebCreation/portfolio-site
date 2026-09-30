@@ -72,10 +72,14 @@ export async function createCustomerFromInquiry(inquiryId: string): Promise<Conv
     return actionFailed(error, "Klant aanmaken mislukt.");
   }
 
-  // The inquiry became a customer, which is what "gekwalificeerd" means in
-  // the existing status flow. A failure here does not undo the customer; the
-  // status can be set by hand and the link is already there.
-  await db.from("inquiries").update({ status: "qualified" }).eq("id", inquiryId);
+  // A customer record is administrative: it has to exist before a quote can
+  // be made, so making one says the request is worth quoting -- qualified --
+  // and nothing more. An inquiry that is already further along (a quote out,
+  // won) is left where it is, and won is never set here; that is a status the
+  // admin gives on purpose, with the values that belong to it. A failure here
+  // does not undo the customer; the status can be set by hand and the link is
+  // already there.
+  await db.from("inquiries").update({ status: "qualified" }).eq("id", inquiryId).in("status", ["new", "contacted"]);
 
   revalidatePath("/admin/aanvragen");
   revalidatePath(`/admin/aanvragen/${inquiryId}`);

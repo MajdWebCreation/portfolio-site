@@ -58,6 +58,17 @@ describe("storeInquiry for a websitecheck", () => {
       traffic_medium: "paid-social",
       campaign: "websitecheck-sep",
       landing_path: "/nl/websitecheck",
+      utm_term: null,
+      utm_content: null,
+      adgroup_id: null,
+      match_type: null,
+      gclid: null,
+      gbraid: null,
+      wbraid: null,
+      lead_event_id: null,
+      marketing_consent: null,
+      consent_version: null,
+      consent_decided_at: null,
     });
   });
 
@@ -160,19 +171,49 @@ describe("storeInquiry with paid search attribution", () => {
     });
   });
 
-  it("does not name the new columns at all when there is nothing for them", async () => {
+  it("names every intake column on every insert, null where there is nothing: one canonical row shape", async () => {
     await storeInquiry({ ...contact, attribution, adClickIds: null });
     const row = insert.mock.calls[0][0];
-    for (const column of ["utm_term", "utm_content", "gclid", "gbraid", "wbraid"]) expect(row).not.toHaveProperty(column);
+    for (const column of ["utm_term", "utm_content", "adgroup_id", "match_type", "gclid", "gbraid", "wbraid", "lead_event_id", "marketing_consent", "consent_version", "consent_decided_at"]) {
+      expect(row).toHaveProperty(column, null);
+    }
   });
 
-  it("still stores the inquiry, without them, when the database does not have the columns yet", async () => {
+  it("writes the ad group and match type of the landing URL next to the matched keyword", async () => {
+    await storeInquiry({ ...contact, attribution: { ...paid, adgroupId: "1234567890", matchType: "e" }, adClickIds: null });
+    expect(insert.mock.calls[0][0]).toMatchObject({ utm_term: "website laten maken", adgroup_id: "1234567890", match_type: "e" });
+  });
+
+  it("writes the lead event id and the consent snapshot the route hands it, and null consent columns for no choice", async () => {
+    await storeInquiry({
+      ...contact,
+      attribution: null,
+      leadEventId: "3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e",
+      consent: { marketing: true, version: 5, decidedAt: "2026-09-30T18:00:00.000Z" },
+    });
+    expect(insert.mock.calls[0][0]).toMatchObject({
+      lead_event_id: "3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e",
+      marketing_consent: true,
+      consent_version: 5,
+      consent_decided_at: "2026-09-30T18:00:00.000Z",
+    });
+
+    insert.mockClear();
+    await storeInquiry({ ...contact, attribution: null, leadEventId: "3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e", consent: null });
+    expect(insert.mock.calls[0][0]).toMatchObject({ lead_event_id: "3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e", marketing_consent: null, consent_version: null, consent_decided_at: null });
+  });
+
+  it("fails loudly on a schema mismatch instead of storing a row with fewer columns", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    insert.mockResolvedValueOnce({ error: { code: "PGRST204", message: "Could not find the 'gclid' column" } });
-    await storeInquiry({ ...contact, attribution: paid, adClickIds: { gclid: "Cj0KCQjw_test-GCLID" } });
-    expect(insert).toHaveBeenCalledTimes(2);
-    expect(insert.mock.calls[1][0]).not.toHaveProperty("gclid");
-    expect(insert.mock.calls[1][0]).toMatchObject({ traffic_class: "campaign", traffic_source: "google" });
+    for (const code of ["PGRST204", "42703", "42501"]) {
+      insert.mockClear();
+      insert.mockResolvedValueOnce({ error: { code, message: "Could not find the 'lead_event_id' column of 'inquiries'" } });
+      await expect(
+        storeInquiry({ ...contact, attribution: paid, adClickIds: { gclid: "Cj0KCQjw_test-GCLID" }, leadEventId: "3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e" }),
+      ).rejects.toThrow(`schema mismatch (${code})`);
+      expect(insert).toHaveBeenCalledTimes(1);
+    }
+    expect(JSON.stringify(error.mock.calls)).toContain("schema mismatch");
     expect(JSON.stringify(error.mock.calls)).not.toContain("Cj0KCQjw");
     error.mockRestore();
   });
