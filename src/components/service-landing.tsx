@@ -43,13 +43,23 @@ export type ServiceLandingLabels = {
   liveWork: string;
 };
 
+/**
+ * The header's prices, as the page built them from the catalog: one row per
+ * project type shown (the smallest first), each with its page range, and the
+ * monthly technical management every delivered product runs under.
+ */
+export type PriceSummary = {
+  rows: { name: string; scope: string | null; price: string }[];
+  management: string;
+};
+
 type ServiceLandingProps = {
   locale: Locale;
   service: LocalizedService;
   content: SiteContent;
   text: ServiceLandingLabels;
   breadcrumb: ReactNode;
-  priceLine: string | null;
+  priceSummary: PriceSummary | null;
   proofProjects: (Project & { casePath: string | null })[];
   whatsappHref: string;
   showReviews: boolean;
@@ -171,7 +181,7 @@ export default function ServiceLanding({
   content,
   text,
   breadcrumb,
-  priceLine,
+  priceSummary,
   proofProjects,
   whatsappHref,
   showReviews,
@@ -201,11 +211,24 @@ export default function ServiceLanding({
                 {service.intro}
               </p>
 
-              {priceLine ? (
-                <p className="rise rise-delay-1 mt-7 flex items-center gap-3 text-[1.02rem] font-medium text-paper">
-                  <span aria-hidden="true" className="block h-px w-8 bg-accent-soft" />
-                  {priceLine}
-                </p>
+              {priceSummary ? (
+                <div className="rise rise-delay-1 mt-7 flex items-start gap-3">
+                  <span aria-hidden="true" className="mt-[0.7rem] block h-px w-8 shrink-0 bg-accent-soft" />
+                  <div className="max-w-[34rem] flex-1">
+                    <dl>
+                      {priceSummary.rows.map((row) => (
+                        <div key={row.name} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-1 text-paper">
+                          <dt className="text-[1.02rem] font-medium">
+                            {row.name}
+                            {row.scope ? <span className="ml-2 text-[0.85rem] font-normal text-paper/60">{row.scope}</span> : null}
+                          </dt>
+                          <dd className="text-[1.02rem] font-medium">{row.price}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <p className="pt-1.5 text-[0.9rem] text-paper/60">{priceSummary.management}</p>
+                  </div>
+                </div>
               ) : null}
 
               <div className="rise rise-delay-2 mt-8 flex flex-wrap items-center gap-x-7 gap-y-4">

@@ -124,6 +124,12 @@ type ServiceDefinition = {
    */
   pricePackage?: PackageId;
   /**
+   * A smaller project type that also fits this service, named in the header
+   * before `pricePackage` so the lowest real price is the first one seen.
+   * Only the choice is made here; amounts and names come from the catalog.
+   */
+  entryPackage?: PackageId;
+  /**
    * Slugs this service was published under before. They are not served: each
    * one has a permanent redirect in next.config.ts to the current slug, and
    * analytics still attributes historical traffic on them to this service.
@@ -144,6 +150,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
     family: "websites",
     proof: ["taxi-de-polder", "dos-slotenmaker"],
     pricePackage: "business",
+    entryPackage: "starter",
     formerSlugs: { nl: ["bedrijfswebsite"] },
     contactOnPage: true,
     locale: {
@@ -1841,6 +1848,7 @@ export type LocalizedService = LocalizedServiceContent & {
   partsLayout?: "layers" | "flow";
   proof: ProjectId[];
   pricePackage?: PackageId;
+  entryPackage?: PackageId;
   contactOnPage: boolean;
   path: string;
   overviewPath: string;
@@ -1872,6 +1880,7 @@ export function getServicesForLocale(locale: Locale): LocalizedService[] {
       partsLayout: definition.partsLayout,
       proof: definition.proof,
       pricePackage: definition.pricePackage,
+      entryPackage: definition.entryPackage,
       contactOnPage: definition.contactOnPage ?? false,
       path:
         locale === "en"

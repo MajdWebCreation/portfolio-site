@@ -13,7 +13,7 @@ import ProcessSteps from "@/components/process-steps";
 import ProjectRow from "@/components/project-row";
 import ProseSections from "@/components/prose-sections";
 import { ViewEvent } from "@/components/page-events";
-import ServiceLanding from "@/components/service-landing";
+import ServiceLanding, { type PriceSummary } from "@/components/service-landing";
 import SiteShell from "@/components/site-shell";
 import { getServiceBreadcrumbs } from "@/lib/content/breadcrumbs";
 import { getCaseStudyPathForProject } from "@/lib/content/cases";
@@ -30,7 +30,7 @@ import {
   type ServiceSection,
 } from "@/lib/content/services";
 import { placesConfig } from "@/lib/google/places";
-import { developmentPrice, formatEuro, getPackage } from "@/lib/pricing";
+import { developmentPrice, formatEuro, formatMonthlyFrom, getPackage, getPackageMetadata, type PackageId } from "@/lib/pricing";
 import { getPricingCatalog } from "@/lib/pricing/source";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
 import { breadcrumbListSchema, serviceSchema, webPageSchema } from "@/lib/schema";
@@ -101,7 +101,8 @@ const labels = {
     contact: "Neem contact op",
     planner: "Gebruik de projectplanner",
     pricing: "Bekijk tarieven",
-    startingPrice: (name: string, price: string) => `${name} vanaf ${price} excl. btw`,
+    priceFrom: (price: string) => `vanaf ${price} excl. btw`,
+    management: (monthly: string) => `Technisch beheer ${monthly}`,
     directLead: "Liever direct?",
     call: "Bel",
     or: "of stuur een",
@@ -120,7 +121,8 @@ const labels = {
     contact: "Get in touch",
     planner: "Use the project planner",
     pricing: "View pricing",
-    startingPrice: (name: string, price: string) => `${name} from ${price} excl. VAT`,
+    priceFrom: (price: string) => `from ${price} excl. VAT`,
+    management: (monthly: string) => `Technical management ${monthly}`,
     directLead: "Prefer direct contact?",
     call: "Call",
     or: "or send a",
@@ -239,14 +241,28 @@ export async function ServiceDetailContent({
   const supportsPlanner =
     service.kind === "package" || service.key === "web-app-development";
   const pageUrl = getCanonicalUrl(service.path);
-  /* Name and amount come from the pricing catalog, through the same
-     development-price rule as the pricing page, so both always agree. */
-  let priceLine: string | null = null;
+  /*
+    Names and amounts come from the pricing catalog, through the same
+    development-price rule as the pricing page, so both always agree. The
+    entry type, when the service names one, comes first: the lowest real
+    price is the first one seen, with each type's page range next to its
+    name so the two are not read as one offer. The monthly management line
+    states the lowest of the types shown; every delivered product runs under
+    it (pricing page), so a "from" price without it would be incomplete.
+  */
+  let priceSummary: PriceSummary | null = null;
   if (service.pricePackage) {
     const catalog = await getPricingCatalog();
-    const pkg = getPackage(catalog, service.pricePackage);
-    const amount = developmentPrice(pkg.startingPrice, catalog.developmentDiscount).amount;
-    priceLine = text.startingPrice(pkg.name[locale], formatEuro(amount, locale));
+    const ids: PackageId[] = service.entryPackage ? [service.entryPackage, service.pricePackage] : [service.pricePackage];
+    const packages = ids.map((id) => getPackage(catalog, id));
+    priceSummary = {
+      rows: packages.map((pkg) => ({
+        name: pkg.name[locale],
+        scope: getPackageMetadata(pkg.id).included[locale][0] ?? null,
+        price: text.priceFrom(formatEuro(developmentPrice(pkg.startingPrice, catalog.developmentDiscount).amount, locale)),
+      })),
+      management: text.management(formatMonthlyFrom(Math.min(...packages.map((pkg) => pkg.monthlyManagementFrom)), locale)),
+    };
   }
   const crumbs = getServiceBreadcrumbs(locale, service);
   /* A page that takes the enquiry itself points its header button at its own form. */
@@ -293,7 +309,7 @@ export async function ServiceDetailContent({
             content={content}
             text={text}
             breadcrumb={<Breadcrumbs locale={locale} items={crumbs} />}
-            priceLine={priceLine}
+            priceSummary={priceSummary}
             proofProjects={proofProjects.map((project) => ({
               ...project,
               casePath: getCaseStudyPathForProject(locale, project.id),
@@ -309,8 +325,15 @@ export async function ServiceDetailContent({
           title={service.title}
           intro={service.intro}
         >
-          {priceLine ? (
-            <p className="mb-6 text-[1.05rem] font-medium leading-snug text-ink">{priceLine}</p>
+          {priceSummary ? (
+            <div className="mb-6 text-[1.05rem] font-medium leading-snug text-ink">
+              {priceSummary.rows.map((row) => (
+                <p key={row.name}>
+                  {row.name} {row.price}
+                </p>
+              ))}
+              <p className="mt-1 text-[0.95rem] font-normal text-muted">{priceSummary.management}</p>
+            </div>
           ) : null}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
             <CtaLink
