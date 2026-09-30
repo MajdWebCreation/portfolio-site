@@ -202,40 +202,48 @@ export default function ServiceLanding({
         <div className="container-x relative pb-16 pt-10 sm:pt-12 lg:pb-24 lg:pt-16">
           <div className="sl-crumbs rise">{breadcrumb}</div>
 
-          <div className="mt-8 grid gap-14 lg:mt-10 lg:grid-cols-12 lg:items-center lg:gap-8">
+          <div className="mt-8 grid gap-14 max-md:mt-7 max-md:gap-12 lg:mt-10 lg:grid-cols-12 lg:items-center lg:gap-8">
             <div className={hasStage ? "lg:col-span-6" : "lg:col-span-9"}>
               <h1 className="sl-title rise text-paper">
                 <HeroTitle title={service.title} lead={service.titleLead} />
               </h1>
-              <p className="rise rise-delay-1 mt-6 max-w-[34rem] text-[clamp(1.08rem,1rem+0.4vw,1.25rem)] leading-relaxed text-paper/70">
+              <p className="rise rise-delay-1 mt-6 max-w-[34rem] text-[clamp(1.08rem,1rem+0.4vw,1.25rem)] leading-relaxed text-paper/70 max-md:mt-5 max-md:text-[1.02rem]">
                 {service.intro}
               </p>
 
+              {/* Below md the rows are a two-column list, name and page range left, price right, under one hairline. */}
               {priceSummary ? (
-                <div className="rise rise-delay-1 mt-7 flex items-start gap-3">
-                  <span aria-hidden="true" className="mt-[0.7rem] block h-px w-8 shrink-0 bg-accent-soft" />
+                <div className="rise rise-delay-1 mt-7 flex items-start gap-3 max-md:mt-6 max-md:border-t max-md:border-paper/15 max-md:pt-4">
+                  <span aria-hidden="true" className="mt-[0.7rem] block h-px w-8 shrink-0 bg-accent-soft max-md:hidden" />
                   <div className="max-w-[34rem] flex-1">
                     <dl>
                       {priceSummary.rows.map((row) => (
-                        <div key={row.name} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-1 text-paper">
+                        <div
+                          key={row.name}
+                          className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-1 text-paper max-md:grid max-md:grid-cols-[1fr_auto] max-md:py-1.5"
+                        >
                           <dt className="text-[1.02rem] font-medium">
                             {row.name}
-                            {row.scope ? <span className="ml-2 text-[0.85rem] font-normal text-paper/60">{row.scope}</span> : null}
+                            {row.scope ? (
+                              <span className="ml-2 text-[0.85rem] font-normal text-paper/60 max-md:ml-0 max-md:block max-md:text-[0.82rem] max-md:leading-snug">
+                                {row.scope}
+                              </span>
+                            ) : null}
                           </dt>
-                          <dd className="text-[1.02rem] font-medium">{row.price}</dd>
+                          <dd className="text-[1.02rem] font-medium max-md:text-right max-md:text-[0.98rem]">{row.price}</dd>
                         </div>
                       ))}
                     </dl>
-                    <p className="pt-1.5 text-[0.9rem] text-paper/60">{priceSummary.management}</p>
+                    <p className="pt-1.5 text-[0.9rem] text-paper/60 max-md:pt-2 max-md:text-[0.85rem]">{priceSummary.management}</p>
                   </div>
                 </div>
               ) : null}
 
-              <div className="rise rise-delay-2 mt-8 flex flex-wrap items-center gap-x-7 gap-y-4">
+              <div className="rise rise-delay-2 mt-8 flex flex-wrap items-center gap-x-7 gap-y-4 max-md:mt-7 max-md:gap-y-5">
                 <CtaLink
                   href="#contact"
                   variant="inverse"
-                  className="sl-cta"
+                  className="sl-cta max-sm:w-full"
                   data-track-event="service_cta_click"
                   data-track-service-id={service.key}
                   data-track-cta-id="service_header_contact"
@@ -262,7 +270,7 @@ export default function ServiceLanding({
                 ) : null}
               </div>
 
-              <p className="rise rise-delay-3 mt-7 text-[0.95rem] leading-relaxed text-paper/60" data-track-placement="service_header">
+              <p className="rise rise-delay-3 mt-7 text-[0.95rem] leading-relaxed text-paper/60 max-md:mt-6" data-track-placement="service_header">
                 {text.directLead} {text.call}{" "}
                 <a
                   href={`tel:${businessInfo.phone}`}
@@ -302,7 +310,7 @@ export default function ServiceLanding({
 
       {/* What is built, and when it fits. */}
       <section className="container-x pt-20 lg:pt-28">
-        <div className="grid gap-12 lg:grid-cols-12 lg:gap-8">
+        <div className="grid gap-12 max-md:gap-10 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-4" data-reveal>
             <div className="lg:sticky lg:top-28">
               <h2 className="display-md">{service.fitTitle}</h2>
@@ -327,9 +335,9 @@ export default function ServiceLanding({
                   key={item}
                   data-reveal
                   style={delay(index * 70)}
-                  className="sl-ledger-row border-b border-line py-6 lg:py-7"
+                  className="sl-ledger-row border-b border-line py-6 max-md:py-5 lg:py-7"
                 >
-                  <span className="block max-w-[34rem] text-[clamp(1.25rem,1.05rem+0.9vw,1.75rem)] font-semibold leading-[1.18] tracking-[-0.02em] text-ink">
+                  <span className="block max-w-[34rem] text-[clamp(1.25rem,1.05rem+0.9vw,1.75rem)] font-semibold leading-[1.18] tracking-[-0.02em] text-ink max-md:text-[1.15rem] max-md:leading-[1.25]">
                     {item}
                   </span>
                 </li>
@@ -358,11 +366,11 @@ export default function ServiceLanding({
               </CtaLink>
             </div>
 
-            <div className="mt-10 space-y-16 lg:mt-14 lg:space-y-24">
+            <div className="mt-10 space-y-16 max-md:space-y-14 lg:mt-14 lg:space-y-24">
               {proofProjects.map((project, index) => (
                 <article
                   key={project.id}
-                  className="group grid gap-7 lg:grid-cols-12 lg:items-center lg:gap-8"
+                  className="group grid gap-7 max-md:gap-6 lg:grid-cols-12 lg:items-center lg:gap-8"
                 >
                   <a
                     href={project.url}
@@ -392,10 +400,10 @@ export default function ServiceLanding({
                   >
                     <p className="label-mono">{project.sector[locale]}</p>
                     <h3 className="display-md mt-2">{project.name}</h3>
-                    <p className="mt-4 text-[1rem] leading-relaxed text-muted">
+                    <p className="mt-4 text-[1rem] leading-relaxed text-muted max-md:mt-3">
                       {project.summary[locale]}
                     </p>
-                    <ul className="mt-5 space-y-2 border-t border-line-strong pt-5">
+                    <ul className="mt-5 space-y-2 border-t border-line-strong pt-5 max-md:space-y-2.5">
                       {project.built[locale].map((item) => (
                         <li key={item} className="flex gap-3 text-[0.95rem] leading-snug text-body">
                           <span aria-hidden="true" className="mt-[0.6em] h-px w-3 shrink-0 bg-accent" />
@@ -436,10 +444,10 @@ export default function ServiceLanding({
       {/* What is included, next to what depends on scope. */}
       {service.parts && service.partsTitle ? (
         <section className="container-x pt-20 lg:pt-28">
-          <div className="grid gap-5 lg:grid-cols-12 lg:gap-6">
-            <div className="rounded-md bg-ink p-7 sm:p-10 lg:col-span-7 lg:p-12" data-reveal>
+          <div className="grid gap-5 max-md:gap-9 lg:grid-cols-12 lg:gap-6">
+            <div className="rounded-md bg-ink p-7 max-md:p-6 sm:p-10 lg:col-span-7 lg:p-12" data-reveal>
               <h2 className="display-md text-paper">{service.partsTitle}</h2>
-              <ul className="mt-7 grid gap-x-10 gap-y-5 sm:grid-cols-2">
+              <ul className="mt-7 grid gap-x-10 gap-y-5 max-md:mt-6 max-md:gap-y-4 sm:grid-cols-2">
                 {service.parts.map((part) => (
                   <li
                     key={part.label}
@@ -452,13 +460,14 @@ export default function ServiceLanding({
               </ul>
             </div>
 
+            {/* Below md this is a plain list under its label, not a second box under the first. */}
             <div
-              className="rounded-md border border-line bg-surface p-7 sm:p-10 lg:col-span-5"
+              className="rounded-md border border-line bg-surface p-7 max-md:rounded-none max-md:border-0 max-md:border-t max-md:bg-transparent max-md:px-0 max-md:pb-0 max-md:pt-7 sm:p-10 lg:col-span-5"
               data-reveal
               style={delay(120)}
             >
               <h2 className="label-mono text-ink">{service.scopeTitle}</h2>
-              <ul className="mt-5 space-y-3">
+              <ul className="mt-5 space-y-3 max-md:space-y-3.5">
                 {service.scope.map((item) => (
                   <li key={item} className="flex gap-3 text-[0.95rem] leading-snug text-body">
                     <span aria-hidden="true" className="mt-[0.6em] h-px w-3 shrink-0 bg-line-strong" />
@@ -476,7 +485,7 @@ export default function ServiceLanding({
         <h2 className="display-md" data-reveal>
           {service.approachTitle}
         </h2>
-        <ol className="mt-10 grid gap-y-10 lg:mt-14 lg:grid-cols-3">
+        <ol className="mt-10 grid gap-y-10 max-md:mt-8 max-md:gap-y-9 lg:mt-14 lg:grid-cols-3">
           {service.approach.map((step, index) => (
             <li key={step.title} data-reveal style={delay(index * 160)} className="relative lg:pr-10">
               <span aria-hidden="true" className="sl-rail" />
@@ -485,10 +494,10 @@ export default function ServiceLanding({
                 className={`sl-rail-node ${index === service.approach.length - 1 ? "bg-ink" : "bg-accent"}`}
               />
               <p className="label-mono pt-7 text-accent">{String(index + 1).padStart(2, "0")}</p>
-              <h3 className="mt-2 text-[1.35rem] font-semibold leading-snug tracking-[-0.015em] text-ink">
+              <h3 className="mt-2 text-[1.35rem] font-semibold leading-snug tracking-[-0.015em] text-ink max-md:text-[1.25rem]">
                 {step.title}
               </h3>
-              <p className="mt-3 max-w-[26rem] text-[0.98rem] leading-relaxed text-muted">{step.text}</p>
+              <p className="mt-3 max-w-[26rem] text-[0.98rem] leading-relaxed text-muted max-md:mt-2.5">{step.text}</p>
             </li>
           ))}
         </ol>
@@ -501,7 +510,7 @@ export default function ServiceLanding({
             {service.sections.map((section) => (
               <div
                 key={section.heading}
-                className="grid gap-5 border-b border-line py-10 lg:grid-cols-12 lg:gap-8 lg:py-14"
+                className="grid gap-5 border-b border-line py-10 max-md:gap-4 max-md:py-9 lg:grid-cols-12 lg:gap-8 lg:py-14"
               >
                 <h2 className="display-sm lg:col-span-4" data-reveal>
                   <span className="lg:sticky lg:top-28 lg:block">{section.heading}</span>
@@ -538,19 +547,19 @@ export default function ServiceLanding({
         className="mt-20 scroll-mt-20 lg:mt-28"
         aria-labelledby="contact-heading"
       >
-        <div className="relative overflow-hidden bg-ink pb-40 pt-16 text-paper lg:pb-48 lg:pt-24">
+        <div className="relative overflow-hidden bg-ink pb-40 pt-16 text-paper max-md:pb-36 max-md:pt-14 lg:pb-48 lg:pt-24">
           <div aria-hidden="true" className="sl-grid sl-grid-low" />
           <div className="container-x relative grid gap-5 lg:grid-cols-12 lg:items-end lg:gap-8" data-reveal>
             <h2 id="contact-heading" className="sl-title text-paper lg:col-span-7">
               {service.ctaTitle}
             </h2>
-            <p className="max-w-[30rem] text-[1.08rem] leading-relaxed text-paper/70 lg:col-span-4 lg:col-start-9">
+            <p className="max-w-[30rem] text-[1.08rem] leading-relaxed text-paper/70 max-md:text-[1rem] lg:col-span-4 lg:col-start-9">
               {service.ctaText}
             </p>
           </div>
         </div>
-        <div className="container-x relative -mt-28 lg:-mt-32">
-          <div className="sl-card rounded-md border border-line bg-paper p-6 sm:p-10 lg:p-14" data-reveal>
+        <div className="container-x relative -mt-28 max-md:-mt-24 lg:-mt-32">
+          <div className="sl-card rounded-md border border-line bg-paper p-6 max-xs:p-5 sm:p-10 lg:p-14" data-reveal>
             <ContactBlock
               locale={locale}
               content={content.contact}

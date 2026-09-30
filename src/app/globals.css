@@ -1332,6 +1332,15 @@ html[data-reveal-ready] [data-reveal]:not([data-revealed]) {
   font-weight: 600;
 }
 
+/* On a phone the title steps down one size, so the offer and the price share the first screen with it. */
+@media (max-width: 47.99rem) {
+  .sl-title {
+    font-size: clamp(2rem, 1.45rem + 2.5vw, 2.3rem);
+    line-height: 1.07;
+    letter-spacing: -0.03em;
+  }
+}
+
 /* The trail on ink: same component, lighter tones. */
 .sl-crumbs .label-mono {
   color: rgba(244, 243, 238, 0.55);
