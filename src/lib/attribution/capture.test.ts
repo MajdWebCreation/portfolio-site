@@ -9,7 +9,9 @@ vi.mock("@/lib/consent/store", () => ({
 
 import {
   ATTRIBUTION_STORAGE_KEY,
+  attributionPayload,
   captureAttribution,
+  currentAdClickIds,
   currentAttribution,
   resetAttributionCapture,
   syncAttributionStorage,
@@ -108,5 +110,52 @@ describe("captureAttribution", () => {
     const { session } = stubBrowser({ referrer: "", path: "/nl" });
     session.set(ATTRIBUTION_STORAGE_KEY, JSON.stringify({ trafficClass: "ai_assistant", trafficSource: "evil.example", trafficMedium: null, campaign: null, landingPath: "/nl" }));
     expect(captureAttribution()).toMatchObject({ trafficClass: "direct" });
+  });
+
+  it("records a Google Ads click as paid and keeps the click id in memory only, whatever the consent", () => {
+    consent = true;
+    const { session, local } = stubBrowser({
+      referrer: "https://www.google.com/",
+      path: "/nl/diensten/website-laten-maken",
+      search: "?gclid=Cj0KCQjw_test-GCLID_abc123BwE&utm_term=website%20laten%20maken",
+    });
+    expect(captureAttribution()).toMatchObject({ trafficClass: "campaign", trafficSource: "google", trafficMedium: "cpc", term: "website laten maken" });
+    expect(currentAdClickIds()).toEqual({ gclid: "Cj0KCQjw_test-GCLID_abc123BwE" });
+    /* The attribution may be stored with consent; the click id never is. */
+    expect(session.get(ATTRIBUTION_STORAGE_KEY) ?? "").not.toContain("Cj0KCQjw");
+    expect(local.size).toBe(0);
+    expect(attributionPayload()).toEqual({
+      attribution: expect.objectContaining({ trafficClass: "campaign" }),
+      adClickIds: { gclid: "Cj0KCQjw_test-GCLID_abc123BwE" },
+    });
+  });
+
+  it("keeps the ad click through client-side navigation to another page", () => {
+    stubBrowser({ referrer: "https://www.google.com/", path: "/nl/diensten/website-laten-maken", search: "?gclid=Cj0KCQjw_test-GCLID_abc123BwE" });
+    captureAttribution();
+    vi.unstubAllGlobals();
+    stubBrowser({ referrer: "https://www.google.com/", path: "/nl/contact" });
+    captureAttribution();
+    expect(attributionPayload()).toMatchObject({
+      attribution: { trafficClass: "campaign", trafficSource: "google", landingPath: "/nl/diensten/website-laten-maken" },
+      adClickIds: { gclid: "Cj0KCQjw_test-GCLID_abc123BwE" },
+    });
+  });
+
+  it("lets a new ad click win over a source stored earlier in the same tab", () => {
+    consent = true;
+    const { session } = stubBrowser({ referrer: "https://www.bing.com/", path: "/nl" });
+    captureAttribution();
+    const stored = session.get(ATTRIBUTION_STORAGE_KEY) ?? "";
+
+    resetAttributionCapture();
+    vi.unstubAllGlobals();
+    const next = stubBrowser({ referrer: "https://www.google.com/", path: "/nl/diensten/website-laten-maken", search: "?gclid=Cj0KCQjw_test-GCLID_abc123BwE" });
+    next.session.set(ATTRIBUTION_STORAGE_KEY, stored);
+    expect(captureAttribution()).toMatchObject({ trafficClass: "campaign", trafficSource: "google" });
+  });
+
+  it("sends nothing about the visit when nothing was captured", () => {
+    expect(attributionPayload()).toEqual({});
   });
 });

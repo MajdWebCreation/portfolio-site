@@ -1,5 +1,5 @@
 import type { Inquiry, InquiryStatus, PlannerSubmission } from "@/lib/admin/inquiries/types";
-import { isTrafficClass, type Attribution } from "@/lib/attribution/types";
+import { isTrafficClass, type AdClickIds, type Attribution } from "@/lib/attribution/types";
 import type { Database } from "@/lib/supabase/database.types";
 
 export type InquiryRow = Database["public"]["Tables"]["inquiries"]["Row"];
@@ -17,12 +17,24 @@ function attributionFromRow(row: InquiryRow): Attribution | undefined {
     trafficSource: row.traffic_source,
     trafficMedium: row.traffic_medium,
     campaign: row.campaign,
+    ...(row.utm_term ? { term: row.utm_term } : {}),
+    ...(row.utm_content ? { content: row.utm_content } : {}),
     landingPath: row.landing_path,
   };
 }
 
+function adClickIdsFromRow(row: InquiryRow): AdClickIds | undefined {
+  const ids: AdClickIds = {
+    ...(row.gclid ? { gclid: row.gclid } : {}),
+    ...(row.gbraid ? { gbraid: row.gbraid } : {}),
+    ...(row.wbraid ? { wbraid: row.wbraid } : {}),
+  };
+  return Object.keys(ids).length > 0 ? ids : undefined;
+}
+
 export function inquiryFromRow(row: InquiryRow): Inquiry {
   const attribution = attributionFromRow(row);
+  const adClickIds = adClickIdsFromRow(row);
   const base = {
     id: row.id,
     status: row.status as InquiryStatus,
@@ -34,6 +46,7 @@ export function inquiryFromRow(row: InquiryRow): Inquiry {
     ...(row.company ? { company: row.company } : {}),
     ...(row.internal_note ? { internalNote: row.internal_note } : {}),
     ...(attribution ? { attribution } : {}),
+    ...(adClickIds ? { adClickIds } : {}),
   };
 
   if (row.origin === "project_planner") {

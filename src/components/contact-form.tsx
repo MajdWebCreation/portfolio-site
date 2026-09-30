@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics/track";
 import type { ErrorKind } from "@/lib/analytics/events";
-import { currentAttribution } from "@/lib/attribution/capture";
+import { attributionPayload, currentAttribution } from "@/lib/attribution/capture";
 import { attributionEventParams } from "@/lib/attribution/event-params";
 import { reportLead } from "@/lib/tracking/conversions";
 
@@ -174,7 +174,7 @@ export default function ContactForm({
           "Content-Type": "application/json",
         },
         /* Where the visit came from travels with the request; the server checks it again. */
-        body: JSON.stringify({ ...form, locale, attribution: currentAttribution() ?? undefined }),
+        body: JSON.stringify({ ...form, locale, ...attributionPayload() }),
       });
 
       if (!response.ok) {

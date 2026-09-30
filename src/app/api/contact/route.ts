@@ -1,11 +1,13 @@
 import { Resend } from "resend";
-import { validateAttribution } from "@/lib/attribution/classify";
+import { cleanAdClickIds, validateAttribution } from "@/lib/attribution/classify";
+import { CONSENT_COOKIE, parseConsent, readCookieValue } from "@/lib/consent/consent";
 import { storeInquiry } from "@/lib/contact/inquiry";
 import type { ContactMode, ContactPayload } from "@/lib/contact/payload";
 import { normalizeWebsiteUrl, websiteUrlHost } from "@/lib/contact/website-url";
 import { reportMetaLead } from "@/lib/meta/capi";
 import { createLeadEventId } from "@/lib/meta/event-id";
 import { buildWebsitecheckConfirmation } from "@/lib/email/websitecheck";
+import { rateLimit, requestKey } from "@/lib/payments/rate-limit";
 import {
   emailLink,
   emailList,
@@ -86,6 +88,25 @@ function normalizeSubmission(body: ContactPayload): NormalizedSubmission {
     websiteUrl: mode === "websitecheck" ? (normalizeWebsiteUrl(body.websiteUrl) ?? "") : "",
     planner: body.planner,
   };
+}
+
+/*
+  Submissions per address per window. A person sends one, perhaps two after
+  a correction; this only stops a script from filling the inbox, the table
+  and -- through the confirmation mail -- other people's mailboxes. In-process
+  and per instance (lib/payments/rate-limit.ts), like the site's other public
+  routes: a brake, not a guarantee. A firewall rule on the platform is the
+  stronger layer on top.
+*/
+export const CONTACT_RATE_LIMIT = { requests: 6, windowSeconds: 10 * 60 } as const;
+
+/** Whether this request's own consent cookie holds a current yes to marketing. */
+function hasMarketingConsent(request: Request): boolean {
+  try {
+    return parseConsent(readCookieValue(request.headers.get("cookie") ?? "", CONSENT_COOKIE))?.marketing === true;
+  } catch {
+    return false;
+  }
 }
 
 function isValidEmail(value: string) {
@@ -353,6 +374,19 @@ export async function POST(request: Request) {
       planner,
     } = normalizeSubmission(body);
 
+    const limit = rateLimit(requestKey(request, "contact"), CONTACT_RATE_LIMIT.requests, CONTACT_RATE_LIMIT.windowSeconds);
+    if (!limit.allowed) {
+      return Response.json(
+        {
+          error:
+            locale === "nl"
+              ? "Er zijn net te veel aanvragen verstuurd. Probeer het over een paar minuten opnieuw, of mail naar contact@ymcreations.com."
+              : "Too many requests were just sent. Try again in a few minutes, or email contact@ymcreations.com.",
+        },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+      );
+    }
+
     if (website) {
       return Response.json({ ok: true });
     }
@@ -391,12 +425,21 @@ export async function POST(request: Request) {
     */
     const attribution = validateAttribution(body.attribution);
 
+    /*
+      The Google Ads click identifiers identify one ad click, so they are
+      kept only when this request carries a yes to marketing -- the same
+      choice that lets the Google Ads tag see that click in the browser.
+      Without it the inquiry still records the channel above (a paid Google
+      click is `campaign` / `google` / `cpc` either way), just not the click.
+    */
+    const adClickIds = hasMarketingConsent(request) ? cleanAdClickIds(body.adClickIds) : null;
+
     // Stored before anything is sent, and a failure here is reported as a
     // failure: a visitor must never be told the request came through when
     // there is no record of it. The mail below is the notification, not the
     // record.
     try {
-      await storeInquiry({ origin: mode, locale, name, email, company, message, phone, planner, websiteUrl, attribution });
+      await storeInquiry({ origin: mode, locale, name, email, company, message, phone, planner, websiteUrl, attribution, adClickIds });
     } catch (error) {
       // No visitor data in the log line: Vercel keeps these, and an address
       // does not help anyone read the failure.
@@ -412,15 +455,60 @@ export async function POST(request: Request) {
       );
     }
 
+    /*
+      From here on the inquiry exists, and the answer is a success whatever
+      the mail does. Both mails are notifications: a failure is logged (no
+      visitor data) and the owner finds the request in the admin. Answering
+      500 here used to tell a visitor whose request was stored that it was
+      not -- they would send it again, creating a second record, and the
+      lead itself was never counted.
+    */
+    await sendInquiryMails({
+      mode,
+      locale,
+      name,
+      email,
+      company,
+      phone,
+      message,
+      websiteUrl,
+      planner,
+    });
+
+    /*
+      The one place a lead counts: stored. Only this answer carries
+      `leadEventId`, and the browser reports a Meta Lead and a Google Ads
+      conversion only when it gets one (lib/tracking/conversions.ts) --
+      never for the honeypot's `{ ok: true }` above, a refusal or a failure.
+      The same id goes to the Conversions API as `event_id` (lib/meta/capi.ts),
+      only when this request's own consent cookie says yes to marketing, and
+      only after this answer is sent, so Meta can never fail the inquiry.
+    */
+    const leadEventId = createLeadEventId();
+    reportMetaLead({ request, eventId: leadEventId, form: mode });
+    return Response.json({ ok: true, leadEventId });
+  } catch (error) {
+    console.error("Unexpected contact route error", error);
+    return Response.json({ error: "Unexpected error." }, { status: 500 });
+  }
+}
+
+/** Resend's error name and status only: its message text can quote the recipient address. */
+function mailFailure(error: { name?: unknown; statusCode?: unknown } | null | undefined) {
+  return { error: typeof error?.name === "string" ? error.name : "unknown", status: typeof error?.statusCode === "number" ? error.statusCode : undefined };
+}
+
+/** The owner's notification and the visitor's confirmation. Never throws; a failure is logged without visitor data. */
+async function sendInquiryMails(submission: Omit<NormalizedSubmission, "website">): Promise<void> {
+  const { mode, locale, name, email, company, phone, message, websiteUrl, planner } = submission;
+  try {
     const to = process.env.CONTACT_TO_EMAIL;
     const from = process.env.CONTACT_FROM_EMAIL;
     const resendApiKey = process.env.RESEND_API_KEY;
 
     if (!to || !from || !resendApiKey) {
-      return Response.json(
-        { error: "Missing mail configuration." },
-        { status: 500 }
-      );
+      console.error("Inquiry mail skipped: missing mail configuration", { mode, locale });
+      return;
     }
 
     const resend = new Resend(resendApiKey);
@@ -556,8 +644,7 @@ ${plannerText}
     });
 
     if (adminResult.error) {
-      console.error("Admin email failed", { mode, locale, error: adminResult.error });
-      return Response.json({ error: adminResult.error.message }, { status: 500 });
+      console.error("Admin email failed", { mode, locale, ...mailFailure(adminResult.error) });
     }
 
     /*
@@ -660,27 +747,9 @@ ymcreations.com
     });
 
     if (autoReplyResult.error) {
-      console.error("Customer confirmation email failed", { mode, locale, error: autoReplyResult.error });
-      return Response.json(
-        { error: autoReplyResult.error.message },
-        { status: 500 }
-      );
+      console.error("Customer confirmation email failed", { mode, locale, ...mailFailure(autoReplyResult.error) });
     }
-
-    /*
-      The one place a lead counts: stored, notified, confirmed. Only this
-      answer carries `leadEventId`, and the browser reports a Meta Lead only
-      when it gets one (lib/meta/track.ts) -- never for the honeypot's
-      `{ ok: true }` above, a refusal or a failure. The same id goes to the
-      Conversions API as `event_id` (lib/meta/capi.ts), only when this
-      request's own consent cookie says yes to marketing, and only after
-      this answer is sent, so Meta can never fail the inquiry.
-    */
-    const leadEventId = createLeadEventId();
-    reportMetaLead({ request, eventId: leadEventId, form: mode });
-    return Response.json({ ok: true, leadEventId });
   } catch (error) {
-    console.error("Unexpected contact route error", error);
-    return Response.json({ error: "Unexpected error." }, { status: 500 });
+    console.error("Inquiry mail failed", { mode, locale, error: error instanceof Error ? error.name : "unknown" });
   }
 }

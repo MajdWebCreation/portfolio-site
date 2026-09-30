@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyAttribution, cleanLandingPath, validateAttribution } from "@/lib/attribution/classify";
+import { classifyAttribution, cleanAdClickIds, cleanLandingPath, validateAttribution } from "@/lib/attribution/classify";
 import { aiSources, findSourceByHost, findSourceByUtm } from "@/lib/attribution/sources";
 
 const base = { ownHostname: "ymcreations.com", landingPath: "/nl/diensten/bedrijfswebsite" };
@@ -161,5 +161,62 @@ describe("validateAttribution (server side)", () => {
     expect(validateAttribution({})).toBeNull();
     expect(validateAttribution({ ...valid, trafficSource: 42 })).toBeNull();
     expect(validateAttribution({ ...valid, extra: "field" })).toEqual(valid);
+  });
+});
+
+describe("a Google Ads click", () => {
+  it("is paid, not organic: a gclid (or gbraid/wbraid) without UTM becomes campaign / google / cpc", () => {
+    expect(classify({ referrer: "https://www.google.com/", googleAdClick: true })).toEqual({
+      trafficClass: "campaign",
+      trafficSource: "google",
+      trafficMedium: "cpc",
+      campaign: null,
+      landingPath: base.landingPath,
+    });
+    /* The same referrer without a click id is still organic search. */
+    expect(classify({ referrer: "https://www.google.com/" })).toMatchObject({ trafficClass: "organic_search", trafficSource: "google.com" });
+  });
+
+  it("lets explicit UTM values win, and keeps utm_term and utm_content", () => {
+    const value = classify({
+      referrer: "https://www.google.nl/",
+      googleAdClick: true,
+      utmSource: "google",
+      utmMedium: "cpc",
+      utmCampaign: "search-website-laten-maken",
+      utmTerm: "Website laten maken",
+      utmContent: "rsa-1",
+    });
+    expect(value).toEqual({
+      trafficClass: "campaign",
+      trafficSource: "google",
+      trafficMedium: "cpc",
+      campaign: "search-website-laten-maken",
+      term: "website laten maken",
+      content: "rsa-1",
+      landingPath: base.landingPath,
+    });
+    expect(validateAttribution(value)).toEqual(value);
+  });
+
+  it("drops a term with characters a UTM value does not have, without losing the rest", () => {
+    const value = classify({ referrer: "", utmSource: "google", utmTerm: "<b>x</b>" });
+    expect(value).toMatchObject({ trafficClass: "campaign", trafficSource: "google" });
+    expect(value).not.toHaveProperty("term");
+  });
+
+  it("refuses a tampered term on the server as a whole", () => {
+    expect(validateAttribution({ trafficClass: "campaign", trafficSource: "google", trafficMedium: "cpc", campaign: null, term: "<script>", landingPath: "/nl" })).toBeNull();
+  });
+});
+
+describe("cleanAdClickIds", () => {
+  it("keeps identifiers shaped like Google's and drops everything else", () => {
+    expect(cleanAdClickIds({ gclid: "Cj0KCQjw_abc-123BwE", gbraid: "0AAAAAD_gbraid1", wbraid: "bad value" })).toEqual({ gclid: "Cj0KCQjw_abc-123BwE", gbraid: "0AAAAAD_gbraid1" });
+    expect(cleanAdClickIds({ gclid: "x".repeat(257) })).toBeNull();
+    expect(cleanAdClickIds({ gclid: "short" })).toBeNull();
+    expect(cleanAdClickIds({ fbclid: "IwAR2F4dbP0l7Mn1IawQQ" })).toBeNull();
+    expect(cleanAdClickIds("gclid=abc")).toBeNull();
+    expect(cleanAdClickIds(null)).toBeNull();
   });
 });

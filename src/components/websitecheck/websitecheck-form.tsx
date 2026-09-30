@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { currentAttribution } from "@/lib/attribution/capture";
+import { attributionPayload } from "@/lib/attribution/capture";
 import { normalizeWebsiteUrl, websiteUrlHost } from "@/lib/contact/website-url";
 import { reportLead } from "@/lib/tracking/conversions";
 import type { WebsitecheckFormCopy } from "@/lib/content/websitecheck";
@@ -111,7 +111,7 @@ export default function WebsitecheckForm({ copy, privacyHref }: WebsitecheckForm
           email: form.email,
           phone: form.phone,
           website: form.website,
-          attribution: currentAttribution() ?? undefined,
+          ...attributionPayload(),
         }),
       });
 

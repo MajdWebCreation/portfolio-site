@@ -3,8 +3,9 @@ import type { ContactMode } from "@/lib/contact/payload";
 /**
  * The id that names one accepted lead, for Meta.
  *
- * Created by the contact route only after an inquiry is stored and both
- * mails went out, and returned with that `{ ok: true }` as `leadEventId`. It
+ * Created by the contact route only after an inquiry is stored (the mails
+ * that follow are notifications and cannot undo that), and returned with
+ * that `{ ok: true }` as `leadEventId`. It
  * is the one thing that turns a 2xx into a Lead in the browser: the honeypot
  * answer, a validation error or a failure carries none.
  *

@@ -20,8 +20,16 @@ export type ContactPayload = {
     trafficSource?: string | null;
     trafficMedium?: string | null;
     campaign?: string | null;
+    term?: string | null;
+    content?: string | null;
     landingPath?: string;
   };
+  /**
+   * Google Ads click identifiers from the landing URL (lib/attribution).
+   * Optional, untrusted: the route keeps each only when it has the shape of
+   * one, and stores them only when the request carries a yes to marketing.
+   */
+  adClickIds?: { gclid?: string; gbraid?: string; wbraid?: string };
   name: string;
   email: string;
   company?: string;

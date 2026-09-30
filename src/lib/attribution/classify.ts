@@ -1,5 +1,5 @@
 import { findSourceByHost, findSourceByUtm } from "@/lib/attribution/sources";
-import { attributionLimits, isTrafficClass, type Attribution, type TrafficClass } from "@/lib/attribution/types";
+import { adClickIdKeys, attributionLimits, isTrafficClass, type AdClickIds, type Attribution, type TrafficClass } from "@/lib/attribution/types";
 
 /**
  * From what the browser knows to one attribution value. Pure, so the
@@ -11,6 +11,11 @@ import { attributionLimits, isTrafficClass, type Attribution, type TrafficClass 
  *     appends `utm_source=chatgpt.com` to every link, so this is the most
  *     reliable AI signal there is, and it beats the generic campaign rule.
  *  2. Any other UTM source: `campaign`, with the UTM values as given.
+ *  2b. No UTM source, but a Google Ads click identifier in the URL (auto-
+ *     tagging: `gclid`, `gbraid`, `wbraid`): `campaign`, source `google`,
+ *     medium `cpc` -- the values Google itself reports such a click under.
+ *     Without this rule a paid click, whose referrer is google.com, would
+ *     be recorded as organic search.
  *  3. A referrer from a known search engine, AI assistant or social host.
  *  4. A referrer from this site itself: `internal`.
  *  5. Any other referrer: `referral`, recorded by hostname only.
@@ -24,6 +29,10 @@ export type ClassifyInput = {
   utmSource?: string | null;
   utmMedium?: string | null;
   utmCampaign?: string | null;
+  utmTerm?: string | null;
+  utmContent?: string | null;
+  /** Whether the URL carried a Google Ads click identifier; the value itself is not needed here. */
+  googleAdClick?: boolean;
   /** The site's own hostname, so its own pages are recognised as internal. */
   ownHostname: string;
   /** The path of the page this visit started on. */
@@ -68,6 +77,11 @@ function sameSite(hostname: string, ownHostname: string): boolean {
   return host === own || (own !== "" && host.endsWith(`.${own}`));
 }
 
+/** `utm_term` and `utm_content`, only when present: an attribution without them keeps its old shape. */
+function termAndContent(term: string | null, content: string | null): Pick<Attribution, "term" | "content"> {
+  return { ...(term ? { term } : {}), ...(content ? { content } : {}) };
+}
+
 export function classifyAttribution(input: ClassifyInput): Attribution | null {
   const landingPath = cleanLandingPath(input.landingPath);
   if (!landingPath) return null;
@@ -75,13 +89,21 @@ export function classifyAttribution(input: ClassifyInput): Attribution | null {
   const utmSource = cleanUtmValue(input.utmSource, attributionLimits.trafficSource);
   const utmMedium = cleanUtmValue(input.utmMedium, attributionLimits.trafficMedium);
   const campaign = cleanUtmValue(input.utmCampaign, attributionLimits.campaign);
+  const extra = termAndContent(
+    cleanUtmValue(input.utmTerm, attributionLimits.term),
+    cleanUtmValue(input.utmContent, attributionLimits.content),
+  );
 
   if (utmSource) {
     const known = findSourceByUtm(utmSource);
     if (known?.trafficClass === "ai_assistant") {
-      return { trafficClass: "ai_assistant", trafficSource: known.source, trafficMedium: utmMedium ?? "ai-assistant", campaign, landingPath };
+      return { trafficClass: "ai_assistant", trafficSource: known.source, trafficMedium: utmMedium ?? "ai-assistant", campaign, ...extra, landingPath };
     }
-    return { trafficClass: "campaign", trafficSource: utmSource, trafficMedium: utmMedium, campaign, landingPath };
+    return { trafficClass: "campaign", trafficSource: utmSource, trafficMedium: utmMedium, campaign, ...extra, landingPath };
+  }
+
+  if (input.googleAdClick) {
+    return { trafficClass: "campaign", trafficSource: "google", trafficMedium: utmMedium ?? "cpc", campaign, ...extra, landingPath };
   }
 
   const hostname = hostnameOf(input.referrer);
@@ -145,6 +167,12 @@ export function validateAttribution(input: unknown): Attribution | null {
   const campaign = validOptional(raw.campaign, attributionLimits.campaign);
   if (campaign === false) return null;
 
+  const term = validOptional(raw.term, attributionLimits.term);
+  if (term === false) return null;
+
+  const content = validOptional(raw.content, attributionLimits.content);
+  if (content === false) return null;
+
   const landingPath = typeof raw.landingPath === "string" ? cleanLandingPath(raw.landingPath) : null;
   if (!landingPath || landingPath !== raw.landingPath) return null;
 
@@ -154,5 +182,27 @@ export function validateAttribution(input: unknown): Attribution | null {
     if (!known || known.trafficClass !== trafficClass || known.source !== trafficSource) return null;
   }
 
-  return { trafficClass, trafficSource, trafficMedium, campaign, landingPath };
+  return { trafficClass, trafficSource, trafficMedium, campaign, ...termAndContent(term, content), landingPath };
+}
+
+/*
+  Google's click identifiers are opaque URL-safe strings (letters, digits,
+  `-`, `_`; about a hundred characters). Anything else is not one of them.
+*/
+const adClickIdShape = new RegExp(`^[A-Za-z0-9._-]{8,${attributionLimits.adClickId}}$`);
+
+/**
+ * The Google Ads click identifiers out of an untrusted value -- a URL's
+ * query in the browser, a request body on the server -- each kept only when
+ * it has the shape of one; null when none survives.
+ */
+export function cleanAdClickIds(input: unknown): AdClickIds | null {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) return null;
+  const raw = input as Record<string, unknown>;
+  const ids: AdClickIds = {};
+  for (const key of adClickIdKeys) {
+    const value = raw[key];
+    if (typeof value === "string" && adClickIdShape.test(value)) ids[key] = value;
+  }
+  return Object.keys(ids).length > 0 ? ids : null;
 }

@@ -36,8 +36,8 @@ export const privacyStatement: LegalStatementSet = {
         "Welke persoonsgegevens YM Creations verwerkt via ymcreations.com en in de dienstverlening, waarom, hoe lang, en welke rechten je hebt.",
       intro:
         "Deze verklaring beschrijft welke persoonsgegevens YM Creations verwerkt via ymcreations.com en in de dienstverlening, waarom dat gebeurt, hoe lang gegevens bewaard blijven en welke rechten je hebt.",
-      updatedIso: "2026-09-29",
-      updatedLabel: "29 september 2026",
+      updatedIso: "2026-09-30",
+      updatedLabel: "30 september 2026",
       blocks: [
         { type: "heading", level: 2, content: "Wie verantwoordelijk is" },
         {
@@ -60,7 +60,7 @@ export const privacyStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Bij een aanvraag leggen we ook vast via welk kanaal het bezoek aan de website begon: een verwijzende website, een zoekmachine, een AI-assistent zoals ChatGPT, of een campagne, en op welke pagina van onze site het bezoek begon. We gebruiken dat om te begrijpen welke kanalen tot zakelijke aanvragen leiden. De grondslag is ons gerechtvaardigd belang bij het beoordelen van onze eigen zichtbaarheid. We slaan hiervoor niet de volledige verwijzende webpagina op, geen bezoekers-id, geen browserkenmerken en geen IP-adres; alleen de naam van de bron, het kanaal, een eventuele campagnenaam en het pad van de eerste pagina. Deze gegevens horen bij de aanvraag en worden tegelijk daarmee verwijderd.",
+            "Bij een aanvraag leggen we ook vast via welk kanaal het bezoek aan de website begon: een verwijzende website, een zoekmachine, een AI-assistent zoals ChatGPT, of een campagne, en op welke pagina van onze site het bezoek begon. We gebruiken dat om te begrijpen welke kanalen tot zakelijke aanvragen leiden. De grondslag is ons gerechtvaardigd belang bij het beoordelen van onze eigen zichtbaarheid. We slaan hiervoor niet de volledige verwijzende webpagina op, geen bezoekers-id, geen browserkenmerken en geen IP-adres; alleen de naam van de bron, het kanaal, een eventuele campagnenaam, zoekwoord- en advertentievariant uit de link en het pad van de eerste pagina. Kwam je binnen via een advertentie van Google en gaf je toestemming voor marketing, dan bewaren we bij de aanvraag ook de code die Google aan die advertentieklik gaf (gclid, gbraid of wbraid), zodat we kunnen nagaan welke advertentie tot een aanvraag of opdracht leidde. Zonder die toestemming bewaren we die code niet. Deze gegevens horen bij de aanvraag en worden tegelijk daarmee verwijderd.",
         },
         { type: "heading", level: 3, content: "Klanten, offertes en facturen" },
         {
@@ -115,7 +115,7 @@ export const privacyStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Alleen als je daar apart toestemming voor geeft, onder marketing, laden we de Meta Pixel van Meta Platforms Ireland Limited. Daarmee meten we welke advertenties op Facebook en Instagram tot een bezoek aan de website of tot een aanvraag leiden, en gebruikt Meta die metingen om onze advertenties vaker te tonen aan mensen bij wie ze waarschijnlijk tot een aanvraag leiden. Ook kunnen we mensen die de website bezochten later opnieuw een advertentie tonen (remarketing). De pixel stuurt Meta bij elke pagina die je bekijkt het adres van die pagina, samen met technische gegevens zoals je IP-adres en browser en een pseudonieme code uit een cookie. Als je via het contactformulier, de projectplanner of de websitecheck een aanvraag verstuurt en wij die hebben ontvangen, melden we Meta dat er een aanvraag is gedaan en via welk formulier. Wat je in een formulier invult, zoals je naam, e-mailadres, telefoonnummer, websiteadres of bericht, sturen we niet naar Meta. Zonder die toestemming wordt de pixel niet geladen, ook niet als je toestemming voor statistieken of gedragsopnames gaf, en op de betaal- en incassopagina's wordt hij nooit geladen. De grondslag is je toestemming; je trekt die op elk moment in via Cookie-instellingen.",
+            "Alleen als je daar apart toestemming voor geeft, onder marketing, laden we de Meta Pixel van Meta Platforms Ireland Limited. Daarmee meten we welke advertenties op Facebook en Instagram tot een bezoek aan de website of tot een aanvraag leiden, en gebruikt Meta die metingen om onze advertenties vaker te tonen aan mensen bij wie ze waarschijnlijk tot een aanvraag leiden. Ook kunnen we mensen die de website bezochten later opnieuw een advertentie tonen (remarketing). De pixel stuurt Meta bij elke pagina die je bekijkt het adres van die pagina, samen met technische gegevens zoals je IP-adres en browser en een pseudonieme code uit een cookie. Als je via het contactformulier, de projectplanner of de websitecheck een aanvraag verstuurt en wij die hebben ontvangen, melden we Meta dat er een aanvraag is gedaan en via welk formulier. Die melding gaat vanuit je browser via de pixel en ook rechtstreeks vanaf onze server (Conversions API), onder hetzelfde kenmerk zodat Meta de aanvraag één keer telt; vanaf onze server sturen we daarbij alleen het adres van de pagina, je IP-adres, je browsergegevens en de codes uit de Meta-cookies, en alleen als je voor marketing toestemming gaf. Wat je in een formulier invult, zoals je naam, e-mailadres, telefoonnummer, websiteadres of bericht, sturen we niet naar Meta. Zonder die toestemming wordt de pixel niet geladen, ook niet als je toestemming voor statistieken of gedragsopnames gaf, en op de betaal- en incassopagina's wordt hij nooit geladen. De grondslag is je toestemming; je trekt die op elk moment in via Cookie-instellingen.",
         },
         {
           type: "paragraph",
@@ -236,8 +236,8 @@ export const privacyStatement: LegalStatementSet = {
         "Which personal data YM Creations processes through ymcreations.com and in its services, why, for how long, and what your rights are.",
       intro:
         "This statement describes which personal data YM Creations processes through ymcreations.com and in its services, why, how long it is kept, and what your rights are.",
-      updatedIso: "2026-09-29",
-      updatedLabel: "29 September 2026",
+      updatedIso: "2026-09-30",
+      updatedLabel: "30 September 2026",
       blocks: [
         { type: "heading", level: 2, content: "Who is responsible" },
         {
@@ -260,7 +260,7 @@ export const privacyStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "With a request we also record through which channel the visit to the website began: a referring website, a search engine, an AI assistant such as ChatGPT, or a campaign, and on which page of our site the visit started. We use this to understand which channels lead to business requests. The legal basis is our legitimate interest in assessing our own visibility. For this we do not store the full referring web page, a visitor id, browser characteristics or an IP address; only the name of the source, the channel, a campaign name if there was one, and the path of the first page. This data belongs to the request and is deleted together with it.",
+            "With a request we also record through which channel the visit to the website began: a referring website, a search engine, an AI assistant such as ChatGPT, or a campaign, and on which page of our site the visit started. We use this to understand which channels lead to business requests. The legal basis is our legitimate interest in assessing our own visibility. For this we do not store the full referring web page, a visitor id, browser characteristics or an IP address; only the name of the source, the channel, a campaign name, keyword and ad variant if the link carried them, and the path of the first page. If you arrived through a Google ad and consented to marketing, we also keep with the request the code Google gave that ad click (gclid, gbraid or wbraid), so we can trace which ad led to a request or an assignment. Without that consent we do not keep that code. This data belongs to the request and is deleted together with it.",
         },
         { type: "heading", level: 3, content: "Clients, quotes and invoices" },
         {
@@ -315,7 +315,7 @@ export const privacyStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Only if you give separate consent for marketing do we load the Meta Pixel of Meta Platforms Ireland Limited. With it we measure which ads on Facebook and Instagram lead to a visit to the website or to an inquiry, and Meta uses those measurements to show our ads more often to people for whom they are likely to lead to an inquiry. We can also show people who visited the website an ad again later (remarketing). For every page you view, the pixel sends Meta the address of that page, together with technical data such as your IP address and browser and a pseudonymous code from a cookie. When you send an inquiry through the contact form, the project planner or the websitecheck and we have received it, we tell Meta that an inquiry was made and through which form. What you type into a form, such as your name, email address, phone number, website address or message, is not sent to Meta. Without that consent the pixel is not loaded, not even if you consented to analytics or behaviour recordings, and it is never loaded on the payment and direct debit pages. The legal basis is your consent; you can withdraw it at any time under Cookie settings.",
+            "Only if you give separate consent for marketing do we load the Meta Pixel of Meta Platforms Ireland Limited. With it we measure which ads on Facebook and Instagram lead to a visit to the website or to an inquiry, and Meta uses those measurements to show our ads more often to people for whom they are likely to lead to an inquiry. We can also show people who visited the website an ad again later (remarketing). For every page you view, the pixel sends Meta the address of that page, together with technical data such as your IP address and browser and a pseudonymous code from a cookie. When you send an inquiry through the contact form, the project planner or the websitecheck and we have received it, we tell Meta that an inquiry was made and through which form. That report is sent from your browser through the pixel and also directly from our server (Conversions API), under the same identifier so Meta counts the inquiry once; from our server we only send the address of the page, your IP address, your browser details and the codes from Meta's cookies, and only if you consented to marketing. What you type into a form, such as your name, email address, phone number, website address or message, is not sent to Meta. Without that consent the pixel is not loaded, not even if you consented to analytics or behaviour recordings, and it is never loaded on the payment and direct debit pages. The legal basis is your consent; you can withdraw it at any time under Cookie settings.",
         },
         {
           type: "paragraph",

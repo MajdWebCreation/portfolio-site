@@ -22,6 +22,11 @@ const base: InquiryRow = {
   traffic_medium: null,
   campaign: null,
   landing_path: null,
+  utm_term: null,
+  utm_content: null,
+  gclid: null,
+  gbraid: null,
+  wbraid: null,
 };
 
 describe("a websitecheck row", () => {

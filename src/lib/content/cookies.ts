@@ -47,8 +47,8 @@ export const cookieStatement: LegalStatementSet = {
       title: "Cookieverklaring",
       description: "Welke cookies ymcreations.com plaatst, waarvoor, hoe lang, en hoe je je keuze aanpast.",
       intro: "Deze verklaring beschrijft welke cookies ymcreations.com plaatst, waarvoor ze dienen, hoe lang ze blijven staan en hoe je je keuze aanpast.",
-      updatedIso: "2026-09-29",
-      updatedLabel: "29 september 2026",
+      updatedIso: "2026-09-30",
+      updatedLabel: "30 september 2026",
       blocks: [
         { type: "heading", level: 2, content: "Wat cookies zijn" },
         {
@@ -61,7 +61,7 @@ export const cookieStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "De website plaatst één noodzakelijke cookie: de cookie die je cookiekeuze onthoudt. Daarvoor is geen toestemming nodig. Verder plaatst de publieke website geen cookies en gebruikt hij geen lokale opslag in je browser. Lettertypen worden vanaf onze eigen server geladen, niet van Google.",
+            "De website plaatst één noodzakelijke cookie: de cookie die je cookiekeuze onthoudt. Daarvoor is geen toestemming nodig. Zonder je toestemming plaatst de publieke website verder geen cookies en gebruikt hij geen opslag in je browser. Lettertypen worden vanaf onze eigen server geladen, niet van Google.",
         },
         {
           type: "paragraph",
@@ -73,7 +73,7 @@ export const cookieStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "Met jouw toestemming laden we Google Analytics om te begrijpen hoe de website wordt gebruikt en om die te verbeteren. Google plaatst dan cookies om bezoeken en bezoekers van elkaar te onderscheiden, en gegevens over je bezoek worden gedeeld met Google. Die cookies zijn ingesteld op een looptijd van negentig dagen. De cookie die bezoekers onderscheidt wordt bij een nieuw bezoek niet verlengd; de cookie die de sessie bijhoudt wordt bij elk bezoek opnieuw voor negentig dagen gezet, omdat Google daarin de sessiestatus bijwerkt. Zonder toestemming wordt het script niet geladen en worden deze cookies niet geplaatst. Statistieken staan standaard uit.",
+            "Met jouw toestemming laden we Google Analytics om te begrijpen hoe de website wordt gebruikt en om die te verbeteren. Google plaatst dan cookies om bezoeken en bezoekers van elkaar te onderscheiden, en gegevens over je bezoek worden gedeeld met Google. Die cookies zijn ingesteld op een looptijd van negentig dagen. De cookie die bezoekers onderscheidt wordt bij een nieuw bezoek niet verlengd; de cookie die de sessie bijhoudt wordt bij elk bezoek opnieuw voor negentig dagen gezet, omdat Google daarin de sessiestatus bijwerkt. Zonder toestemming wordt het script niet geladen en worden deze cookies niet geplaatst. Met dezelfde toestemming bewaren we in de sessieopslag van je browser (ym_attr) via welk kanaal je bezoek begon, zodat dat na het herladen van een pagina niet verloren gaat; die opslag verdwijnt als je het tabblad sluit of je toestemming intrekt, en bevat geen code die jou of een advertentieklik identificeert. Statistieken staan standaard uit.",
         },
 
         { type: "heading", level: 2, content: "Gedragsopnames, alleen met toestemming" },
@@ -113,6 +113,7 @@ export const cookieStatement: LegalStatementSet = {
             ["ym_consent", "Onthoudt je cookiekeuze, de versie van de keuze en het moment waarop je die maakte.", "Noodzakelijk, eigen cookie", "6 maanden"],
             ["_ga", "Google Analytics: onderscheidt bezoekers.", "Statistieken, Google, alleen met toestemming", "90 dagen, niet verlengd"],
             ["_ga_*", "Google Analytics: houdt de sessie bij.", "Statistieken, Google, alleen met toestemming", "90 dagen vanaf het laatste bezoek"],
+            ["ym_attr (sessieopslag, geen cookie)", "Onthoudt via welk kanaal je bezoek begon, zodat een aanvraag dat na het herladen van een pagina nog weet.", "Statistieken, eigen opslag, alleen met toestemming", "Tot je het tabblad sluit"],
             ["_clck", "Microsoft Clarity: herkent je browser bij een volgend bezoek aan een pseudonieme code en bewaart Clarity-voorkeuren.", "Gedragsopnames, Microsoft, alleen met toestemming", "Door Microsoft bepaald"],
             ["_clsk", "Microsoft Clarity: voegt de pagina's van één bezoek samen tot één opname.", "Gedragsopnames, Microsoft, alleen met toestemming", "Door Microsoft bepaald"],
             ["MUID, CLID, ANONCHK, MR, SM", "Microsoft: op Microsofts eigen domeinen, onder meer om een browser over sites heen te herkennen.", "Gedragsopnames, Microsoft, alleen met toestemming; cookies van Microsoft zelf", "Door Microsoft bepaald"],
@@ -147,8 +148,8 @@ export const cookieStatement: LegalStatementSet = {
       title: "Cookie statement",
       description: "Which cookies ymcreations.com sets, what for, for how long, and how to change your choice.",
       intro: "This statement describes which cookies ymcreations.com sets, what they are for, how long they last, and how to change your choice.",
-      updatedIso: "2026-09-29",
-      updatedLabel: "29 September 2026",
+      updatedIso: "2026-09-30",
+      updatedLabel: "30 September 2026",
       blocks: [
         { type: "heading", level: 2, content: "What cookies are" },
         {
@@ -161,7 +162,7 @@ export const cookieStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "The website sets one necessary cookie: the one that remembers your cookie choice. It needs no consent. Beyond that, the public website sets no cookies and uses no local storage in your browser. Fonts are served from our own server, not from Google.",
+            "The website sets one necessary cookie: the one that remembers your cookie choice. It needs no consent. Without your consent, the public website sets no other cookies and uses no storage in your browser. Fonts are served from our own server, not from Google.",
         },
         {
           type: "paragraph",
@@ -173,7 +174,7 @@ export const cookieStatement: LegalStatementSet = {
         {
           type: "paragraph",
           content:
-            "With your consent we load Google Analytics to understand how the website is used and to improve it. Google then sets cookies to tell visits and visitors apart, and data about your visit is shared with Google. Those cookies are set to last ninety days. The cookie that tells visitors apart is not extended by a later visit; the cookie that tracks the session is set again for ninety days on each visit, because Google updates the session state in it. Without consent the script is not loaded and these cookies are not set. Analytics is off by default.",
+            "With your consent we load Google Analytics to understand how the website is used and to improve it. Google then sets cookies to tell visits and visitors apart, and data about your visit is shared with Google. Those cookies are set to last ninety days. The cookie that tells visitors apart is not extended by a later visit; the cookie that tracks the session is set again for ninety days on each visit, because Google updates the session state in it. Without consent the script is not loaded and these cookies are not set. With the same consent we keep in your browser's session storage (ym_attr) through which channel your visit began, so a page reload does not lose it; that storage disappears when you close the tab or withdraw your consent, and holds no code that identifies you or an ad click. Analytics is off by default.",
         },
 
         { type: "heading", level: 2, content: "Behaviour recordings, only with consent" },
@@ -213,6 +214,7 @@ export const cookieStatement: LegalStatementSet = {
             ["ym_consent", "Remembers your cookie choice, the version it was made under and when you made it.", "Necessary, first-party", "6 months"],
             ["_ga", "Google Analytics: tells visitors apart.", "Analytics, Google, only with consent", "90 days, not extended"],
             ["_ga_*", "Google Analytics: keeps track of the session.", "Analytics, Google, only with consent", "90 days from the last visit"],
+            ["ym_attr (session storage, not a cookie)", "Remembers through which channel your visit began, so a request still knows it after a page reload.", "Analytics, first-party storage, only with consent", "Until you close the tab"],
             ["_clck", "Microsoft Clarity: recognises your browser on a later visit by a pseudonymous code and keeps Clarity preferences.", "Behaviour recordings, Microsoft, only with consent", "Set by Microsoft"],
             ["_clsk", "Microsoft Clarity: joins the pages of one visit into one recording.", "Behaviour recordings, Microsoft, only with consent", "Set by Microsoft"],
             ["MUID, CLID, ANONCHK, MR, SM", "Microsoft: on Microsoft's own domains, among other things to recognise a browser across sites.", "Behaviour recordings, Microsoft, only with consent; Microsoft's own cookies", "Set by Microsoft"],

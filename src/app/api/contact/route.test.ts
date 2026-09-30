@@ -32,6 +32,7 @@ vi.mock("next/server", async (importOriginal) => ({
 const { POST } = await import("@/app/api/contact/route");
 const { isLeadEventId } = await import("@/lib/meta/event-id");
 const { CONSENT_COOKIE, CONSENT_VERSION, serializeConsent } = await import("@/lib/consent/consent");
+const { resetRateLimits } = await import("@/lib/payments/rate-limit");
 
 const visitor = { name: "Anna Voorbeeld", email: "anna@example.com", message: "Een bericht van twaalf tekens of meer.", locale: "nl" };
 
@@ -48,6 +49,7 @@ let error: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resetRateLimits();
   logged = [];
   error = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
     logged.push(args);
@@ -79,22 +81,23 @@ describe("the contact route's error log", () => {
 
   it("names no address when the notification mail is refused", async () => {
     storeInquiry.mockResolvedValue(undefined);
-    send.mockResolvedValueOnce({ error: { message: "rejected" } });
+    send.mockResolvedValueOnce({ error: { name: "validation_error", message: "rejected anna@example.com", statusCode: 422 } });
 
     const response = await POST(request(visitor));
 
-    expect(response.status).toBe(500);
+    /* Stored is stored: the mail is a notification, not the record. */
+    expect(response.status).toBe(200);
     expect(loggedText()).toContain("Admin email failed");
     expect(loggedText()).not.toMatch(/@/);
   });
 
   it("names no address when the confirmation mail is refused", async () => {
     storeInquiry.mockResolvedValue(undefined);
-    send.mockResolvedValueOnce({ data: { id: "m1" } }).mockResolvedValueOnce({ error: { message: "rejected" } });
+    send.mockResolvedValueOnce({ data: { id: "m1" } }).mockResolvedValueOnce({ error: { message: "rejected anna@example.com" } });
 
     const response = await POST(request(visitor));
 
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(200);
     expect(loggedText()).toContain("Customer confirmation email failed");
     expect(loggedText()).not.toMatch(/@/);
   });
@@ -351,21 +354,40 @@ describe("the lead event id", () => {
     expect(await response.json()).not.toHaveProperty("leadEventId");
   });
 
-  it("never comes with a failed store or a refused mail", async () => {
+  it("never comes with a failed store", async () => {
     storeInquiry.mockRejectedValueOnce(new Error("db down"));
     const failedStore = await POST(request(visitor));
     expect(failedStore.status).toBe(500);
     expect(await failedStore.json()).not.toHaveProperty("leadEventId");
+  });
 
-    send.mockResolvedValueOnce({ error: { message: "rejected" } });
+  it("does come with a stored inquiry whose mail failed: the lead exists, and a retry would only duplicate it", async () => {
+    send.mockResolvedValueOnce({ error: { message: "Resend says no" } });
     const failedAdminMail = await POST(request(visitor));
-    expect(failedAdminMail.status).toBe(500);
-    expect(await failedAdminMail.json()).not.toHaveProperty("leadEventId");
+    expect(failedAdminMail.status).toBe(200);
+    const adminJson = await failedAdminMail.json();
+    expect(isLeadEventId(adminJson.leadEventId)).toBe(true);
+    /* Resend's own text never reaches the visitor. */
+    expect(JSON.stringify(adminJson)).not.toContain("Resend says no");
 
     send.mockResolvedValueOnce({ data: { id: "m1" } }).mockResolvedValueOnce({ error: { message: "rejected" } });
     const failedConfirmation = await POST(request(visitor));
-    expect(failedConfirmation.status).toBe(500);
-    expect(await failedConfirmation.json()).not.toHaveProperty("leadEventId");
+    expect(failedConfirmation.status).toBe(200);
+    expect(isLeadEventId((await failedConfirmation.json()).leadEventId)).toBe(true);
+
+    send.mockRejectedValueOnce(new Error("network"));
+    const thrown = await POST(request(visitor));
+    expect(thrown.status).toBe(200);
+    expect(storeInquiry).toHaveBeenCalledTimes(3);
+  });
+
+  it("does come when the mail configuration is missing, after storing", async () => {
+    delete process.env.RESEND_API_KEY;
+    const response = await POST(request(visitor));
+    expect(response.status).toBe(200);
+    expect(storeInquiry).toHaveBeenCalledTimes(1);
+    expect(send).not.toHaveBeenCalled();
+    expect(loggedText()).toContain("missing mail configuration");
   });
 });
 
@@ -456,14 +478,8 @@ describe("the Conversions API Lead", () => {
     expect(Object.keys(metaBodies()[0].data[0].user_data).sort()).toEqual(["client_ip_address", "client_user_agent"]);
   });
 
-  it("D: sends no Lead when storing or mailing failed", async () => {
+  it("D: sends no Lead when storing failed or the request was refused", async () => {
     storeInquiry.mockRejectedValueOnce(new Error("db down"));
-    expect((await POST(leadRequest(visitor, consentCookie(true)))).status).toBe(500);
-
-    send.mockResolvedValueOnce({ error: { message: "rejected" } });
-    expect((await POST(leadRequest(visitor, consentCookie(true)))).status).toBe(500);
-
-    send.mockResolvedValueOnce({ data: { id: "m1" } }).mockResolvedValueOnce({ error: { message: "rejected" } });
     expect((await POST(leadRequest(visitor, consentCookie(true)))).status).toBe(500);
 
     expect((await POST(leadRequest({ ...visitor, email: "nope" }, consentCookie(true)))).status).toBe(400);
@@ -535,5 +551,84 @@ describe("the Conversions API Lead", () => {
     await runScheduled();
     expect(response.status).toBe(200);
     expect(metaFetch).not.toHaveBeenCalled();
+  });
+});
+
+/*
+  Paid search attribution: utm_term/utm_content travel with the checked
+  attribution; the Google Ads click identifiers are kept only when the
+  request's own consent cookie says yes to marketing.
+*/
+describe("Google Ads attribution on the request", () => {
+  const GCLID = "Cj0KCQjw_test-GCLID_abc123BwE";
+  const paid = {
+    trafficClass: "campaign",
+    trafficSource: "google",
+    trafficMedium: "cpc",
+    campaign: "search-website-laten-maken",
+    term: "website laten maken",
+    content: "rsa-1",
+    landingPath: "/nl/diensten/website-laten-maken",
+  };
+
+  function withConsent(body: unknown, marketing: boolean | null) {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    if (marketing !== null) {
+      const value = serializeConsent({ version: CONSENT_VERSION, analytics: false, recordings: false, marketing, decidedAt: new Date().toISOString() });
+      headers.cookie = `${CONSENT_COOKIE}=${encodeURIComponent(value)}`;
+    }
+    return new Request("http://localhost/api/contact", { method: "POST", headers, body: JSON.stringify(body) });
+  }
+
+  beforeEach(() => {
+    storeInquiry.mockResolvedValue(undefined);
+    send.mockResolvedValue({ data: { id: "m1" } });
+  });
+
+  it("stores the click id with marketing consent, together with term and content", async () => {
+    const response = await POST(withConsent({ ...visitor, attribution: paid, adClickIds: { gclid: GCLID } }, true));
+    expect(response.status).toBe(200);
+    expect(storeInquiry).toHaveBeenCalledWith(expect.objectContaining({ attribution: paid, adClickIds: { gclid: GCLID } }));
+  });
+
+  it("drops the click id without marketing consent, or without any choice, and keeps the channel", async () => {
+    for (const marketing of [false, null]) {
+      storeInquiry.mockClear();
+      await POST(withConsent({ ...visitor, attribution: paid, adClickIds: { gclid: GCLID } }, marketing));
+      expect(storeInquiry).toHaveBeenCalledWith(expect.objectContaining({ attribution: paid, adClickIds: null }));
+    }
+  });
+
+  it("drops a click id that is not shaped like one, and never logs it", async () => {
+    await POST(withConsent({ ...visitor, adClickIds: { gclid: "<script>alert(1)</script>", wbraid: "short" } }, true));
+    expect(storeInquiry).toHaveBeenCalledWith(expect.objectContaining({ adClickIds: null }));
+    expect(loggedText()).not.toContain("script");
+  });
+});
+
+describe("rate limiting", () => {
+  beforeEach(() => {
+    storeInquiry.mockResolvedValue(undefined);
+    send.mockResolvedValue({ data: { id: "m1" } });
+  });
+
+  function from(ip: string) {
+    return new Request("http://localhost/api/contact", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-forwarded-for": ip },
+      body: JSON.stringify(visitor),
+    });
+  }
+
+  it("answers 429 after the limit, per address, before storing anything", async () => {
+    for (let i = 0; i < 6; i++) expect((await POST(from("203.0.113.9"))).status).toBe(200);
+    const refused = await POST(from("203.0.113.9"));
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get("retry-after")).toMatch(/^\d+$/);
+    expect(await refused.json()).not.toHaveProperty("leadEventId");
+    expect(storeInquiry).toHaveBeenCalledTimes(6);
+
+    /* Another visitor is not affected. */
+    expect((await POST(from("198.51.100.4"))).status).toBe(200);
   });
 });

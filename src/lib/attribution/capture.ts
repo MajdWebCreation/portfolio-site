@@ -1,5 +1,5 @@
-import { classifyAttribution, validateAttribution } from "@/lib/attribution/classify";
-import type { Attribution } from "@/lib/attribution/types";
+import { classifyAttribution, cleanAdClickIds, validateAttribution } from "@/lib/attribution/classify";
+import type { AdClickIds, Attribution } from "@/lib/attribution/types";
 import { hasAnalyticsConsent, hydrateConsent } from "@/lib/consent/store";
 
 /**
@@ -19,10 +19,22 @@ import { hasAnalyticsConsent, hydrateConsent } from "@/lib/consent/store";
  * sessionStorage so a reload keeps it; withdrawal removes it again. The
  * consent store does not know this module; `syncAttributionStorage` is
  * called by the code that changes consent.
+ *
+ * One exception to first touch: a landing URL that carries its own campaign
+ * signal (a UTM source or a Google Ads click identifier) wins over a value
+ * kept from earlier in the same tab. An ad click is a new, deliberate
+ * arrival, and recording it under an earlier organic visit would hide what
+ * the ad did.
+ *
+ * Google Ads click identifiers (`gclid`, `gbraid`, `wbraid`) are held in
+ * memory only, never written to any storage: they go with an inquiry to the
+ * contact route, which keeps them only when the request carries a yes to
+ * marketing.
  */
 export const ATTRIBUTION_STORAGE_KEY = "ym_attr";
 
 let current: Attribution | null = null;
+let clickIds: AdClickIds | null = null;
 let captured = false;
 
 function readStored(): Attribution | null {
@@ -44,13 +56,16 @@ function writeStored(value: Attribution | null): void {
   }
 }
 
-/** Only the three UTM keys the model uses are read; everything else in the query is left alone. */
-function utmFrom(search: string): { source: string | null; medium: string | null; campaign: string | null } {
+/** Only the five UTM keys and Google's click identifiers are read; everything else in the query is left alone. */
+function utmFrom(search: string) {
   const params = new URLSearchParams(search);
   return {
     source: params.get("utm_source"),
     medium: params.get("utm_medium"),
     campaign: params.get("utm_campaign"),
+    term: params.get("utm_term"),
+    content: params.get("utm_content"),
+    clickIds: cleanAdClickIds({ gclid: params.get("gclid"), gbraid: params.get("gbraid"), wbraid: params.get("wbraid") }),
   };
 }
 
@@ -70,19 +85,25 @@ export function captureAttribution(): Attribution | null {
   */
   hydrateConsent();
 
-  /* A value kept from before a reload, if the visitor allowed storage. */
-  const stored = hasAnalyticsConsent() ? readStored() : null;
+  const utm = utmFrom(window.location.search);
+  clickIds = utm.clickIds;
+  const campaignSignal = Boolean(utm.source?.trim() || clickIds);
+
+  /* A value kept from before a reload, if the visitor allowed storage -- unless this URL is a campaign arrival of its own. */
+  const stored = hasAnalyticsConsent() && !campaignSignal ? readStored() : null;
   if (stored) {
     current = stored;
     return current;
   }
 
-  const utm = utmFrom(window.location.search);
   const fresh = classifyAttribution({
     referrer: document.referrer,
     utmSource: utm.source,
     utmMedium: utm.medium,
     utmCampaign: utm.campaign,
+    utmTerm: utm.term,
+    utmContent: utm.content,
+    googleAdClick: clickIds !== null,
     ownHostname: window.location.hostname,
     landingPath: window.location.pathname,
   });
@@ -95,6 +116,23 @@ export function captureAttribution(): Attribution | null {
 /** The attribution as captured; null before capture or when nothing usable was seen. */
 export function currentAttribution(): Attribution | null {
   return current;
+}
+
+/** The Google Ads click identifiers of the landing URL, from memory; null when there were none. */
+export function currentAdClickIds(): AdClickIds | null {
+  return clickIds;
+}
+
+/**
+ * What an inquiry carries about the visit, for the three forms: the
+ * attribution and the click identifiers, each left out when absent. The
+ * contact route checks both again.
+ */
+export function attributionPayload(): { attribution?: Attribution; adClickIds?: AdClickIds } {
+  return {
+    ...(current ? { attribution: current } : {}),
+    ...(clickIds ? { adClickIds: clickIds } : {}),
+  };
 }
 
 /**
@@ -113,5 +151,6 @@ export function syncAttributionStorage(analyticsGranted: boolean): void {
 /** Test seam. */
 export function resetAttributionCapture(): void {
   current = null;
+  clickIds = null;
   captured = false;
 }

@@ -9,14 +9,8 @@ import { closeConsentSettings, decideConsent, hydrateConsent, useConsentSnapshot
 
 export type ConsentCopy = {
   title: string;
-  /** The necessary part; always shown. */
+  /** The first layer's one short text. The detail lives in the preferences layer and the cookie and privacy statements. */
   body: string;
-  /** One sentence per optional category, shown only when the deployment has it. */
-  bodyAnalytics: string;
-  bodyRecordings: string;
-  bodyMarketing: string;
-  /** How to change one's mind; always last. */
-  bodyWithdraw: string;
   necessaryOnly: string;
   acceptAll: string;
   preferences: string;
@@ -319,15 +313,7 @@ export default function ConsentDialog({
             {copy.title}
           </h2>
           <p id={bodyId} className="mt-2 text-[0.9rem] leading-relaxed text-muted">
-            {[
-              copy.body,
-              analyticsAvailable ? copy.bodyAnalytics : null,
-              recordingsAvailable ? copy.bodyRecordings : null,
-              marketingAvailable ? copy.bodyMarketing : null,
-              copy.bodyWithdraw,
-            ]
-              .filter(Boolean)
-              .join(" ")}
+            {copy.body}
           </p>
 
           {/* Two answers, one shape: the same variant, the same width, one Tab apart. */}

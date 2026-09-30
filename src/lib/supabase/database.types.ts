@@ -522,6 +522,8 @@ export type Database = {
           campaign: string | null
           company: string | null
           email: string
+          gbraid: string | null
+          gclid: string | null
           id: string
           internal_note: string | null
           landing_path: string | null
@@ -537,12 +539,17 @@ export type Database = {
           traffic_medium: string | null
           traffic_source: string | null
           updated_at: string
+          utm_content: string | null
+          utm_term: string | null
           website_url: string | null
+          wbraid: string | null
         }
         Insert: {
           campaign?: string | null
           company?: string | null
           email: string
+          gbraid?: string | null
+          gclid?: string | null
           id?: string
           internal_note?: string | null
           landing_path?: string | null
@@ -558,12 +565,17 @@ export type Database = {
           traffic_medium?: string | null
           traffic_source?: string | null
           updated_at?: string
+          utm_content?: string | null
+          utm_term?: string | null
           website_url?: string | null
+          wbraid?: string | null
         }
         Update: {
           campaign?: string | null
           company?: string | null
           email?: string
+          gbraid?: string | null
+          gclid?: string | null
           id?: string
           internal_note?: string | null
           landing_path?: string | null
@@ -579,7 +591,10 @@ export type Database = {
           traffic_medium?: string | null
           traffic_source?: string | null
           updated_at?: string
+          utm_content?: string | null
+          utm_term?: string | null
           website_url?: string | null
+          wbraid?: string | null
         }
         Relationships: []
       }

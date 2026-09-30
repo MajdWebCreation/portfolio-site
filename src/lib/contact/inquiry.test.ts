@@ -142,3 +142,44 @@ describe("storeInquiry for the existing origins", () => {
     });
   });
 });
+
+describe("storeInquiry with paid search attribution", () => {
+  const paid = { ...attribution, trafficSource: "google", trafficMedium: "cpc", term: "website laten maken", content: "rsa-1" };
+  const contact = { origin: "contact" as const, locale: "nl" as const, name: "Anna", email: "anna@example.com", company: "", message: "Twaalf tekens bericht", phone: "" };
+
+  it("writes utm_term, utm_content and the click ids in their own columns", async () => {
+    await storeInquiry({ ...contact, attribution: paid, adClickIds: { gclid: "Cj0KCQjw_test-GCLID" } });
+    expect(insert.mock.calls[0][0]).toMatchObject({
+      traffic_class: "campaign",
+      traffic_source: "google",
+      utm_term: "website laten maken",
+      utm_content: "rsa-1",
+      gclid: "Cj0KCQjw_test-GCLID",
+      gbraid: null,
+      wbraid: null,
+    });
+  });
+
+  it("does not name the new columns at all when there is nothing for them", async () => {
+    await storeInquiry({ ...contact, attribution, adClickIds: null });
+    const row = insert.mock.calls[0][0];
+    for (const column of ["utm_term", "utm_content", "gclid", "gbraid", "wbraid"]) expect(row).not.toHaveProperty(column);
+  });
+
+  it("still stores the inquiry, without them, when the database does not have the columns yet", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    insert.mockResolvedValueOnce({ error: { code: "PGRST204", message: "Could not find the 'gclid' column" } });
+    await storeInquiry({ ...contact, attribution: paid, adClickIds: { gclid: "Cj0KCQjw_test-GCLID" } });
+    expect(insert).toHaveBeenCalledTimes(2);
+    expect(insert.mock.calls[1][0]).not.toHaveProperty("gclid");
+    expect(insert.mock.calls[1][0]).toMatchObject({ traffic_class: "campaign", traffic_source: "google" });
+    expect(JSON.stringify(error.mock.calls)).not.toContain("Cj0KCQjw");
+    error.mockRestore();
+  });
+
+  it("does not retry other failures", async () => {
+    insert.mockResolvedValueOnce({ error: { code: "23514", message: "check violation" } });
+    await expect(storeInquiry({ ...contact, attribution: paid, adClickIds: null })).rejects.toThrow();
+    expect(insert).toHaveBeenCalledTimes(1);
+  });
+});

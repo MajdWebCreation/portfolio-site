@@ -9,7 +9,7 @@ import { SelectField, TextareaField } from "@/components/admin/form-field";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import StatusBadge from "@/components/admin/status-badge";
 import { formatDateTime } from "@/lib/admin/format";
-import { trafficClassLabels, type Attribution } from "@/lib/attribution/types";
+import { trafficClassLabels, type AdClickIds, type Attribution } from "@/lib/attribution/types";
 import { saveInquiryHandling } from "@/lib/admin/inquiries/actions";
 import {
   inquiryOriginLabels,
@@ -75,7 +75,7 @@ function PlannerSummary({ inquiry }: { inquiry: PlannerInquiry }) {
  * shown with the caveat it deserves, and a request without a value says so
  * instead of guessing.
  */
-function AttributionSummary({ attribution }: { attribution: Attribution | undefined }) {
+function AttributionSummary({ attribution, adClickIds }: { attribution: Attribution | undefined; adClickIds: AdClickIds | undefined }) {
   return (
     <AdminSection id="attribution" title="Herkomst van het bezoek" note="Zoals de website het bij binnenkomst zag">
       {attribution ? (
@@ -94,9 +94,18 @@ function AttributionSummary({ attribution }: { attribution: Attribution | undefi
           {attribution.trafficSource ? <DetailRow term="Bron">{attribution.trafficSource}</DetailRow> : null}
           {attribution.trafficMedium ? <DetailRow term="Medium">{attribution.trafficMedium}</DetailRow> : null}
           {attribution.campaign ? <DetailRow term="Campagne">{attribution.campaign}</DetailRow> : null}
+          {attribution.term ? <DetailRow term="Zoekwoord (utm_term)">{attribution.term}</DetailRow> : null}
+          {attribution.content ? <DetailRow term="Advertentie (utm_content)">{attribution.content}</DetailRow> : null}
           <DetailRow term="Landingspagina">
             <span className="tabular break-all">{attribution.landingPath}</span>
           </DetailRow>
+          {adClickIds
+            ? (Object.entries(adClickIds) as [keyof AdClickIds, string][]).map(([key, value]) => (
+                <DetailRow key={key} term={`Google Ads-klik (${key})`}>
+                  <span className="tabular break-all text-[0.88rem]">{value}</span>
+                </DetailRow>
+              ))
+            : null}
         </DetailList>
       ) : (
         <p className="text-[0.95rem] text-muted">Niet vastgelegd: de website kon de herkomst van dit bezoek niet betrouwbaar vaststellen.</p>
@@ -163,7 +172,7 @@ export default function InquiryDetail({ inquiry, customerId }: { inquiry: Inquir
 
         {inquiry.origin === "project_planner" ? <PlannerSummary inquiry={inquiry} /> : null}
 
-        <AttributionSummary attribution={inquiry.attribution} />
+        <AttributionSummary attribution={inquiry.attribution} adClickIds={inquiry.adClickIds} />
       </div>
 
       <aside className="space-y-8 lg:border-l lg:border-line lg:pl-8" aria-labelledby="handling-heading">

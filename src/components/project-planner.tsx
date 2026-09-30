@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { trackEvent } from "@/lib/analytics/track";
 import { plannerStepNames, type ErrorKind } from "@/lib/analytics/events";
-import { currentAttribution } from "@/lib/attribution/capture";
+import { attributionPayload, currentAttribution } from "@/lib/attribution/capture";
 import { attributionEventParams } from "@/lib/attribution/event-params";
 import { reportLead } from "@/lib/tracking/conversions";
 import {
@@ -607,7 +607,7 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
         body: JSON.stringify({
           mode: "project_planner",
           locale,
-          attribution: currentAttribution() ?? undefined,
+          ...attributionPayload(),
           name: form.name,
           email: form.email,
           company: form.company,

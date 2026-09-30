@@ -220,15 +220,8 @@ export const siteContent = {
       cookieSettings: "Cookie-instellingen",
     },
     consent: {
-      title: "Jouw privacy, jouw keuze",
-      body: "YM Creations gebruikt noodzakelijke technologie om de website goed te laten werken.",
-      bodyAnalytics:
-        "Met jouw toestemming verwerken we via Google Analytics persoonsgegevens over je gebruik en apparaat, om te begrijpen hoe de website wordt gebruikt en die te verbeteren; die gegevens worden gedeeld met Google.",
-      bodyRecordings:
-        "Met aparte toestemming legt Microsoft Clarity vast waar je klikt, hoe ver je scrolt en waar je mogelijk vastloopt, als heatmaps en gereconstrueerde sessieopnames; formulieren worden daarbij afgeschermd.",
-      bodyMarketing:
-        "Met aparte toestemming meten we via Google Ads en de Meta Pixel welke advertenties bij Google, Facebook en Instagram tot een bezoek, aanvraag of contact leiden, en kunnen we eerdere bezoekers later opnieuw een advertentie tonen; die gegevens worden gedeeld met Google en Meta.",
-      bodyWithdraw: "Je kunt je toestemming later altijd intrekken via Cookie-instellingen.",
+      title: "Welkom bij YM Creations",
+      body: "We gebruiken cookies en vergelijkbare technologieën voor statistieken, marketing en om onze website te verbeteren. Je bepaalt zelf wat je toestaat.",
       necessaryOnly: "Alleen noodzakelijk",
       acceptAll: "Alles accepteren",
       preferences: "Voorkeuren",
@@ -395,15 +388,8 @@ export const siteContent = {
       cookieSettings: "Cookie settings",
     },
     consent: {
-      title: "Your privacy, your choice",
-      body: "YM Creations uses necessary technology to make this website work.",
-      bodyAnalytics:
-        "With your consent, we process personal data about your usage and device through Google Analytics, to understand how the website is used and to improve it; that data is shared with Google.",
-      bodyRecordings:
-        "With separate consent, Microsoft Clarity records where you click, how far you scroll and where you may get stuck, as heatmaps and reconstructed session recordings; forms are masked.",
-      bodyMarketing:
-        "With separate consent, we use Google Ads and the Meta Pixel to measure which ads on Google, Facebook and Instagram lead to a visit, an inquiry or contact, and we can show earlier visitors an ad again later; that data is shared with Google and Meta.",
-      bodyWithdraw: "You can withdraw your consent at any time under Cookie settings.",
+      title: "Welcome to YM Creations",
+      body: "We use cookies and similar technologies for analytics, marketing and to improve our website. You decide what you allow.",
       necessaryOnly: "Necessary only",
       acceptAll: "Accept all",
       preferences: "Preferences",

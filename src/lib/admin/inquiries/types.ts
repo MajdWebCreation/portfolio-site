@@ -1,4 +1,4 @@
-import type { Attribution } from "@/lib/attribution/types";
+import type { AdClickIds, Attribution } from "@/lib/attribution/types";
 import type { ContactPayload } from "@/lib/contact/payload";
 import { websiteUrlHost } from "@/lib/contact/website-url";
 
@@ -40,6 +40,8 @@ type InquiryBase = {
   internalNote?: string;
   /** Where the visit came from, when the website could establish it. */
   attribution?: Attribution;
+  /** The Google Ads click identifiers, stored only with the visitor's marketing consent. */
+  adClickIds?: AdClickIds;
 };
 
 export type ContactInquiry = InquiryBase & {
