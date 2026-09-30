@@ -32,7 +32,7 @@
 --                    under which text version, decided when. Null when there
 --                    was no current choice. Provenance for any later sharing
 --                    of outcomes with an advertising platform; the follow-up
---                    migration 20260930210001 refuses a click id without a
+--                    migration 20260930194155 refuses a click id without a
 --                    recorded yes.
 --   adgroup_id, match_type
 --                    Google Ads' `{adgroupid}` and `{matchtype}` from the
@@ -151,7 +151,7 @@ alter table public.inquiries
       or (marketing_consent is not null and consent_version is not null and consent_decided_at is not null)
     ),
   -- The rule that a stored click id needs a recorded yes to marketing is
-  -- 20260930210001_inquiry_click_ids_need_consent, applied after the code
+  -- 20260930194155_inquiry_click_ids_need_consent, applied after the code
   -- that writes the consent snapshot is live: the intake deployed before it
   -- writes click ids without the snapshot, and would be refused in the
   -- minutes between this migration and that deployment.
