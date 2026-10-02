@@ -351,8 +351,8 @@ export default function ProjectPlanner({ locale, catalog }: ProjectPlannerProps)
         : "SEO Growth focuses more on page structure, search intent, and growth opportunities than a basic SEO setup.",
     adminLite:
       locale === "nl"
-        ? "Admin-lite betekent een lichte beheerlaag voor eenvoudige updates of contentbeheer, geen volledig intern systeem."
-        : "Admin-lite means a lightweight admin layer for simple updates or content management, not a full internal system.",
+        ? "Teksten en afbeeldingen pas je standaard zelf aan. Met deze uitbreiding beheer je ook projecten, referenties en secties zelf; nieuwe functionaliteit blijft maatwerk."
+        : "You edit text and images yourself as standard. With this extension you also manage projects, testimonials and sections yourself; new functionality remains custom work.",
     lightApi:
       locale === "nl"
         ? "Een lichte API-integratie is een eenvoudige koppeling met bijvoorbeeld een externe tool, formulierdienst of databron."

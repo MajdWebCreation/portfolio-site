@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useRef, useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { trackEvent } from "@/lib/analytics/track";
 import CtaLink from "@/components/cta-link";
 import { isPackageId, type PackageId } from "@/lib/pricing";
@@ -21,17 +21,19 @@ export type SelectorAddOnGroup = {
 export type SelectorPackage = {
   id: PackageId;
   name: string;
-  /** One short line: who the type is for. Shown once, in the header. */
+  /** One short line: who the type is for. */
   tagline: string;
-  /** "€ 1.495", or "vanaf € 4.995" for scope-driven work */
+  /** "vanaf € 1.495": the starting amount with its word, for the detail rows. */
   price: string;
-  /** "€ 1.495"; the label above it says whether it is a starting price */
+  /** "€ 1.495"; the label above it says it is a starting price. */
   priceAmount: string;
   /** Base amount while the development discount is active: "€ 1.495". */
   originalPriceAmount?: string;
-  /** "€ 29 p/m" */
+  /** "vanaf € 29 p/m" */
   monthly: string;
   scopeDriven: boolean;
+  /** Three to five points that set the type apart, for the overview cards. */
+  highlights: string[];
   included: string[];
   addOnGroups: SelectorAddOnGroup[];
   /** Boundary text; for custom work the scope explanation. */
@@ -40,7 +42,6 @@ export type SelectorPackage = {
 };
 
 export type SelectorLabels = {
-  onceLabel: string;
   onceFromLabel: string;
   monthlyLabel: string;
   scopeNote: string;
@@ -62,12 +63,11 @@ export type SelectorDiscount = {
 type PricingSelectorProps = {
   packages: SelectorPackage[];
   labels: SelectorLabels;
-  initialId: PackageId;
   discount?: SelectorDiscount;
 };
 
 /* A base amount the development discount replaces: quiet, struck through. */
-function OriginalPrice({ amount, label }: { amount: string; label: string }) {
+export function OriginalPrice({ amount, label }: { amount: string; label: string }) {
   return (
     <s className="text-faint decoration-[0.06em]">
       <span className="sr-only">{label} </span>
@@ -76,9 +76,7 @@ function OriginalPrice({ amount, label }: { amount: string; label: string }) {
   );
 }
 
-const DESKTOP = "(min-width: 64rem)";
-
-/* A deep link (#business) opens that level; read without touching state. */
+/* A deep link (#business) opens that type; read without touching state. */
 const subscribeHash = (onChange: () => void) => {
   window.addEventListener("hashchange", onChange);
   return () => window.removeEventListener("hashchange", onChange);
@@ -90,35 +88,38 @@ const readHash = () => {
 const noHash = () => null;
 
 /**
- * One package at a time. On wide screens the list of levels sits on the
- * left and the selected level's detail on the right; on narrow screens the
- * same markup behaves as an accordion. Every panel is in the HTML, so the
- * content is there without JavaScript and for search engines; JavaScript
- * only decides which one is shown. Selecting sends nothing: the call to
- * action leads to the project planner with the package preselected.
+ * The full detail of each project type, one at a time: what is included,
+ * which extensions belong to it, where its boundary lies and what it costs
+ * per month. Closed by default, so the overview above stays the first thing
+ * read; a row opens on a tap, or through the type's hash, which the cards
+ * above link to. Every panel is in the HTML, so the content is there without
+ * JavaScript and for search engines; JavaScript only decides which one is
+ * shown. The call to action leads to the project planner with the type
+ * preselected.
  */
-export default function PricingSelector({ packages, labels, initialId, discount }: PricingSelectorProps) {
+export default function PricingSelector({ packages, labels, discount }: PricingSelectorProps) {
   const hashId = useSyncExternalStore(subscribeHash, readHash, noHash);
-  /* undefined = no choice made yet; null = closed (narrow screens only). */
-  const [choice, setChoice] = useState<PackageId | null | undefined>(undefined);
-  const active = choice === undefined ? (hashId ?? initialId) : choice;
+  const [choice, setChoice] = useState<PackageId | null>(null);
+  /* A new hash (from a card link, or the URL on arrival) wins over the last tap. */
+  const [seenHash, setSeenHash] = useState(hashId);
+  if (hashId !== seenHash) {
+    setSeenHash(hashId);
+    if (hashId) setChoice(hashId);
+  }
+  const active = choice;
   const headRefs = useRef<Partial<Record<PackageId, HTMLButtonElement | null>>>({});
 
-  const isDesktop = () => window.matchMedia(DESKTOP).matches;
-
   const select = (id: PackageId) => {
-    const next = active === id ? (isDesktop() ? active : null) : id;
-    /* Opening a package is interest; closing the same one again is not. */
-    if (next === id && active !== id) trackEvent("pricing_package_select", { package_id: id });
+    const next = active === id ? null : id;
+    /* Opening a type is interest; closing it again is not. */
+    if (next) trackEvent("pricing_package_select", { package_id: id });
     setChoice(next);
     /* Keep the choice in the URL hash (no history entry), so back from the planner reopens it. */
     window.history.replaceState(null, "", next ? `#${next}` : window.location.pathname);
-    if (!isDesktop()) {
-      /* Keep the tapped header in view after the panel above it closes. */
-      window.requestAnimationFrame(() => {
-        headRefs.current[id]?.scrollIntoView({ block: "nearest" });
-      });
-    }
+    /* Keep the tapped header in view after a panel above it closes. */
+    window.requestAnimationFrame(() => {
+      headRefs.current[id]?.scrollIntoView({ block: "nearest" });
+    });
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -138,18 +139,16 @@ export default function PricingSelector({ packages, labels, initialId, discount 
   };
 
   return (
-    <div className="ps grid lg:grid-cols-12 lg:gap-x-8">
+    <div className="border-t border-line">
       {packages.map((pkg, index) => {
         const open = active === pkg.id;
         const headId = `ps-head-${pkg.id}`;
         const panelId = `ps-panel-${pkg.id}`;
 
         return (
-          <Fragment key={pkg.id}>
-            <h3
-              className="ps-head lg:col-span-4"
-              style={{ "--row": index + 1 } as React.CSSProperties}
-            >
+          /* The id is the hash target, so a card's link lands on this row. */
+          <div key={pkg.id} id={pkg.id} className="ps-head">
+            <h3>
               <button
                 type="button"
                 id={headId}
@@ -165,10 +164,10 @@ export default function PricingSelector({ packages, labels, initialId, discount 
                 }`}
               >
                 {/* Same three slots in every row, whatever the name's length:
-                    name and tagline, the build price, the arrow. Narrow
+                    name and tagline, the starting price, the arrow. Narrow
                     screens put the price on its own line under the text. */}
                 <span className="col-start-1 row-start-1 min-w-0">
-                  <span className="ps-name block text-[1.1rem] font-semibold leading-snug tracking-[-0.02em] text-ink lg:text-[1.05rem] xl:text-[1.2rem]">
+                  <span className="ps-name block text-[1.1rem] font-semibold leading-snug tracking-[-0.02em] text-ink lg:text-[1.2rem]">
                     {pkg.name}
                   </span>
                   <span className="mt-0.5 block text-[0.88rem] leading-snug text-muted">
@@ -197,48 +196,43 @@ export default function PricingSelector({ packages, labels, initialId, discount 
               role="region"
               aria-labelledby={headId}
               hidden={!open}
-              className="ps-panel lg:col-span-8 lg:col-start-5"
+              className="ps-panel"
             >
               <div className="ps-panel-inner">
-                <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 lg:flex-nowrap">
-                  <p className="display-sm hidden lg:block">{pkg.name}</p>
-                  {/* Two different amounts: the build once, management per month. */}
-                  <dl className="ps-prices grid w-full shrink-0 grid-cols-2 gap-x-6 lg:block lg:w-auto lg:text-right">
-                    <div>
-                      <dt className="label-mono">
-                        {pkg.scopeDriven ? labels.onceFromLabel : labels.onceLabel}
-                      </dt>
-                      <dd className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 lg:justify-end">
-                        <span className="text-[1.9rem] font-semibold leading-none tracking-[-0.03em] text-ink lg:text-[2.2rem]">
-                          {pkg.priceAmount}
-                        </span>
-                        {discount && pkg.originalPriceAmount ? (
-                          <span className="text-[1rem] leading-none">
-                            <OriginalPrice amount={pkg.originalPriceAmount} label={discount.originalLabel} />
-                          </span>
-                        ) : null}
-                      </dd>
+                {/* Two different amounts: the build once, management per month. */}
+                <dl className="grid max-w-[36rem] grid-cols-2 gap-x-6">
+                  <div>
+                    <dt className="label-mono">{labels.onceFromLabel}</dt>
+                    <dd className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <span className="tabular text-[1.9rem] font-semibold leading-none tracking-[-0.03em] text-ink lg:text-[2.2rem]">
+                        {pkg.priceAmount}
+                      </span>
                       {discount && pkg.originalPriceAmount ? (
-                        <dd className="mt-2 max-w-[16rem] text-[0.82rem] leading-snug text-muted lg:ml-auto">
-                          {discount.note}
-                        </dd>
+                        <span className="text-[1rem] leading-none">
+                          <OriginalPrice amount={pkg.originalPriceAmount} label={discount.originalLabel} />
+                        </span>
                       ) : null}
-                      {pkg.scopeDriven ? (
-                        <dd className="mt-2 max-w-[16rem] text-[0.82rem] leading-snug text-muted lg:ml-auto">
-                          {labels.scopeNote}
-                        </dd>
-                      ) : null}
-                    </div>
-                    <div className="border-l border-line pl-6 lg:mt-3 lg:border-l-0 lg:border-t lg:pl-0 lg:pt-3">
-                      <dt className="label-mono">{labels.monthlyLabel}</dt>
-                      <dd className="mt-1 text-[1.05rem] font-medium leading-snug text-body">
-                        {pkg.monthly}
+                    </dd>
+                    {discount && pkg.originalPriceAmount ? (
+                      <dd className="mt-2 max-w-[16rem] text-[0.82rem] leading-snug text-muted">
+                        {discount.note}
                       </dd>
-                    </div>
-                  </dl>
-                </div>
+                    ) : null}
+                    {pkg.scopeDriven ? (
+                      <dd className="mt-2 max-w-[16rem] text-[0.82rem] leading-snug text-muted">
+                        {labels.scopeNote}
+                      </dd>
+                    ) : null}
+                  </div>
+                  <div className="border-l border-line pl-6">
+                    <dt className="label-mono">{labels.monthlyLabel}</dt>
+                    <dd className="mt-1 text-[1.05rem] font-medium leading-snug text-body">
+                      {pkg.monthly}
+                    </dd>
+                  </div>
+                </dl>
 
-                <div className="mt-8 grid gap-8 border-t border-line pt-6 sm:grid-cols-2">
+                <div className="mt-8 grid gap-8 border-t border-line pt-6 sm:grid-cols-2 lg:gap-12">
                   <div>
                     <p className="label-mono">{labels.includedLabel}</p>
                     <ul className="mt-3 space-y-2 text-[0.95rem] leading-snug text-body">
@@ -300,14 +294,14 @@ export default function PricingSelector({ packages, labels, initialId, discount 
                     data-track-event="pricing_cta_click"
                     data-track-package-id={pkg.id}
                     data-track-cta-target="planner"
-                    data-track-placement="pricing_selector"
+                    data-track-placement="pricing_details"
                   >
                     {labels.ctaLabel}
                   </CtaLink>
                 </div>
               </div>
             </div>
-          </Fragment>
+          </div>
         );
       })}
     </div>

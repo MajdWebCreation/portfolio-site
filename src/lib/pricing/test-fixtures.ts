@@ -2,7 +2,8 @@ import type { PricingAddOnRow, PricingPackageRow, PricingSettingsRow } from "@/l
 
 /**
  * Test rows with the live amounts: the seed (20260910174246_pricing_seed.sql)
- * with the monthly management fees of 20260929182341_pricing_management_2026_09.sql,
+ * with the monthly management fees of 20260929182341_pricing_management_2026_09.sql
+ * and the platform name of 20261002231654_pricing_platform_rename.sql,
  * so the pricing and planner tests check the real numbers. Test-only.
  */
 export const seedPackageRows: PricingPackageRow[] = [
@@ -10,7 +11,7 @@ export const seedPackageRows: PricingPackageRow[] = [
   ["business", 149500, false, 2900, "Bedrijfswebsite", "Business website", 1],
   ["smart", 249500, false, 3900, "Website met reserveringen", "Website with bookings", 2],
   ["webshop", 199500, false, 3500, "Webshop", "Webshop", 3],
-  ["platform", 499500, true, 6900, "Maatwerkplatform", "Custom platform", 4],
+  ["platform", 499500, true, 6900, "Webapplicatie of platform", "Web application or platform", 4],
 ].map(([id, starting, scope, monthly, nl, en, sort]) => ({
   id: id as string,
   starting_price_cents: starting as number,

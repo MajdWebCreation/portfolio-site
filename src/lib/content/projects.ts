@@ -90,6 +90,24 @@ export const projects: Project[] = [
         en: "Flexora Bouw homepage with service overview and project photos",
       },
     },
+    pageImage: {
+      src: "/images/projects/flexora-page.webp",
+      width: 1280,
+      height: 2560,
+      alt: {
+        nl: "De homepage van Flexora Bouw van boven naar beneden: luchtfoto met configuratorknop, projectfoto's en de diensten aanbouw, opbouw, dakkapel en interieurrenovatie",
+        en: "The Flexora Bouw homepage from top to bottom: aerial photo with configurator button, project photos and the services extension, top-up, dormer and interior renovation",
+      },
+    },
+    mobileImage: {
+      src: "/images/projects/flexora-mobile.webp",
+      width: 780,
+      height: 1688,
+      alt: {
+        nl: "De homepage van Flexora Bouw op een telefoon, met de knop naar de aanbouwconfigurator",
+        en: "The Flexora Bouw homepage on a phone, with the button to the extension configurator",
+      },
+    },
   },
   {
     id: "taxi-de-polder",
@@ -126,15 +144,6 @@ export const projects: Project[] = [
       alt: {
         nl: "Homepage van Taxi De Polder met reserveerknop en vaste tarieven",
         en: "Taxi De Polder homepage with booking button and fixed rates",
-      },
-    },
-    pageImage: {
-      src: "/images/projects/taxi-de-polder-page.webp",
-      width: 1280,
-      height: 2560,
-      alt: {
-        nl: "De homepage van Taxi De Polder van boven naar beneden: reserveerknop, reservering in vier stappen en de diensten",
-        en: "The Taxi De Polder homepage from top to bottom: booking button, four-step booking and the services",
       },
     },
   },

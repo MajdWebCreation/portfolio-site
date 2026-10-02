@@ -3,6 +3,12 @@ import type { Locale } from "@/lib/content/site-content";
 /**
  * Copy of the pricing page. Packages, amounts and extensions live in
  * `@/lib/pricing`; this file only holds the words around them.
+ *
+ * The page reads top to bottom as one line of thought: what is true of every
+ * website (hero and principles), which types there are and what they start
+ * at (overview cards), what each type gets exactly (details), the project
+ * type for software rather than a website (platform band), how an amount is
+ * built up (model) and where to go when the type is not clear yet (closing).
  */
 export type PricingPageContent = {
   metaTitle: string;
@@ -12,21 +18,45 @@ export type PricingPageContent = {
     title: string;
     intro: string;
   };
-  selector: {
+  /** Three short claims that hold for every website; said here and nowhere else on the page. */
+  principles: {
+    title: string;
+    items: { title: string; text: string }[];
+  };
+  overview: {
     label: string;
     title: string;
-    onceLabel: string;
-    /** Above a scope-driven amount only; fixed prices get `onceLabel`. */
+    /** Above every starting amount, on the cards. */
+    fromLabel: string;
+    /** Before the monthly amount on a card: "Technisch beheer vanaf € 15 p/m". */
+    managementLabel: string;
+    vatNote: string;
+    ctaLabel: string;
+    /** Jump to the type's full detail further down the page. */
+    detailsLabel: string;
+  };
+  details: {
+    label: string;
+    title: string;
     onceFromLabel: string;
     monthlyLabel: string;
     /** Under a scope-driven amount: what the starting price covers. */
     scopeNote: string;
-    vatNote: string;
     includedLabel: string;
     addOnsLabel: string;
     boundaryLabel: string;
     scopeLabel: string;
     ctaLabel: string;
+  };
+  platform: {
+    label: string;
+    title: string;
+    text: string;
+    fromLabel: string;
+    highlightsLabel: string;
+    ctaLabel: string;
+    /** To the service page about web applications. */
+    secondaryLabel: string;
   };
   model: {
     title: string;
@@ -45,33 +75,66 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
   nl: {
     metaTitle: "Tarieven",
     metaDescription:
-      "Tarieven van YM Creations: een duidelijke prijs per projecttype, van compacte website tot maatwerkplatform, met uitbreidingen die bij dat type horen.",
+      "Tarieven van YM Creations: een eigen ontwerp voor iedere website en een duidelijke vanafprijs per projecttype, van compacte website tot webapplicatie of platform.",
     hero: {
       label: "Tarieven",
-      title: "Een duidelijke basisprijs. Meer alleen als de scope erom vraagt.",
+      title: "Een website die past bij jouw bedrijf. Niet andersom.",
       intro:
-        "Het type product bepaalt de prijs, niet een lijst losse functies.",
+        "Iedere website wordt ontworpen en gebouwd rond jouw bedrijf. Kies hieronder het projecttype dat het beste aansluit bij wat je nodig hebt.",
     },
-    selector: {
+    principles: {
+      title: "Wat voor iedere website geldt",
+      items: [
+        {
+          title: "Eigen ontwerp",
+          text: "Geen template waarin alleen logo en kleuren wisselen. Opbouw, tekst en beeld volgen jouw bedrijf.",
+        },
+        {
+          title: "Duidelijke vanafprijs",
+          text: "Je ziet vooraf in welke prijscategorie je project valt. De offerte maakt het bedrag exact.",
+        },
+        {
+          title: "Gebouwd om mee te groeien",
+          text: "Werkt op elke telefoon, is technisch degelijk en kan later uitgebreid worden zonder opnieuw te beginnen.",
+        },
+      ],
+    },
+    overview: {
       label: "Projecttypes",
-      title: "Van compacte website tot maatwerkplatform.",
-      onceLabel: "Eenmalig",
+      title: "Wat heb je nodig?",
+      fromLabel: "Vanaf",
+      managementLabel: "Technisch beheer",
+      vatNote: "Vanafprijzen, exclusief btw.",
+      ctaLabel: "Kies dit projecttype",
+      detailsLabel: "Wat is inbegrepen",
+    },
+    details: {
+      label: "Details",
+      title: "Wat je per projecttype krijgt.",
       onceFromLabel: "Eenmalig vanaf",
       monthlyLabel: "Technisch beheer",
       scopeNote: "Voor een afgebakende eerste versie. Functionaliteit en omvang bepalen de uiteindelijke prijs.",
-      vatNote: "Alle bedragen zijn exclusief btw.",
       includedLabel: "Inbegrepen",
       addOnsLabel: "Uitbreidingen bij dit type",
       boundaryLabel: "Ander projecttype als",
-      scopeLabel: "Maatwerk en scope",
-      ctaLabel: "Bespreek dit pakket",
+      scopeLabel: "Wat de prijs bepaalt",
+      ctaLabel: "Kies dit projecttype",
+    },
+    platform: {
+      label: "Meer dan een website",
+      title: "Meer nodig dan een website?",
+      text: "Portalen, dashboards, accounts, workflows, koppelingen of volledig eigen software. Gebouwd rond je eigen proces: na een discovery vooraf krijg je een voorstel met scope, prijs en planning.",
+      fromLabel: "Vanaf",
+      highlightsLabel: "Wat erbij hoort",
+      ctaLabel: "Bespreek je project",
+      secondaryLabel: "Meer over webapplicaties",
     },
     model: {
       title: "Zo is de prijs opgebouwd",
       once: {
         label: "Eenmalig",
         title: "Bouw",
-        text: "Eén vaste prijs per projecttype die de basis van dat type dekt. Uitbreidingen horen bij een type; vraagt het product om meer, dan hoort het bij een ander type. Maatwerk wordt per project bepaald.",
+        text: "Eén vanafprijs per projecttype die de basis van dat type dekt. Uitbreidingen die bij het type horen, staan met prijs bij de details. Vraagt je project om meer dan het type biedt, dan hoort het bij een ander type.",
       },
       monthly: {
         label: "Per maand",
@@ -80,7 +143,7 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
         outside: "Nieuwe functionaliteit, inhoudelijke wijzigingen en werk buiten de afgesproken scope worden apart geoffreerd.",
         external: "Betaalde diensten of infrastructuur van derden die het project nodig heeft, vallen buiten het standaardbeheer en worden apart doorberekend.",
       },
-      note: "Het voorstel na de intake is leidend.",
+      note: "De offerte na de intake bepaalt de definitieve prijs en scope van je project.",
     },
     closing: {
       title: "Weet je nog niet welk type past?",
@@ -91,33 +154,66 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
   en: {
     metaTitle: "Pricing",
     metaDescription:
-      "Pricing at YM Creations: one clear price per project type, from compact website to custom platform, with extensions that belong to that type.",
+      "Pricing at YM Creations: a custom design for every website and a clear starting price per project type, from compact website to web application or platform.",
     hero: {
       label: "Pricing",
-      title: "A clear base price. More only when the scope asks for it.",
+      title: "A website that fits your business. Not the other way round.",
       intro:
-        "The type of product sets the price, not a list of separate features.",
+        "Every website is designed and built around your business. Choose the project type below that best matches what you need.",
     },
-    selector: {
+    principles: {
+      title: "What holds for every website",
+      items: [
+        {
+          title: "Custom design",
+          text: "No template where only the logo and colours change. Structure, text and imagery follow your business.",
+        },
+        {
+          title: "Clear starting price",
+          text: "You see up front which price category your project falls into. The quote makes the amount exact.",
+        },
+        {
+          title: "Built to grow with you",
+          text: "Works on every phone, is technically sound and can be extended later without starting over.",
+        },
+      ],
+    },
+    overview: {
       label: "Project types",
-      title: "From compact website to custom platform.",
-      onceLabel: "One-off",
+      title: "What do you need?",
+      fromLabel: "From",
+      managementLabel: "Technical management",
+      vatNote: "Starting prices, excluding VAT.",
+      ctaLabel: "Choose this project type",
+      detailsLabel: "What is included",
+    },
+    details: {
+      label: "Details",
+      title: "What each project type gets you.",
       onceFromLabel: "One-off from",
       monthlyLabel: "Technical management",
       scopeNote: "For a clearly scoped first version. Functionality and size determine the final price.",
-      vatNote: "All amounts exclude VAT.",
       includedLabel: "Included",
       addOnsLabel: "Extensions for this type",
       boundaryLabel: "Another project type when",
-      scopeLabel: "Custom work and scope",
-      ctaLabel: "Discuss this package",
+      scopeLabel: "What sets the price",
+      ctaLabel: "Choose this project type",
+    },
+    platform: {
+      label: "More than a website",
+      title: "Need more than a website?",
+      text: "Portals, dashboards, accounts, workflows, integrations or fully custom software. Built around your own process: after a discovery up front you receive a proposal with scope, price and planning.",
+      fromLabel: "From",
+      highlightsLabel: "What comes with it",
+      ctaLabel: "Discuss your project",
+      secondaryLabel: "More about web applications",
     },
     model: {
       title: "How the price is built up",
       once: {
         label: "One-off",
         title: "Build",
-        text: "One fixed price per project type that covers the basis of that type. Extensions belong to a type; if the product asks for more, it belongs to another type. Custom work is defined per project.",
+        text: "One starting price per project type that covers the basis of that type. Extensions that belong to the type are listed with a price in the details. If your project asks for more than the type offers, it belongs to another type.",
       },
       monthly: {
         label: "Per month",
@@ -126,7 +222,7 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
         outside: "New functionality, content changes and work outside the agreed scope are quoted separately.",
         external: "Paid third-party services or infrastructure the project needs fall outside standard management and are charged separately.",
       },
-      note: "The proposal after the intake is what counts.",
+      note: "The quote after the intake sets the final price and scope of your project.",
     },
     closing: {
       title: "Not sure yet which type fits?",

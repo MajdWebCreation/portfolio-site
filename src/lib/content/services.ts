@@ -119,6 +119,12 @@ type ServiceDefinition = {
   /** Live projects that show this kind of work. */
   proof: ProjectId[];
   /**
+   * The project shown live in the header of a landing page (`contactOnPage`):
+   * its homepage in a frame and on a phone. Chosen for how well it presents
+   * the work, separate from `proof`, which lists the projects of this kind.
+   */
+  stage?: ProjectId;
+  /**
    * The project type whose starting price the page states in its header. The
    * amount is read from the pricing catalog; only the choice is made here.
    */
@@ -149,6 +155,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
     kind: "package",
     family: "websites",
     proof: ["taxi-de-polder", "dos-slotenmaker"],
+    stage: "flexora-bouw",
     pricePackage: "business",
     entryPackage: "starter",
     formerSlugs: { nl: ["bedrijfswebsite"] },
@@ -186,8 +193,8 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
           {
             heading: "Wat de prijs bepaalt",
             paragraphs: [
-              "De prijs volgt het type project, niet een lijst losse functies. Een compacte website van één tot vijf pagina's is een ander type dan een bedrijfswebsite van zes tot twaalf pagina's met een bredere contentstructuur, formulieren en eenvoudig contentbeheer. Vraagt het product om een reserverings- of aanvraagflow, statusbeheer of prijslogica, dan verschuift het naar een zwaarder type. De vanafprijzen per type staan op de [tarievenpagina](/nl/tarieven).",
-              "Binnen een type is vooral de inhoud bepalend. Teksten komen van jou; we schrijven mee en scherpen aan, maar het verhaal is van het bedrijf. Fotografie, een beheeromgeving om zelf teksten te wijzigen en een extra taal zijn de onderdelen die de scope het vaakst laten bewegen. Wat er precies in zit, staat in het voorstel dat na de intake volgt.",
+              "De prijs volgt het type project, niet een lijst losse functies. Een compacte website van één tot vijf pagina's is een ander type dan een bedrijfswebsite van zes tot twaalf pagina's met een bredere contentstructuur, formulieren en een beheeromgeving om zelf teksten en afbeeldingen aan te passen. Vraagt het product om een reserverings- of aanvraagflow, statusbeheer of prijslogica, dan verschuift het naar een zwaarder type. De vanafprijzen per type staan op de [tarievenpagina](/nl/tarieven).",
+              "Binnen een type is vooral de inhoud bepalend. Teksten komen van jou; we schrijven mee en scherpen aan, maar het verhaal is van het bedrijf. Fotografie, een uitgebreidere beheeromgeving waarin je ook projecten en referenties zelf beheert, en een extra taal zijn de onderdelen die de scope het vaakst laten bewegen. Wat er precies in zit, staat in het voorstel dat na de intake volgt.",
             ],
           },
           {
@@ -225,7 +232,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
         scope: [
           "Teksten: we schrijven mee of scherpen aan, de inhoud komt van jou",
           "Fotografie en beeld",
-          "Een beheeromgeving om zelf teksten aan te passen; bij weinig wijzigingen regelen we die voor je",
+          "Een uitgebreidere beheeromgeving waarin je ook projecten, referenties en secties zelf beheert; teksten en afbeeldingen pas je standaard zelf aan",
           "Advertenties en doorlopende SEO na livegang",
         ],
         approachTitle: "Zo verloopt het traject",
@@ -304,7 +311,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
         scope: [
           "Copy: we co-write or sharpen it, the content comes from you",
           "Photography and imagery",
-          "An admin area to edit copy yourself; with few changes we handle them for you",
+          "An extended admin environment in which you also manage projects, testimonials and sections yourself; text and images you edit yourself as standard",
           "Advertising and ongoing SEO after launch",
         ],
         approachTitle: "How the project runs",
@@ -383,7 +390,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
             heading: "Waar de scope van koppelingen ligt",
             paragraphs: [
               "Een shop draait zelden alleen. Zodra orders ook in een boekhoud- of voorraadsysteem moeten landen, of verzendlabels ergens anders vandaan komen, gaat het om een [koppeling](/nl/diensten/koppelingen-automatisering) tussen twee systemen. Dat is een eigen traject met een eigen scope, omdat het afhangt van wat het andere systeem aan API of export biedt.",
-              "Andere onderdelen die de scope bepalen, zijn verzend- en btw-regels buiten Nederland, het importeren van producten en klanten uit een bestaande shop, en functies als kortingscodes, abonnementen of klantaccounts. Klantaccounts met eigen logica, of workflows die verder gaan dan bestellen en betalen, horen niet meer bij een webshop maar bij een [maatwerkplatform](/nl/diensten/webapplicatie-laten-maken).",
+              "Andere onderdelen die de scope bepalen, zijn verzend- en btw-regels buiten Nederland, het importeren van producten en klanten uit een bestaande shop, en functies als kortingscodes, abonnementen of klantaccounts. Klantaccounts met eigen logica, of workflows die verder gaan dan bestellen en betalen, horen niet meer bij een webshop maar bij een [webapplicatie of platform](/nl/diensten/webapplicatie-laten-maken).",
             ],
           },
           {
@@ -724,7 +731,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
             paragraphs: [
               "Een applicatie wordt niet in één keer af opgeleverd. We beginnen bij de kern: het onderdeel dat het meeste handwerk wegneemt, zodat het na oplevering meteen iets scheelt. Wat kan wachten, schuiven we bewust naar later in plaats van het uit de scope te laten verdwijnen. Tijdens de bouw test je tussentijds met echte situaties, zodat je merkt of een stap in de praktijk klopt.",
               "Niet alles ligt aan ons. Een koppeling met een bestaand systeem kan alleen als dat systeem een bruikbare API of export heeft; dat controleren we voordat het in de scope komt. Migratie van bestaande gegevens is een eigen onderdeel, en een app in de App Store of Play Store naast de webversie is een apart traject. Meestal begint het als webapp, omdat die op elke telefoon werkt zonder installatie en sneller uit te breiden is.",
-              "De prijs volgt uit die scope en niet uit het aantal schermen. Rollen, workflows, koppelingen en infrastructuur wegen het zwaarst. Op de [tarievenpagina](/nl/tarieven) staat het maatwerkplatform als eigen projecttype met een vanafprijs; wil je zelf eerst de omvang verkennen, dan kan dat in de [projectplanner](/nl/projectplanner). Na de intake krijg je een voorstel met prijs en planning.",
+              "De prijs volgt uit die scope en niet uit het aantal schermen. Rollen, workflows, koppelingen en infrastructuur wegen het zwaarst. Op de [tarievenpagina](/nl/tarieven) staat webapplicatie of platform als eigen projecttype met een vanafprijs; wil je zelf eerst de omvang verkennen, dan kan dat in de [projectplanner](/nl/projectplanner). Na de intake krijg je een voorstel met prijs en planning.",
             ],
           },
           {
@@ -982,7 +989,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
           {
             heading: "Wat de scope bepaalt, en wat er na livegang gebeurt",
             paragraphs: [
-              "De omvang wordt bepaald door een paar keuzes. Of de 3D-modellen uit je bestaande tekeningen komen of nieuw gemaakt moeten worden. Of de prijsregels eenvoudig per optie werken of afhangen van maten en combinaties. Of er in de configurator betaald wordt of dat er een offerte achteraf volgt. En hoeveel producttypes er in de eerste versie zitten. Daarom is dit een project met een prijs op basis van scope; op de [tarievenpagina](/nl/tarieven) staat het maatwerkplatform als het type waar een configurator onder valt.",
+              "De omvang wordt bepaald door een paar keuzes. Of de 3D-modellen uit je bestaande tekeningen komen of nieuw gemaakt moeten worden. Of de prijsregels eenvoudig per optie werken of afhangen van maten en combinaties. Of er in de configurator betaald wordt of dat er een offerte achteraf volgt. En hoeveel producttypes er in de eerste versie zitten. Daarom is dit een project met een prijs op basis van scope; op de [tarievenpagina](/nl/tarieven) staat webapplicatie of platform als het type waar een configurator onder valt.",
               "Na livegang stemmen we de regels bij op basis van echte aanvragen, want pas dan blijkt welke combinaties klanten daadwerkelijk kiezen. Nieuwe opties en prijzen voeg je zelf toe in het beheer; nieuwe producttypes of andere 3D-modellen zijn een uitbreiding met een eigen voorstel. De omgeving draait daarbij onder technisch beheer, net als de andere producten die we opleveren. Hoe een traject loopt, staat op de pagina [werkwijze](/nl/werkwijze).",
             ],
           },
@@ -1847,6 +1854,7 @@ export type LocalizedService = LocalizedServiceContent & {
   familyTitle: string;
   partsLayout?: "layers" | "flow";
   proof: ProjectId[];
+  stage?: ProjectId;
   pricePackage?: PackageId;
   entryPackage?: PackageId;
   contactOnPage: boolean;
@@ -1879,6 +1887,7 @@ export function getServicesForLocale(locale: Locale): LocalizedService[] {
       familyTitle: familyTitle(locale, definition.family),
       partsLayout: definition.partsLayout,
       proof: definition.proof,
+      stage: definition.stage,
       pricePackage: definition.pricePackage,
       entryPackage: definition.entryPackage,
       contactOnPage: definition.contactOnPage ?? false,

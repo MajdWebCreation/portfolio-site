@@ -314,6 +314,7 @@ export async function ServiceDetailContent({
               ...project,
               casePath: getCaseStudyPathForProject(locale, project.id),
             }))}
+            stageProject={(service.stage && getProjectById(service.stage)) || undefined}
             whatsappHref={whatsappHref}
             showReviews={Boolean(showReviews)}
           />

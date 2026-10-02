@@ -61,6 +61,8 @@ type ServiceLandingProps = {
   breadcrumb: ReactNode;
   priceSummary: PriceSummary | null;
   proofProjects: (Project & { casePath: string | null })[];
+  /** The project the header shows live; without one, the first proof project with a page capture. */
+  stageProject?: Project;
   whatsappHref: string;
   showReviews: boolean;
 };
@@ -85,7 +87,8 @@ function HeroTitle({ title, lead }: { title: string; lead?: string }) {
 
 /**
  * Live work next to the offer: a page capture in a plain frame that moves
- * slowly from the top of the page down, and a second site on a phone.
+ * slowly from the top of the page down, and the same site on a phone (or a
+ * second site, when the first has no phone capture).
  */
 function HeroStage({
   locale,
@@ -183,13 +186,18 @@ export default function ServiceLanding({
   breadcrumb,
   priceSummary,
   proofProjects,
+  stageProject,
   whatsappHref,
   showReviews,
 }: ServiceLandingProps) {
-  const pageProject = proofProjects.find((project) => project.pageImage);
-  const phoneProject =
-    proofProjects.find((project) => project.mobileImage && project.id !== pageProject?.id) ??
-    proofProjects.find((project) => project.mobileImage);
+  const pageProject = stageProject?.pageImage
+    ? stageProject
+    : proofProjects.find((project) => project.pageImage);
+  /* The phone shows the same site as the frame, so the stage reads as one project. */
+  const phoneProject = pageProject?.mobileImage
+    ? pageProject
+    : (proofProjects.find((project) => project.mobileImage && project.id !== pageProject?.id) ??
+      proofProjects.find((project) => project.mobileImage));
   const hasStage = Boolean(pageProject);
 
   return (

@@ -44,6 +44,14 @@ type LocalizedText = Record<Locale, string>;
 
 export type PackageMetadata = {
   id: PackageId;
+  /**
+   * What sets this type apart, for the overview cards: three to five short
+   * points a visitor can compare without opening anything. A subset of
+   * `included`, worded for scanning; what every website gets (own design,
+   * works on every device, technical basis for findability) is said once
+   * above the cards and left out here.
+   */
+  highlights: Record<Locale, string[]>;
   included: Record<Locale, string[]>;
   /** When the project belongs to another type; for custom work: how the scope sets the price. */
   boundary: LocalizedText;
@@ -69,6 +77,10 @@ export const addOnGroupNotes: Partial<Record<AddOnGroup, LocalizedText>> = {
 const packageMetadata: Record<PackageId, PackageMetadata> = {
   starter: {
     id: "starter",
+    highlights: {
+      nl: ["1 tot 5 pagina's", "Contactformulier met e-mailmelding", "Technische basis voor vindbaarheid"],
+      en: ["1 to 5 pages", "Contact form with email notification", "Technical basis for findability"],
+    },
     included: {
       nl: [
         "1 tot 5 pagina's",
@@ -86,12 +98,26 @@ const packageMetadata: Record<PackageId, PackageMetadata> = {
       ],
     },
     boundary: {
-      nl: "Reserveringen, betalingen, een beheeromgeving, accounts of koppelingen passen niet in dit type. Dan wordt het een website met reserveringen of een maatwerkplatform.",
-      en: "Bookings, payments, an admin environment, accounts or integrations do not fit this type. That becomes a website with bookings or a custom platform.",
+      nl: "Reserveringen, betalingen, een beheeromgeving, accounts of koppelingen passen niet in dit type. Dan wordt het een website met reserveringen of een webapplicatie.",
+      en: "Bookings, payments, an admin environment, accounts or integrations do not fit this type. That becomes a website with bookings or a web application.",
     },
   },
   business: {
     id: "business",
+    highlights: {
+      nl: [
+        "6 tot 12 pagina's",
+        "Formulieren, referenties en call-to-actions",
+        "Uitgebreidere technische SEO",
+        "Zelf teksten en afbeeldingen aanpassen",
+      ],
+      en: [
+        "6 to 12 pages",
+        "Forms, testimonials and calls to action",
+        "Broader technical SEO",
+        "Edit text and images yourself",
+      ],
+    },
     included: {
       nl: [
         "6 tot 12 pagina's",
@@ -100,7 +126,7 @@ const packageMetadata: Record<PackageId, PackageMetadata> = {
         "Formulieren",
         "Uitgebreidere technische SEO",
         "Referenties, cases en call-to-actions",
-        "Eenvoudig contentbeheer",
+        "Beheeromgeving om bestaande teksten en afbeeldingen zelf aan te passen; nieuwe pagina's, secties, ontwerp of functies gaan via ons",
       ],
       en: [
         "6 to 12 pages",
@@ -109,7 +135,7 @@ const packageMetadata: Record<PackageId, PackageMetadata> = {
         "Forms",
         "Broader technical SEO",
         "Testimonials, cases and calls to action",
-        "Simple content management",
+        "Admin environment to edit existing text and images yourself; new pages, sections, design or functionality go through us",
       ],
     },
     boundary: {
@@ -119,6 +145,20 @@ const packageMetadata: Record<PackageId, PackageMetadata> = {
   },
   smart: {
     id: "smart",
+    highlights: {
+      nl: [
+        "Basis van de bedrijfswebsite",
+        "Reserverings- of aanvraagflow",
+        "Bevestigingsmails",
+        "Beheeromgeving voor reserveringen of aanvragen",
+      ],
+      en: [
+        "Basis of the business website",
+        "Booking or request flow",
+        "Confirmation emails",
+        "Admin environment for bookings or requests",
+      ],
+    },
     included: {
       nl: [
         "Basis van de bedrijfswebsite",
@@ -136,12 +176,26 @@ const packageMetadata: Record<PackageId, PackageMetadata> = {
       ],
     },
     boundary: {
-      nl: "Meerdere gebruikersrollen, klantportalen of bredere workflows: dan wordt het een maatwerkplatform.",
-      en: "Multiple user roles, client portals or broader workflows: then it becomes a custom platform.",
+      nl: "Meerdere gebruikersrollen, klantportalen of bredere workflows: dan wordt het een webapplicatie of platform.",
+      en: "Multiple user roles, client portals or broader workflows: then it becomes a web application or platform.",
     },
   },
   webshop: {
     id: "webshop",
+    highlights: {
+      nl: [
+        "Productpagina's, winkelwagen en checkout",
+        "Bestelmails",
+        "Basisbeheer van producten en bestellingen",
+        "Ontwerp gericht op bestellen op mobiel",
+      ],
+      en: [
+        "Product pages, cart and checkout",
+        "Order emails",
+        "Basic management of products and orders",
+        "Design aimed at ordering on mobile",
+      ],
+    },
     included: {
       nl: [
         "Productpagina's",
@@ -159,12 +213,28 @@ const packageMetadata: Record<PackageId, PackageMetadata> = {
       ],
     },
     boundary: {
-      nl: "Klantaccounts met eigen logica of workflows buiten bestellen en betalen horen bij een maatwerkplatform.",
-      en: "Customer accounts with their own logic or workflows beyond ordering and paying belong to a custom platform.",
+      nl: "Klantaccounts met eigen logica of workflows buiten bestellen en betalen horen bij een webapplicatie of platform.",
+      en: "Customer accounts with their own logic or workflows beyond ordering and paying belong to a web application or platform.",
     },
   },
   platform: {
     id: "platform",
+    highlights: {
+      nl: [
+        "Inloggen, accounts en gebruikersrollen",
+        "Dashboard en beheeromgeving",
+        "Eigen database",
+        "Workflows rond jouw proces",
+        "Discovery vooraf",
+      ],
+      en: [
+        "Login, accounts and user roles",
+        "Dashboard and admin environment",
+        "Own database",
+        "Workflows around your process",
+        "Discovery up front",
+      ],
+    },
     included: {
       nl: [
         "Discovery vooraf",
