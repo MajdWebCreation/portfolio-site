@@ -76,8 +76,8 @@ function Switch({ checked, onToggle, label, describedBy }: { checked: boolean; o
  * the site is fully usable with the card open and fully usable after either
  * answer.
  *
- * The first layer offers "necessary only" and "accept all" as the same
- * control in the same size, side by side, one Tab apart. There is no close
+ * The first layer offers "necessary only" and "accept all" side by side,
+ * in the same size, one Tab apart; "accept all" is the primary button. There is no close
  * button and Escape does nothing on that layer: closing without answering
  * would be an answer nobody gave, and the honest way out is one of the two
  * buttons. The preferences layer has a back button, and when the dialog was
@@ -316,12 +316,12 @@ export default function ConsentDialog({
             {copy.body}
           </p>
 
-          {/* Two answers, one shape: the same variant, the same width, one Tab apart. */}
+          {/* Two answers, the same width, one Tab apart; "accept all" carries the primary colour. */}
           <div className="mt-5 grid gap-3 xs:grid-cols-2">
             <CtaButton variant="secondary" onClick={() => decide({ analytics: false, recordings: false, marketing: false })} className="w-full px-3">
               {copy.necessaryOnly}
             </CtaButton>
-            <CtaButton variant="secondary" onClick={() => decide({ analytics: true, recordings: true, marketing: true })} className="w-full px-3">
+            <CtaButton variant="primary" onClick={() => decide({ analytics: true, recordings: true, marketing: true })} className="w-full px-3">
               {copy.acceptAll}
             </CtaButton>
           </div>
