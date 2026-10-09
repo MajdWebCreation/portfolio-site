@@ -1,4 +1,4 @@
-import { sendCustomerEmail, type CommunicationContext } from "@/lib/admin/communications/send";
+import { sendCustomerEmail, type CommunicationContext, type CustomerRecipient } from "@/lib/admin/communications/send";
 import { companyProfile } from "@/lib/admin/documents/company";
 import { documentKindLabels, type DocumentKind } from "@/lib/admin/documents/types";
 import { formatDate } from "@/lib/admin/format";
@@ -21,7 +21,7 @@ import { emailButton, emailMeta, emailSection, emailShell, emailText, escapeEmai
 export type DocumentMailContent = {
   kind: DocumentKind;
   number: string;
-  recipientEmail: string;
+  /** Who the opening line greets; the recipient's, see `DocumentMailInput`. */
   contactName: string;
   /** "10 sep 2026" — the date on the document itself. */
   issueDateLabel: string;
@@ -89,8 +89,16 @@ export type DocumentMailContent = {
  * cheaper than remembering. It is kept off `DocumentMailContent` so the body
  * builders cannot read it: what a mail says has nothing to do with where the
  * record of it goes.
+ *
+ * Who it is for is a `CustomerRecipient`: the customer record as it is now,
+ * resolved by the caller just before sending. The document's own copy of the
+ * customer is what the PDF prints; it never decides where the mail goes or
+ * whom it greets, so the greeting is taken from the recipient too.
  */
-export type DocumentMailInput = DocumentMailContent & { log: CommunicationContext };
+export type DocumentMailInput = Omit<DocumentMailContent, "contactName"> & {
+  log: CommunicationContext;
+  recipient: CustomerRecipient;
+};
 
 export type SendMailResult =
   /** `messageId` is Resend's own id, kept for the audit trail where one is wanted. */
@@ -347,7 +355,9 @@ export function buildDocumentMailBody(input: DocumentMailContent): MailBody {
  * A monthly term keeps the document subject; a one-off invoice is named after
  * its project, and says so when it also starts a subscription.
  */
-export function documentMailSubject(input: DocumentMailContent): string {
+export function documentMailSubject(
+  input: Pick<DocumentMailContent, "kind" | "number" | "recurring" | "projectName" | "activates">,
+): string {
   if (input.recurring) return documentSubject(input.kind, input.number, input.recurring.serviceName);
   return input.kind === "invoice" ? invoiceSubject(input) : documentSubject(input.kind, input.number);
 }
@@ -358,11 +368,11 @@ export function documentMailSubject(input: DocumentMailContent): string {
  * before this says `sent: true`.
  */
 export async function sendDocumentMail(input: DocumentMailInput): Promise<SendMailResult> {
-  const { html, text } = buildDocumentMailBody(input);
+  const { html, text } = buildDocumentMailBody({ ...input, contactName: input.recipient.contactName });
 
   const result = await sendCustomerEmail(
     {
-      to: input.recipientEmail,
+      to: input.recipient,
       subject: documentMailSubject(input),
       html,
       text,

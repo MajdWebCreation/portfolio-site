@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useState, type ReactNode } from "react";
 import AdminButton from "@/components/admin/admin-button";
-import SendPanel from "@/components/admin/documents/send-panel";
 import type { DocumentView } from "@/lib/admin/documents/view";
 
 /**
@@ -25,11 +24,12 @@ type DocumentPanelProps = {
   fileName: string;
   ready: boolean;
   /**
-   * What this document's next step is, under the PDF. A quote and a sent
-   * invoice offer the mail; a concept invoice offers making it definitive
-   * first, because sending is not what it needs next.
+   * What this document's next step is, under the PDF. A quote offers the mail
+   * (a `SendPanel`, given the recipient its page resolved); a concept invoice
+   * offers making it definitive first, because sending is not what it needs
+   * next.
    */
-  action?: ReactNode;
+  action: ReactNode;
 };
 
 /** What a quote or invoice can become: a PDF, and whatever comes after it. */
@@ -54,7 +54,7 @@ export default function DocumentPanel({ document, fileName, ready, action }: Doc
 
       {!ready ? <p className="text-[0.85rem] text-muted">Vul een klant en minstens één volledige regel in om een PDF te maken.</p> : null}
 
-      {action ?? <SendPanel doc={document} />}
+      {action}
     </section>
   );
 }

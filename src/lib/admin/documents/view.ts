@@ -1,3 +1,4 @@
+import type { RecipientResult } from "@/lib/admin/communications/recipient";
 import type { InvoiceDocument } from "@/lib/admin/documents/document-payload";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import type { Quote } from "@/lib/admin/quotes/types";
@@ -18,4 +19,25 @@ export type DocumentView =
 
 export function documentRecord(view: DocumentView): Quote | Invoice {
   return view.kind === "quote" ? view.quote : view.invoice;
+}
+
+/**
+ * What the send panel tells the admin: the address a send goes to, or why it
+ * cannot go yet.
+ *
+ * The address is the resolved recipient the page read from the customer
+ * record -- never `customer.email` on the document, which is only the copy
+ * taken when the document was written. A customer picked in the form but not
+ * saved is not who the server would send to, so that asks for a save first.
+ */
+export function sendTarget(view: DocumentView, addressed: RecipientResult): { recipient: string; blocked: string | null } {
+  const document = documentRecord(view);
+  const kindLabel = view.kind === "quote" ? "offerte" : "factuur";
+
+  if (!document.id) return { recipient: "", blocked: `Sla de ${kindLabel} eerst op.` };
+  if (!addressed.ok) return { recipient: "", blocked: addressed.reason };
+  if (addressed.recipient.customerId !== document.customer.customerId) {
+    return { recipient: "", blocked: `Sla de ${kindLabel} eerst op.` };
+  }
+  return { recipient: addressed.recipient.email, blocked: null };
 }

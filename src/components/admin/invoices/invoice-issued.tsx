@@ -5,6 +5,7 @@ import InvoiceFinalize from "@/components/admin/invoices/invoice-finalize";
 import DocumentTotalsView from "@/components/admin/documents/document-totals";
 import StatusBadge from "@/components/admin/status-badge";
 import InvoiceWithdraw from "@/components/admin/invoices/invoice-withdraw";
+import type { RecipientResult } from "@/lib/admin/communications/recipient";
 import { invoiceDocument } from "@/lib/admin/documents/document-payload";
 import { formatDate, formatDateTime } from "@/lib/admin/format";
 import { invoiceStatusLabels, invoiceStatusTone, type Invoice } from "@/lib/admin/invoices/types";
@@ -32,7 +33,7 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function InvoiceIssued({ invoice }: { invoice: Invoice }) {
+export default function InvoiceIssued({ invoice, recipient }: { invoice: Invoice; recipient: RecipientResult }) {
   const document = invoiceDocument(invoice);
   const totals = calculateTotals(invoice.lines);
   const day = (dateKey: string) => formatDate(`${dateKey}T12:00:00+02:00`);
@@ -157,7 +158,7 @@ export default function InvoiceIssued({ invoice }: { invoice: Invoice }) {
               <InvoiceFinalize invoice={invoice} ready />
             </>
           )}
-          {invoice.document ? <SendPanel doc={{ kind: "invoice", ...document }} /> : null}
+          {invoice.document ? <SendPanel doc={{ kind: "invoice", ...document }} recipient={recipient} /> : null}
         </section>
         {invoice.sentAt || invoice.status === "cancelled" ? null : (
           <InvoiceWithdraw invoiceId={invoice.id} number={invoice.number.value} />

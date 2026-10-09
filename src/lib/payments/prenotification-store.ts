@@ -1,3 +1,4 @@
+import { resolveCustomerRecipient } from "@/lib/admin/communications/recipient";
 import { toDateKey } from "@/lib/admin/format";
 import { invoiceColumns, invoiceFromRow, type InvoiceRow } from "@/lib/admin/invoices/mapper";
 import type { Invoice } from "@/lib/admin/invoices/types";
@@ -107,14 +108,8 @@ export function createPrenotificationStore(): PrenotificationStore {
         });
     },
 
-    async customerContact(customerId: string) {
-      const { data, error } = await db
-        .from("customers")
-        .select("contact_name, email")
-        .eq("id", customerId)
-        .maybeSingle();
-      fail("Klant laden", error);
-      return data ? { contactName: data.contact_name, email: data.email } : undefined;
+    recipient(customerId: string) {
+      return resolveCustomerRecipient(db, customerId);
     },
 
     /*

@@ -1,3 +1,4 @@
+import { customerContactColumns, recipientFromCustomer } from "@/lib/admin/communications/recipient";
 import { invoiceColumns, invoiceFromRow, type InvoiceRow } from "@/lib/admin/invoices/mapper";
 import { paymentsAdminClient } from "@/lib/payments/admin-client";
 import {
@@ -62,7 +63,7 @@ export function createReminderStore(): ReminderStore {
         db.from("payments").select(paymentColumns).in("invoice_id", invoiceIds),
         db.from("invoice_collection_events").select(collectionEventColumns).in("invoice_id", invoiceIds),
         db.from("invoice_collections").select("invoice_id, state").in("invoice_id", invoiceIds),
-        db.from("customers").select("id, contact_name, email").in("id", customerIds),
+        db.from("customers").select(customerContactColumns).in("id", customerIds),
         serviceIds.length > 0
           ? db.from("recurring_services").select("id, status").in("id", serviceIds)
           : Promise.resolve({ data: [], error: null }),
@@ -89,9 +90,7 @@ export function createReminderStore(): ReminderStore {
       const stateByInvoice = new Map<string, CollectionState>(
         (holdsResult.data ?? []).map((row) => [row.invoice_id, row.state as CollectionState]),
       );
-      const contactByCustomer = new Map(
-        (customersResult.data ?? []).map((row) => [row.id, { contactName: row.contact_name, email: row.email }]),
-      );
+      const customerById = new Map((customersResult.data ?? []).map((row) => [row.id, row]));
       /* Only a service that is actually collecting makes an invoice a direct
          debit one; a paused or cancelled service collects nothing. */
       const collectingServices = new Set(
@@ -99,7 +98,6 @@ export function createReminderStore(): ReminderStore {
       );
 
       return invoices.map((invoice) => {
-        const contact = contactByCustomer.get(invoice.customer.customerId);
         const state = stateByInvoice.get(invoice.id);
         return {
           invoice,
@@ -107,10 +105,10 @@ export function createReminderStore(): ReminderStore {
           events: eventsByInvoice.get(invoice.id) ?? [],
           ...(state ? { state } : {}),
           directDebit: Boolean(invoice.recurringServiceId && collectingServices.has(invoice.recurringServiceId)),
-          /* Where the invoice actually went, falling back to the snapshot the
-             document carries. Never guessed from anywhere else. */
-          recipientEmail: invoice.recipientEmail ?? contact?.email ?? invoice.customer.email,
-          contactName: contact?.contactName ?? invoice.customer.contactName,
+          /* The customer as they are now. Not where the invoice once went and
+             not the invoice's copy of the customer: no fallback at all, so a
+             customer without a usable address is reported, not guessed at. */
+          recipient: recipientFromCustomer(customerById.get(invoice.customer.customerId)),
         };
       });
     },

@@ -159,10 +159,7 @@ export async function invoicePayLink(invoice: Invoice): Promise<PayLinkResult> {
 
     const providerCustomerId =
       decision.sequence === "first"
-        ? await ensureProviderCustomer(db, invoice.customer.customerId, {
-            name: invoice.customer.companyName,
-            email: invoice.customer.email,
-          })
+        ? await ensureProviderCustomer(db, invoice.customer.customerId)
         : undefined;
 
     const result = await ensureInvoiceCheckout(invoice, {

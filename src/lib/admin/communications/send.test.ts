@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createFakeDb } from "@/lib/payments/fixtures";
+import { createFakeDb, recipientFixture } from "@/lib/payments/fixtures";
 import type { CommunicationClient } from "@/lib/admin/communications/log";
 
 /*
@@ -19,7 +19,7 @@ vi.mock("@/lib/admin/communications/provider", () => ({
 const { sendCustomerEmail } = await import("@/lib/admin/communications/send");
 
 const message = {
-  to: "a@example.com",
+  to: recipientFixture(),
   subject: "Factuur voor Website Alfa BV",
   html: "<p>Beste A. Alfa</p>",
   text: "Beste A. Alfa",
@@ -139,7 +139,7 @@ describe("a mail that was accepted", () => {
 
     await sendCustomerEmail(activation, context({ category: "direct_debit_activation" }));
 
-    expect(deliverEmail).toHaveBeenCalledWith(activation);
+    expect(deliverEmail).toHaveBeenCalledWith({ ...activation, to: "a@example.com" });
     const row = rows()[0];
     expect(row.body_text).not.toContain(token);
     expect(row.body_html).not.toContain(token);
@@ -152,6 +152,28 @@ describe("a mail that was accepted", () => {
     await sendCustomerEmail(message, context());
 
     expect(rows()[0].provider_message_id).toBeUndefined();
+  });
+});
+
+/*
+  The address is the customer record's, and it has to be the record of the
+  customer the mail is filed under. One customer's address on another's
+  record would be a mail to the wrong person, written down as the right one.
+*/
+describe("who a mail goes to", () => {
+  it("hands the provider the address the customer record holds", async () => {
+    await sendCustomerEmail({ ...message, to: recipientFixture({ email: "nieuw@bedrijf.nl" }) }, context());
+
+    expect(deliverEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "nieuw@bedrijf.nl" }));
+    expect(rows()[0].recipient).toBe("nieuw@bedrijf.nl");
+  });
+
+  it("refuses a recipient that belongs to another customer, and sends nothing", async () => {
+    const result = await sendCustomerEmail({ ...message, to: recipientFixture({ id: "cust-2" }) }, context());
+
+    expect(result.sent).toBe(false);
+    expect(deliverEmail).not.toHaveBeenCalled();
+    expect(rows()).toHaveLength(0);
   });
 });
 

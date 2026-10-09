@@ -10,7 +10,7 @@ import { requireAdminAccess } from "@/lib/admin/access";
 import { listCustomers } from "@/lib/admin/customers/repository";
 import { toDateKey } from "@/lib/admin/format";
 import { listProjects } from "@/lib/admin/projects/repository";
-import { readInvoice, readQuote, readRecurringServicesForCustomer } from "@/lib/admin/readers";
+import { readCustomerRecipient, readInvoice, readQuote, readRecurringServicesForCustomer } from "@/lib/admin/readers";
 import { invoiceActivation } from "@/lib/payments/activation-view";
 import { getCollectionState, listCollectionEventsForInvoice } from "@/lib/payments/collection-repository";
 import { invoiceCollectionView } from "@/lib/payments/collection-state";
@@ -49,13 +49,15 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
     and so does the direct-debit question below; both read them through the
     request-scoped reader, so the two callers share one query.
   */
-  const [quote, activation, payments, events, collectionState, services] = await Promise.all([
+  const [quote, activation, payments, events, collectionState, services, recipient] = await Promise.all([
     item.quoteId ? readQuote(item.quoteId) : undefined,
     invoiceActivation({ id: item.id, customerId: item.customer.customerId, status: item.status }),
     listPaymentsForInvoice(item.id),
     listCollectionEventsForInvoice(item.id),
     getCollectionState(item.id),
     readRecurringServicesForCustomer(item.customer.customerId),
+    /* Where a send goes now: the customer record, not the invoice's copy of it. */
+    readCustomerRecipient(item.customer.customerId),
   ]);
 
   /*
@@ -96,7 +98,7 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
         finish it.
       */}
       {item.finalizingAt ? (
-        <InvoiceIssued invoice={item} />
+        <InvoiceIssued invoice={item} recipient={recipient} />
       ) : (
         /* Keyed on what issuing changes; see the quote page. */
         <InvoiceBuilder

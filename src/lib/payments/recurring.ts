@@ -137,17 +137,7 @@ export async function startActivation(token: string, locale: Locale = defaultLoc
   if (activation.used_at) return { ok: false, reason: "used" };
   if (isExpired(activation.expires_at)) return { ok: false, reason: "expired" };
 
-  const { data: customer, error: customerError } = await db
-    .from("customers")
-    .select("company_name, email")
-    .eq("id", service.customerId)
-    .single();
-  if (customerError) throw new Error(`Klant laden: ${customerError.message}`);
-
-  const providerCustomerId = await ensureProviderCustomer(db, service.customerId, {
-    name: customer!.company_name,
-    email: customer!.email,
-  });
+  const providerCustomerId = await ensureProviderCustomer(db, service.customerId);
 
   /*
     `sequenceType: "first"` is what turns this into a mandate: the customer

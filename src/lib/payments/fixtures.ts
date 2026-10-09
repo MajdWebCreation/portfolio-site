@@ -1,3 +1,8 @@
+import {
+  recipientFromCustomer,
+  type CustomerContactRow,
+  type CustomerRecipient,
+} from "@/lib/admin/communications/recipient";
 import { fakeInvoiceStorage, fixtureDocumentPath, fixturePdfBytes, fixturePdfSha256 } from "@/lib/admin/invoices/storage-fixture";
 import type { Invoice, InvoiceStatus } from "@/lib/admin/invoices/types";
 import type { CustomerSnapshot } from "@/lib/admin/documents/types";
@@ -17,6 +22,33 @@ export const testCustomer: CustomerSnapshot = {
   city: "Amsterdam",
   country: "Nederland",
 };
+
+/**
+ * The `customers` row behind `testCustomer`, as the database holds it now.
+ * Seed it into a fake database for any flow that mails the customer: the
+ * recipient is read from here, never from the document's copy.
+ */
+export function customerRowFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    id: testCustomer.customerId,
+    company_name: testCustomer.companyName,
+    contact_name: testCustomer.contactName,
+    email: testCustomer.email,
+    ...overrides,
+  };
+}
+
+/** A resolved recipient for `testCustomer`, through the real resolver. */
+export function recipientFixture(overrides: Partial<CustomerContactRow> = {}): CustomerRecipient {
+  const result = recipientFromCustomer({
+    id: testCustomer.customerId,
+    contact_name: testCustomer.contactName,
+    email: testCustomer.email,
+    ...overrides,
+  });
+  if (!result.ok) throw new Error(result.reason);
+  return result.recipient;
+}
 
 /**
  * One line of exactly `netCents` excluding VAT, at 21%.

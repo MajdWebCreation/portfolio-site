@@ -1,11 +1,13 @@
 import { cache } from "react";
 import { getArticle } from "@/lib/admin/articles/repository";
+import { resolveCustomerRecipient } from "@/lib/admin/communications/recipient";
 import { getCustomer } from "@/lib/admin/customers/repository";
 import { getInquiry } from "@/lib/admin/inquiries/repository";
 import { getInvoice } from "@/lib/admin/invoices/repository";
 import { getLead } from "@/lib/admin/leads/repository";
 import { getProject } from "@/lib/admin/projects/repository";
 import { getQuote } from "@/lib/admin/quotes/repository";
+import { adminDb } from "@/lib/admin/db";
 import { listRecurringServicesForCustomer } from "@/lib/payments/repository";
 
 /**
@@ -43,3 +45,12 @@ export const readLead = cache(getLead);
 export const readProject = cache(getProject);
 export const readQuote = cache(getQuote);
 export const readRecurringServicesForCustomer = cache(listRecurringServicesForCustomer);
+
+/**
+ * Where this customer's mail goes now, for the send panel: the same resolver
+ * the send action runs, so the screen names the address the server will use
+ * rather than the one the document copied.
+ */
+export const readCustomerRecipient = cache(async (customerId: string) =>
+  resolveCustomerRecipient(await adminDb(), customerId),
+);

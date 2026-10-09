@@ -4,7 +4,9 @@ import { calculateTotals, formatCents } from "@/lib/money";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import type { Quote } from "@/lib/admin/quotes/types";
 import { fixtureDocumentPath, fixturePdfBytes } from "@/lib/admin/invoices/storage-fixture";
-import { createFakeDb } from "@/lib/payments/fixtures";
+import { invalidRecipientReason, missingCustomerReason } from "@/lib/admin/communications/recipient";
+import { documentFingerprint, invoiceDocument } from "@/lib/admin/documents/document-payload";
+import { createFakeDb, customerRowFixture } from "@/lib/payments/fixtures";
 import { invoiceFixture, testCustomer } from "@/lib/payments/fixtures";
 
 /** A definitive invoice that has not gone out yet: what `send` now accepts. */
@@ -84,7 +86,8 @@ const rows = () => db.rows("customer_communications");
 
 beforeEach(() => {
   vi.clearAllMocks();
-  db = createFakeDb();
+  /* The customer record the mail is addressed from: the same as the documents' copy, unless a test changes it. */
+  db = createFakeDb({ customers: [customerRowFixture()] });
   /* The document this invoice was issued with, already in its bucket. */
   db.bucket.files.set(fixtureDocumentPath, fixturePdfBytes);
   storedInvoice = issuedInvoice();
@@ -216,7 +219,6 @@ describe("sending an invoice", () => {
     const content = {
       kind: "invoice" as const,
       number: "YM-F-2026-000001",
-      recipientEmail: "a@example.com",
       contactName: testCustomer.contactName,
       issueDateLabel: documentDateLabel(storedInvoice.issueDate),
       deadlineLabel: documentDateLabel(storedInvoice.dueDate),
@@ -280,11 +282,126 @@ describe("two customers", () => {
     };
 
     await sendInvoiceToCustomer("inv-1");
+    db.rows("customers").push(customerRowFixture({ id: "cust-2", contact_name: "B. Beta", email: "b@example.com" }));
     storedInvoice = invoiceFixture({ id: "inv-2", number: { value: "FAC-CONCEPT-Y", provisional: true }, customer: beta });
     await sendInvoiceToCustomer("inv-2");
 
     expect(rows()).toHaveLength(2);
     expect(rows()[0]).toMatchObject({ customer_id: "cust-1", invoice_id: "inv-1", recipient: "a@example.com" });
     expect(rows()[1]).toMatchObject({ customer_id: "cust-2", invoice_id: "inv-2", recipient: "b@example.com" });
+  });
+});
+
+
+/*
+  The customer record is where a mail goes. A document copies the customer
+  when it is written -- that copy is what the PDF prints -- but where it is
+  sent is asked of the customer as they are at the moment of sending.
+
+  Every case starts the same way: the document was made while the customer
+  had old@example.com, and the customer was edited afterwards.
+*/
+describe("the customer's current address", () => {
+  const before = { ...testCustomer, email: "old@example.com" };
+  const changeCustomer = (patch: Record<string, unknown>) => Object.assign(db.rows("customers")[0], patch);
+
+  /* TEST 1: a concept quote, the customer's address changed, then sent. */
+  it("sends a concept quote to the address the customer has now", async () => {
+    storedQuote = quoteFixture({ customer: before });
+    changeCustomer({ email: "new@example.com" });
+
+    const result = await sendQuoteToCustomer("quo-1");
+
+    expect(result).toEqual({ ok: true, value: { number: "YM-O-2026-000001", recipient: "new@example.com" } });
+    expect(deliverEmail).toHaveBeenCalledTimes(1);
+    expect(deliverEmail.mock.calls[0][0].to).toBe("new@example.com");
+    expect(rows()[0].recipient).toBe("new@example.com");
+  });
+
+  /* TEST 2: an invoice made with the old address, sent after the change. */
+  it("sends an invoice to the address the customer has now", async () => {
+    storedInvoice = issuedInvoice({ customer: before });
+    changeCustomer({ email: "new@example.com" });
+
+    const result = await sendInvoiceToCustomer("inv-1");
+
+    expect(result).toEqual({ ok: true, value: { number: "YM-F-2026-000001", recipient: "new@example.com" } });
+    expect(deliverEmail.mock.calls[0][0].to).toBe("new@example.com");
+    expect(rows()[0].recipient).toBe("new@example.com");
+  });
+
+  /* The greeting belongs to the address: a new contact is greeted by name. */
+  it("greets the contact the customer has now", async () => {
+    storedQuote = quoteFixture({ customer: before });
+    changeCustomer({ email: "new@example.com", contact_name: "N. Nieuw" });
+
+    await sendQuoteToCustomer("quo-1");
+
+    expect(deliverEmail.mock.calls[0][0].text).toContain("Beste N. Nieuw,");
+    expect(deliverEmail.mock.calls[0][0].text).not.toContain(before.contactName);
+  });
+
+  /*
+    TEST 4: a screen loaded before the change still holds the old document,
+    and sends the fingerprint of what it rendered. The address is not part of
+    that, and is not the screen's to decide: the server resolves it.
+  */
+  it("ignores what a stale screen held and sends to the address on record", async () => {
+    storedInvoice = issuedInvoice({ customer: before });
+    const fingerprintOnScreen = documentFingerprint(invoiceDocument(storedInvoice));
+    changeCustomer({ email: "new@example.com" });
+
+    const result = await sendInvoiceToCustomer("inv-1", fingerprintOnScreen);
+
+    expect(result.ok).toBe(true);
+    expect(deliverEmail.mock.calls[0][0].to).toBe("new@example.com");
+  });
+
+  /*
+    TEST 5: no usable address on the customer means no mail -- not the copy
+    on the document, not the address the previous send went to.
+  */
+  it.each([
+    ["empty", ""],
+    ["blank", "   "],
+    ["not an address", "geen-adres"],
+  ])("refuses to send when the customer's address is %s, without falling back", async (_label, email) => {
+    storedQuote = quoteFixture({ customer: before });
+    storedInvoice = issuedInvoice({ customer: before, sentAt: "2026-09-10T09:00:00.000Z", recipientEmail: "old@example.com" });
+    changeCustomer({ email });
+
+    const quote = await sendQuoteToCustomer("quo-1");
+    const invoice = await sendInvoiceToCustomer("inv-1");
+
+    expect(quote).toEqual({ ok: false, error: invalidRecipientReason });
+    expect(invoice).toEqual({ ok: false, error: invalidRecipientReason });
+    expect(deliverEmail).not.toHaveBeenCalled();
+    expect(invoicePayLink).not.toHaveBeenCalled();
+    expect(rows()).toHaveLength(0);
+  });
+
+  it("refuses to send when the customer record is gone", async () => {
+    db.rows("customers").length = 0;
+
+    const result = await sendQuoteToCustomer("quo-1");
+
+    expect(result).toEqual({ ok: false, error: missingCustomerReason });
+    expect(deliverEmail).not.toHaveBeenCalled();
+  });
+
+  /*
+    TEST 7: what the invoice holds about its customer is history and stays
+    that way. Sending writes where this send went -- and nothing else about
+    the customer on the document moves.
+  */
+  it("leaves the document's own copy of the customer as it was", async () => {
+    storedInvoice = issuedInvoice({ customer: before, sentAt: "2026-09-10T09:00:00.000Z", recipientEmail: "old@example.com" });
+    db.rows("invoices").push({ id: "inv-1", customer_email: "old@example.com", recipient_email: "old@example.com" });
+    changeCustomer({ email: "new@example.com" });
+
+    await sendInvoiceToCustomer("inv-1");
+
+    expect(db.rows("invoices")[0]).toMatchObject({ customer_email: "old@example.com", recipient_email: "new@example.com" });
+    expect(deliverEmail.mock.calls[0][0].to).toBe("new@example.com");
   });
 });

@@ -1,3 +1,4 @@
+import type { CustomerRecipient, RecipientResult } from "@/lib/admin/communications/recipient";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import { calculateTotals } from "@/lib/money";
 import type { BillingPeriod } from "@/lib/payments/billing-period";
@@ -55,7 +56,8 @@ export type PrenotificationStore = {
    * activation flow and is not a pre-notification, so it never appears here.
    */
   listUnsentInvoices: () => Promise<PendingInvoice[]>;
-  customerContact: (customerId: string) => Promise<{ contactName: string; email: string } | undefined>;
+  /** Where this customer's mail goes now: `resolveCustomerRecipient`, never the invoice's copy. */
+  recipient: (customerId: string) => Promise<RecipientResult>;
   /**
    * Takes the announcement, or reports the one that already exists. The
    * uniqueness is the database's, not this function's.
@@ -71,8 +73,7 @@ export type InvoiceMailInput = {
   serviceName: string;
   /** YYYY-MM-DD, the day the subscription will collect this term. */
   debitOn: string;
-  recipientEmail: string;
-  contactName: string;
+  recipient: CustomerRecipient;
   pdf: Uint8Array;
 };
 
@@ -100,10 +101,6 @@ export type PrenotificationSummary = {
  * that two runs minutes apart never both send.
  */
 export const stalePendingMs = 60 * 60 * 1000;
-
-function isEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
 
 function retryable(existing: PrenotificationClaim, now: number): boolean {
   if (existing.status === "sent") return false;
@@ -172,8 +169,8 @@ export async function runPrenotifications(
       continue;
     }
 
-    const contact = await store.customerContact(service.customerId);
-    if (!contact || !contact.email.trim() || !isEmail(contact.email.trim())) {
+    const addressed = await store.recipient(service.customerId);
+    if (!addressed.ok) {
       // Never guess an address, and never announce to nobody.
       summary.problems.push({ serviceId: service.id, reason: "Klant heeft geen bruikbaar e-mailadres." });
       summary.skipped += 1;
@@ -192,7 +189,7 @@ export async function runPrenotifications(
       periodEnd: invoice.billingPeriodEnd,
       debitOn,
       amountCents,
-      recipientEmail: contact.email.trim(),
+      recipientEmail: addressed.recipient.email,
     };
 
     const claim = await store.claim(key);
@@ -215,8 +212,7 @@ export async function runPrenotifications(
         invoice,
         serviceName: service.name,
         debitOn,
-        recipientEmail: key.recipientEmail,
-        contactName: contact.contactName,
+        recipient: addressed.recipient,
         pdf,
       });
     } catch (error) {

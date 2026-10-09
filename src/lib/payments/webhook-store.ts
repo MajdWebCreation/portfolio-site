@@ -1,4 +1,5 @@
 import { invoiceLinks } from "@/lib/admin/communications/links";
+import { resolveCustomerRecipient } from "@/lib/admin/communications/recipient";
 import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email";
 import { toDateKey } from "@/lib/admin/format";
 import { documentFileName } from "@/lib/admin/pdf/to-buffer";
@@ -255,8 +256,10 @@ export function createWebhookStore(): WebhookStore {
       file from the one the administration holds as this invoice.
     */
     async sendSettledInvoice(invoice: Invoice, service: RecurringService) {
-      const recipient = invoice.customer.email.trim();
-      if (!recipient) return { sent: false, reason: "de klant heeft geen e-mailadres" };
+      /* The customer as they are now, not the address the term copied. */
+      const addressed = await resolveCustomerRecipient(db, invoice.customer.customerId);
+      if (!addressed.ok) return { sent: false, reason: addressed.reason };
+      const { recipient } = addressed;
 
       const artifact = await readInvoiceArtifact(db, invoice);
       if (!artifact.ok) return { sent: false, reason: artifact.reason };
@@ -279,8 +282,7 @@ export function createWebhookStore(): WebhookStore {
           recurringServiceId: service.id,
           ...(projectId ? { projectId } : {}),
         },
-        recipientEmail: recipient,
-        contactName: invoice.customer.contactName,
+        recipient,
         issueDateLabel: documentDateLabel(invoice.issueDate),
         deadlineLabel: documentDateLabel(invoice.dueDate),
         totalLabel: formatCents(calculateTotals(invoice.lines).totalCents),
@@ -291,7 +293,7 @@ export function createWebhookStore(): WebhookStore {
 
       if (!mail.sent) return { sent: false, reason: mail.reason };
 
-      await markInvoiceMailed(db, invoice.id, recipient, mail.sentAt);
+      await markInvoiceMailed(db, invoice.id, recipient.email, mail.sentAt);
       return { sent: true };
     },
 

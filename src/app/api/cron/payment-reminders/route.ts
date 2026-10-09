@@ -57,7 +57,7 @@ async function handle(request: Request): Promise<Response> {
   try {
     const summary = await runPaymentReminders(
       createReminderStore(),
-      async ({ invoice, stage, recipientEmail, contactName, daysOverdue, outstandingCents, finalDateKey, payments }) => {
+      async ({ invoice, stage, recipient, daysOverdue, outstandingCents, finalDateKey, payments }) => {
         /*
           The button the customer sees. The link the invoice already carries
           is reused when it still fits; a reminder never establishes a
@@ -68,10 +68,9 @@ async function handle(request: Request): Promise<Response> {
         const payUrl = await reminderPayLink(client(), invoice, payments);
 
         return sendReminderMail(
-          recipientEmail,
+          recipient,
           {
             stage,
-            contactName,
             invoiceNumber: invoice.number.value,
             dueDateLabel: documentDateLabel(invoice.dueDate),
             daysOverdue,

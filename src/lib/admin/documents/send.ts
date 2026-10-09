@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { actionFailed, type ActionResult } from "@/lib/admin/action-result";
 import { invoiceLinks, quoteLinks } from "@/lib/admin/communications/links";
+import { resolveCustomerRecipient } from "@/lib/admin/communications/recipient";
 import { adminDb } from "@/lib/admin/db";
 import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email";
 import { toDateKey } from "@/lib/admin/format";
@@ -27,6 +28,11 @@ import { invoicePayLink, serviceActivatedBy } from "@/lib/payments/pay-link";
  *     endpoint here — a server action, reachable only from the admin.
  *  2. The document is validated again on the server: a customer with a real
  *     address, lines that add up, dates that make sense.
+ *  2b. Where it goes is read from the customer record, now -- not from the
+ *     copy of the customer the document took when it was written, and not
+ *     from anything the screen sends. A customer whose address changed since
+ *     gets the mail at the new one; a customer without a usable address gets
+ *     nothing, and the admin is told so.
  *  3. For an invoice: the stored PDF is read back and checked against the
  *     SHA-256 recorded when it was made. Nothing is rendered here — the file
  *     the admin approved is the file that is attached.
@@ -40,9 +46,13 @@ import { invoicePayLink, serviceActivatedBy } from "@/lib/payments/pay-link";
  * An invoice is numbered before any of this, by `finalizeInvoice`. A quote
  * still takes its number here: there is no second step for quotes, because a
  * quote is a proposal and nothing is frozen around it.
+ *
+ * Both return the number that went out and the address it went to, so the
+ * screen reports what the server did rather than what it had loaded.
  */
+export type SentDocument = { number: string; recipient: string };
 
-export async function sendQuoteToCustomer(id: string): Promise<ActionResult<string>> {
+export async function sendQuoteToCustomer(id: string): Promise<ActionResult<SentDocument>> {
   const db = await adminDb();
 
   const quote = await getQuote(id);
@@ -51,13 +61,17 @@ export async function sendQuoteToCustomer(id: string): Promise<ActionResult<stri
   const invalid = documentIncompleteReason(quote);
   if (invalid) return { ok: false, error: invalid };
 
+  // Before the number: a quote that cannot be mailed should not use one up.
+  const addressed = await resolveCustomerRecipient(db, quote.customer.customerId);
+  if (!addressed.ok) return { ok: false, error: addressed.reason };
+  const { recipient } = addressed;
+
   const assigned = await db.rpc("assign_quote_number", { p_quote_id: id });
   if (assigned.error || !assigned.data) {
     return actionFailed(assigned.error, "Het offertenummer kon niet worden toegekend.");
   }
 
   const numbered = { ...quote, number: { value: assigned.data, provisional: false } };
-  const recipient = numbered.customer.email.trim();
 
   let pdf: Buffer;
   try {
@@ -76,8 +90,7 @@ export async function sendQuoteToCustomer(id: string): Promise<ActionResult<stri
       category: "quote_sent",
       ...quoteLinks(numbered),
     },
-    recipientEmail: recipient,
-    contactName: numbered.customer.contactName,
+    recipient,
     issueDateLabel: documentDateLabel(numbered.issueDate),
     deadlineLabel: documentDateLabel(numbered.validUntil),
     totalLabel: formatCents(calculateTotals(numbered.lines).totalCents),
@@ -89,23 +102,26 @@ export async function sendQuoteToCustomer(id: string): Promise<ActionResult<stri
 
   const { error } = await db
     .from("quotes")
-    .update({ status: "sent", sent_at: mail.sentAt, recipient_email: recipient })
+    .update({ status: "sent", sent_at: mail.sentAt, recipient_email: recipient.email })
     .eq("id", id);
 
   if (error) {
     // The mail is out; refusing to say so would be the bigger lie. The admin
     // is told what did not get written so the status can be set by hand.
     console.error("Quote sent but status update failed", { id, error });
-    return { ok: false, error: `De offerte is verstuurd naar ${recipient}, maar de status kon niet worden bijgewerkt.` };
+    return { ok: false, error: `De offerte is verstuurd naar ${recipient.email}, maar de status kon niet worden bijgewerkt.` };
   }
 
   revalidatePath("/admin/offertes");
   revalidatePath(`/admin/offertes/${id}`);
   revalidatePath("/admin");
-  return { ok: true, value: numbered.number.value };
+  return { ok: true, value: { number: numbered.number.value, recipient: recipient.email } };
 }
 
-export async function sendInvoiceToCustomer(id: string, expectedFingerprint?: string): Promise<ActionResult<string>> {
+export async function sendInvoiceToCustomer(
+  id: string,
+  expectedFingerprint?: string,
+): Promise<ActionResult<SentDocument>> {
   const db = await adminDb();
 
   const invoice = await getInvoice(id);
@@ -155,8 +171,17 @@ export async function sendInvoiceToCustomer(id: string, expectedFingerprint?: st
     };
   }
 
+  /*
+    The issued invoice keeps the customer it was made out to; that is what
+    the PDF says, and it does not change. Where the mail goes is a different
+    question, asked of the customer record now -- before Mollie is asked for
+    anything, so an invoice that cannot be mailed opens no payment either.
+  */
+  const addressed = await resolveCustomerRecipient(db, invoice.customer.customerId);
+  if (!addressed.ok) return { ok: false, error: addressed.reason };
+  const { recipient } = addressed;
+
   const numbered = invoice;
-  const recipient = numbered.customer.email.trim();
 
   /*
     A pay-by-link is part of sending a normal invoice, not a bonus. If Mollie
@@ -269,8 +294,7 @@ export async function sendInvoiceToCustomer(id: string, expectedFingerprint?: st
       ...invoiceLinks(numbered),
       ...(activates ? { recurringServiceId: activates.serviceId } : {}),
     },
-    recipientEmail: recipient,
-    contactName: numbered.customer.contactName,
+    recipient,
     issueDateLabel: documentDateLabel(numbered.issueDate),
     deadlineLabel: documentDateLabel(numbered.dueDate),
     totalLabel: formatCents(totals.totalCents),
@@ -286,16 +310,16 @@ export async function sendInvoiceToCustomer(id: string, expectedFingerprint?: st
 
   const { error } = await db
     .from("invoices")
-    .update({ status: "sent", sent_at: mail.sentAt, recipient_email: recipient })
+    .update({ status: "sent", sent_at: mail.sentAt, recipient_email: recipient.email })
     .eq("id", id);
 
   if (error) {
     console.error("Invoice sent but status update failed", { id, error });
-    return { ok: false, error: `De factuur is verstuurd naar ${recipient}, maar de status kon niet worden bijgewerkt.` };
+    return { ok: false, error: `De factuur is verstuurd naar ${recipient.email}, maar de status kon niet worden bijgewerkt.` };
   }
 
   revalidatePath("/admin/facturen");
   revalidatePath(`/admin/facturen/${id}`);
   revalidatePath("/admin");
-  return { ok: true, value: numbered.number.value };
+  return { ok: true, value: { number: numbered.number.value, recipient: recipient.email } };
 }

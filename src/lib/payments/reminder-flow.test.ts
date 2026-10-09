@@ -324,3 +324,39 @@ describe("two customers", () => {
     ]);
   });
 });
+
+/*
+  TEST 6: a reminder is a customer mail like any other, so it goes where the
+  customer record says now. Not where the invoice went when it was sent, and
+  not the invoice's copy of the customer: the address that was corrected
+  since is exactly the one a reminder should use.
+*/
+describe("a customer whose address changed after the invoice went out", () => {
+  const sentToOld = { customer_email: "old@example.com", recipient_email: "old@example.com" };
+
+  it("is reminded at the address on record now", async () => {
+    db = createFakeDb({
+      invoices: [invoiceRow(sentToOld)],
+      customers: [{ ...customerRow, email: "new@example.com", contact_name: "N. Nieuw" }],
+    });
+
+    const summary = await run(day(1));
+
+    expect(summary.sent).toBe(1);
+    expect(deliverEmail.mock.calls[0][0].to).toBe("new@example.com");
+    expect(deliverEmail.mock.calls[0][0].text).toContain("Beste N. Nieuw,");
+    expect(events()[0].recipient).toBe("new@example.com");
+    expect(comms()[0].recipient).toBe("new@example.com");
+  });
+
+  it("is not reminded at all without a usable address -- never at the old one", async () => {
+    db = createFakeDb({ invoices: [invoiceRow(sentToOld)], customers: [{ ...customerRow, email: "geen-adres" }] });
+
+    const summary = (await run(day(1))) as Awaited<ReturnType<typeof run>> & { problems: { reason: string }[] };
+
+    expect(summary.sent).toBe(0);
+    expect(deliverEmail).not.toHaveBeenCalled();
+    expect(events()).toHaveLength(0);
+    expect(summary.problems[0].reason).toBe("Klant heeft geen bruikbaar e-mailadres.");
+  });
+});

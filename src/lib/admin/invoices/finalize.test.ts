@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { invalidRecipientReason } from "@/lib/admin/communications/recipient";
 import { sha256Hex } from "@/lib/admin/invoices/artifact";
 import { createFinalizationRpc, fakeInvoiceStorage, fixtureDocumentPath } from "@/lib/admin/invoices/storage-fixture";
-import { invoiceFixture, recurringFixture } from "@/lib/payments/fixtures";
+import { createFakeDb, customerRowFixture, invoiceFixture, recurringFixture } from "@/lib/payments/fixtures";
 import type { RecurringService } from "@/lib/payments/types";
 
 /*
@@ -23,7 +24,9 @@ const update = vi.fn(() => ({ eq: async () => ({ error: null }) }));
 const select = vi.fn(() => ({
   eq: () => ({ maybeSingle: async () => ({ data: rows.find((row) => row.id === "inv-1") ?? null, error: null }) }),
 }));
-const from = vi.fn(() => ({ update, select }));
+/* The customer record, which is where "can this invoice be mailed" is asked. */
+let customers = createFakeDb({ customers: [customerRowFixture()] });
+const from = vi.fn((table: string) => (table === "customers" ? customers.from(table) : { update, select }));
 const sendDocumentMail = vi.fn();
 const logCommunication = vi.fn();
 const createPaymentLink = vi.fn();
@@ -138,6 +141,7 @@ const row = () => rows[0]!;
 beforeEach(() => {
   vi.clearAllMocks();
   bucket = fakeInvoiceStorage();
+  customers = createFakeDb({ customers: [customerRowFixture()] });
   sequence = 1;
   rpcImplementation = createFinalizationRpc(
     () => rows,
@@ -259,6 +263,31 @@ describe("making a concept definitive", () => {
     expect(result.ok === false && result.error).toContain("adres");
     expect(rpc).not.toHaveBeenCalled();
     expect(bucket.uploads).toEqual([]);
+  });
+
+  /*
+    Whether the invoice can be mailed is asked of the customer as they are
+    now. A customer whose address became unusable after the concept was
+    written does not get a number for an invoice nobody can send...
+  */
+  it("refuses before the counter moves when the customer has no usable address now", async () => {
+    place(concept());
+    customers.rows("customers")[0].email = "";
+
+    const result = await finalizeInvoice("inv-1");
+
+    expect(result).toEqual({ ok: false, error: invalidRecipientReason });
+    expect(rpc).not.toHaveBeenCalled();
+    expect(bucket.uploads).toEqual([]);
+  });
+
+  /* ...and an address added to the customer since counts, whatever the concept copied. */
+  it("is not held back by the address the concept copied", async () => {
+    place(concept({ customer: { ...invoiceFixture().customer, email: "" } }));
+
+    const result = await finalizeInvoice("inv-1");
+
+    expect(result.ok).toBe(true);
   });
 
   it("reports a refusal from the database instead of claiming success", async () => {

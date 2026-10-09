@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createFakeDb, invoiceFixture } from "@/lib/payments/fixtures";
+import { createFakeDb, customerRowFixture, invoiceFixture, testCustomer } from "@/lib/payments/fixtures";
+import { providerCustomerEmailReason } from "@/lib/payments/provider-customer";
 
 /*
   Which payment an invoice mail asks for. Supabase and Mollie are both in
@@ -53,9 +54,11 @@ function seed(
     services?: Record<string, unknown>[];
     providers?: Record<string, unknown>[];
     links?: Record<string, unknown>[];
+    customers?: Record<string, unknown>[];
   } = {},
 ) {
   return createFakeDb({
+    customers: rows.customers ?? [customerRowFixture()],
     recurring_services: rows.services ?? [],
     customer_payment_providers: rows.providers ?? [],
     invoice_payment_links: rows.links ?? [],
@@ -235,5 +238,62 @@ describe("an invoice that switches a monthly service on", () => {
 
     const [args] = createPaymentLink.mock.calls[0] as [{ amountCents: number }];
     expect(args.amountCents).toBe(12100);
+  });
+});
+
+/*
+  Who the customer is at Mollie comes from the customer record as it is now.
+  The invoice keeps the copy it took when it was written -- that is what the
+  PDF prints -- but Mollie keeps whatever it is given at creation, for good,
+  so it is given the current name and address and never the copy.
+*/
+describe("the customer created at Mollie", () => {
+  const writtenBefore = invoiceFixture({
+    customer: { ...testCustomer, companyName: "Alfa (oud) BV", email: "old@example.com" },
+  });
+
+  it("gets the name and address the customer has now, not the invoice's copy", async () => {
+    db = seed({
+      services: [service()],
+      customers: [customerRowFixture({ company_name: "Alfa Nieuw BV", email: "new@example.com" })],
+    });
+
+    const result = await invoicePayLink(writtenBefore);
+
+    expect(result.kind).toBe("link");
+    expect(createCustomer).toHaveBeenCalledTimes(1);
+    expect(createCustomer).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Alfa Nieuw BV", email: "new@example.com", idempotencyKey: "customer-cust-1" }),
+    );
+  });
+
+  it.each([[""], ["   "], ["geen-adres"]])(
+    "is not created, and no link is made, when the customer's address is %j -- never with the old one",
+    async (email) => {
+      db = seed({ services: [service()], customers: [customerRowFixture({ email })] });
+
+      const result = await invoicePayLink(writtenBefore);
+
+      expect(result).toEqual({ kind: "failed", reason: providerCustomerEmailReason });
+      expect(createCustomer).not.toHaveBeenCalled();
+      expect(createPaymentLink).not.toHaveBeenCalled();
+      expect(db.rows("customer_payment_providers")).toHaveLength(0);
+    },
+  );
+
+  /* An existing Mollie customer is reused as it is; nothing is created or read for it. */
+  it("leaves an existing provider customer alone", async () => {
+    db = seed({
+      services: [service()],
+      customers: [customerRowFixture({ email: "new@example.com" })],
+      providers: [
+        { id: "cpp-1", customer_id: "cust-1", provider: "mollie", provider_customer_id: "cst_known", provider_mandate_id: null },
+      ],
+    });
+
+    await invoicePayLink(writtenBefore);
+
+    expect(createCustomer).not.toHaveBeenCalled();
+    expect(createPaymentLink).toHaveBeenCalledWith(expect.objectContaining({ customerId: "cst_known" }));
   });
 });

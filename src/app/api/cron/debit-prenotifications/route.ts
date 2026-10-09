@@ -69,7 +69,7 @@ async function handle(request: Request): Promise<Response> {
         term is collected by direct debit, and a button would invite paying
         it twice.
       */
-      async ({ invoice, serviceName, debitOn, recipientEmail, contactName, pdf }) =>
+      async ({ invoice, serviceName, debitOn, recipient, pdf }) =>
         sendDocumentMail({
           kind: "invoice",
           number: invoice.number.value,
@@ -82,8 +82,7 @@ async function handle(request: Request): Promise<Response> {
             category: "recurring_invoice_prenotification",
             ...invoiceLinks(invoice),
           },
-          recipientEmail,
-          contactName,
+          recipient,
           issueDateLabel: documentDateLabel(invoice.issueDate),
           deadlineLabel: documentDateLabel(debitOn),
           totalLabel: formatCents(calculateTotals(invoice.lines).totalCents),

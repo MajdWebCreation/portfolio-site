@@ -7,7 +7,7 @@ import { requireAdminAccess } from "@/lib/admin/access";
 import { listCustomers } from "@/lib/admin/customers/repository";
 import { toDateKey } from "@/lib/admin/format";
 import { listProjects } from "@/lib/admin/projects/repository";
-import { readQuote } from "@/lib/admin/readers";
+import { readCustomerRecipient, readQuote } from "@/lib/admin/readers";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -27,6 +27,13 @@ export default async function QuotesDetailPage({ params }: PageProps) {
   if (!item) {
     notFound();
   }
+
+  /*
+    Where a send would go: the customer as they are now, by the same resolver
+    the send action runs. Reopening a concept after the customer's address
+    changed shows the new address, not the one the concept copied.
+  */
+  const recipient = await readCustomerRecipient(item.customer.customerId);
 
   return (
     <div className="space-y-8">
@@ -51,6 +58,7 @@ export default async function QuotesDetailPage({ params }: PageProps) {
         customers={customers}
         projects={projects}
         todayKey={toDateKey(new Date())}
+        recipient={recipient}
       />
     </div>
   );

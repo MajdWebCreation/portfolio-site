@@ -4,7 +4,7 @@ import { toDateKey } from "@/lib/admin/format";
 import { documentFingerprint, invoiceDocument } from "@/lib/admin/documents/document-payload";
 import { sha256Hex } from "@/lib/admin/invoices/artifact";
 import { fakeInvoiceStorage, fixtureDocumentPath, fixturePdfBytes } from "@/lib/admin/invoices/storage-fixture";
-import { invoiceFixture } from "@/lib/payments/fixtures";
+import { createFakeDb, customerRowFixture, invoiceFixture } from "@/lib/payments/fixtures";
 
 /*
   Sending an invoice, with the database, the PDF renderer, the mailer and the
@@ -27,7 +27,9 @@ type QueryResult = { error: { message: string } | null };
 const update = vi.fn<(row: Record<string, unknown>) => { eq: (...args: string[]) => Promise<QueryResult> }>(() => ({
   eq: async () => ({ error: null }),
 }));
-const from = vi.fn(() => ({ update }));
+/* The customer record the mail is addressed from; swapped per test. */
+let customers = createFakeDb({ customers: [customerRowFixture()] });
+const from = vi.fn((table: string) => (table === "customers" ? customers.from(table) : { update }));
 const sendDocumentMail = vi.fn();
 const invoicePayLink = vi.fn();
 /* The monthly service this invoice switches on, when it switches one on. */
@@ -77,6 +79,7 @@ beforeEach(() => {
   stored = invoice;
   project = undefined;
   linkedService = undefined;
+  customers = createFakeDb({ customers: [customerRowFixture()] });
 });
 
 describe("sending an invoice with a payment link", () => {
@@ -85,7 +88,7 @@ describe("sending an invoice with a payment link", () => {
 
     const result = await sendInvoiceToCustomer("inv-1");
 
-    expect(result).toEqual({ ok: true, value: "YM-F-2026-000001" });
+    expect(result).toEqual({ ok: true, value: { number: "YM-F-2026-000001", recipient: "a@example.com" } });
     const [args] = sendDocumentMail.mock.calls[0] as [{ payUrl?: string }];
     expect(args.payUrl).toBe("https://payment-link.mollie.com/payment/pl_1");
     // Never the short-lived checkout URL of a single payment attempt.
@@ -268,7 +271,7 @@ describe("the first collection date at the moment of sending", () => {
 
     const result = await sendInvoiceToCustomer("inv-1");
 
-    expect(result).toEqual({ ok: true, value: "YM-F-2026-000001" });
+    expect(result).toEqual({ ok: true, value: { number: "YM-F-2026-000001", recipient: "a@example.com" } });
     expect(sendDocumentMail).toHaveBeenCalledTimes(1);
   });
 
@@ -277,7 +280,7 @@ describe("the first collection date at the moment of sending", () => {
 
     const result = await sendInvoiceToCustomer("inv-1");
 
-    expect(result).toEqual({ ok: true, value: "YM-F-2026-000001" });
+    expect(result).toEqual({ ok: true, value: { number: "YM-F-2026-000001", recipient: "a@example.com" } });
   });
 });
 
@@ -298,7 +301,7 @@ describe("sending a definitive invoice", () => {
   it("issues no number and touches nothing but the send fields", async () => {
     const result = await sendInvoiceToCustomer("inv-1");
 
-    expect(result).toEqual({ ok: true, value: "YM-F-2026-000001" });
+    expect(result).toEqual({ ok: true, value: { number: "YM-F-2026-000001", recipient: "a@example.com" } });
     // Neither numbering nor any other RPC is called any more.
     expect(rpc).not.toHaveBeenCalled();
     expect(written()).toEqual([

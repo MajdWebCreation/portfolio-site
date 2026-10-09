@@ -17,7 +17,7 @@ const referencedObject = (): [string, Buffer] => {
   expect(bytes, `nothing stored at ${path}`).toBeDefined();
   return [path, bytes!];
 };
-import { invoiceFixture } from "@/lib/payments/fixtures";
+import { createFakeDb, customerRowFixture, invoiceFixture } from "@/lib/payments/fixtures";
 
 /**
  * The claim, end to end: the PDF the admin opens after making an invoice
@@ -57,7 +57,13 @@ const select = vi.fn(() => ({
   eq: () => ({ maybeSingle: async () => ({ data: rows[0] ?? null, error: null }) }),
 }));
 
-const db = { from: () => ({ update, select }), rpc, storage: bucket.storage };
+/* The customer record the send flow addresses the mail from. */
+const customers = createFakeDb({ customers: [customerRowFixture()] });
+const db = {
+  from: (table: string) => (table === "customers" ? customers.from(table) : { update, select }),
+  rpc,
+  storage: bucket.storage,
+};
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/admin/db", async (importOriginal) => ({
@@ -170,7 +176,7 @@ describe("one invoice, one PDF", () => {
     if (!preview.ok) return;
 
     const sent = await sendInvoiceToCustomer("inv-1");
-    expect(sent).toEqual({ ok: true, value: "YM-F-2026-000001" });
+    expect(sent).toEqual({ ok: true, value: { number: "YM-F-2026-000001", recipient: "a@example.com" } });
 
     const previewed = Buffer.from(preview.value.base64, "base64");
     const attached = Buffer.from((sendDocumentMail.mock.calls[0]![0] as { pdf: Buffer }).pdf);

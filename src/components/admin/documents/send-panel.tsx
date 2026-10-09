@@ -3,9 +3,10 @@
 import { useState } from "react";
 import AdminButton from "@/components/admin/admin-button";
 import { useSave } from "@/components/admin/save-controls";
+import type { RecipientResult } from "@/lib/admin/communications/recipient";
 import { sendInvoiceToCustomer, sendQuoteToCustomer } from "@/lib/admin/documents/send";
 import { documentFingerprint } from "@/lib/admin/documents/document-payload";
-import { documentRecord, type DocumentView } from "@/lib/admin/documents/view";
+import { documentRecord, sendTarget, type DocumentView } from "@/lib/admin/documents/view";
 import { formatDate, formatDateTime } from "@/lib/admin/format";
 import { formatCents } from "@/lib/money";
 
@@ -21,6 +22,12 @@ import { formatCents } from "@/lib/money";
  * screen — so the panel says what is about to be sent, and refuses while the
  * document has never been saved.
  *
+ * The address comes from the page, which resolved it from the customer record
+ * as it is now; the document's own copy of the customer never decides where
+ * a mail goes. The action resolves it again when it sends, so a page left
+ * open while the customer was edited still mails the current address, and
+ * the confirmation afterwards names the address the server actually used.
+ *
  * Its own module, and not part of the PDF panel any more: sending is the one
  * thing here that always has to work, and the PDF renderer it used to sit next
  * to is a megabyte of JavaScript that most visits never need.
@@ -30,10 +37,10 @@ import { formatCents } from "@/lib/money";
  * differ, so "the PDF I just looked at" and "the PDF that went out" is not a
  * claim resting on both sides happening to read the same row.
  */
-export default function SendPanel({ doc }: { doc: DocumentView }) {
+export default function SendPanel({ doc, recipient: addressed }: { doc: DocumentView; recipient: RecipientResult }) {
   const document = documentRecord(doc);
   const [confirming, setConfirming] = useState(false);
-  const [sentNumber, setSentNumber] = useState<string | null>(null);
+  const [sent, setSent] = useState<{ number: string; recipient: string } | null>(null);
   const { save: run, pending, error } = useSave();
 
   const kindLabel = doc.kind === "quote" ? "offerte" : "factuur";
@@ -44,13 +51,7 @@ export default function SendPanel({ doc }: { doc: DocumentView }) {
     the confirmation says which of the two is about to go out.
   */
   const activates = doc.kind === "invoice" ? doc.activates : undefined;
-  const recipient = document.customer.email.trim();
-  const saved = Boolean(document.id);
-  const blocked = !saved
-    ? `Sla de ${kindLabel} eerst op.`
-    : !recipient
-      ? "Deze klant heeft geen e-mailadres."
-      : null;
+  const { recipient, blocked } = sendTarget(doc, addressed);
 
   function send() {
     run(
@@ -58,8 +59,8 @@ export default function SendPanel({ doc }: { doc: DocumentView }) {
         doc.kind === "quote"
           ? sendQuoteToCustomer(document.id)
           : sendInvoiceToCustomer(document.id, documentFingerprint(doc)),
-      (number: string) => {
-        setSentNumber(number);
+      (result) => {
+        setSent(result);
         setConfirming(false);
       },
     );
@@ -76,9 +77,9 @@ export default function SendPanel({ doc }: { doc: DocumentView }) {
         </p>
       ) : null}
 
-      {sentNumber ? (
+      {sent ? (
         <p role="status" className="mt-3 text-[0.85rem] leading-snug text-success">
-          Verstuurd naar {recipient} met nummer {sentNumber}.
+          Verstuurd naar {sent.recipient} met nummer {sent.number}.
         </p>
       ) : null}
 
@@ -119,7 +120,7 @@ export default function SendPanel({ doc }: { doc: DocumentView }) {
           className="mt-3"
           disabled={Boolean(blocked)}
           onClick={() => {
-            setSentNumber(null);
+            setSent(null);
             setConfirming(true);
           }}
         >

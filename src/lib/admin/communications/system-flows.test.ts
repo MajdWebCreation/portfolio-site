@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { invalidRecipientReason } from "@/lib/admin/communications/recipient";
 import { fixtureDocumentPath, fixturePdfBytes } from "@/lib/admin/invoices/storage-fixture";
-import { createFakeDb, invoiceFixture, recurringFixture } from "@/lib/payments/fixtures";
+import { createFakeDb, invoiceFixture, recipientFixture, recurringFixture } from "@/lib/payments/fixtures";
 import type { InvoiceMailer } from "@/lib/payments/prenotification-runner";
 
 /*
@@ -96,6 +97,29 @@ describe("the standalone direct debit link", () => {
     expect(rows()).toHaveLength(0);
   });
 
+  /* The customer as they are now, not as any document copied them. */
+  it("goes to the address on record now, greeting the contact on record now", async () => {
+    Object.assign(db.rows("customers")[0], { email: "new@example.com", contact_name: "N. Nieuw" });
+
+    const result = await sendRecurringActivation("svc-1");
+
+    expect(result).toEqual({ ok: true, value: "new@example.com" });
+    expect(deliverEmail.mock.calls[0][0].to).toBe("new@example.com");
+    expect(deliverEmail.mock.calls[0][0].text).toContain("Beste N. Nieuw,");
+  });
+
+  /* Refused before the old link is revoked, so the customer keeps a working one. */
+  it("sends nothing and revokes nothing when the customer has no usable address", async () => {
+    db.rows("recurring_activations").push({ id: "act-1", recurring_service_id: "svc-1", used_at: null });
+    db.rows("customers")[0].email = "geen-adres";
+
+    const result = await sendRecurringActivation("svc-1");
+
+    expect(result).toEqual({ ok: false, error: invalidRecipientReason });
+    expect(deliverEmail).not.toHaveBeenCalled();
+    expect(db.rows("recurring_activations")).toEqual([{ id: "act-1", recurring_service_id: "svc-1", used_at: null }]);
+  });
+
   /* Asking again replaces the link, and is a second mail in the inbox. */
   it("adds a separate communication each time the link is sent", async () => {
     await sendRecurringActivation("svc-1");
@@ -131,6 +155,18 @@ describe("the monthly term the customer already paid", () => {
     });
   });
 
+  /* The term copied the customer when it was issued; the mail goes where the customer is now. */
+  it("goes to the address on record now, not the one the term copied", async () => {
+    db.rows("customers")[0].email = "new@example.com";
+    const store = createWebhookStore();
+
+    const result = await store.sendSettledInvoice(invoiceFixture({ ...term, customer: { ...term.customer, email: "old@example.com" } }), service);
+
+    expect(result).toEqual({ sent: true });
+    expect(deliverEmail.mock.calls[0][0].to).toBe("new@example.com");
+    expect(rows()[0].recipient).toBe("new@example.com");
+  });
+
   it("writes nothing when the mail is refused", async () => {
     deliverEmail.mockResolvedValue({ sent: false, reason: "Invalid recipient", failure: "rejected" });
     const store = createWebhookStore();
@@ -157,8 +193,7 @@ describe("the daily pre-notification run", () => {
         invoice: term,
         serviceName: "Websitebeheer",
         debitOn: "2026-10-15",
-        recipientEmail: "a@example.com",
-        contactName: "A. Alfa",
+        recipient: recipientFixture(),
         pdf: new Uint8Array(),
       });
       return { considered: 1, invoicesCreated: 0, announced: 1, skipped: 0, failed: 0, problems: [] };

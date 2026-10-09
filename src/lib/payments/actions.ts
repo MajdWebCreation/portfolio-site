@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { actionFailed, referenceFailed, type ActionResult } from "@/lib/admin/action-result";
+import { resolveCustomerRecipient } from "@/lib/admin/communications/recipient";
 import { adminDb, orNull } from "@/lib/admin/db";
 import { isDateKey, toDateKey } from "@/lib/admin/format";
 import { sendActivationMail } from "@/lib/payments/activation-email";
@@ -111,13 +112,11 @@ export async function sendRecurringActivation(serviceId: string): Promise<Action
   if (service.mollie.subscriptionId) return { ok: false, error: "Voor deze dienst loopt de incasso al." };
 
   const db = await adminDb();
-  const { data: customer, error: customerError } = await db
-    .from("customers")
-    .select("contact_name, email")
-    .eq("id", service.customerId)
-    .maybeSingle();
-  if (customerError) return actionFailed(customerError, "Klant laden mislukt.");
-  if (!customer) return { ok: false, error: "Deze klant bestaat niet (meer)." };
+  // Checked before an old link is revoked: a customer without a usable
+  // address keeps the link they have rather than ending up with none.
+  const addressed = await resolveCustomerRecipient(db, service.customerId);
+  if (!addressed.ok) return { ok: false, error: addressed.reason };
+  const { recipient } = addressed;
 
   // Replace any outstanding link: the old token stops working the moment its
   // row is gone, so a customer never holds two live links.
@@ -145,8 +144,7 @@ export async function sendRecurringActivation(serviceId: string): Promise<Action
       recurringServiceId: service.id,
       ...(service.projectId ? { projectId: service.projectId } : {}),
     },
-    recipientEmail: customer.email,
-    contactName: customer.contact_name,
+    recipient,
     serviceName: service.name,
     amountCents: recurringChargeCents(service),
     activationUrl: `${siteUrl}/nl/incasso/${token}`,
@@ -156,7 +154,7 @@ export async function sendRecurringActivation(serviceId: string): Promise<Action
 
   revalidatePath(`/admin/klanten/${service.customerId}`);
   revalidatePath("/admin/betalingen");
-  return { ok: true, value: customer.email };
+  return { ok: true, value: recipient.email };
 }
 
 /**

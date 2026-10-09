@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { recipientFromCustomer } from "@/lib/admin/communications/recipient";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import { calculateTotals } from "@/lib/money";
 import type { BillingPeriod } from "@/lib/payments/billing-period";
@@ -92,8 +93,9 @@ function makeStore(
         });
     },
 
-    async customerContact() {
-      return contact;
+    /* The real store reads the customer through the resolver; so does this. */
+    async recipient(customerId) {
+      return recipientFromCustomer(contact ? { id: customerId, contact_name: contact.contactName, email: contact.email } : undefined);
     },
 
     async claim(key) {
@@ -188,8 +190,7 @@ describe("fourteen days before a collection", () => {
     expect(sent[0]).toMatchObject({
       serviceName: "Websitebeheer",
       debitOn: "2026-10-12",
-      recipientEmail: "a@example.com",
-      contactName: "A. Alfa",
+      recipient: expect.objectContaining({ email: "a@example.com", contactName: "A. Alfa" }),
     });
     expect(sent[0]?.pdf).toBeInstanceOf(Uint8Array);
     expect(claims[0]).toMatchObject({ status: "sent", messageId: "re_1" });

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeDb } from "@/lib/payments/fixtures";
+import { providerCustomerEmailReason } from "@/lib/payments/provider-customer";
 import { createActivationToken } from "@/lib/payments/tokens";
 
 /*
@@ -241,5 +242,26 @@ describe("starting direct debit (POST)", () => {
     db.rows("recurring_services")[0]!.mollie_subscription_id = "sub_1";
     expect(await startActivation(first.token)).toEqual({ ok: false, reason: "used" });
     expect(createPayment).not.toHaveBeenCalled();
+  });
+});
+
+/* The activation creates the Mollie customer from the record as it is now, and never without an address. */
+describe("the customer created at Mollie by an activation", () => {
+  it("gets the name and address on the customer record now", async () => {
+    Object.assign(db.rows("customers")[0], { company_name: "Alfa Nieuw BV", email: "new@example.com" });
+
+    await startActivation(first.token);
+
+    expect(createCustomer).toHaveBeenCalledWith(expect.objectContaining({ name: "Alfa Nieuw BV", email: "new@example.com" }));
+  });
+
+  it("creates nothing at the provider when the customer has no usable address", async () => {
+    db.rows("customers")[0].email = "geen-adres";
+
+    await expect(startActivation(first.token)).rejects.toThrow(providerCustomerEmailReason);
+    expect(createCustomer).not.toHaveBeenCalled();
+    expect(createPayment).not.toHaveBeenCalled();
+    expect(db.rows("customer_payment_providers")).toHaveLength(0);
+    expect(db.rows("recurring_activations")[0]?.mollie_payment_id).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { sendCustomerEmail, type CommunicationContext } from "@/lib/admin/communications/send";
+import { sendCustomerEmail, type CommunicationContext, type CustomerRecipient } from "@/lib/admin/communications/send";
 import { companyProfile } from "@/lib/admin/documents/company";
 import { contactSectionHtml, contactTextLines } from "@/lib/email/contact";
 import { emailButton, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
@@ -15,8 +15,8 @@ import { formatCents } from "@/lib/money";
 export type ActivationMailInput = {
   /** Who this is for and which service it activates, for the record. */
   log: CommunicationContext;
-  recipientEmail: string;
-  contactName: string;
+  /** The customer record as it is now; it also says whom to greet. */
+  recipient: CustomerRecipient;
   serviceName: string;
   amountCents: number;
   activationUrl: string;
@@ -25,6 +25,7 @@ export type ActivationMailInput = {
 export type ActivationMailResult = { sent: true; sentAt: string } | { sent: false; reason: string };
 
 export async function sendActivationMail(input: ActivationMailInput): Promise<ActivationMailResult> {
+  const { contactName } = input.recipient;
   const amount = formatCents(input.amountCents);
   const opening = `Voor ${input.serviceName} kun je automatische incasso instellen. Dat gaat in één keer: je betaalt de eerste termijn van ${amount} en machtigt ons meteen voor de maanden daarna.`;
   const note =
@@ -35,7 +36,7 @@ export async function sendActivationMail(input: ActivationMailInput): Promise<Ac
     title: "Automatische incasso instellen",
     preheader: `${input.serviceName} — ${amount} per maand`,
     content: [
-      emailText(`Beste ${escapeEmailHtml(input.contactName)},`, { top: 18 }),
+      emailText(`Beste ${escapeEmailHtml(contactName)},`, { top: 18 }),
       emailText(escapeEmailHtml(opening)),
       emailButton(input.activationUrl, "Automatische incasso activeren"),
       emailSection({ label: "Goed om te weten", html: escapeEmailHtml(note) }),
@@ -44,7 +45,7 @@ export async function sendActivationMail(input: ActivationMailInput): Promise<Ac
   });
 
   const text = [
-    `Beste ${input.contactName},`,
+    `Beste ${contactName},`,
     "",
     opening,
     "",
@@ -60,7 +61,7 @@ export async function sendActivationMail(input: ActivationMailInput): Promise<Ac
 
   const result = await sendCustomerEmail(
     {
-      to: input.recipientEmail,
+      to: input.recipient,
       subject: `Automatische incasso instellen — ${companyProfile.name}`,
       html,
       text,

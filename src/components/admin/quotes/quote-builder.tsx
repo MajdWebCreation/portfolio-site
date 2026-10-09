@@ -9,8 +9,10 @@ import DocumentStatus from "@/components/admin/documents/document-status";
 import DocumentTotalsView from "@/components/admin/documents/document-totals";
 import LineItemsEditor, { newLine } from "@/components/admin/documents/line-items-editor";
 import ProjectSelect from "@/components/admin/documents/project-select";
+import SendPanel from "@/components/admin/documents/send-panel";
 import { TextField, TextareaField } from "@/components/admin/form-field";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
+import type { RecipientResult } from "@/lib/admin/communications/recipient";
 import type { Customer } from "@/lib/admin/customers/types";
 import { provisionalDocumentNumber } from "@/lib/admin/documents/numbering";
 import { snapshotCustomer } from "@/lib/admin/documents/types";
@@ -55,9 +57,16 @@ function validate(quote: Quote): { errors: Errors; lineErrors: Record<string, Li
   return { errors, lineErrors };
 }
 
-type QuoteBuilderProps = { stored: Quote | null; customers: Customer[]; projects: Project[]; todayKey: string };
+type QuoteBuilderProps = {
+  stored: Quote | null;
+  customers: Customer[];
+  projects: Project[];
+  todayKey: string;
+  /** Where the stored quote's mail goes now, resolved by the page; absent for a new quote. */
+  recipient?: RecipientResult;
+};
 
-export default function QuoteBuilder({ stored, customers, projects, todayKey }: QuoteBuilderProps) {
+export default function QuoteBuilder({ stored, customers, projects, todayKey, recipient }: QuoteBuilderProps) {
   const router = useRouter();
   // "NIEUW" until the record is created; both server and client render the same number.
   const [quote, setQuote] = useState<Quote>(() => stored ?? blank(todayKey, "nieuw", "offerte-regel-1"));
@@ -178,7 +187,17 @@ export default function QuoteBuilder({ stored, customers, projects, todayKey }: 
           <DocumentStatus value={quote.status} order={quoteStatusOrder} labels={quoteStatusLabels} tones={quoteStatusTone} onChange={(value) => (isQuoteStatus(value) ? update("status", value) : null)} edited={false} />
         </div>
         <div className="border-t border-line pt-6">
-          <DocumentPanel document={{ kind: "quote", quote }} fileName={`${quote.number.value}.pdf`} ready={ready} />
+          <DocumentPanel
+            document={{ kind: "quote", quote }}
+            fileName={`${quote.number.value}.pdf`}
+            ready={ready}
+            action={
+              <SendPanel
+                doc={{ kind: "quote", quote }}
+                recipient={recipient ?? { ok: false, reason: "Sla de offerte eerst op." }}
+              />
+            }
+          />
         </div>
       </aside>
     </div>

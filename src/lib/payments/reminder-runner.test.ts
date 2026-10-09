@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { recipientFromCustomer } from "@/lib/admin/communications/recipient";
 import { addDays } from "@/lib/admin/documents/validation";
 import { invoiceFixture, paymentFixture } from "@/lib/payments/fixtures";
 import type { CollectionEvent } from "@/lib/payments/collection-state";
@@ -72,8 +73,7 @@ function candidate(overrides: Partial<ReminderCandidate> = {}): ReminderCandidat
     payments: [],
     events: [],
     directDebit: false,
-    recipientEmail: "a@example.com",
-    contactName: "A. Alfa",
+    recipient: recipientFromCustomer({ id: "cust-1", contact_name: "A. Alfa", email: "a@example.com" }),
     ...overrides,
   };
 }
@@ -108,7 +108,11 @@ describe("the daily run", () => {
 
     expect(summary).toMatchObject({ considered: 1, sent: 0 + 1, failed: 0 });
     expect(mail).toHaveBeenCalledTimes(1);
-    expect(mail.mock.calls[0][0]).toMatchObject({ stage: "first_reminder", daysOverdue: 1, recipientEmail: "a@example.com" });
+    expect(mail.mock.calls[0][0]).toMatchObject({
+      stage: "first_reminder",
+      daysOverdue: 1,
+      recipient: expect.objectContaining({ email: "a@example.com" }),
+    });
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ stage: "first_reminder", status: "sent", communicationId: "comm-1" });
   });
@@ -248,7 +252,7 @@ describe("invoices that must be left alone", () => {
   });
 
   it("never chases a customer without a usable address", async () => {
-    const { store, rows } = createStore([candidate({ recipientEmail: "  " })]);
+    const { store, rows } = createStore([candidate({ recipient: recipientFromCustomer({ id: "cust-1", contact_name: "A. Alfa", email: "  " }) })]);
 
     const summary = await runPaymentReminders(store, mail, subjectFor, day(1));
 
@@ -349,8 +353,7 @@ describe("two customers in one run", () => {
         sentAt: "2026-09-17T09:00:00.000Z",
         customer: { ...invoiceFixture().customer, customerId: "cust-2", companyName: "Beta BV", email: "b@example.com" },
       }),
-      recipientEmail: "b@example.com",
-      contactName: "B. Beta",
+      recipient: recipientFromCustomer({ id: "cust-2", contact_name: "B. Beta", email: "b@example.com" }),
     });
     const { store, rows } = createStore([alfa, beta]);
 
@@ -361,7 +364,7 @@ describe("two customers in one run", () => {
       ["inv-1", "cust-1", "a@example.com"],
       ["inv-2", "cust-2", "b@example.com"],
     ]);
-    expect(mail.mock.calls.map(([input]) => [input.invoice.id, input.recipientEmail])).toEqual([
+    expect(mail.mock.calls.map(([input]) => [input.invoice.id, input.recipient.email])).toEqual([
       ["inv-1", "a@example.com"],
       ["inv-2", "b@example.com"],
     ]);

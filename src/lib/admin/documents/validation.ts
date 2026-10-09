@@ -51,20 +51,22 @@ export function daysBetween(from: string, to: string): number {
  * Whether a document is complete enough to become real.
  *
  * The builder's own rules are about a concept being saveable; these are about
- * a document being issued or sent: a customer who can actually be written to
- * and mailed, and lines that hold up. Shared by `finalizeInvoice` and by the
- * send flow, because the second must never be reachable with something the
- * first would have refused.
+ * a document being issued or sent: a customer who can actually be written to,
+ * and lines that hold up. Shared by `finalizeInvoice` and by the send flow,
+ * because the second must never be reachable with something the first would
+ * have refused.
+ *
+ * Only what the document prints is checked here. Its e-mail address is not
+ * one of those things: the PDF does not carry it, and whether the customer
+ * can be mailed is a question about the customer as they are now, answered by
+ * `resolveCustomerRecipient` -- never by the copy this document took.
  */
 export function documentIncompleteReason(document: {
-  customer: { email: string; companyName: string; contactName: string; street: string; postalCode: string; city: string };
+  customer: { companyName: string; contactName: string; street: string; postalCode: string; city: string };
   lines: DocumentLine[];
 }): string | null {
   const { customer, lines } = document;
 
-  if (!customer.email.trim() || !isEmail(customer.email.trim())) {
-    return "De klant heeft geen geldig e-mailadres. Vul dat eerst aan bij de klant.";
-  }
   if (!customer.companyName.trim() || !customer.contactName.trim()) {
     return "De klantgegevens zijn onvolledig: bedrijfsnaam en contactpersoon zijn nodig.";
   }
@@ -76,8 +78,4 @@ export function documentIncompleteReason(document: {
     return "Er staan ongeldige regels in dit document.";
   }
   return null;
-}
-
-function isEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }

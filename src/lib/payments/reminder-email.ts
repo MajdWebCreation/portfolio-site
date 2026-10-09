@@ -1,4 +1,4 @@
-import { sendCustomerEmail, type CommunicationContext } from "@/lib/admin/communications/send";
+import { sendCustomerEmail, type CommunicationContext, type CustomerRecipient } from "@/lib/admin/communications/send";
 import { companyProfile } from "@/lib/admin/documents/company";
 import { contactSectionHtml, contactTextLines } from "@/lib/email/contact";
 import { emailButton, emailMeta, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
@@ -239,14 +239,14 @@ export function buildReminderMailBody(content: ReminderMailContent): MailBody {
  * so it lands on the customer's communication record like the rest.
  */
 export async function sendReminderMail(
-  recipientEmail: string,
-  content: ReminderMailContent,
+  recipient: CustomerRecipient,
+  content: Omit<ReminderMailContent, "contactName">,
   log: CommunicationContext,
 ): Promise<ReminderMailResult> {
-  const { html, text } = buildReminderMailBody(content);
+  const { html, text } = buildReminderMailBody({ ...content, contactName: recipient.contactName });
 
   const result = await sendCustomerEmail(
-    { to: recipientEmail, subject: reminderSubject(content.stage), html, text },
+    { to: recipient, subject: reminderSubject(content.stage), html, text },
     log,
   );
 

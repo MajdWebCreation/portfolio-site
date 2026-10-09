@@ -1,3 +1,4 @@
+import type { CustomerRecipient, RecipientResult } from "@/lib/admin/communications/recipient";
 import { addDays } from "@/lib/admin/documents/validation";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import { collectionReadyDays, type ReminderStage } from "@/lib/payments/collection-policy";
@@ -52,9 +53,13 @@ export type ReminderCandidate = {
   state?: CollectionState;
   /** True when a collecting monthly service bills this invoice. */
   directDebit: boolean;
-  /** Where the invoice was delivered, and who to greet. */
-  recipientEmail: string;
-  contactName: string;
+  /**
+   * Where a reminder goes: the customer record as it is now, through
+   * `communications/recipient.ts`. Not where the invoice once went, and not
+   * the invoice's copy of the customer -- an address corrected since then is
+   * exactly the address a reminder should use.
+   */
+  recipient: RecipientResult;
 };
 
 export type ReminderClaim = {
@@ -97,8 +102,7 @@ export type ReminderStore = {
 export type ReminderMailInput = {
   invoice: Invoice;
   stage: ReminderStage;
-  recipientEmail: string;
-  contactName: string;
+  recipient: CustomerRecipient;
   daysOverdue: number;
   outstandingCents: number;
   /** Last day of the final notice's grace period. */
@@ -136,10 +140,6 @@ export type ReminderSummary = {
  * same reasoning, and the same hour, as the pre-notification job.
  */
 export const stalePendingMs = 60 * 60 * 1000;
-
-function isEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
 
 function retryable(existing: ReminderClaim, now: number): boolean {
   if (existing.status === "sent") return false;
@@ -191,8 +191,7 @@ export async function runPaymentReminders(
         continue;
       }
 
-      const recipient = candidate.recipientEmail.trim();
-      if (!recipient || !isEmail(recipient)) {
+      if (!candidate.recipient.ok) {
         // Never guess an address, and never chase nobody.
         summary.problems.push({ invoiceId: invoice.id, reason: "Klant heeft geen bruikbaar e-mailadres." });
         summary.skipped += 1;
@@ -207,7 +206,7 @@ export async function runPaymentReminders(
         stage,
         eligibleOn: todayKey,
         daysOverdue: step.daysOverdue,
-        recipientEmail: recipient,
+        recipientEmail: candidate.recipient.recipient.email,
         subject: subjectFor(stage),
       };
 
@@ -229,8 +228,7 @@ export async function runPaymentReminders(
         result = await mail({
           invoice,
           stage,
-          recipientEmail: recipient,
-          contactName: candidate.contactName,
+          recipient: candidate.recipient.recipient,
           daysOverdue: view.daysOverdue,
           outstandingCents: view.outstandingCents,
           finalDateKey: addDays(invoice.dueDate, collectionReadyDays),
