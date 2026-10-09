@@ -264,7 +264,10 @@ export function createFakeDb(seed: Record<string, Row[]> = {}) {
           const rows = table(name);
           for (const row of matched) rows.splice(rows.indexOf(row), 1);
         }
-        return { data: matched, error: null };
+        /* Copies, as Postgres returns: a row read earlier must not change
+           under its reader when someone else writes, or a compare-and-swap
+           would compare against what it is about to overwrite. */
+        return { data: matched.map((row) => ({ ...row })), error: null };
       },
       async maybeSingle() {
         const { data, error } = api.run();

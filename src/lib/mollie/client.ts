@@ -133,7 +133,13 @@ export type MollieCustomer = { id: string };
  * "invalid" has been revoked or failed.
  */
 export type MollieMandate = { id: string; status: "valid" | "pending" | "invalid"; method: string };
-export type MollieSubscription = { id: string; status: string };
+export type MollieSubscriptionStatus = "pending" | "active" | "canceled" | "suspended" | "completed";
+export type MollieSubscription = {
+  id: string;
+  status: MollieSubscriptionStatus;
+  startDate?: string;
+  metadata?: Record<string, unknown> | null;
+};
 
 export type CreatePaymentInput = {
   amountCents: number;
@@ -338,6 +344,21 @@ export async function createSubscription(
       ...(input.startDate ? { startDate: input.startDate } : {}),
     },
   });
+}
+
+/**
+ * A customer's subscriptions, as Mollie holds them. Read before creating one,
+ * so a subscription that exists at Mollie but never made it into our database
+ * is found and adopted instead of created a second time. A customer has a
+ * handful at most; 250 is the API's own maximum page.
+ */
+export async function listSubscriptions(customerId: string, config?: MollieConfig): Promise<MollieSubscription[]> {
+  const response = await request<{ _embedded?: { subscriptions?: MollieSubscription[] } }>({
+    method: "GET",
+    path: `/customers/${encodeURIComponent(customerId)}/subscriptions?limit=250`,
+    config,
+  });
+  return response._embedded?.subscriptions ?? [];
 }
 
 // ----------------------------------------------------- read-only surface

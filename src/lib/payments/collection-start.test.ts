@@ -10,14 +10,17 @@ import type { RecurringService } from "@/lib/payments/types";
 */
 const listMandates = vi.fn();
 const createSubscription = vi.fn();
+const listSubscriptions = vi.fn();
 
 vi.mock("@/lib/mollie/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/mollie/client")>()),
   listMandates: (...args: unknown[]) => listMandates(...args),
   createSubscription: (...args: unknown[]) => createSubscription(...args),
+  listSubscriptions: (...args: unknown[]) => listSubscriptions(...args),
 }));
 
-const { firstCollectionDate, startCollection } = await import("@/lib/payments/collection-start");
+const { alreadyCollectingReason, claimStaleMs, firstCollectionDate, startCollection, startInProgressReason } =
+  await import("@/lib/payments/collection-start");
 
 /* Flexora Bouw's service: 10,00 excl. btw, first collection agreed for 4 October. */
 const flexora = (overrides: Partial<RecurringService> = {}) =>
@@ -35,20 +38,25 @@ const flexora = (overrides: Partial<RecurringService> = {}) =>
 const serviceRow = (service: RecurringService) => ({
   id: service.id,
   customer_id: service.customerId,
+  name: service.name,
+  amount_cents: service.amountCents,
+  vat_rate: service.vatRate,
   status: service.status,
   starts_on: service.startsOn ?? null,
   mollie_subscription_id: service.mollie.subscriptionId ?? null,
+  subscription_claim_id: null,
+  subscription_claimed_at: null,
 });
 
 let db: ReturnType<typeof createFakeDb>;
 
-function seed(service: RecurringService, billedPeriodStarts: string[] = []) {
+function seed(service: RecurringService, billedPeriodStarts: string[] = [], others: RecurringService[] = []) {
   return createFakeDb({
     customers: [customerRowFixture()],
     customer_payment_providers: [
       { id: "cpp-1", customer_id: "cust-1", provider: "mollie", provider_customer_id: "cst_flexora", provider_mandate_id: null },
     ],
-    recurring_services: [serviceRow(service)],
+    recurring_services: [serviceRow(service), ...others.map(serviceRow)],
     invoices: [
       // The paid 363,00 project invoice: not a billed period of the service.
       { id: "inv-363", customer_id: "cust-1", recurring_service_id: null, billing_period_start: null },
@@ -69,8 +77,22 @@ beforeEach(() => {
   process.env.MOLLIE_API_KEY = "test_dummy";
   process.env.NEXT_PUBLIC_SITE_URL = "https://example.test";
   listMandates.mockResolvedValue(valid);
-  createSubscription.mockResolvedValue({ id: "sub_1", status: "active" });
+  /*
+    Mollie as it really behaves once its one-hour idempotency cache has
+    expired: every create makes a new subscription, with a new id. Whatever
+    stops a second subscription has to be ours.
+  */
+  atMollie = [];
+  createSubscription.mockImplementation(async (input: { startDate: string; metadata: Record<string, string> }) => {
+    const created = { id: `sub_${atMollie.length + 1}`, status: "pending", startDate: input.startDate, metadata: input.metadata };
+    atMollie.push(created);
+    return created;
+  });
+  listSubscriptions.mockImplementation(async () => [...atMollie]);
 });
+
+/** The subscriptions Mollie holds for the customer, as created during a test. */
+let atMollie: { id: string; status: string; startDate: string; metadata: Record<string, string> }[] = [];
 
 describe("the first automatic collection", () => {
   /* Flexora, started today (9 October): October cannot be announced any more. */
@@ -139,6 +161,8 @@ describe("starting the monthly collection", () => {
       status: "active",
       mollie_subscription_id: "sub_1",
       starts_on: "2026-11-04",
+      subscription_claim_id: null,
+      subscription_claimed_at: null,
     });
     expect(db.rows("customer_payment_providers")[0]?.provider_mandate_id).toBe("mdt_new");
   });
@@ -201,7 +225,8 @@ describe("starting the monthly collection", () => {
 
     const again = await startCollection(db as never, service, "2026-10-09");
 
-    expect(again).toEqual({ ok: false, reason: "Voor deze dienst loopt de incasso al." });
+    expect(again).toEqual({ ok: false, reason: alreadyCollectingReason });
+    expect(createSubscription).toHaveBeenCalledTimes(1);
   });
 
   it("refuses for a service that already collects", async () => {
@@ -238,5 +263,174 @@ describe("starting the monthly collection", () => {
 
     expect(result.ok).toBe(false);
     expect(createSubscription).not.toHaveBeenCalled();
+  });
+});
+
+/*
+  Exactly one subscription per service, guaranteed by our own database --
+  Mollie's Idempotency-Key is kept for one hour, so it is a second line of
+  defence only. In every test below Mollie would happily create a second
+  subscription if it were asked to: the point is that it never is.
+*/
+describe("starting a collection exactly once", () => {
+  /** Lets one database write fail, the way a dropped connection would. */
+  function failNextRecord(target: ReturnType<typeof createFakeDb>) {
+    const from = target.from;
+    let armed = true;
+    return {
+      ...target,
+      from(table: string) {
+        const builder = from(table);
+        if (table !== "recurring_services") return builder;
+        const update = builder.update;
+        builder.update = (row: Record<string, unknown>) => {
+          if (armed && row.mollie_subscription_id) {
+            armed = false;
+            const failing = {
+              eq: () => failing,
+              is: () => failing,
+              select: () => failing,
+              maybeSingle: async () => ({ data: null, error: { message: "connection reset" } }),
+            };
+            return failing as never;
+          }
+          return update(row);
+        };
+        return builder;
+      },
+    };
+  }
+
+  it("makes one subscription when two clicks arrive at the same moment", async () => {
+    const service = flexora();
+    db = seed(service);
+
+    const results = await Promise.all([
+      startCollection(db as never, service, "2026-10-09"),
+      startCollection(db as never, service, "2026-10-09"),
+    ]);
+
+    expect(createSubscription).toHaveBeenCalledTimes(1);
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(results.find((result) => !result.ok)).toEqual({ ok: false, reason: startInProgressReason });
+    expect(db.rows("recurring_services")[0]).toMatchObject({ mollie_subscription_id: "sub_1", subscription_claim_id: null });
+  });
+
+  it("makes nothing on a second click hours later, long after Mollie forgot the key", async () => {
+    const service = flexora();
+    db = seed(service);
+    await startCollection(db as never, service, "2026-10-09", undefined, new Date("2026-10-09T10:00:00Z"));
+
+    const later = await startCollection(db as never, service, "2026-10-10", undefined, new Date("2026-10-10T16:00:00Z"));
+
+    expect(later).toEqual({ ok: false, reason: alreadyCollectingReason });
+    expect(createSubscription).toHaveBeenCalledTimes(1);
+    expect(atMollie).toHaveLength(1);
+  });
+
+  it("refuses a service that already collects without asking Mollie anything", async () => {
+    const service = flexora({ status: "active", mollie: { subscriptionId: "sub_existing" } });
+    db = seed(service);
+
+    expect(await startCollection(db as never, service, "2026-10-09")).toEqual({ ok: false, reason: alreadyCollectingReason });
+    expect(listMandates).not.toHaveBeenCalled();
+    expect(listSubscriptions).not.toHaveBeenCalled();
+    expect(createSubscription).not.toHaveBeenCalled();
+  });
+
+  /* Mollie made it; our write of its id did not land. */
+  it("releases the claim when recording fails after Mollie created the subscription", async () => {
+    const service = flexora();
+    db = seed(service);
+    const flaky = failNextRecord(db);
+
+    await expect(startCollection(flaky as never, service, "2026-10-09")).rejects.toThrow("connection reset");
+
+    expect(atMollie).toHaveLength(1);
+    expect(db.rows("recurring_services")[0]).toMatchObject({
+      mollie_subscription_id: null,
+      subscription_claim_id: null,
+      subscription_claimed_at: null,
+    });
+  });
+
+  it("adopts that subscription on the retry instead of creating a second one", async () => {
+    const service = flexora();
+    db = seed(service);
+    await expect(startCollection(failNextRecord(db) as never, service, "2026-10-09")).rejects.toThrow();
+
+    // A day later: far past Mollie's one-hour idempotency window.
+    const retried = await startCollection(db as never, service, "2026-10-10", undefined, new Date("2026-10-10T09:00:00Z"));
+
+    expect(retried).toEqual({ ok: true, firstDebitOn: "2026-11-04" });
+    expect(createSubscription).toHaveBeenCalledTimes(1);
+    expect(atMollie).toHaveLength(1);
+    expect(db.rows("recurring_services")[0]).toMatchObject({
+      status: "active",
+      mollie_subscription_id: "sub_1",
+      starts_on: "2026-11-04",
+      subscription_claim_id: null,
+    });
+  });
+
+  /* The process died between Mollie and the write: even the release never happened. */
+  it("waits out a claim that is still fresh, then takes it over and adopts what Mollie has", async () => {
+    const service = flexora();
+    db = seed(service);
+    atMollie.push({
+      id: "sub_orphan",
+      status: "pending",
+      startDate: "2026-11-04",
+      metadata: { kind: "recurring", recurringServiceId: "svc-1", customerId: "cust-1" },
+    });
+    Object.assign(db.rows("recurring_services")[0]!, {
+      subscription_claim_id: "11111111-1111-4111-8111-111111111111",
+      subscription_claimed_at: "2026-10-09T10:00:00.000Z",
+    });
+
+    const soon = await startCollection(db as never, service, "2026-10-09", undefined, new Date("2026-10-09T10:05:00Z"));
+    expect(soon).toEqual({ ok: false, reason: startInProgressReason });
+
+    const stale = new Date(Date.parse("2026-10-09T10:00:00Z") + claimStaleMs + 1000);
+    const taken = await startCollection(db as never, service, "2026-10-09", undefined, stale);
+
+    expect(taken).toEqual({ ok: true, firstDebitOn: "2026-11-04" });
+    expect(createSubscription).not.toHaveBeenCalled();
+    expect(db.rows("recurring_services")[0]).toMatchObject({ mollie_subscription_id: "sub_orphan", subscription_claim_id: null });
+  });
+
+  /* A cancelled subscription is history; it does not stand in for a current one. */
+  it("does not adopt a cancelled subscription of the same service", async () => {
+    const service = flexora();
+    db = seed(service);
+    atMollie.push({
+      id: "sub_old",
+      status: "canceled",
+      startDate: "2026-06-04",
+      metadata: { kind: "recurring", recurringServiceId: "svc-1", customerId: "cust-1" },
+    });
+
+    await startCollection(db as never, service, "2026-10-09");
+
+    expect(createSubscription).toHaveBeenCalledTimes(1);
+    expect(db.rows("recurring_services")[0]?.mollie_subscription_id).toBe("sub_2");
+  });
+
+  it("gives two services of the same customer a subscription each", async () => {
+    const hosting = flexora();
+    const seo = flexora({ id: "svc-2", name: "SEO-onderhoud", amountCents: 5000, activationInvoiceId: undefined });
+    db = seed(hosting, [], [seo]);
+
+    const first = await startCollection(db as never, hosting, "2026-10-09");
+    const second = await startCollection(db as never, seo, "2026-10-09");
+
+    expect(first.ok && second.ok).toBe(true);
+    expect(createSubscription).toHaveBeenCalledTimes(2);
+    expect(createSubscription.mock.calls.map(([input]) => (input as { idempotencyKey: string }).idempotencyKey)).toEqual([
+      "recurring-svc-1",
+      "recurring-svc-2",
+    ]);
+    expect(createSubscription.mock.calls[1]?.[0]).toMatchObject({ amountCents: 6050, description: "SEO-onderhoud" });
+    expect(db.rows("recurring_services").map((row) => row.mollie_subscription_id)).toEqual(["sub_1", "sub_2"]);
   });
 });

@@ -1605,6 +1605,8 @@ export type Database = {
           project_id: string | null
           starts_on: string | null
           status: string
+          subscription_claim_id: string | null
+          subscription_claimed_at: string | null
           updated_at: string
           vat_rate: number
         }
@@ -1622,6 +1624,8 @@ export type Database = {
           project_id?: string | null
           starts_on?: string | null
           status?: string
+          subscription_claim_id?: string | null
+          subscription_claimed_at?: string | null
           updated_at?: string
           vat_rate?: number
         }
@@ -1639,6 +1643,8 @@ export type Database = {
           project_id?: string | null
           starts_on?: string | null
           status?: string
+          subscription_claim_id?: string | null
+          subscription_claimed_at?: string | null
           updated_at?: string
           vat_rate?: number
         }

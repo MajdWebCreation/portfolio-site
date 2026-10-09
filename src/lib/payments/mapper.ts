@@ -12,7 +12,14 @@ import type {
 import type { Database } from "@/lib/supabase/database.types";
 
 export type PaymentRow = Database["public"]["Tables"]["payments"]["Row"];
-export type RecurringServiceRow = Database["public"]["Tables"]["recurring_services"]["Row"];
+/*
+  The claim columns are the start-subscription lock, read and written only by
+  `collection-start.ts`; the domain object has no use for them.
+*/
+export type RecurringServiceRow = Omit<
+  Database["public"]["Tables"]["recurring_services"]["Row"],
+  "subscription_claim_id" | "subscription_claimed_at"
+>;
 export type CustomerPaymentProviderRow = Database["public"]["Tables"]["customer_payment_providers"]["Row"];
 export type DebitPrenotificationRow = Database["public"]["Tables"]["debit_prenotifications"]["Row"];
 
