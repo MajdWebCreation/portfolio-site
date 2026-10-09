@@ -13,12 +13,14 @@ import type { StoredPaymentLink } from "@/lib/payments/checkout";
 const getPaymentLink = vi.fn();
 const createPaymentLink = vi.fn();
 const createPayment = vi.fn();
+const archivePaymentLink = vi.fn();
 
 vi.mock("@/lib/mollie/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/mollie/client")>()),
   getPaymentLink: (...args: unknown[]) => getPaymentLink(...args),
   createPaymentLink: (...args: unknown[]) => createPaymentLink(...args),
   createPayment: (...args: unknown[]) => createPayment(...args),
+  archivePaymentLink: (...args: unknown[]) => archivePaymentLink(...args),
 }));
 
 const { ensureInvoiceCheckout } = await import("@/lib/payments/checkout");
@@ -66,7 +68,7 @@ describe("a payment link for an invoice", () => {
   it("creates one when there is nothing to reuse", async () => {
     const persistLink = vi.fn();
 
-    const result = await ensureInvoiceCheckout(invoiceFixture(), { existing: [], persistLink });
+    const result = await ensureInvoiceCheckout(invoiceFixture(), { sequence: "oneoff", existing: [], persistLink });
 
     expect(result).toMatchObject({
       ok: true,
@@ -81,7 +83,7 @@ describe("a payment link for an invoice", () => {
   });
 
   it("names the invoice in the webhook URL, because a link carries no metadata", async () => {
-    await ensureInvoiceCheckout(invoiceFixture(), { existing: [], persistLink: vi.fn() });
+    await ensureInvoiceCheckout(invoiceFixture(), { sequence: "oneoff", existing: [], persistLink: vi.fn() });
 
     expect(createPaymentLink).toHaveBeenCalledWith(
       expect.objectContaining({ webhookUrl: "https://example.test/api/mollie/webhook?invoice=inv-1" }),
@@ -95,7 +97,7 @@ describe("a payment link for an invoice", () => {
     through an opaque token, so it is not a list anyone can count through.
   */
   it("returns the customer to the localised confirmation page, with no identifier in it", async () => {
-    await ensureInvoiceCheckout(invoiceFixture({ id: invoiceId }), { existing: [], persistLink: vi.fn() });
+    await ensureInvoiceCheckout(invoiceFixture({ id: invoiceId }), { sequence: "oneoff", existing: [], persistLink: vi.fn() });
 
     const redirectUrl = redirectUrlOf();
     expect(redirectUrl.startsWith("https://example.test/nl/betaling/afgerond?state=")).toBe(true);
@@ -108,6 +110,7 @@ describe("a payment link for an invoice", () => {
     getPaymentLink.mockResolvedValue(link());
 
     const result = await ensureInvoiceCheckout(invoiceFixture(), {
+      sequence: "oneoff",
       existing: [],
       storedLink: stored,
       persistLink: vi.fn(),
@@ -124,6 +127,7 @@ describe("a payment link for an invoice", () => {
     );
 
     const result = await ensureInvoiceCheckout(invoiceFixture(), {
+      sequence: "oneoff",
       existing: [],
       storedLink: stored,
       persistLink: vi.fn(),
@@ -137,6 +141,7 @@ describe("a payment link for an invoice", () => {
     never produce a mandate, so it may not be reused for a `first` send.
   */
   it("replaces a one-off link when a mandate is now needed", async () => {
+    getPaymentLink.mockResolvedValue(link());
     createPaymentLink.mockResolvedValue(
       link({ id: "pl_2", sequenceType: "first", _links: { paymentLink: { href: "https://payment-link.mollie.com/payment/pl_2" } } }),
     );
@@ -149,25 +154,26 @@ describe("a payment link for an invoice", () => {
       persistLink: vi.fn(),
     });
 
-    expect(getPaymentLink).not.toHaveBeenCalled();
     expect(createPaymentLink).toHaveBeenCalledWith(expect.objectContaining({ sequenceType: "first" }));
   });
 
   it("makes a new link when the outstanding amount changed", async () => {
+    getPaymentLink.mockResolvedValue(link());
     createPaymentLink.mockResolvedValue(link({ id: "pl_2", _links: { paymentLink: { href: "https://x/pl_2" } } }));
 
     await ensureInvoiceCheckout(invoiceFixture(), {
+      sequence: "oneoff",
       existing: [paymentFixture({ amountCents: 2100 })],
       storedLink: stored,
       persistLink: vi.fn(),
     });
 
-    expect(getPaymentLink).not.toHaveBeenCalled();
     expect(createPaymentLink).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 10000 }));
   });
 
   it("refuses to bill an invoice that is already paid", async () => {
     const result = await ensureInvoiceCheckout(invoiceFixture(), {
+      sequence: "oneoff",
       existing: [paymentFixture({ amountCents: 12100 })],
       persistLink: vi.fn(),
     });
@@ -178,6 +184,7 @@ describe("a payment link for an invoice", () => {
 
   it("asks only for what is still owed", async () => {
     await ensureInvoiceCheckout(invoiceFixture(), {
+      sequence: "oneoff",
       existing: [paymentFixture({ amountCents: 2100 })],
       persistLink: vi.fn(),
     });
@@ -217,7 +224,7 @@ describe("a payment link for an invoice", () => {
   });
 
   it("stays a one-off link when nothing has to be authorised", async () => {
-    await ensureInvoiceCheckout(invoiceFixture(), { existing: [], persistLink: vi.fn() });
+    await ensureInvoiceCheckout(invoiceFixture(), { sequence: "oneoff", existing: [], persistLink: vi.fn() });
 
     const [args] = createPaymentLink.mock.calls[0] as [{ sequenceType: string; customerId?: string }];
     expect(args.sequenceType).toBe("oneoff");
@@ -238,7 +245,86 @@ describe("a payment link for an invoice", () => {
 
   it("says so instead of throwing when Mollie is not configured", async () => {
     delete process.env.MOLLIE_API_KEY;
-    const result = await ensureInvoiceCheckout(invoiceFixture(), { existing: [], persistLink: vi.fn() });
+    const result = await ensureInvoiceCheckout(invoiceFixture(), { sequence: "oneoff", existing: [], persistLink: vi.fn() });
     expect(result).toEqual({ ok: false, reason: "Mollie is niet geconfigureerd." });
+  });
+});
+
+/*
+  A link that is replaced while it can still be paid is closed first. Without
+  that, the customer holding the older mail could pay the same invoice twice
+  -- and the payment would arrive on a link our own row no longer names, so
+  the webhook could not even trace it to the invoice.
+*/
+describe("replacing a link that can still be paid", () => {
+  const firstStored: StoredPaymentLink = { ...stored, sequenceType: "first" };
+
+  it("archives the old link before the replacement is created", async () => {
+    getPaymentLink.mockResolvedValue(link());
+    const order: string[] = [];
+    archivePaymentLink.mockImplementation(async () => {
+      order.push("archive");
+      return link({ archived: true });
+    });
+    createPaymentLink.mockImplementation(async () => {
+      order.push("create");
+      return link({ id: "pl_2", _links: { paymentLink: { href: "https://x/pl_2" } } });
+    });
+
+    const result = await ensureInvoiceCheckout(invoiceFixture(), {
+      sequence: "oneoff",
+      existing: [paymentFixture({ amountCents: 2100 })],
+      storedLink: stored,
+      persistLink: vi.fn(),
+    });
+
+    expect(result).toMatchObject({ ok: true, paymentLinkId: "pl_2" });
+    expect(archivePaymentLink).toHaveBeenCalledWith("pl_1", expect.anything());
+    expect(order).toEqual(["archive", "create"]);
+  });
+
+  it("makes no second link when the old one cannot be closed", async () => {
+    getPaymentLink.mockResolvedValue(link());
+    archivePaymentLink.mockRejectedValue(new Error("Mollie 503: unavailable"));
+
+    await expect(
+      ensureInvoiceCheckout(invoiceFixture(), {
+        sequence: "oneoff",
+        existing: [paymentFixture({ amountCents: 2100 })],
+        storedLink: stored,
+        persistLink: vi.fn(),
+      }),
+    ).rejects.toThrow("Mollie 503");
+    expect(createPaymentLink).not.toHaveBeenCalled();
+  });
+
+  it("leaves a link that is already spent alone", async () => {
+    getPaymentLink.mockResolvedValue(link({ paidAt: "2026-09-14T10:00:00.000Z" }));
+
+    await ensureInvoiceCheckout(invoiceFixture(), {
+      sequence: "oneoff",
+      existing: [paymentFixture({ amountCents: 2100 })],
+      storedLink: stored,
+      persistLink: vi.fn(),
+    });
+
+    expect(archivePaymentLink).not.toHaveBeenCalled();
+    expect(createPaymentLink).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses a payable first link as it is: nothing archived, nothing created", async () => {
+    getPaymentLink.mockResolvedValue(link({ sequenceType: "first" }));
+
+    const result = await ensureInvoiceCheckout(invoiceFixture(), {
+      sequence: "first",
+      providerCustomerId: "cst_1",
+      existing: [],
+      storedLink: firstStored,
+      persistLink: vi.fn(),
+    });
+
+    expect(result).toMatchObject({ ok: true, reused: true, paymentLinkId: "pl_1" });
+    expect(archivePaymentLink).not.toHaveBeenCalled();
+    expect(createPaymentLink).not.toHaveBeenCalled();
   });
 });

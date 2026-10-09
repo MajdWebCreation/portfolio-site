@@ -56,6 +56,23 @@ export function decidePaymentSequence(input: {
 }
 
 /**
+ * The sequence a payment link for this invoice actually asks for: `first`
+ * exactly when a mandate is still needed *and* the invoice told the customer
+ * so. The same rule for the first mail and every reminder after it, so a
+ * reminder can neither drop the authorisation the invoice announced nor start
+ * one the invoice never mentioned.
+ *
+ *   needs a mandate, announced       first   -- the link the invoice promised
+ *   needs a mandate, not announced   oneoff  -- the send flow refuses this
+ *                                               invoice; a reminder only
+ *                                               collects what is owed
+ *   mandate given or subscribed      oneoff  -- nothing left to authorise
+ */
+export function linkSequence(decision: Pick<SequenceDecision, "sequence">, announcesMandate: boolean): PaymentSequence {
+  return decision.sequence === "first" && announcesMandate ? "first" : "oneoff";
+}
+
+/**
  * What the admin sees about switching a service on, without a word of Mollie
  * in it. `subscription` means money will be collected monthly from here on.
  */
@@ -84,6 +101,21 @@ export function activationStatus(input: {
   */
   if (activationInvoicePaid) return "problem";
   return "awaiting_first_payment";
+}
+
+/**
+ * Whether the admin may send the standalone activation link for a service.
+ *
+ * Not while an activation invoice is still open: paying that invoice is the
+ * customer's way to authorise us, and a second route would charge them twice.
+ * But once that invoice is paid and no mandate came of it -- the "problem"
+ * state -- the separate link is the only way left, and it is an explicit
+ * admin action: the customer pays the first monthly term with it and gives the
+ * mandate in the same step. Nothing about the paid invoice is touched.
+ */
+export function activationLinkOffered(summary: { status: ActivationStatus; invoice?: { paid: boolean } } | undefined): boolean {
+  if (!summary?.invoice) return true;
+  return summary.invoice.paid && summary.status === "problem";
 }
 
 export const activationStatusLabels: Record<ActivationStatus, string> = {

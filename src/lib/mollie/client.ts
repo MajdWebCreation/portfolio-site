@@ -27,7 +27,7 @@ export class MollieError extends Error {
 }
 
 type RequestOptions = {
-  method: "GET" | "POST" | "DELETE";
+  method: "GET" | "POST" | "PATCH" | "DELETE";
   path: string;
   body?: unknown;
   /** Makes a retried POST return the first result instead of creating a second resource. */
@@ -178,7 +178,12 @@ export type CreatePaymentLinkInput = {
   description: string;
   redirectUrl: string;
   webhookUrl: string;
-  sequenceType?: "oneoff" | "first";
+  /**
+   * Required, and always sent. Mollie quietly defaults a link without one to
+   * `oneoff`, so a caller that forgets it would lose a mandate without any
+   * error -- which is exactly how a reminder once replaced a `first` link.
+   */
+  sequenceType: "oneoff" | "first";
   customerId?: string;
   idempotencyKey: string;
   config?: MollieConfig;
@@ -198,7 +203,7 @@ export async function createPaymentLink(input: CreatePaymentLinkInput): Promise<
       // One customer, one payment: a link that could be paid twice would
       // settle an invoice twice.
       reusable: false,
-      ...(input.sequenceType ? { sequenceType: input.sequenceType } : {}),
+      sequenceType: input.sequenceType,
       // Only meaningful with "first"; the API says so and so does this.
       ...(input.sequenceType === "first" && input.customerId ? { customerId: input.customerId } : {}),
     },
@@ -223,6 +228,21 @@ export async function listPaymentLinkPayments(id: string, config?: MollieConfig)
     config,
   });
   return response._embedded?.payments ?? [];
+}
+
+/**
+ * Closes a link so it can no longer be paid. `archived` is the documented way
+ * to do that -- the API has no delete for payment links -- and it is what
+ * stops a link we replaced from settling the same invoice a second time.
+ * See docs.mollie.com/reference/update-payment-link.
+ */
+export async function archivePaymentLink(id: string, config?: MollieConfig): Promise<MolliePaymentLink> {
+  return request<MolliePaymentLink>({
+    method: "PATCH",
+    path: `/payment-links/${encodeURIComponent(id)}`,
+    body: { archived: true },
+    config,
+  });
 }
 
 /** A link that can still be handed to a customer as a way to pay. */
@@ -262,6 +282,31 @@ export async function listMandates(customerId: string, config?: MollieConfig): P
 /** The first mandate that may actually be collected against. */
 export function usableMandate(mandates: readonly MollieMandate[]): MollieMandate | undefined {
   return mandates.find((mandate) => mandate.status === "valid");
+}
+
+/**
+ * Where a customer stands, in Mollie's own three statuses plus "none":
+ *
+ *   valid     may be collected against.
+ *   pending   exists but is still being verified -- typically the first
+ *             payment is not final or its IBAN has not come through yet.
+ *             Not usable; it may still become valid.
+ *   invalid   every mandate there is has been revoked or failed.
+ *   none      the customer has never authorised anything.
+ *
+ * Only "valid" makes a customer collectable. A paid first payment is not
+ * proof of one: the mandate it produced can still be pending.
+ */
+export type MandateState = "valid" | "pending" | "invalid" | "none";
+
+export function mandateState(
+  mandates: readonly MollieMandate[],
+): { state: MandateState; mandate?: MollieMandate } {
+  const valid = usableMandate(mandates);
+  if (valid) return { state: "valid", mandate: valid };
+  const pending = mandates.find((mandate) => mandate.status === "pending");
+  if (pending) return { state: "pending", mandate: pending };
+  return { state: mandates.length > 0 ? "invalid" : "none" };
 }
 
 export async function createSubscription(

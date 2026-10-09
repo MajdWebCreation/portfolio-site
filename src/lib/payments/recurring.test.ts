@@ -265,3 +265,67 @@ describe("the customer created at Mollie by an activation", () => {
     expect(db.rows("recurring_activations")[0]?.mollie_payment_id).toBeNull();
   });
 });
+
+/*
+  The recovery for YM-F-2026-000002 (Flexora Bouw): the 363,00 website invoice
+  is paid, but through a one-off link, so the monthly service it announced --
+  10,00 excl. btw, 12,10 incl. -- has no mandate. The activation link asks for
+  the first monthly term as a separate first payment. It is priced from the
+  service alone; the invoice the service hangs off plays no part in it.
+*/
+describe("activating a service whose activation invoice is already paid", () => {
+  const flexora = () =>
+    seed({
+      services: [
+        {
+          id: "svc-1",
+          customer_id: "cust-1",
+          name: "Websitebeheer & hosting",
+          description: "",
+          amount_cents: 1000,
+          currency: "EUR",
+          vat_rate: 21,
+          billing_interval: "monthly",
+          starts_on: "2026-10-04",
+          status: "draft",
+          activation_invoice_id: "inv-363",
+          mollie_subscription_id: null,
+          created_at: "2026-09-01T00:00:00.000Z",
+          updated_at: "2026-09-01T00:00:00.000Z",
+        },
+      ],
+    });
+
+  it("shows the customer 12,10, never the invoice's 363,00", async () => {
+    db = flexora();
+    expect(await readActivation(first.token)).toMatchObject({ ok: true, amountCents: 1210 });
+  });
+
+  it("asks Mollie for exactly one first payment of 12,10 for the existing customer", async () => {
+    db = flexora();
+    db.rows("customer_payment_providers").push({
+      id: "cpp-1",
+      customer_id: "cust-1",
+      provider: "mollie",
+      provider_customer_id: "cst_existing",
+      provider_mandate_id: null,
+    });
+
+    await startActivation(first.token);
+    await startActivation(first.token);
+
+    expect(createPayment).toHaveBeenCalledTimes(1);
+    const [args] = createPayment.mock.calls[0] as [Record<string, unknown>];
+    expect(args).toMatchObject({
+      amountCents: 1210,
+      sequenceType: "first",
+      customerId: "cst_existing",
+      description: "Websitebeheer & hosting — eerste termijn en machtiging",
+      metadata: { kind: "recurring_activation", recurringServiceId: "svc-1", customerId: "cust-1" },
+    });
+    // Nothing about it names the paid invoice, so nothing can settle or reopen it.
+    expect(JSON.stringify(args)).not.toContain("inv-363");
+    expect(args.metadata).not.toHaveProperty("invoiceId");
+    expect(createCustomer).not.toHaveBeenCalled();
+  });
+});

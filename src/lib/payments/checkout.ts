@@ -2,6 +2,7 @@ import { calculateTotals } from "@/lib/money";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import { companyProfile } from "@/lib/admin/documents/company";
 import {
+  archivePaymentLink,
   createPaymentLink,
   getPaymentLink,
   payableLink,
@@ -27,6 +28,11 @@ import type { Payment } from "@/lib/payments/types";
  * URL is handed back. A new link is created only when there is nothing usable
  * -- the old one was paid, expired or archived, the outstanding amount
  * changed, or the sequence has to change because a mandate is now needed.
+ *
+ * A link that is replaced while it could still be paid is archived first.
+ * One invoice has at most one payable link, so a customer holding an older
+ * mail cannot pay the same debt twice -- and a payment can only arrive on the
+ * link our own row names, which is the only link the webhook will accept.
  */
 export type CheckoutResult =
   | { ok: true; checkoutUrl: string; paymentLinkId: string; reused: boolean }
@@ -55,8 +61,12 @@ export type CheckoutDependencies = {
    * "first" turns this into a link that also establishes a mandate, for an
    * invoice that switches a monthly service on. It needs the customer's
    * identity at the provider; "oneoff" needs neither.
+   *
+   * Required, with no default here: which one an invoice asks for is decided
+   * once, by `invoicePaymentIntent` in pay-link.ts, for the first mail and
+   * every reminder alike.
    */
-  sequence?: "oneoff" | "first";
+  sequence: "oneoff" | "first";
   providerCustomerId?: string;
 };
 
@@ -78,7 +88,7 @@ export async function ensureInvoiceCheckout(
   if (settlement.settled) return { ok: false, reason: "Deze factuur is al betaald." };
 
   const config = getMollieConfig();
-  const sequence = deps.sequence ?? "oneoff";
+  const sequence = deps.sequence;
   if (sequence === "first" && !deps.providerCustomerId) {
     return { ok: false, reason: "Er is geen Mollie-klant om de machtiging aan te koppelen." };
   }
@@ -89,13 +99,20 @@ export async function ensureInvoiceCheckout(
     A link made before a monthly service was attached asks `oneoff` and would
     never produce a mandate; one made before a part payment asks too much.
   */
-  if (stored && stored.sequenceType === sequence && stored.amountCents === settlement.outstandingCents) {
+  if (stored) {
     const current: MolliePaymentLink = await getPaymentLink(stored.providerPaymentLinkId, config);
     const href = payableLink(current);
-    if (href) {
+    const fits = stored.sequenceType === sequence && stored.amountCents === settlement.outstandingCents;
+    if (href && fits) {
       return { ok: true, checkoutUrl: href, paymentLinkId: current.id, reused: true };
     }
-    // Otherwise it is spent or dead, and a new link is the right answer.
+    /*
+      Still payable but asking the wrong question. It is closed before its
+      replacement exists: if closing fails, this throws and no second link is
+      made, so there is never a moment with two payable links for one debt.
+      A link that is spent or dead needs nothing.
+    */
+    if (href) await archivePaymentLink(current.id, config);
   }
 
   /*

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { invalidRecipientReason } from "@/lib/admin/communications/recipient";
 import { fixtureDocumentPath, fixturePdfBytes } from "@/lib/admin/invoices/storage-fixture";
 import { createFakeDb, invoiceFixture, recipientFixture, recurringFixture } from "@/lib/payments/fixtures";
@@ -118,6 +118,40 @@ describe("the standalone direct debit link", () => {
     expect(result).toEqual({ ok: false, error: invalidRecipientReason });
     expect(deliverEmail).not.toHaveBeenCalled();
     expect(db.rows("recurring_activations")).toEqual([{ id: "act-1", recurring_service_id: "svc-1", used_at: null }]);
+  });
+
+  /*
+    While the invoice that switches the service on is open, paying it is the
+    customer's authorisation; a second route would bill the same start twice.
+    Once it is paid without a mandate -- YM-F-2026-000002 -- this link is the
+    explicit way to ask for one.
+  */
+  describe("for a service with an activation invoice", () => {
+    afterEach(() => {
+      delete service.activationInvoiceId;
+    });
+
+    it("refuses while that invoice is still open", async () => {
+      service.activationInvoiceId = "inv-act";
+      db.rows("invoices").push({ id: "inv-act", number_value: "YM-F-2026-000002", status: "sent" });
+
+      const result = await sendRecurringActivation("svc-1");
+
+      expect(result).toMatchObject({ ok: false });
+      expect(!result.ok && result.error).toContain("YM-F-2026-000002");
+      expect(deliverEmail).not.toHaveBeenCalled();
+      expect(db.rows("recurring_activations")).toHaveLength(0);
+    });
+
+    it("sends the link once that invoice is paid", async () => {
+      service.activationInvoiceId = "inv-act";
+      db.rows("invoices").push({ id: "inv-act", number_value: "YM-F-2026-000002", status: "paid" });
+
+      const result = await sendRecurringActivation("svc-1");
+
+      expect(result).toEqual({ ok: true, value: "a@example.com" });
+      expect(db.rows("recurring_activations")).toHaveLength(1);
+    });
   });
 
   /* Asking again replaces the link, and is a second mail in the inbox. */

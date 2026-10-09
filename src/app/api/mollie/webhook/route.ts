@@ -63,11 +63,19 @@ export async function POST(request: Request) {
     const invoiceId = isLink ? await store.findInvoiceIdForPaymentLink(id) : fromUrl;
     const context = invoiceId ? { invoiceIdHint: invoiceId } : {};
 
+    let retry = false;
     for (const payment of payments) {
       const outcome = await processMolliePayment(payment, store, todayKey, context);
       // The id is not a secret and the note carries no customer data.
       console.info("Mollie webhook handled", { id, paymentId: payment.id, handled: outcome.handled, note: outcome.note });
+      retry ||= Boolean(outcome.retry);
     }
+    /*
+      Something will change by itself -- a mandate Mollie still calls pending
+      -- so Mollie is asked to deliver again later. Everything already written
+      is idempotent; the redelivery only finishes the job.
+    */
+    if (retry) return new Response("Retry", { status: 503 });
     return new Response("OK", { status: 200 });
   } catch (error) {
     /*

@@ -2,11 +2,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminDb } from "@/lib/admin/db";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import { isMollieConfigured } from "@/lib/mollie/config";
-import { decidePaymentSequence, type SequenceDecision } from "@/lib/payments/activation-decision";
-import { ensureInvoiceCheckout, type StoredPaymentLink } from "@/lib/payments/checkout";
+import { calculateTotals } from "@/lib/money";
+import {
+  decidePaymentSequence,
+  linkSequence,
+  type PaymentSequence,
+  type SequenceDecision,
+} from "@/lib/payments/activation-decision";
+import { ensureInvoiceCheckout, type CheckoutResult, type StoredPaymentLink } from "@/lib/payments/checkout";
 import { recurringServiceFromRow } from "@/lib/payments/mapper";
 import { ensureProviderCustomer, hasUsableMandate } from "@/lib/payments/provider-customer";
 import { listPaymentsForInvoice } from "@/lib/payments/repository";
+import { settleInvoice } from "@/lib/payments/settlement";
 import { isCollecting, type Payment, type RecurringService } from "@/lib/payments/types";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -129,7 +136,13 @@ export async function invoiceIdForPaymentLink(
 
 /** The service this invoice is meant to switch on, if it is meant to. */
 export async function serviceActivatedBy(invoiceId: string): Promise<RecurringService | undefined> {
-  const db = await adminDb();
+  return activatedService(await adminDb(), invoiceId);
+}
+
+async function activatedService(
+  db: SupabaseClient<Database>,
+  invoiceId: string,
+): Promise<RecurringService | undefined> {
   const { data, error } = await db
     .from("recurring_services")
     .select(recurringColumns)
@@ -139,40 +152,71 @@ export async function serviceActivatedBy(invoiceId: string): Promise<RecurringSe
   return data ? recurringServiceFromRow(data) : undefined;
 }
 
+/**
+ * What a payment link for this invoice has to be, decided in one place.
+ *
+ * The first mail and every reminder ask this same function, so they cannot
+ * disagree about whether paying establishes a mandate. It answers four
+ * questions in order:
+ *
+ *   - does a monthly service hang off this invoice;
+ *   - does the customer already have a mandate Mollie calls valid -- asked of
+ *     Mollie, never of our own column, because a mandate can be revoked at
+ *     the bank and a pending one cannot be collected against;
+ *   - therefore `oneoff` or `first` (`linkSequence`);
+ *   - and for `first`, which Mollie customer the mandate attaches to.
+ *
+ * Whether the existing link can be handed out again is the next step's
+ * business: `ensureInvoiceCheckout` reuses it when it asks this same question
+ * for the same amount and can still be paid.
+ */
+export type PaymentIntent = {
+  decision: SequenceDecision;
+  sequence: PaymentSequence;
+  providerCustomerId?: string;
+};
+
+export async function invoicePaymentIntent(db: SupabaseClient<Database>, invoice: Invoice): Promise<PaymentIntent> {
+  const service = await activatedService(db, invoice.id);
+  const mandate = service ? await hasUsableMandate(db, invoice.customer.customerId) : { has: false };
+  const decision = decidePaymentSequence({ invoice, service, hasUsableMandate: mandate.has });
+  const sequence = linkSequence(decision, Boolean(invoice.activationNote));
+
+  const providerCustomerId =
+    sequence === "first" ? await ensureProviderCustomer(db, invoice.customer.customerId) : undefined;
+  return { decision, sequence, ...(providerCustomerId ? { providerCustomerId } : {}) };
+}
+
+/** The link for an invoice, reused or made, through the intent above. */
+async function invoiceCheckout(
+  db: SupabaseClient<Database>,
+  invoice: Invoice,
+  payments: readonly Payment[],
+): Promise<{ result: CheckoutResult; intent: PaymentIntent }> {
+  const intent = await invoicePaymentIntent(db, invoice);
+  const result = await ensureInvoiceCheckout(invoice, {
+    existing: payments,
+    sequence: intent.sequence,
+    ...(intent.providerCustomerId ? { providerCustomerId: intent.providerCustomerId } : {}),
+    ...((await readPaymentLink(db, invoice.id)) ?? {}),
+    persistLink: (link) => storePaymentLink(db, invoice, link),
+  });
+  return { result, intent };
+}
+
 export async function invoicePayLink(invoice: Invoice): Promise<PayLinkResult> {
   if (!isMollieConfigured()) return { kind: "none", reason: "not-configured" };
   if (await collectedByDirectDebit(invoice)) return { kind: "none", reason: "direct-debit" };
 
   try {
-    const existing = await listPaymentsForInvoice(invoice.id);
+    // The admin is signed in here, so these writes go through row level
+    // security like every other admin write; the webhook has its own store.
     const db = await adminDb();
+    const { result, intent } = await invoiceCheckout(db, invoice, await listPaymentsForInvoice(invoice.id));
 
-    /*
-      Does this invoice have to establish a mandate? Only when a service hangs
-      off it, that service is not already running, and the customer has not
-      already authorised us. The mandate question is put to Mollie, not to our
-      own column, because a customer can revoke one at their bank.
-    */
-    const service = await serviceActivatedBy(invoice.id);
-    const mandate = service ? await hasUsableMandate(db, invoice.customer.customerId) : { has: false };
-    const decision = decidePaymentSequence({ invoice, service, hasUsableMandate: mandate.has });
-
-    const providerCustomerId =
-      decision.sequence === "first"
-        ? await ensureProviderCustomer(db, invoice.customer.customerId)
-        : undefined;
-
-    const result = await ensureInvoiceCheckout(invoice, {
-      existing,
-      sequence: decision.sequence,
-      ...(providerCustomerId ? { providerCustomerId } : {}),
-      ...((await readPaymentLink(db, invoice.id)) ?? {}),
-      // The admin is signed in here, so this write goes through row level
-      // security like every other admin write; the webhook has its own store.
-      persistLink: (link) => storePaymentLink(db, invoice, link),
-    });
-
-    return result.ok ? { kind: "link", url: result.checkoutUrl, decision } : { kind: "failed", reason: result.reason };
+    return result.ok
+      ? { kind: "link", url: result.checkoutUrl, decision: intent.decision }
+      : { kind: "failed", reason: result.reason };
   } catch (error) {
     // The provider's own message, never the key or the request.
     const reason = error instanceof Error ? error.message : "onbekende fout";
@@ -184,21 +228,24 @@ export async function invoicePayLink(invoice: Invoice): Promise<PayLinkResult> {
 /**
  * The payment button on a reminder.
  *
- * Deliberately a separate entry point from `invoicePayLink`. That one runs
- * inside an admin action, reads through `adminDb()` and refuses to let an
- * invoice go out without a working button. A reminder is neither: it runs in
- * the daily job, which carries no session, and a reminder without a button is
- * still worth far more than no reminder at all -- the customer already has
- * the invoice, with the bank details on it.
+ * A separate entry point from `invoicePayLink` because the circumstances
+ * differ, not the decision. That one runs inside an admin action, reads
+ * through `adminDb()` and refuses to let an invoice go out without a working
+ * button. A reminder runs in the daily job, which carries no session, and a
+ * reminder without a button is still worth far more than no reminder at all
+ * -- the customer already has the invoice, with the bank details on it.
  *
- * Always `oneoff`. A reminder chases money that is owed; it must never be the
- * thing that quietly establishes a direct debit mandate, whatever service may
- * hang off the invoice.
+ * What the link asks for is decided by `invoicePaymentIntent`, exactly as for
+ * the first mail. An invoice that announced the first direct debit keeps
+ * asking for that authorisation until the customer has given it: a reminder
+ * that fell back to `oneoff` would collect the money and silently lose the
+ * mandate the invoice promised.
  *
- * The link the invoice already has is reused when it still asks for the same
- * amount and is still payable, so a customer who kept the original mail and
- * one who opens the reminder end up at the same place. A part payment, or a
- * link that was spent or expired, produces a new one for what is left.
+ * The link the invoice already has is reused when it still asks the same
+ * question for the same amount and is still payable, so a customer who kept
+ * the original mail and one who opens the reminder end up at the same place
+ * and a second reminder makes nothing new. A paid invoice gets no button and
+ * Mollie is not asked anything.
  */
 export async function reminderPayLink(
   db: SupabaseClient<Database>,
@@ -206,14 +253,10 @@ export async function reminderPayLink(
   payments: readonly Payment[],
 ): Promise<string | undefined> {
   if (!isMollieConfigured()) return undefined;
+  if (settleInvoice(calculateTotals(invoice.lines).totalCents, [...payments]).settled) return undefined;
 
   try {
-    const result = await ensureInvoiceCheckout(invoice, {
-      existing: payments,
-      sequence: "oneoff",
-      ...((await readPaymentLink(db, invoice.id)) ?? {}),
-      persistLink: (link) => storePaymentLink(db, invoice, link),
-    });
+    const { result } = await invoiceCheckout(db, invoice, payments);
     return result.ok ? result.checkoutUrl : undefined;
   } catch (error) {
     // The reminder still goes out; only the button is missing.

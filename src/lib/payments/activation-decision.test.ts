@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { invoiceFixture, recurringFixture } from "@/lib/payments/fixtures";
-import { activationStatus, decidePaymentSequence, documentActivation } from "@/lib/payments/activation-decision";
+import {
+  activationLinkOffered,
+  activationStatus,
+  decidePaymentSequence,
+  documentActivation,
+  linkSequence,
+} from "@/lib/payments/activation-decision";
 
 /*
   Whether a customer is asked to authorise direct debit is a decision with
@@ -106,5 +112,52 @@ describe("the activation note an admin screen may show", () => {
   it("says nothing while the service has no first collection date", () => {
     const undated = recurringFixture();
     expect(documentActivation({ service: undated, status: "awaiting_first_payment" })).toBeUndefined();
+  });
+});
+
+/*
+  One rule for every payment link an invoice gets, first mail and reminders
+  alike: ask for the authorisation exactly when it is still needed and the
+  invoice told the customer it would.
+*/
+describe("the sequence a payment link asks for", () => {
+  it("is first when a mandate is needed and the invoice announced it", () => {
+    expect(linkSequence({ sequence: "first" }, true)).toBe("first");
+  });
+
+  it("never starts an authorisation the invoice did not announce", () => {
+    expect(linkSequence({ sequence: "first" }, false)).toBe("oneoff");
+  });
+
+  it("does not ask again once there is nothing left to authorise", () => {
+    expect(linkSequence({ sequence: "oneoff" }, true)).toBe("oneoff");
+    expect(linkSequence({ sequence: "oneoff" }, false)).toBe("oneoff");
+  });
+});
+
+/*
+  The standalone activation link is the explicit recovery route for a paid
+  activation invoice that produced no mandate. While that invoice is open it
+  would be a second way to pay for the same start.
+*/
+describe("offering the standalone activation link", () => {
+  const invoiceOf = (paid: boolean) => ({ id: "inv-1", number: "YM-F-2026-000002", paid });
+
+  it("is offered for a service without an activation invoice", () => {
+    expect(activationLinkOffered({ status: "awaiting_first_payment" })).toBe(true);
+    expect(activationLinkOffered(undefined)).toBe(true);
+  });
+
+  it("is withheld while the activation invoice is still open", () => {
+    expect(activationLinkOffered({ status: "awaiting_first_payment", invoice: invoiceOf(false) })).toBe(false);
+  });
+
+  it("is offered when the invoice was paid but no mandate came of it", () => {
+    expect(activationLinkOffered({ status: "problem", invoice: invoiceOf(true) })).toBe(true);
+  });
+
+  it("is withheld once a mandate or a subscription exists", () => {
+    expect(activationLinkOffered({ status: "mandate_active", invoice: invoiceOf(true) })).toBe(false);
+    expect(activationLinkOffered({ status: "subscription_active", invoice: invoiceOf(true) })).toBe(false);
   });
 });

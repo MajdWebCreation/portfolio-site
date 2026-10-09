@@ -60,8 +60,10 @@ async function handle(request: Request): Promise<Response> {
       async ({ invoice, stage, recipient, daysOverdue, outstandingCents, finalDateKey, payments }) => {
         /*
           The button the customer sees. The link the invoice already carries
-          is reused when it still fits; a reminder never establishes a
-          mandate, and it never asks for a cent more than the invoice does.
+          is reused when it still fits; it asks for a mandate exactly when
+          the invoice announced one and none is valid yet -- the same
+          decision the first mail made -- and it never asks for a cent more
+          than the invoice does.
           No link is not a reason to stay silent -- the customer has the
           invoice, with the bank details on it.
         */

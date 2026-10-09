@@ -8,6 +8,7 @@ import SaveControls, { useSave } from "@/components/admin/save-controls";
 import StatusBadge from "@/components/admin/status-badge";
 import { formatDate } from "@/lib/admin/format";
 import { createRecurringService, sendRecurringActivation } from "@/lib/payments/actions";
+import { activationLinkOffered } from "@/lib/payments/activation-decision";
 import type { ActivationSummary } from "@/lib/payments/activation-view";
 import {
   prenotificationStateLabels,
@@ -93,7 +94,7 @@ export default function CustomerRecurring({
               <ActivationLines summary={activations[service.id]} />
               {service.mollie.subscriptionId ? (
                 <Schedule overview={overviews[service.id]} />
-              ) : service.status === "canceled" || activations[service.id]?.invoice ? null : (
+              ) : service.status === "canceled" || !activationLinkOffered(activations[service.id]) ? null : (
                 <AdminButton
                   variant="secondary"
                   className="mt-2 min-h-8 px-3 text-[0.85rem]"

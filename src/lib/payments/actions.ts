@@ -112,6 +112,28 @@ export async function sendRecurringActivation(serviceId: string): Promise<Action
   if (service.mollie.subscriptionId) return { ok: false, error: "Voor deze dienst loopt de incasso al." };
 
   const db = await adminDb();
+
+  /*
+    While the invoice that switches this service on is still open, paying it
+    is how the customer authorises us; a second route would charge them for
+    the same start twice. Once it is paid without producing a mandate, this
+    link is the explicit way to ask for one.
+  */
+  if (service.activationInvoiceId) {
+    const { data: invoice, error: invoiceError } = await db
+      .from("invoices")
+      .select("number_value, status")
+      .eq("id", service.activationInvoiceId)
+      .maybeSingle();
+    if (invoiceError) return actionFailed(invoiceError, "Activatiefactuur laden mislukt.");
+    if (invoice && invoice.status !== "paid" && invoice.status !== "cancelled") {
+      return {
+        ok: false,
+        error: `Deze dienst wordt geactiveerd met factuur ${invoice.number_value}, en die staat nog open. Betalen van die factuur geeft de machtiging.`,
+      };
+    }
+  }
+
   // Checked before an old link is revoked: a customer without a usable
   // address keeps the link they have rather than ending up with none.
   const addressed = await resolveCustomerRecipient(db, service.customerId);

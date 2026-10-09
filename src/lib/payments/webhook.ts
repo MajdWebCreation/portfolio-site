@@ -2,8 +2,9 @@ import { calculateTotals } from "@/lib/money";
 import type { Invoice, InvoiceStatus } from "@/lib/admin/invoices/types";
 import { centsFromMollie, paymentStatusFromMollie, type MolliePayment } from "@/lib/mollie/client";
 import { billingPeriod, firstPeriodStart, nextPeriodStart, periodForCharge, type BillingPeriod } from "@/lib/payments/billing-period";
-import { announceableStart } from "@/lib/payments/prenotification";
+import { activationPeriodStart, announceableStart } from "@/lib/payments/prenotification";
 import { settleInvoice } from "@/lib/payments/settlement";
+import type { MandateLookup } from "@/lib/payments/provider-customer";
 import type { Payment, PaymentStatus, RecurringService } from "@/lib/payments/types";
 
 /**
@@ -75,10 +76,12 @@ export type WebhookStore = {
   /** The service a paid invoice is meant to switch on, if it is meant to. */
   findServiceActivatedByInvoice: (invoiceId: string) => Promise<RecurringService | undefined>;
   /**
-   * The mandate that may be collected against, asked of the provider rather
-   * than of our own column. Absent when there is none yet.
+   * The customer's mandate as Mollie reports it now -- valid, pending, invalid
+   * or none -- asked of the provider rather than of our own column.
+   * `fallbackProviderCustomerId` is the customer the payment names, used only
+   * when the administration holds no provider identity for this customer.
    */
-  findUsableMandate: (customerId: string) => Promise<{ providerCustomerId: string; mandateId: string } | undefined>;
+  findMandate: (customerId: string, fallbackProviderCustomerId?: string) => Promise<MandateLookup>;
   /** The invoice an already recorded provider payment belongs to. */
   findInvoiceIdForProviderPayment: (molliePaymentId: string) => Promise<string | undefined>;
   /** The invoice we recorded a Mollie payment link for. */
@@ -101,7 +104,17 @@ export type WebhookOutcome = {
   /** Short, non-sensitive summary for the log line. */
   note: string;
   invoiceStatus?: InvoiceStatus;
+  /**
+   * Ask Mollie to deliver this webhook again: the route answers non-2xx.
+   * Only for a state that will resolve by itself -- a mandate Mollie still
+   * calls pending -- so a redelivery has something new to find. Everything
+   * written before is idempotent, so the redelivery only finishes the job.
+   */
+  retry?: boolean;
 };
+
+/** A mandate that is still being verified: wait for Mollie, do not act. */
+const mandatePending = (note: string): WebhookOutcome => ({ handled: false, retry: true, note });
 
 /** Never move a payment backwards from money-arrived to anything else. */
 export function nextPaymentStatus(previous: PaymentStatus | undefined, incoming: PaymentStatus): PaymentStatus {
@@ -248,7 +261,7 @@ export async function processMolliePayment(
   */
   if (settled) {
     const activation = await activateServiceForInvoice(invoice, payment, store, todayKey);
-    if (activation) return { handled: activation.handled, note: activation.note, invoiceStatus: status };
+    if (activation) return { ...activation, invoiceStatus: status };
   }
 
   return { handled: true, note: `invoice ${settled ? "settled" : "not settled"}`, invoiceStatus: status };
@@ -297,19 +310,16 @@ async function activateServiceForInvoice(
   if (service.status === "canceled") return { handled: true, note: "service cancelled; not activating" };
 
   /*
-    Which mandate to collect against. The provider's own list of mandates
-    decides, because that is the only answer that reflects a mandate revoked
-    at the bank; what the payment says is the fallback for the moment just
-    after a first payment, when the payment already names the mandate it
-    established.
+    Which mandate to collect against. Mollie's own list decides, and only a
+    mandate it calls valid counts: a paid first payment is not proof of one
+    -- the mandate it produced can still be pending -- and one revoked at the
+    bank is no mandate at all. The mandate id the payment carries is never
+    stored on its own say-so.
   */
-  const fromPayment =
-    payment.customerId && payment.mandateId
-      ? { providerCustomerId: payment.customerId, mandateId: payment.mandateId }
-      : undefined;
-  const mandate = (await store.findUsableMandate(invoice.customer.customerId)) ?? fromPayment;
+  const mandate = await store.findMandate(invoice.customer.customerId, payment.customerId);
 
-  if (!mandate) {
+  if (mandate.state === "pending") return mandatePending("invoice paid; mandate still pending at the provider");
+  if (mandate.state !== "valid" || !mandate.providerCustomerId || !mandate.mandateId) {
     // The money arrived but the authorisation did not. Reported rather than
     // retried forever: nothing here will produce a mandate on its own.
     return { handled: true, note: "invoice paid but no usable mandate yet" };
@@ -411,17 +421,33 @@ async function processActivation(
   const service = await store.getRecurringService(activation.recurringServiceId);
   if (!service) return { handled: false, note: "recurring service no longer exists" };
 
-  await store.storeProviderMandate({
-    customerId: service.customerId,
-    providerCustomerId: payment.customerId,
-    providerMandateId: payment.mandateId,
-  });
+  /*
+    The payment names a mandate; Mollie decides whether it may be used. The
+    term is invoiced and recorded either way, because the money is real. Only
+    a valid mandate switches the service on and starts the subscription; a
+    pending one asks Mollie to deliver again, and the redelivery finds the
+    recorded term and finishes the activation.
+  */
+  const mandate = await store.findMandate(service.customerId, payment.customerId);
+  const valid = mandate.state === "valid" && mandate.providerCustomerId && mandate.mandateId ? mandate : undefined;
 
-  // Period one starts on the agreed date, or on the day this was paid.
-  const periodStart = firstPeriodStart(service, chargeDate(payment));
+  if (valid) {
+    await store.storeProviderMandate({
+      customerId: service.customerId,
+      providerCustomerId: valid.providerCustomerId!,
+      providerMandateId: valid.mandateId!,
+    });
+  }
+
+  /*
+    Period one starts on the agreed date, or on the day this was paid -- and
+    moves on by whole months if the collection after it could no longer be
+    announced fourteen days ahead.
+  */
+  const periodStart = activationPeriodStart(firstPeriodStart(service, chargeDate(payment)), todayKey);
   const period = billingPeriod(periodStart);
 
-  const active = (await store.activateService(service.id, periodStart)) ?? service;
+  const active = valid ? ((await store.activateService(service.id, periodStart)) ?? service) : service;
   const invoice = await store.ensureRecurringInvoice(active, period);
 
   await store.upsertPayment(recordFrom(payment, invoice.id, invoice.customer.customerId));
@@ -434,7 +460,7 @@ async function processActivation(
 
   await store.markActivationUsed(activation.id);
 
-  if (!active.mollie.subscriptionId) {
+  if (valid && !active.mollie.subscriptionId) {
     // The first automatic collection is the second period: the first is paid.
     await store.createSubscription(active, nextPeriodStart(periodStart));
   }
@@ -454,5 +480,9 @@ async function processActivation(
     }
   }
 
+  if (mandate.state === "pending") {
+    return { ...mandatePending("first term invoiced; mandate still pending at the provider"), invoiceStatus };
+  }
+  if (!valid) return { handled: true, note: "first term invoiced; no valid mandate, service not activated", invoiceStatus };
   return { handled: true, note: "first term invoiced and mailed", invoiceStatus };
 }

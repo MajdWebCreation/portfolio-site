@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isEmailAddress } from "@/lib/email/address";
-import { createCustomer, listMandates, usableMandate } from "@/lib/mollie/client";
+import { createCustomer, listMandates, mandateState, type MandateState } from "@/lib/mollie/client";
 import { getMollieConfig } from "@/lib/mollie/config";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -99,23 +99,44 @@ export async function readProviderCustomerId(
 }
 
 /**
- * Whether this customer can be collected from right now.
+ * The customer's mandate as Mollie reports it right now.
  *
  * Asked of Mollie rather than of our own column: a customer can revoke a
- * mandate at their bank without telling us, and switching a subscription on
- * against a dead mandate fails silently every month.
+ * mandate at their bank without telling us, a first payment can be paid while
+ * the mandate it produced is still pending, and switching a subscription on
+ * against either fails silently every month.
+ *
+ * `fallbackProviderCustomerId` is the customer a Mollie payment names, used
+ * only when the administration holds no provider identity yet.
  */
+export type MandateLookup = {
+  state: MandateState;
+  providerCustomerId?: string;
+  /** Present for "valid" and "pending": the mandate that state is about. */
+  mandateId?: string;
+};
+
+export async function lookupMandate(
+  db: SupabaseClient<Database>,
+  customerId: string,
+  fallbackProviderCustomerId?: string,
+): Promise<MandateLookup> {
+  const providerCustomerId = (await readProviderCustomerId(db, customerId)) ?? fallbackProviderCustomerId;
+  if (!providerCustomerId) return { state: "none" };
+
+  const { state, mandate } = mandateState(await listMandates(providerCustomerId, getMollieConfig()));
+  return { state, providerCustomerId, ...(mandate ? { mandateId: mandate.id } : {}) };
+}
+
+/** Whether this customer can be collected from right now: only a valid mandate counts. */
 export async function hasUsableMandate(
   db: SupabaseClient<Database>,
   customerId: string,
 ): Promise<{ has: boolean; providerCustomerId?: string; mandateId?: string }> {
-  const providerCustomerId = await readProviderCustomerId(db, customerId);
-  if (!providerCustomerId) return { has: false };
-
-  const mandate = usableMandate(await listMandates(providerCustomerId, getMollieConfig()));
+  const found = await lookupMandate(db, customerId);
   return {
-    has: Boolean(mandate),
-    providerCustomerId,
-    ...(mandate ? { mandateId: mandate.id } : {}),
+    has: found.state === "valid",
+    ...(found.providerCustomerId ? { providerCustomerId: found.providerCustomerId } : {}),
+    ...(found.state === "valid" && found.mandateId ? { mandateId: found.mandateId } : {}),
   };
 }

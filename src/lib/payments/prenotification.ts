@@ -87,6 +87,30 @@ export function announceableStart(startsOn: string, todayKey: string): string {
 }
 
 /**
+ * Period one of a standalone activation: the agreed start, or the payment day
+ * when there is none -- moved on by whole months while the collection after it
+ * could no longer be announced in time.
+ *
+ * The activation payment pays period one, and the subscription starts the
+ * month after. When the agreed start lies in the past -- a customer activating
+ * late, or an activation sent after the original invoice was paid without a
+ * mandate -- that next collection may be too close or gone. Moving period one
+ * itself, rather than only the subscription, keeps the billed term, the
+ * announcement schedule (`nextDebitSchedule` counts from the latest billed
+ * period) and the collection at Mollie on one calendar. Months skipped this
+ * way are simply not billed; nothing is ever charged twice or charged extra.
+ */
+export function activationPeriodStart(periodStart: string, todayKey: string): string {
+  const anchorDay = anchorDayOf(periodStart);
+  const earliest = earliestDebitDate(todayKey);
+  let start = periodStart;
+  for (let guard = 0; nextPeriodStart(start, anchorDay) < earliest && guard < 120; guard += 1) {
+    start = nextPeriodStart(start, anchorDay);
+  }
+  return start;
+}
+
+/**
  * The next expected collection, or the reason there is none.
  *
  * A paused or cancelled service collects nothing. A service without a

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { centsFromMollie, mollieAmount, paymentStatusFromMollie } from "@/lib/mollie/client";
+import { centsFromMollie, mandateState, mollieAmount, paymentStatusFromMollie, type MollieMandate } from "@/lib/mollie/client";
 
 /**
  * The conversion between our integer cents and Mollie's decimal strings, and
@@ -37,5 +37,32 @@ describe("payment states", () => {
     expect(paymentStatusFromMollie("failed")).toBe("failed");
     expect(paymentStatusFromMollie("canceled")).toBe("canceled");
     expect(paymentStatusFromMollie("expired")).toBe("expired");
+  });
+});
+
+/*
+  Only a valid mandate makes a customer collectable. Pending is not yet,
+  invalid is no longer, and the difference between those and "never" matters
+  to what the admin is told.
+*/
+describe("mandate states", () => {
+  const mandate = (id: string, status: MollieMandate["status"]): MollieMandate => ({ id, status, method: "directdebit" });
+
+  it("is none when the customer never authorised anything", () => {
+    expect(mandateState([])).toEqual({ state: "none" });
+  });
+
+  it("is pending while the only mandate is still being verified", () => {
+    expect(mandateState([mandate("mdt_p", "pending")])).toMatchObject({ state: "pending", mandate: { id: "mdt_p" } });
+  });
+
+  it("is invalid when every mandate has been revoked or failed", () => {
+    expect(mandateState([mandate("mdt_x", "invalid")])).toEqual({ state: "invalid" });
+  });
+
+  it("is valid as soon as one valid mandate exists, whatever else there is", () => {
+    expect(
+      mandateState([mandate("mdt_x", "invalid"), mandate("mdt_p", "pending"), mandate("mdt_ok", "valid")]),
+    ).toMatchObject({ state: "valid", mandate: { id: "mdt_ok" } });
   });
 });

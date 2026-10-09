@@ -12,7 +12,7 @@ import { getMollieConfig, mollieWebhookUrl } from "@/lib/mollie/config";
 import { paymentFromRow, recurringServiceFromRow } from "@/lib/payments/mapper";
 import { paymentsAdminClient } from "@/lib/payments/admin-client";
 import type { BillingPeriod } from "@/lib/payments/billing-period";
-import { hasUsableMandate } from "@/lib/payments/provider-customer";
+import { lookupMandate } from "@/lib/payments/provider-customer";
 import { ensureRecurringInvoice, markInvoiceMailed } from "@/lib/payments/recurring-invoice";
 import type { PaymentRecord, WebhookStore } from "@/lib/payments/webhook";
 import { nextPaymentStatus } from "@/lib/payments/webhook";
@@ -307,12 +307,9 @@ export function createWebhookStore(): WebhookStore {
       return data ? recurringServiceFromRow(data) : undefined;
     },
 
-    /* Asked of Mollie, so a mandate revoked at the bank is never used. */
-    async findUsableMandate(customerId: string) {
-      const found = await hasUsableMandate(db, customerId);
-      return found.has && found.providerCustomerId && found.mandateId
-        ? { providerCustomerId: found.providerCustomerId, mandateId: found.mandateId }
-        : undefined;
+    /* Asked of Mollie, so neither a pending nor a revoked mandate is ever used. */
+    async findMandate(customerId: string, fallbackProviderCustomerId?: string) {
+      return lookupMandate(db, customerId, fallbackProviderCustomerId);
     },
 
     async findInvoiceIdForProviderPayment(molliePaymentId: string): Promise<string | undefined> {
