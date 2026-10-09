@@ -55,7 +55,14 @@ vi.mock("@/lib/payments/prenotification-runner", () => ({
 }));
 vi.mock("@/lib/payments/prenotification-store", () => ({ createPrenotificationStore: () => ({}) }));
 
-const { mailMandateActivation } = await import("@/lib/payments/actions");
+const { createMandateActivation, mailMandateActivation } = await import("@/lib/payments/actions");
+const { activationsForCustomer } = await import("@/lib/payments/mandate-activation");
+const { directDebitStatus } = await import("@/lib/payments/direct-debit-status");
+
+/** What the admin screen would show for the customer right now. */
+async function shownStatus() {
+  return directDebitStatus({ activations: await activationsForCustomer(db as never, "cust-1"), mandateOnRecord: false });
+}
 const { POST: runCron } = await import("@/app/api/cron/debit-prenotifications/route");
 
 const rows = () => db.rows("customer_communications");
@@ -155,6 +162,34 @@ describe("the direct debit activation link", () => {
     expect(result).toEqual({ ok: false, error: invalidRecipientReason });
     expect(createPaymentLink).not.toHaveBeenCalled();
     expect(deliverEmail).not.toHaveBeenCalled();
+  });
+
+  /* "Verstuurd" only after the provider accepted the mail -- the click alone is not enough. */
+  it("shows the link as verstuurd once the mail actually went out", async () => {
+    await createMandateActivation("cust-1");
+    expect(await shownStatus()).toBe("link_created");
+
+    const result = await mailMandateActivation("cust-1");
+
+    expect(result.ok).toBe(true);
+    expect(await shownStatus()).toBe("link_mailed");
+  });
+
+  it("does not show the link as verstuurd when the mail is refused", async () => {
+    await createMandateActivation("cust-1");
+    deliverEmail.mockResolvedValue({ sent: false, reason: "Invalid recipient", failure: "rejected" });
+
+    const result = await mailMandateActivation("cust-1");
+
+    expect(result.ok).toBe(false);
+    expect(await shownStatus()).toBe("link_created");
+  });
+
+  it("does not mail anything when only the link is made", async () => {
+    await createMandateActivation("cust-1");
+
+    expect(deliverEmail).not.toHaveBeenCalled();
+    expect(rows()).toHaveLength(0);
   });
 
   /* Mailing again is a second mail, with the same link -- never a second payable one. */

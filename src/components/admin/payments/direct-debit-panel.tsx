@@ -50,7 +50,7 @@ export default function DirectDebitPanel({
   }
 
   // A valid or pending mandate is not asked for again; the server refuses it too.
-  const canActivate = view.status === "not_active" || view.status === "problem" || view.status === "awaiting_customer";
+  const canActivate = view.status === "not_active" || view.status === "problem";
   const error = create.error ?? mail.error ?? refresh.error;
 
   return (
@@ -75,6 +75,12 @@ export default function DirectDebitPanel({
 
       {link ? (
         <div className="space-y-2 rounded-sm border border-line bg-paper-deep px-3 py-2">
+          {view.openLink ? (
+            <p className="text-[0.82rem] text-muted">
+              Aangemaakt op {formatDateTime(view.openLink.createdAt)} ·{" "}
+              {view.openLink.mailedAt ? `gemaild op ${formatDateTime(view.openLink.mailedAt)}` : "nog niet gemaild"}
+            </p>
+          ) : null}
           <p className="break-all font-mono text-[0.78rem] text-ink">{link}</p>
           <div className="flex flex-wrap gap-2">
             <AdminButton variant="secondary" className="min-h-8 px-3 text-[0.85rem]" onClick={() => copy(link)}>

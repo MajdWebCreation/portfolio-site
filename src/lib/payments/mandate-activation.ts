@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { listSentTimes } from "@/lib/admin/communications/log";
+import type { CommunicationCategory } from "@/lib/admin/communications/types";
 import {
   archivePaymentLink,
   createPaymentLink,
@@ -56,6 +58,13 @@ export type MandateActivation = {
   mandateCheckedAt?: string;
   validatedAt?: string;
   createdAt: string;
+  /**
+   * The latest moment the activation mail for this link was actually sent.
+   * Derived, not stored: from the communication log, which only gets a row
+   * once the mail provider accepted the message -- so a failed send, a copied
+   * link or a status check never makes a link "verstuurd".
+   */
+  mailedAt?: string;
 };
 
 type Db = SupabaseClient<Database>;
@@ -87,12 +96,35 @@ function fail(operation: string, error: { message: string } | null): void {
   if (error) throw new Error(`${operation}: ${error.message}`);
 }
 
-/** Every activation of a customer, newest first. A handful at most. */
+/** The communication category the activation mail is filed under. */
+export const activationMailCategory = "direct_debit_activation" satisfies CommunicationCategory;
+
+/**
+ * Every activation of a customer, newest first, each with the moment its
+ * mail went out, if it did. A handful at most.
+ *
+ * A mail belongs to the activation that was open when it was sent: the mail
+ * always carries the open link, and a customer has at most one. So a sent
+ * mail counts for the activation created before it and not yet closed when
+ * it went out -- never for a later link that replaced it.
+ */
 export async function activationsForCustomer(db: Db, customerId: string): Promise<MandateActivation[]> {
-  const { data, error } = await db.from("mandate_activations").select(columns).eq("customer_id", customerId);
-  fail("Incasso-activaties laden", error);
-  return ((data ?? []) as ActivationRow[])
+  const [activations, sentAt] = await Promise.all([
+    db.from("mandate_activations").select(columns).eq("customer_id", customerId),
+    listSentTimes(db, customerId, activationMailCategory),
+  ]);
+  fail("Incasso-activaties laden", activations.error);
+
+  return ((activations.data ?? []) as ActivationRow[])
     .map(activationFromRow)
+    .map((activation) => {
+      const closedAt = activation.archivedAt ?? activation.paidAt;
+      const mailedAt = sentAt
+        .filter((at) => Date.parse(at) >= Date.parse(activation.createdAt) && (!closedAt || Date.parse(at) <= Date.parse(closedAt)))
+        .sort()
+        .at(-1);
+      return mailedAt ? { ...activation, mailedAt } : activation;
+    })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 

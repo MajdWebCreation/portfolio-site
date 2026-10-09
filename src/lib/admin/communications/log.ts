@@ -80,6 +80,26 @@ export async function listCommunicationsOlderThan(
   return data;
 }
 
+/**
+ * When mails of one category actually went to a customer. Only sent rows
+ * exist -- a send the provider refused writes nothing -- and the status is
+ * checked anyway, so "sent" can never be read off anything else.
+ */
+export async function listSentTimes(
+  db: CommunicationClient,
+  customerId: string,
+  category: CommunicationCategory,
+): Promise<string[]> {
+  const { data, error } = await db
+    .from("customer_communications")
+    .select("sent_at")
+    .eq("customer_id", customerId)
+    .eq("category", category)
+    .eq("status", "sent");
+  if (error) throw new Error(`Communicatie laden: ${error.message}`);
+  return (data ?? []).flatMap((row) => (row.sent_at ? [row.sent_at] : []));
+}
+
 export async function redactCommunicationBodies(db: CommunicationClient, ids: string[], marker: string): Promise<void> {
   const { error } = await db
     .from("customer_communications")

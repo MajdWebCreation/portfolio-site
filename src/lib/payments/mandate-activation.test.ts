@@ -400,7 +400,10 @@ describe("the direct debit status", () => {
   it("reads each state from the activations and the cached mandate", () => {
     expect(directDebitStatus({ activations: [], mandateOnRecord: false })).toBe("not_active");
     expect(directDebitStatus({ activations: [], mandateOnRecord: true })).toBe("active");
-    expect(directDebitStatus({ activations: [at("2026-10-09")], mandateOnRecord: false })).toBe("awaiting_customer");
+    expect(directDebitStatus({ activations: [at("2026-10-09")], mandateOnRecord: false })).toBe("link_created");
+    expect(
+      directDebitStatus({ activations: [at("2026-10-09", { mailedAt: "2026-10-09T10:00:00Z" })], mandateOnRecord: false }),
+    ).toBe("link_mailed");
     expect(
       directDebitStatus({ activations: [at("2026-10-09", { archivedAt: "2026-10-10" })], mandateOnRecord: false }),
     ).toBe("not_active");
@@ -422,6 +425,80 @@ describe("the direct debit status", () => {
         activations: [at("2026-10-12"), at("2026-10-09", { paidAt: "2026-10-10", mandateStatus: "invalid" })],
         mandateOnRecord: false,
       }),
-    ).toBe("awaiting_customer");
+    ).toBe("link_created");
+  });
+});
+
+/*
+  "Verstuurd" means a mail went out -- nothing else. Making a link, copying it
+  or asking Mollie for the status never says so; only a sent activation mail,
+  recorded once the provider accepted it, does.
+*/
+describe("whether the activation link was mailed", () => {
+  const mailed = (sentAt: string) => ({
+    id: `com-${sentAt}`,
+    customer_id: "cust-1",
+    category: "direct_debit_activation",
+    status: "sent",
+    sent_at: sentAt,
+    created_at: sentAt,
+  });
+
+  async function statusNow() {
+    const provider = db.rows("customer_payment_providers")[0];
+    return directDebitStatus({
+      activations: await activationsForCustomer(db as never, "cust-1"),
+      mandateOnRecord: Boolean(provider?.provider_mandate_id),
+    });
+  }
+
+  it("is not verstuurd when the link was only made", async () => {
+    await request();
+
+    expect(await statusNow()).toBe("link_created");
+    expect((await activationsForCustomer(db as never, "cust-1"))[0]?.mailedAt).toBeUndefined();
+  });
+
+  it("is not verstuurd after checking the status, however often", async () => {
+    await request();
+
+    expect(await refreshDirectDebit(db as never, "cust-1")).toBe("link_created");
+    expect(await refreshDirectDebit(db as never, "cust-1")).toBe("link_created");
+    expect(db.rows("customer_communications")).toEqual([]);
+  });
+
+  it("is verstuurd once an activation mail for this link was sent", async () => {
+    await request();
+    const createdAt = db.rows("mandate_activations")[0]!.created_at as string;
+    db.rows("customer_communications").push(mailed(new Date(Date.parse(createdAt) + 60_000).toISOString()));
+
+    expect(await statusNow()).toBe("link_mailed");
+  });
+
+  it("keeps the mail status through a status check", async () => {
+    await request();
+    const createdAt = db.rows("mandate_activations")[0]!.created_at as string;
+    const sentAt = new Date(Date.parse(createdAt) + 60_000).toISOString();
+    db.rows("customer_communications").push(mailed(sentAt));
+
+    expect(await refreshDirectDebit(db as never, "cust-1")).toBe("link_mailed");
+    expect((await activationsForCustomer(db as never, "cust-1"))[0]?.mailedAt).toBe(sentAt);
+  });
+
+  /* A mail for a link that was replaced does not make the new link verstuurd. */
+  it("does not count a mail that went out before this link existed", async () => {
+    db.rows("customer_communications").push(mailed("2026-08-01T09:00:00.000Z"));
+    await request();
+
+    expect(await statusNow()).toBe("link_created");
+  });
+
+  it("does not count a failed or other kind of mail", async () => {
+    await request();
+    const later = new Date(Date.parse(db.rows("mandate_activations")[0]!.created_at as string) + 60_000).toISOString();
+    db.rows("customer_communications").push({ ...mailed(later), status: "failed" });
+    db.rows("customer_communications").push({ ...mailed(later), category: "invoice_sent" });
+
+    expect(await statusNow()).toBe("link_created");
   });
 });

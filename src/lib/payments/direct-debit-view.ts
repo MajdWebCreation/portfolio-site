@@ -12,8 +12,11 @@ import { activationsForCustomer } from "@/lib/payments/mandate-activation";
  */
 export type DirectDebitView = {
   status: DirectDebitStatus;
-  /** The payable activation link, while one is out. */
-  openLink?: { url: string; createdAt: string };
+  /**
+   * The payable activation link, while one is out. `mailedAt` only when the
+   * activation mail for it was actually sent.
+   */
+  openLink?: { url: string; createdAt: string; mailedAt?: string };
   /** The latest activation that was paid, and what came of it. */
   lastPaid?: { paidAt: string; validatedAt?: string; checkedAt?: string };
 };
@@ -36,7 +39,15 @@ export async function directDebitView(customerId: string): Promise<DirectDebitVi
 
   return {
     status: directDebitStatus({ activations, mandateOnRecord: Boolean(provider.data?.provider_mandate_id) }),
-    ...(open ? { openLink: { url: open.checkoutUrl, createdAt: open.createdAt } } : {}),
+    ...(open
+      ? {
+          openLink: {
+            url: open.checkoutUrl,
+            createdAt: open.createdAt,
+            ...(open.mailedAt ? { mailedAt: open.mailedAt } : {}),
+          },
+        }
+      : {}),
     ...(paid
       ? {
           lastPaid: {
