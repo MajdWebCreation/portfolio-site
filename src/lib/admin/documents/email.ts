@@ -2,7 +2,6 @@ import { sendCustomerEmail, type CommunicationContext, type CustomerRecipient } 
 import { companyProfile } from "@/lib/admin/documents/company";
 import { documentKindLabels, type DocumentKind } from "@/lib/admin/documents/types";
 import { formatDate } from "@/lib/admin/format";
-import { formatCents } from "@/lib/money";
 import { contactSectionHtml, contactTextLines } from "@/lib/email/contact";
 import { emailButton, emailMeta, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
 
@@ -61,24 +60,6 @@ export type DocumentMailContent = {
    * labels, which reads as two things to quote.
    */
   paymentReference?: string;
-  /**
-   * Present when paying this one-off invoice also switches a monthly service
-   * on. The monthly amounts are shown so the customer knows what they are
-   * authorising -- they are not part of what is collected now.
-   */
-  activates?: {
-    serviceName: string;
-    /** Monthly price excluding VAT, in cents. */
-    monthlyNetCents: number;
-    /** Monthly price including VAT: what will actually be collected. */
-    monthlyGrossCents: number;
-    /** Net total of this invoice, for the summary. */
-    invoiceNetCents: number;
-    /** YYYY-MM-DD of the first monthly collection. */
-    firstDebitOn: string;
-    /** Short description of the work, for the opening line. */
-    projectSummary: string;
-  };
 };
 
 /**
@@ -118,15 +99,10 @@ export function documentSubject(kind: DocumentKind, number: string, serviceName?
  * The subject of an invoice mail.
  *
  * Named after the project, because that is what the customer recognises; the
- * invoice number belongs on the document, not in an inbox. When an invoice
- * also switches a monthly service on the subject says so, so nobody pays it
- * thinking it is only a one-off.
+ * invoice number belongs on the document, not in an inbox.
  */
-export function invoiceSubject(input: Pick<DocumentMailContent, "number" | "projectName" | "activates">): string {
-  const subject = input.projectName ?? companyProfile.name;
-  return input.activates
-    ? `Factuur en maandelijkse service voor ${subject}`
-    : `Factuur voor ${subject}`;
+export function invoiceSubject(input: Pick<DocumentMailContent, "number" | "projectName">): string {
+  return `Factuur voor ${input.projectName ?? companyProfile.name}`;
 }
 
 /** A calendar date (YYYY-MM-DD) in the same wording the PDF uses. */
@@ -203,78 +179,7 @@ function recurringBody(input: DocumentMailContent & { recurring: NonNullable<Doc
   return { html, text };
 }
 
-/**
- * The cover note for a one-off invoice that also switches a monthly service
- * on. Both amounts are shown net and gross, but the gross ones lead: those
- * are what actually leaves the customer's account. The monthly figures sit in
- * their own block, so nobody reads them as part of what is due now.
- */
-function activationBody(
-  input: DocumentMailContent & { activates: NonNullable<DocumentMailContent["activates"]> },
-): MailBody {
-  const a = input.activates;
-  const firstDebit = documentDateLabel(a.firstDebitOn);
-  const opening = `Hierbij ontvangt u de factuur voor ${a.projectSummary}.`;
-
-  const oneOff: [string, string][] = [
-    ["Excl. btw", formatCents(a.invoiceNetCents)],
-    ["Incl. btw", `${input.totalLabel} — nu te betalen`],
-  ];
-  const monthly: [string, string][] = [
-    ["Excl. btw", `${formatCents(a.monthlyNetCents)} per maand`],
-    ["Incl. btw", `${formatCents(a.monthlyGrossCents)} per maand`],
-    ["Eerste automatische incasso", firstDebit],
-  ];
-
-  const consent = `Door de eenmalige factuur via onderstaande knop te betalen, activeert u tevens de automatische incasso voor de maandelijkse ${a.serviceName}. Vanaf ${firstDebit} wordt maandelijks ${formatCents(a.monthlyGrossCents)} automatisch geïncasseerd.`;
-  const attachment = "De volledige specificatie van de eenmalige factuur vindt u in de bijgevoegde PDF-factuur.";
-  const contact = "Heeft u een vraag of klopt er iets niet? Neem gerust contact met ons op.";
-
-  const html = emailShell({
-    locale: "nl",
-    title: `Factuur en maandelijkse ${a.serviceName}`,
-    preheader: `${input.totalLabel} nu te betalen, daarna ${formatCents(a.monthlyGrossCents)} per maand vanaf ${firstDebit}`,
-    content: [
-      emailText(`Beste ${escapeEmailHtml(input.contactName)},`, { top: 18 }),
-      emailText(escapeEmailHtml(opening)),
-      emailMeta(oneOff.map(([label, value]) => ({ label, value })), { label: "Eenmalige betaling" }),
-      emailMeta(monthly.map(([label, value]) => ({ label, value })), { label: `Maandelijkse ${a.serviceName}` }),
-      emailSection({ label: "Wat u met deze betaling activeert", html: escapeEmailHtml(consent) }),
-      ...(input.payUrl ? [payButton(input.payUrl, "Factuur betalen & automatische incasso activeren")] : []),
-      emailSection({ label: "Bijlage", html: escapeEmailHtml(attachment) }),
-      contactSectionHtml(contact),
-      emailText("Met vriendelijke groet,", { top: 26 }),
-      emailText(escapeEmailHtml(companyProfile.legalName)),
-    ].join(""),
-  });
-
-  const text = [
-    `Beste ${input.contactName},`,
-    "",
-    opening,
-    "",
-    "Eenmalige betaling",
-    ...oneOff.map(([label, value]) => `  ${label}: ${value}`),
-    "",
-    `Maandelijkse ${a.serviceName}`,
-    ...monthly.map(([label, value]) => `  ${label}: ${value}`),
-    "",
-    consent,
-    "",
-    ...(input.payUrl ? [`Factuur betalen & automatische incasso activeren: ${input.payUrl}`, ""] : []),
-    attachment,
-    "",
-    ...contactTextLines(contact),
-    "",
-    "Met vriendelijke groet,",
-    companyProfile.legalName,
-  ].join("\n");
-
-  return { html, text };
-}
-
 export function buildDocumentMailBody(input: DocumentMailContent): MailBody {
-  if (input.activates) return activationBody({ ...input, activates: input.activates });
   if (input.recurring) return recurringBody({ ...input, recurring: input.recurring });
 
   const isInvoice = input.kind === "invoice";
@@ -353,10 +258,10 @@ export function buildDocumentMailBody(input: DocumentMailContent): MailBody {
  * The subject of a document mail.
  *
  * A monthly term keeps the document subject; a one-off invoice is named after
- * its project, and says so when it also starts a subscription.
+ * its project.
  */
 export function documentMailSubject(
-  input: Pick<DocumentMailContent, "kind" | "number" | "recurring" | "projectName" | "activates">,
+  input: Pick<DocumentMailContent, "kind" | "number" | "recurring" | "projectName">,
 ): string {
   if (input.recurring) return documentSubject(input.kind, input.number, input.recurring.serviceName);
   return input.kind === "invoice" ? invoiceSubject(input) : documentSubject(input.kind, input.number);

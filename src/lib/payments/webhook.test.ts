@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Invoice, InvoiceStatus } from "@/lib/admin/invoices/types";
-import { mandateState, type MollieMandate, type MolliePayment } from "@/lib/mollie/client";
+import type { MolliePayment } from "@/lib/mollie/client";
 import { calculateTotals } from "@/lib/money";
 import { invoiceFixture, recurringFixture } from "@/lib/payments/fixtures";
 import type { Payment, RecurringService } from "@/lib/payments/types";
@@ -9,11 +9,11 @@ import {
   nextInvoiceStatus,
   processMolliePayment,
   type PaymentRecord,
+  type WebhookOutcome,
   type WebhookStore,
 } from "@/lib/payments/webhook";
 import { calculateTotals as totalsOf } from "@/lib/money";
 import { customerFinancials } from "@/lib/payments/customer-status";
-import { nextDebitSchedule } from "@/lib/payments/prenotification";
 
 /**
  * An in-memory stand-in for the database, keyed the way the real schema is
@@ -25,17 +25,13 @@ function makeStore(
   initial: {
     invoices?: Invoice[];
     services?: RecurringService[];
-    activations?: { id: string; recurringServiceId: string; molliePaymentId: string; usedAt?: string }[];
     /** Widens the window between checking for an invoice and inserting it. */
     raceWindow?: boolean;
-    /** A mandate the customer gave earlier, as Mollie would report it. */
-    mandate?: { providerCustomerId: string; mandateId: string };
     /**
-     * Mollie's mandate list per provider customer. By default the customer a
-     * first payment names (`cst_1`) holds the mandate it produced (`mdt_1`),
-     * valid -- what Mollie normally reports straight after a first payment.
+     * Payments Mollie confirms were made on a direct debit activation link,
+     * with what the activation flow answers for them.
      */
-    mollieMandates?: Record<string, MollieMandate[]>;
+    activationPayments?: Record<string, WebhookOutcome>;
     /** Payment links we recorded: pl_ id -> invoice id. */
     links?: Record<string, string>;
     /** The payment ids Mollie says those links produced. */
@@ -44,21 +40,10 @@ function makeStore(
 ) {
   const invoices = new Map((initial.invoices ?? [invoiceFixture()]).map((invoice) => [invoice.id, { ...invoice }]));
   const services = new Map((initial.services ?? []).map((service) => [service.id, { ...service }]));
-  const activations = [...(initial.activations ?? [])];
   const payments: Payment[] = [];
-  const providerLinks: { customerId: string; providerCustomerId: string; providerMandateId: string }[] = [];
-  const subscriptionCalls: { serviceId: string; startDate: string }[] = [];
-  const invoiceMails: { invoiceId: string; number: string; status: string }[] = [];
-  const mandateLookups: string[] = [];
+  const activationCalls: { molliePaymentId: string; activationIdHint?: string }[] = [];
   const paymentLinks = new Map(Object.entries(initial.links ?? {}));
-  const mollieMandates: Record<string, MollieMandate[]> = initial.mollieMandates ?? {
-    cst_1: [{ id: "mdt_1", status: "valid", method: "directdebit" }],
-    ...(initial.mandate
-      ? { [initial.mandate.providerCustomerId]: [{ id: initial.mandate.mandateId, status: "valid" as const, method: "directdebit" }] }
-      : {}),
-  };
   const linkConfirmations: { molliePaymentId: string; invoiceId: string }[] = [];
-  let mailFails = false;
   const createdInvoices: string[] = [];
   /* Stands in for the unique index on (recurring_service_id, billing_period_start). */
   const periodKeys = new Set<string>();
@@ -108,36 +93,13 @@ function makeStore(
       const invoice = invoices.get(id);
       if (invoice) invoice.status = status;
     },
-    async findActivationByPaymentId(id) {
-      const found = activations.find((activation) => activation.molliePaymentId === id);
-      return found
-        ? { id: found.id, recurringServiceId: found.recurringServiceId, ...(found.usedAt ? { usedAt: found.usedAt } : {}) }
-        : undefined;
+    /* The activation flow, stubbed: only the payments Mollie confirmed are its. */
+    async handleMandateActivation(payment, activationIdHint) {
+      activationCalls.push({ molliePaymentId: payment.id, ...(activationIdHint ? { activationIdHint } : {}) });
+      return initial.activationPayments?.[payment.id];
     },
-    async getRecurringService(id) {
-      return services.get(id);
-    },
-    async storeProviderMandate({ customerId, providerCustomerId, providerMandateId }) {
-      const existing = providerLinks.find((link) => link.customerId === customerId);
-      if (existing) {
-        existing.providerCustomerId = providerCustomerId;
-        existing.providerMandateId = providerMandateId;
-        return;
-      }
-      providerLinks.push({ customerId, providerCustomerId, providerMandateId });
-    },
-    async activateService(serviceId, startsOn) {
-      const service = services.get(serviceId);
-      if (!service) return undefined;
-      // The anchor is whatever the subscription is actually created with, so
-      // announcements and collections stay on the same calendar.
-      service.startsOn = startsOn;
-      if (service.status !== "canceled") service.status = "active";
-      return service;
-    },
-    async markActivationUsed(activationId) {
-      const activation = activations.find((item) => item.id === activationId);
-      if (activation && !activation.usedAt) activation.usedAt = "2026-09-02T10:00:00.000Z";
+    async findActivationIdForPaymentLink() {
+      return undefined;
     },
     /*
       The unique index, simulated: the check and the insert are separated by an
@@ -174,40 +136,11 @@ function makeStore(
       createdInvoices.push(invoice.id);
       return invoice;
     },
-    /* Idempotent on the document's own `sent_at`, like the real one. */
-    async sendSettledInvoice(invoice) {
-      if (mailFails) return { sent: false, reason: "Resend was onbereikbaar" };
-      invoiceMails.push({ invoiceId: invoice.id, number: invoice.number.value, status: invoice.status });
-      const stored = invoices.get(invoice.id);
-      if (stored) stored.sentAt = "2026-09-12T10:05:00.000Z";
-      return { sent: true };
-    },
-    async createSubscription(service, startDate) {
-      if (service.mollie.subscriptionId) return;
-      subscriptionCalls.push({ serviceId: service.id, startDate });
-      const stored = services.get(service.id);
-      if (stored) stored.mollie = { subscriptionId: `sub_${service.id}` };
-    },
     async findInvoiceIdForProviderPayment(id) {
       return payments.find((payment) => payment.providerPaymentId === id)?.invoiceId;
     },
     async findServiceBySubscriptionId(subscriptionId) {
       return [...services.values()].find((service) => service.mollie.subscriptionId === subscriptionId);
-    },
-    /* The partial unique index on activation_invoice_id: at most one service. */
-    async findServiceActivatedByInvoice(invoiceId) {
-      return [...services.values()].find((service) => service.activationInvoiceId === invoiceId);
-    },
-    /* Mollie's answer, classified by the real `mandateState`. */
-    async findMandate(customerId, fallbackProviderCustomerId) {
-      mandateLookups.push(customerId);
-      const provider =
-        providerLinks.find((link) => link.customerId === customerId)?.providerCustomerId ??
-        initial.mandate?.providerCustomerId ??
-        fallbackProviderCustomerId;
-      if (!provider) return { state: "none" };
-      const { state, mandate } = mandateState(mollieMandates[provider] ?? []);
-      return { state, providerCustomerId: provider, ...(mandate ? { mandateId: mandate.id } : {}) };
     },
     async findInvoiceIdForPaymentLink(providerPaymentLinkId) {
       return paymentLinks.get(providerPaymentLinkId);
@@ -226,16 +159,9 @@ function makeStore(
     invoices,
     services,
     payments,
-    providerLinks,
-    subscriptionCalls,
-    mandateLookups,
-    mollieMandates,
+    activationCalls,
     linkConfirmations,
     createdInvoices,
-    invoiceMails,
-    failMail: (value: boolean) => {
-      mailFails = value;
-    },
   };
 }
 
@@ -378,98 +304,6 @@ describe("invoice status decisions", () => {
   });
 });
 
-describe("activating direct debit", () => {
-  const activation = { id: "act-1", recurringServiceId: "svc-1", molliePaymentId: "tr_first" };
-
-  function firstPayment(overrides: Partial<MolliePayment> = {}): MolliePayment {
-    return molliePayment({
-      id: "tr_first",
-      // The gross amount: the service costs 25,00 excl. btw.
-      amount: { currency: "EUR", value: "30.25" },
-      customerId: "cst_1",
-      mandateId: "mdt_1",
-      sequenceType: "first",
-      paidAt: "2026-09-12T10:00:00.000Z",
-      metadata: { kind: "recurring_activation", recurringServiceId: "svc-1", customerId: "cust-1" },
-      ...overrides,
-    });
-  }
-
-  /*
-    The first payment is the first billing period, so it produces one ordinary
-    invoice and one ordinary payment row -- not a special case beside them.
-  */
-  it("bills the first period once and attaches the payment to it", async () => {
-    const { store, invoices, payments, createdInvoices } = makeStore({ services: [recurringFixture()], activations: [{ ...activation }] });
-    await processMolliePayment(firstPayment(), store, "2026-09-12");
-
-    expect(createdInvoices).toHaveLength(1);
-    const invoice = invoices.get(createdInvoices[0]!)!;
-    expect(invoice.recurringServiceId).toBe("svc-1");
-    expect(invoice.billingPeriodStart).toBe("2026-09-12");
-    expect(invoice.billingPeriodEnd).toBe("2026-10-11");
-    expect(invoice.status).toBe("paid");
-
-    expect(payments).toHaveLength(1);
-    expect(payments[0]).toMatchObject({ invoiceId: invoice.id, status: "paid", source: "mollie" });
-  });
-
-  it("stores the mandate against the customer, not against the service", async () => {
-    const { store, providerLinks, services } = makeStore({ services: [recurringFixture()], activations: [{ ...activation }] });
-    await processMolliePayment(firstPayment(), store, "2026-09-12");
-
-    expect(providerLinks).toEqual([{ customerId: "cust-1", providerCustomerId: "cst_1", providerMandateId: "mdt_1" }]);
-    expect(services.get("svc-1")?.mollie).toEqual({ subscriptionId: "sub_svc-1" });
-  });
-
-  /* The month just paid must not be collected again. */
-  it("starts the subscription at the next period", async () => {
-    const { store, subscriptionCalls } = makeStore({ services: [recurringFixture()], activations: [{ ...activation }] });
-    await processMolliePayment(firstPayment(), store, "2026-09-12");
-
-    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-10-12" }]);
-  });
-
-  it("uses the agreed start date when the service has one", async () => {
-    const { store, subscriptionCalls, invoices, createdInvoices } = makeStore({
-      services: [recurringFixture({ startsOn: "2026-10-01" })],
-      activations: [{ ...activation }],
-    });
-    await processMolliePayment(firstPayment(), store, "2026-09-12");
-
-    expect(invoices.get(createdInvoices[0]!)?.billingPeriodStart).toBe("2026-10-01");
-    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-11-01" }]);
-  });
-
-  /* Reopened links, double clicks and repeated webhooks all land here. */
-  it("never creates a second subscription, invoice or payment however often the webhook arrives", async () => {
-    const { store, subscriptionCalls, createdInvoices, payments } = makeStore({ services: [recurringFixture()], activations: [{ ...activation }] });
-    for (let i = 0; i < 100; i += 1) {
-      await processMolliePayment(firstPayment(), store, "2026-09-12");
-    }
-    expect(subscriptionCalls).toHaveLength(1);
-    expect(createdInvoices).toHaveLength(1);
-    expect(payments).toHaveLength(1);
-  });
-
-  it("does not activate anything when the first payment failed", async () => {
-    const { store, services, subscriptionCalls, createdInvoices } = makeStore({ services: [recurringFixture()], activations: [{ ...activation }] });
-    const outcome = await processMolliePayment(firstPayment({ status: "failed", paidAt: undefined }), store, "2026-09-12");
-
-    expect(outcome.handled).toBe(true);
-    expect(services.get("svc-1")?.status).toBe("awaiting_mandate");
-    expect(subscriptionCalls).toEqual([]);
-    expect(createdInvoices).toEqual([]);
-  });
-
-  it("waits when the payment succeeded but carries no mandate yet", async () => {
-    const { store, subscriptionCalls } = makeStore({ services: [recurringFixture()], activations: [{ ...activation }] });
-    const outcome = await processMolliePayment(firstPayment({ mandateId: undefined }), store, "2026-09-12");
-    expect(outcome.handled).toBe(false);
-    expect(subscriptionCalls).toEqual([]);
-  });
-});
-
 describe("a monthly direct debit charge", () => {
   const active = recurringFixture({
     status: "active",
@@ -596,7 +430,7 @@ describe("a callback for the admin integration check", () => {
 
   it("leaves invoices, payments, services and customer status exactly as they were", async () => {
     const service = recurringFixture({ status: "active", startsOn: "2026-09-12", mollie: { subscriptionId: "sub_1" } });
-    const { store, invoices, payments, services, createdInvoices, subscriptionCalls } = makeStore({
+    const { store, invoices, payments, services, createdInvoices, activationCalls } = makeStore({
       invoices: [invoiceFixture({ dueDate: "2026-09-30" })],
       services: [service],
     });
@@ -615,7 +449,7 @@ describe("a callback for the admin integration check", () => {
 
     expect(payments).toEqual([]);
     expect(createdInvoices).toEqual([]);
-    expect(subscriptionCalls).toEqual([]);
+    expect(activationCalls).toEqual([]);
     expect(invoices.get("inv-1")?.status).toBe("sent");
     expect(services.get("svc-1")).toEqual(service);
 
@@ -636,226 +470,6 @@ describe("a callback for the admin integration check", () => {
 
     expect(payments).toHaveLength(1);
     expect(invoices.get("inv-1")?.status).toBe("paid");
-  });
-});
-
-describe("the invoice for the first term", () => {
-  const activation = { id: "act-1", recurringServiceId: "svc-1", molliePaymentId: "tr_first" };
-
-  function firstPayment(overrides: Partial<MolliePayment> = {}): MolliePayment {
-    return molliePayment({
-      id: "tr_first",
-      amount: { currency: "EUR", value: "30.25" },
-      customerId: "cst_1",
-      mandateId: "mdt_1",
-      sequenceType: "first",
-      paidAt: "2026-09-12T10:00:00.000Z",
-      metadata: { kind: "recurring_activation", recurringServiceId: "svc-1", customerId: "cust-1" },
-      ...overrides,
-    });
-  }
-
-  /*
-    The customer paid this term themselves in the checkout they just left, so
-    the document goes out now -- not tomorrow, and not as an announcement.
-  */
-  it("is mailed straight away, as a paid invoice", async () => {
-    const { store, invoiceMails, createdInvoices, payments } = makeStore({
-      services: [recurringFixture()],
-      activations: [{ ...activation }],
-    });
-
-    const outcome = await processMolliePayment(firstPayment(), store, "2026-09-12");
-
-    expect(outcome).toMatchObject({ handled: true, note: "first term invoiced and mailed" });
-    expect(createdInvoices).toHaveLength(1);
-    expect(payments).toHaveLength(1);
-    expect(invoiceMails).toHaveLength(1);
-    // Mailed as paid, so the document says settled rather than announcing.
-    expect(invoiceMails[0]).toMatchObject({ invoiceId: createdInvoices[0], status: "paid" });
-  });
-
-  it("mails nothing twice however often the webhook arrives", async () => {
-    const { store, invoiceMails, createdInvoices } = makeStore({
-      services: [recurringFixture()],
-      activations: [{ ...activation }],
-    });
-
-    for (let i = 0; i < 20; i += 1) await processMolliePayment(firstPayment(), store, "2026-09-12");
-
-    expect(createdInvoices).toHaveLength(1);
-    expect(invoiceMails).toHaveLength(1);
-  });
-
-  /*
-    A mail that fails is reported as unhandled, so the route answers non-2xx
-    and Mollie delivers again. The retry reuses the same invoice and the same
-    number; only the mail is attempted once more.
-  */
-  it("asks for a redelivery when the mail fails, and reuses the same invoice", async () => {
-    const made = makeStore({ services: [recurringFixture()], activations: [{ ...activation }] });
-    made.failMail(true);
-
-    const failed = await processMolliePayment(firstPayment(), made.store, "2026-09-12");
-    expect(failed.handled).toBe(false);
-    expect(failed.note).toContain("first term invoice mail failed");
-    expect(made.invoiceMails).toHaveLength(0);
-    expect(made.createdInvoices).toHaveLength(1);
-
-    const numberBefore = made.invoices.get(made.createdInvoices[0]!)?.number.value;
-
-    made.failMail(false);
-    const retried = await processMolliePayment(firstPayment(), made.store, "2026-09-12");
-
-    expect(retried.handled).toBe(true);
-    expect(made.createdInvoices).toHaveLength(1);
-    expect(made.invoices.get(made.createdInvoices[0]!)?.number.value).toBe(numberBefore);
-    expect(made.invoiceMails).toHaveLength(1);
-    expect(made.payments).toHaveLength(1);
-  });
-
-  it("does not mail anything when the first payment failed", async () => {
-    const { store, invoiceMails, createdInvoices } = makeStore({
-      services: [recurringFixture()],
-      activations: [{ ...activation }],
-    });
-
-    await processMolliePayment(firstPayment({ status: "failed", paidAt: undefined }), store, "2026-09-12");
-
-    expect(createdInvoices).toEqual([]);
-    expect(invoiceMails).toEqual([]);
-  });
-});
-
-/*
-  One payment, two effects: the project invoice is settled and the monthly
-  service it was linked to starts collecting. The link is the service's own
-  `activation_invoice_id`, so a webhook that arrives hours later still knows
-  what this payment was for.
-*/
-describe("a first payment that switches a monthly service on", () => {
-  const linked = () =>
-    recurringFixture({
-      id: "svc-1",
-      status: "draft",
-      activationInvoiceId: "inv-1",
-      // Today is 2026-09-20 in these tests, so this leaves the full
-      // fourteen days' notice the announcement term requires.
-      startsOn: "2026-10-15",
-      amountCents: 2500,
-    });
-
-  it("settles the invoice and creates exactly one subscription", async () => {
-    const { store, invoices, services, subscriptionCalls, providerLinks } = makeStore({ services: [linked()] });
-
-    const outcome = await processMolliePayment(
-      molliePayment({ customerId: "cst_1", mandateId: "mdt_1", sequenceType: "first" }),
-      store,
-      today,
-    );
-
-    expect(outcome.handled).toBe(true);
-    expect(invoices.get("inv-1")!.status).toBe("paid");
-    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-10-15" }]);
-    expect(services.get("svc-1")!.status).toBe("active");
-    // The mandate is recorded on the customer, not on the service.
-    expect(providerLinks).toEqual([{ customerId: "cust-1", providerCustomerId: "cst_1", providerMandateId: "mdt_1" }]);
-  });
-
-  /* Mollie retries a webhook it did not get a 200 for; twice must not mean two. */
-  it("creates one subscription however often the webhook arrives", async () => {
-    const { store, subscriptionCalls } = makeStore({ services: [linked()] });
-    const payment = molliePayment({ customerId: "cst_1", mandateId: "mdt_1", sequenceType: "first" });
-
-    await processMolliePayment(payment, store, today);
-    await processMolliePayment(payment, store, today);
-    await processMolliePayment(payment, store, today);
-
-    expect(subscriptionCalls).toHaveLength(1);
-  });
-
-  /* Simultaneous deliveries, which is what a retry storm actually looks like. */
-  it("creates one subscription for webhooks that arrive at the same moment", async () => {
-    const { store, subscriptionCalls } = makeStore({ services: [linked()], raceWindow: true });
-    const payment = molliePayment({ customerId: "cst_1", mandateId: "mdt_1", sequenceType: "first" });
-
-    await Promise.all([
-      processMolliePayment(payment, store, today),
-      processMolliePayment(payment, store, today),
-    ]);
-
-    expect(subscriptionCalls).toHaveLength(1);
-  });
-
-  /*
-    The provider's list of mandates decides, not what the payment happens to
-    carry: a mandate revoked at the bank must not become a subscription.
-  */
-  it("asks the provider for a usable mandate before subscribing", async () => {
-    const { store, subscriptionCalls, providerLinks, mandateLookups } = makeStore({
-      services: [linked()],
-      mandate: { providerCustomerId: "cst_known", mandateId: "mdt_known" },
-    });
-
-    await processMolliePayment(molliePayment(), store, today);
-
-    expect(mandateLookups).toEqual(["cust-1"]);
-    expect(providerLinks[0]).toMatchObject({ providerMandateId: "mdt_known" });
-    expect(subscriptionCalls).toHaveLength(1);
-  });
-
-  /* Money in, authorisation not. Reported, never retried into a subscription. */
-  it("does not subscribe when no mandate can be found", async () => {
-    const { store, invoices, subscriptionCalls } = makeStore({ services: [linked()] });
-
-    const outcome = await processMolliePayment(molliePayment(), store, today);
-
-    expect(invoices.get("inv-1")!.status).toBe("paid");
-    expect(subscriptionCalls).toEqual([]);
-    expect(outcome.note).toContain("no usable mandate");
-  });
-
-  /* A service without a chosen first collection date has nothing to start on. */
-  it("does not subscribe without a start date", async () => {
-    const service = linked();
-    delete service.startsOn;
-    const { store, subscriptionCalls } = makeStore({ services: [service] });
-
-    const outcome = await processMolliePayment(
-      molliePayment({ customerId: "cst_1", mandateId: "mdt_1" }),
-      store,
-      today,
-    );
-
-    expect(subscriptionCalls).toEqual([]);
-    expect(outcome.note).toContain("no start date");
-  });
-
-  /* An ordinary invoice with nothing linked keeps behaving as it always did. */
-  it("leaves an invoice with no linked service alone", async () => {
-    const { store, invoices, subscriptionCalls } = makeStore();
-
-    const outcome = await processMolliePayment(molliePayment(), store, today);
-
-    expect(invoices.get("inv-1")!.status).toBe("paid");
-    expect(subscriptionCalls).toEqual([]);
-    expect(outcome.note).toBe("invoice settled");
-  });
-
-  /* A cancelled service is not resurrected by a payment arriving late. */
-  it("does not switch a cancelled service on", async () => {
-    const { store, subscriptionCalls } = makeStore({
-      services: [recurringFixture({ status: "canceled", activationInvoiceId: "inv-1", startsOn: "2026-10-15" })],
-    });
-
-    const outcome = await processMolliePayment(
-      molliePayment({ customerId: "cst_1", mandateId: "mdt_1" }),
-      store,
-      today,
-    );
-
-    expect(subscriptionCalls).toEqual([]);
-    expect(outcome.note).toContain("cancelled");
   });
 });
 
@@ -920,238 +534,6 @@ describe("a payment that came from a payment link", () => {
     expect(payments).toHaveLength(1);
     expect(linkConfirmations).toHaveLength(1);
   });
-
-  it("switches the monthly service on from a link payment too", async () => {
-    const { store, subscriptionCalls } = makeStore({
-      services: [
-        recurringFixture({ status: "draft", activationInvoiceId: "inv-1", startsOn: "2026-10-15" }),
-      ],
-      links: { pl_1: "inv-1" },
-      linkPayments: ["tr_1"],
-    });
-    const payment = linkPayment();
-    payment.customerId = "cst_1";
-    payment.mandateId = "mdt_1";
-    payment.sequenceType = "first";
-
-    await processMolliePayment(payment, store, today, { invoiceIdHint: "inv-1" });
-
-    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-10-15" }]);
-  });
-});
-
-/*
-  A customer may pay the one-off invoice long after the date the mail
-  announced. Collecting on a date that has gone by -- or is now too close to
-  announce -- would be collecting without notice, so the start moves on by
-  whole months and the ordinary monthly invoice announces the new date.
-*/
-describe("a first payment that arrives late", () => {
-  const late = (startsOn: string) =>
-    makeStore({
-      services: [recurringFixture({ status: "draft", activationInvoiceId: "inv-1", startsOn })],
-    });
-  const paid = () => molliePayment({ customerId: "cst_1", mandateId: "mdt_1", sequenceType: "first" });
-
-  it("never starts a subscription on a date that has passed", async () => {
-    const { store, subscriptionCalls, services } = late("2026-08-15");
-
-    const outcome = await processMolliePayment(paid(), store, today);
-
-    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-10-15" }]);
-    expect(subscriptionCalls[0].startDate > today).toBe(true);
-    // The anchor follows, so every later collection is counted from it.
-    expect(services.get("svc-1")!.startsOn).toBe("2026-10-15");
-    expect(outcome.note).toContain("moved forward");
-  });
-
-  /*
-    Not yet past, but too close: 2026-10-01 is eleven days after 2026-09-20,
-    and fourteen are needed to announce it.
-  */
-  it("moves a date that can no longer be announced in time", async () => {
-    const { store, subscriptionCalls } = late("2026-10-01");
-
-    await processMolliePayment(paid(), store, today);
-
-    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-11-01" }]);
-  });
-
-  it("keeps the day of the month the customer was told about", async () => {
-    const { store, subscriptionCalls } = late("2026-01-31");
-
-    await processMolliePayment(paid(), store, today);
-
-    // February is short, but the anchor does not creep backwards.
-    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-10-31" }]);
-  });
-
-  it("leaves a date that still has the full notice alone", async () => {
-    const { store, subscriptionCalls, services } = late("2026-10-04");
-
-    const outcome = await processMolliePayment(paid(), store, today);
-
-    expect(subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-10-04" }]);
-    expect(services.get("svc-1")!.startsOn).toBe("2026-10-04");
-    expect(outcome.note).not.toContain("moved forward");
-  });
-
-  it("still creates only one subscription when the webhook repeats", async () => {
-    const { store, subscriptionCalls } = late("2026-08-15");
-    const payment = paid();
-
-    await processMolliePayment(payment, store, today);
-    await processMolliePayment(payment, store, today);
-
-    expect(subscriptionCalls).toHaveLength(1);
-  });
-});
-
-/*
-  A paid first payment is not proof of a mandate. Mollie can report the mandate
-  it produced as pending -- the payment is not final yet, or the IBAN has not
-  come through -- and a customer can have only invalid ones. Neither may make
-  the administration claim that direct debit is running.
-*/
-describe("a mandate Mollie does not (yet) call valid", () => {
-  const linked = () =>
-    recurringFixture({ id: "svc-1", status: "draft", activationInvoiceId: "inv-1", startsOn: "2026-10-15" });
-  const firstLinkPayment = () => molliePayment({ customerId: "cst_1", mandateId: "mdt_1", sequenceType: "first" });
-
-  it("settles the invoice but switches nothing on while the mandate is pending, and asks for a redelivery", async () => {
-    const made = makeStore({
-      services: [linked()],
-      mollieMandates: { cst_1: [{ id: "mdt_1", status: "pending", method: "directdebit" }] },
-    });
-
-    const outcome = await processMolliePayment(firstLinkPayment(), made.store, today);
-
-    expect(outcome).toMatchObject({ handled: false, retry: true });
-    expect(made.invoices.get("inv-1")!.status).toBe("paid");
-    expect(made.payments).toHaveLength(1);
-    expect(made.providerLinks).toEqual([]);
-    expect(made.services.get("svc-1")!.status).toBe("draft");
-    expect(made.subscriptionCalls).toEqual([]);
-  });
-
-  it("finishes the activation once, on the redelivery that finds the mandate valid", async () => {
-    const made = makeStore({
-      services: [linked()],
-      mollieMandates: { cst_1: [{ id: "mdt_1", status: "pending", method: "directdebit" }] },
-    });
-    await processMolliePayment(firstLinkPayment(), made.store, today);
-
-    made.mollieMandates.cst_1 = [{ id: "mdt_1", status: "valid", method: "directdebit" }];
-    const retried = await processMolliePayment(firstLinkPayment(), made.store, today);
-    await processMolliePayment(firstLinkPayment(), made.store, today);
-
-    expect(retried).toMatchObject({ handled: true });
-    expect(retried.retry).toBeUndefined();
-    expect(made.payments).toHaveLength(1);
-    expect(made.providerLinks).toEqual([{ customerId: "cust-1", providerCustomerId: "cst_1", providerMandateId: "mdt_1" }]);
-    expect(made.subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-10-15" }]);
-  });
-
-  it("never treats an invalid mandate as collectable, and does not retry for it", async () => {
-    const made = makeStore({
-      services: [linked()],
-      mollieMandates: { cst_1: [{ id: "mdt_1", status: "invalid", method: "directdebit" }] },
-    });
-
-    const outcome = await processMolliePayment(firstLinkPayment(), made.store, today);
-
-    expect(outcome.handled).toBe(true);
-    expect(outcome.retry).toBeUndefined();
-    expect(outcome.note).toContain("no usable mandate");
-    expect(made.invoices.get("inv-1")!.status).toBe("paid");
-    expect(made.providerLinks).toEqual([]);
-    expect(made.services.get("svc-1")!.status).toBe("draft");
-    expect(made.subscriptionCalls).toEqual([]);
-  });
-
-  /* Exactly the production case: a oneoff link payment, no mandate anywhere. */
-  it("leaves the service off when an activation invoice was paid through a one-off link", async () => {
-    const made = makeStore({ services: [linked()], mollieMandates: { cst_1: [] } });
-
-    const outcome = await processMolliePayment(
-      molliePayment({ customerId: undefined, mandateId: undefined, sequenceType: "oneoff" }),
-      made.store,
-      today,
-    );
-
-    expect(outcome.note).toContain("no usable mandate");
-    expect(made.invoices.get("inv-1")!.status).toBe("paid");
-    expect(made.subscriptionCalls).toEqual([]);
-    expect(made.services.get("svc-1")!.status).toBe("draft");
-  });
-});
-
-describe("a standalone activation payment whose mandate is not valid", () => {
-  const activation = { id: "act-1", recurringServiceId: "svc-1", molliePaymentId: "tr_first" };
-  const firstPayment = () =>
-    molliePayment({
-      id: "tr_first",
-      amount: { currency: "EUR", value: "30.25" },
-      customerId: "cst_1",
-      mandateId: "mdt_1",
-      sequenceType: "first",
-      paidAt: "2026-09-12T10:00:00.000Z",
-      metadata: { kind: "recurring_activation", recurringServiceId: "svc-1", customerId: "cust-1" },
-    });
-
-  it("records the paid term, activates nothing, and asks for a redelivery while the mandate is pending", async () => {
-    const made = makeStore({
-      services: [recurringFixture()],
-      activations: [{ ...activation }],
-      mollieMandates: { cst_1: [{ id: "mdt_1", status: "pending", method: "directdebit" }] },
-    });
-
-    const outcome = await processMolliePayment(firstPayment(), made.store, "2026-09-12");
-
-    expect(outcome).toMatchObject({ handled: false, retry: true });
-    expect(made.payments).toHaveLength(1);
-    expect(made.createdInvoices).toHaveLength(1);
-    expect(made.providerLinks).toEqual([]);
-    expect(made.services.get("svc-1")!.status).toBe("awaiting_mandate");
-    expect(made.subscriptionCalls).toEqual([]);
-  });
-
-  it("finishes the activation on the redelivery, without a second invoice, payment or mail", async () => {
-    const made = makeStore({
-      services: [recurringFixture()],
-      activations: [{ ...activation }],
-      mollieMandates: { cst_1: [{ id: "mdt_1", status: "pending", method: "directdebit" }] },
-    });
-    await processMolliePayment(firstPayment(), made.store, "2026-09-12");
-
-    made.mollieMandates.cst_1 = [{ id: "mdt_1", status: "valid", method: "directdebit" }];
-    const retried = await processMolliePayment(firstPayment(), made.store, "2026-09-12");
-
-    expect(retried).toMatchObject({ handled: true });
-    expect(made.createdInvoices).toHaveLength(1);
-    expect(made.payments).toHaveLength(1);
-    expect(made.invoiceMails).toHaveLength(1);
-    expect(made.providerLinks).toEqual([{ customerId: "cust-1", providerCustomerId: "cst_1", providerMandateId: "mdt_1" }]);
-    expect(made.subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-10-12" }]);
-  });
-
-  it("records the paid term but activates nothing when the mandate is invalid", async () => {
-    const made = makeStore({
-      services: [recurringFixture()],
-      activations: [{ ...activation }],
-      mollieMandates: { cst_1: [{ id: "mdt_1", status: "invalid", method: "directdebit" }] },
-    });
-
-    const outcome = await processMolliePayment(firstPayment(), made.store, "2026-09-12");
-
-    expect(outcome.handled).toBe(true);
-    expect(outcome.note).toContain("service not activated");
-    expect(made.payments).toHaveLength(1);
-    expect(made.invoices.get(made.createdInvoices[0]!)!.status).toBe("paid");
-    expect(made.providerLinks).toEqual([]);
-    expect(made.services.get("svc-1")!.status).toBe("awaiting_mandate");
-    expect(made.subscriptionCalls).toEqual([]);
-  });
 });
 
 /*
@@ -1193,116 +575,99 @@ describe("a delivery that fails and is retried", () => {
   never touched, the 12,10 becomes its own term invoice, and the first
   automatic collection after it can always be announced fourteen days ahead.
 */
-describe("activating after the activation invoice was paid without a mandate", () => {
-  const projectInvoice = () =>
-    invoiceFixture({
-      id: "inv-1",
-      number: { value: "YM-F-2026-000002", provisional: false },
-      netCents: 30000,
-      status: "paid",
-      dueDate: "2026-10-04",
-    });
-  const service = () =>
-    recurringFixture({
-      id: "svc-1",
-      amountCents: 1000,
-      vatRate: 21,
-      startsOn: "2026-10-04",
-      status: "draft",
-      activationInvoiceId: "inv-1",
-    });
-  const activationPayment = (paidOn: string) =>
+
+/*
+  A payment on a direct debit activation link. Its EUR 0.01 buys a mandate,
+  not a term, so the webhook hands it to the activation flow before any
+  invoice is looked up -- and an ordinary invoice payment never reaches that
+  flow's answer.
+*/
+describe("a direct debit activation payment", () => {
+  const cent = () =>
     molliePayment({
-      id: "tr_activation",
-      amount: { currency: "EUR", value: "12.10" },
+      id: "tr_cent",
+      amount: { currency: "EUR", value: "0.01" },
+      sequenceType: "first",
       customerId: "cst_1",
       mandateId: "mdt_1",
-      sequenceType: "first",
-      paidAt: `${paidOn}T10:00:00.000Z`,
-      metadata: { kind: "recurring_activation", recurringServiceId: "svc-1", customerId: "cust-1" },
+      metadata: null,
     });
 
-  async function recover(paidOn: string) {
+  it("goes to the activation flow and never touches an invoice", async () => {
     const made = makeStore({
-      invoices: [projectInvoice()],
-      services: [service()],
-      activations: [{ id: "act-1", recurringServiceId: "svc-1", molliePaymentId: "tr_activation" }],
+      activationPayments: { tr_cent: { handled: true, note: "activation paid; mandate valid" } },
+      links: { pl_1: "inv-1" },
+      linkPayments: ["tr_cent"],
     });
-    // The 363,00 the customer already paid through the reminder's one-off link.
-    await made.store.upsertPayment({
-      invoiceId: "inv-1",
-      customerId: "cust-1",
-      amountCents: 36300,
-      status: "paid",
-      source: "mollie",
-      providerPaymentId: "tr_reminder",
-      paidAt: "2026-10-07T09:26:51.000Z",
-      description: "YM Creations factuur YM-F-2026-000002",
+
+    const outcome = await processMolliePayment(cent(), made.store, today, {
+      activationIdHint: "act-1",
+      // Even a hint naming an invoice cannot pull the cent onto it.
+      invoiceIdHint: "inv-1",
     });
-    const outcome = await processMolliePayment(activationPayment(paidOn), made.store, paidOn);
-    return { made, outcome };
-  }
 
-  it("leaves the paid invoice and its 363,00 exactly as they were", async () => {
-    const { made } = await recover("2026-10-09");
-
-    expect(made.invoices.get("inv-1")!.status).toBe("paid");
-    expect(made.payments.filter((payment) => payment.invoiceId === "inv-1")).toEqual([
-      expect.objectContaining({ amountCents: 36300, providerPaymentId: "tr_reminder" }),
-    ]);
+    expect(outcome).toEqual({ handled: true, note: "activation paid; mandate valid" });
+    expect(made.activationCalls).toEqual([{ molliePaymentId: "tr_cent", activationIdHint: "act-1" }]);
+    expect(made.payments).toEqual([]);
+    expect(made.invoices.get("inv-1")!.status).toBe("sent");
+    expect(made.linkConfirmations).toEqual([]);
   });
 
-  it("books the 12,10 on its own term invoice for 4 October to 3 November", async () => {
-    const { made, outcome } = await recover("2026-10-09");
+  it("does not move an open invoice's balance or a paid invoice's status", async () => {
+    const made = makeStore({
+      invoices: [invoiceFixture({ id: "inv-open" }), invoiceFixture({ id: "inv-paid", status: "paid" })],
+      activationPayments: { tr_cent: { handled: true, note: "activation paid; mandate valid" } },
+    });
 
-    expect(outcome.handled).toBe(true);
-    expect(made.createdInvoices).toHaveLength(1);
-    const term = made.invoices.get(made.createdInvoices[0]!)!;
-    expect(term.id).not.toBe("inv-1");
-    expect(term).toMatchObject({ billingPeriodStart: "2026-10-04", billingPeriodEnd: "2026-11-03", status: "paid" });
-    expect(totalsOf(term.lines).totalCents).toBe(1210);
-    expect(made.payments.filter((payment) => payment.invoiceId === term.id)).toEqual([
-      expect.objectContaining({ amountCents: 1210, providerPaymentId: "tr_activation" }),
-    ]);
-    // Everything the customer has paid: 363,00 once and 12,10 once.
-    expect(made.payments.map((payment) => payment.amountCents).sort((a, b) => a - b)).toEqual([1210, 36300]);
+    for (let i = 0; i < 3; i += 1) {
+      await processMolliePayment(cent(), made.store, today, { activationIdHint: "act-1" });
+    }
+
+    expect(made.payments).toEqual([]);
+    expect(made.invoices.get("inv-open")!.status).toBe("sent");
+    expect(made.invoices.get("inv-paid")!.status).toBe("paid");
+    expect(made.createdInvoices).toEqual([]);
   });
 
-  it("starts collecting on 4 November, which the schedule announces from 21 October", async () => {
-    const { made } = await recover("2026-10-09");
+  /* A pending mandate asks Mollie to deliver again; the route answers non-2xx. */
+  it("passes a request for redelivery through unchanged", async () => {
+    const made = makeStore({
+      activationPayments: {
+        tr_cent: { handled: false, retry: true, note: "activation paid; mandate still pending at the provider" },
+      },
+    });
 
-    expect(made.subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-11-04" }]);
-    const active = made.services.get("svc-1")!;
-    const schedule = nextDebitSchedule({ service: active, billedPeriodStarts: ["2026-10-04"] });
-    expect(schedule).toMatchObject({ debitOn: "2026-11-04", announceFrom: "2026-10-21" });
+    const outcome = await processMolliePayment(cent(), made.store, today, { activationIdHint: "act-1" });
+
+    expect(outcome).toMatchObject({ handled: false, retry: true });
+    expect(made.payments).toEqual([]);
+  });
+
+  it("leaves ordinary invoice payments to the invoice routing", async () => {
+    const made = makeStore();
+
+    const outcome = await processMolliePayment(molliePayment(), made.store, today);
+
+    expect(made.activationCalls).toEqual([{ molliePaymentId: "tr_1" }]);
+    expect(outcome).toMatchObject({ handled: true, invoiceStatus: "paid" });
+    expect(made.payments).toHaveLength(1);
   });
 
   /*
-    Paid too late for 4 November to be announced: period one moves to
-    November, the subscription to 4 December, and October is not billed at
-    all. The announcement schedule and Mollie agree on the date.
+    The old coupling, gone: a service that names this invoice is not switched
+    on by paying it, whatever the payment carries.
   */
-  it("moves period one, not just the subscription, when 4 November can no longer be announced", async () => {
-    const { made } = await recover("2026-10-25");
+  it("never activates a service because its invoice was paid", async () => {
+    const service = recurringFixture({ status: "draft", activationInvoiceId: "inv-1", startsOn: "2026-10-15" });
+    const made = makeStore({ services: [service] });
 
-    const term = made.invoices.get(made.createdInvoices[0]!)!;
-    expect(term).toMatchObject({ billingPeriodStart: "2026-11-04", billingPeriodEnd: "2026-12-03" });
-    expect(made.subscriptionCalls).toEqual([{ serviceId: "svc-1", startDate: "2026-12-04" }]);
+    await processMolliePayment(
+      molliePayment({ customerId: "cst_1", mandateId: "mdt_1", sequenceType: "first" }),
+      made.store,
+      today,
+    );
 
-    const schedule = nextDebitSchedule({ service: made.services.get("svc-1")!, billedPeriodStarts: [term.billingPeriodStart!] });
-    expect(schedule).toMatchObject({ debitOn: "2026-12-04" });
-    expect(made.payments.map((payment) => payment.amountCents).sort((a, b) => a - b)).toEqual([1210, 36300]);
-  });
-
-  it("charges nothing twice however often the webhook arrives", async () => {
-    const { made } = await recover("2026-10-09");
-    for (let i = 0; i < 5; i += 1) {
-      await processMolliePayment(activationPayment("2026-10-09"), made.store, "2026-10-09");
-    }
-
-    expect(made.payments).toHaveLength(2);
-    expect(made.createdInvoices).toHaveLength(1);
-    expect(made.subscriptionCalls).toHaveLength(1);
     expect(made.invoices.get("inv-1")!.status).toBe("paid");
+    expect(made.services.get("svc-1")).toEqual(service);
   });
 });

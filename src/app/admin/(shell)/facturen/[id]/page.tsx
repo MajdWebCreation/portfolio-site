@@ -11,7 +11,8 @@ import { listCustomers } from "@/lib/admin/customers/repository";
 import { toDateKey } from "@/lib/admin/format";
 import { listProjects } from "@/lib/admin/projects/repository";
 import { readCustomerRecipient, readInvoice, readQuote, readRecurringServicesForCustomer } from "@/lib/admin/readers";
-import { invoiceActivation } from "@/lib/payments/activation-view";
+import DirectDebitPanel from "@/components/admin/payments/direct-debit-panel";
+import { directDebitView } from "@/lib/payments/direct-debit-view";
 import { getCollectionState, listCollectionEventsForInvoice } from "@/lib/payments/collection-repository";
 import { invoiceCollectionView } from "@/lib/payments/collection-state";
 import { listPaymentsForInvoice } from "@/lib/payments/repository";
@@ -43,15 +44,13 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
     the database refuses any other pair. The builder needs to know which one
     that is, so it can offer that project and nothing else.
 
-    That question, the activation state, the payments and the reminder ladder
-    all depend on the invoice and on nothing else, so they are asked at the
-    same time. The activation state needs the customer's recurring services,
-    and so does the direct-debit question below; both read them through the
-    request-scoped reader, so the two callers share one query.
+    That question, the customer's direct debit, the payments and the reminder
+    ladder all depend on the invoice and on nothing else, so they are asked at
+    the same time.
   */
-  const [quote, activation, payments, events, collectionState, services, recipient] = await Promise.all([
+  const [quote, directDebit, payments, events, collectionState, services, recipient] = await Promise.all([
     item.quoteId ? readQuote(item.quoteId) : undefined,
-    invoiceActivation({ id: item.id, customerId: item.customer.customerId, status: item.status }),
+    directDebitView(item.customer.customerId),
     listPaymentsForInvoice(item.id),
     listCollectionEventsForInvoice(item.id),
     getCollectionState(item.id),
@@ -107,10 +106,18 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
           customers={customers}
           projects={projects}
           quoteProjectId={quote?.projectId}
-          activation={activation}
           todayKey={todayKey}
         />
       )}
+
+      {/*
+        The customer's direct debit, from the invoice because that is where an
+        admin often thinks of it. It is the customer's, not this invoice's:
+        activating it never touches this invoice's amount or status.
+      */}
+      <AdminSection id="direct-debit" title="Automatische incasso" note="Van de klant; staat los van deze factuur">
+        <DirectDebitPanel customerId={item.customer.customerId} view={directDebit} context="invoice" />
+      </AdminSection>
 
       {/*
         Only for an invoice that actually went out. A concept has not been

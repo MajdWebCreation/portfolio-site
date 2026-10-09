@@ -1,6 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { addDays } from "@/lib/admin/documents/validation";
-import { toDateKey } from "@/lib/admin/format";
 import { documentFingerprint, invoiceDocument } from "@/lib/admin/documents/document-payload";
 import { sha256Hex } from "@/lib/admin/invoices/artifact";
 import { fakeInvoiceStorage, fixtureDocumentPath, fixturePdfBytes } from "@/lib/admin/invoices/storage-fixture";
@@ -32,8 +30,6 @@ let customers = createFakeDb({ customers: [customerRowFixture()] });
 const from = vi.fn((table: string) => (table === "customers" ? customers.from(table) : { update }));
 const sendDocumentMail = vi.fn();
 const invoicePayLink = vi.fn();
-/* The monthly service this invoice switches on, when it switches one on. */
-let linkedService: { startsOn?: string } | undefined;
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/admin/db", async (importOriginal) => ({
@@ -56,18 +52,16 @@ vi.mock("@/lib/admin/documents/email", async (importOriginal) => ({
 }));
 vi.mock("@/lib/payments/pay-link", () => ({
   invoicePayLink: (...args: unknown[]) => invoicePayLink(...args),
-  serviceActivatedBy: async () => linkedService,
 }));
 
 const { sendInvoiceToCustomer } = await import("@/lib/admin/documents/send");
 
-/* What `invoicePayLink` really returns: a URL and the decision behind it. */
+/* What `invoicePayLink` really returns: a URL, always a one-off payment link. */
 const oneoffLink = {
   kind: "link",
   // A Mollie payment link, which stays valid until it is paid; the checkout
   // URL of a Payments-API payment would be dead by the time a mail is opened.
   url: "https://payment-link.mollie.com/payment/pl_1",
-  decision: { sequence: "oneoff", reason: "no-recurring-service" },
 };
 
 beforeEach(() => {
@@ -78,7 +72,6 @@ beforeEach(() => {
   invoicePayLink.mockResolvedValue(oneoffLink);
   stored = invoice;
   project = undefined;
-  linkedService = undefined;
   customers = createFakeDb({ customers: [customerRowFixture()] });
 });
 
@@ -138,32 +131,18 @@ describe("sending an invoice with a payment link", () => {
   the service off the decision the pay-link made, so the mail and the PDF
   cannot disagree with the payment about what is being switched on.
 */
-describe("sending an invoice that switches a monthly service on", () => {
-  const firstLink = {
-    kind: "link",
-    url: "https://payment-link.mollie.com/payment/pl_1",
-    decision: {
-      sequence: "first",
-      reason: "needs-mandate",
-      service: {
-        id: "svc-1",
-        customerId: "cust-1",
-        name: "Websitebeheer",
-        amountCents: 2500,
-        vatRate: 21,
-        startsOn: "2026-10-01",
-        status: "draft",
-        mollie: {},
-      },
-    },
-  };
-
+/*
+  An invoice issued before direct debit was split off from invoices may carry
+  a frozen note: "paying this invoice also authorises the monthly collection".
+  That is no longer what paying does, so such a document is not mailed -- and
+  nothing about it reaches Mollie.
+*/
+describe("an invoice that still promises direct debit", () => {
   beforeEach(() => {
     stored = invoiceFixture({
       status: "issued",
       sentAt: undefined,
       recipientEmail: undefined,
-      projectId: "proj-1",
       activationNote: {
         serviceId: "svc-1",
         serviceName: "Websitebeheer",
@@ -172,118 +151,32 @@ describe("sending an invoice that switches a monthly service on", () => {
         firstDebitOn: "2026-10-01",
       },
     });
-    project = { id: "proj-1", name: "Website Alfa BV" };
   });
 
-  it("tells the mail what is being activated, net and gross", async () => {
-    invoicePayLink.mockResolvedValue(firstLink);
-
-    await sendInvoiceToCustomer("inv-1");
-
-    expect(sendDocumentMail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        projectName: "Website Alfa BV",
-        activates: {
-          serviceName: "Websitebeheer",
-          monthlyNetCents: 2500,
-          // 25,00 + 21%, through the same VAT code the invoice uses.
-          monthlyGrossCents: 3025,
-          invoiceNetCents: 10000,
-          firstDebitOn: "2026-10-01",
-          projectSummary: "Website Alfa BV",
-        },
-      }),
-    );
-  });
-
-  /*
-    A customer who already authorised us gets an ordinary one-off payment --
-    but the document in their hand announces the mandate, because that is what
-    it said when it was issued. Sending one while doing the other is the one
-    thing that may not happen quietly.
-  */
-  it("refuses to send when the payment no longer establishes the mandate the document announces", async () => {
-    invoicePayLink.mockResolvedValue({
-      ...firstLink,
-      decision: { ...firstLink.decision, sequence: "oneoff", reason: "mandate-already-given" },
-    });
-
+  it("is refused before a payment link is made", async () => {
     const result = await sendInvoiceToCustomer("inv-1");
 
     expect(result.ok).toBe(false);
-    expect(result.ok === false && result.error).toContain("Annuleer deze factuur");
-    expect(sendDocumentMail).not.toHaveBeenCalled();
-    expect(update).not.toHaveBeenCalled();
-  });
-
-  /* And the other way round: a mandate nobody wrote down. */
-  it("refuses to send when the payment would establish a mandate the document does not mention", async () => {
-    stored = invoiceFixture({ status: "issued", sentAt: undefined, recipientEmail: undefined, projectId: "proj-1" });
-    invoicePayLink.mockResolvedValue(firstLink);
-
-    const result = await sendInvoiceToCustomer("inv-1");
-
-    expect(result.ok).toBe(false);
-    expect(result.ok === false && result.error).toContain("staat niet op de definitieve factuur");
-    expect(sendDocumentMail).not.toHaveBeenCalled();
-  });
-
-  it("says nothing about a monthly service on an invoice that was issued without a note", async () => {
-    stored = invoiceFixture({ status: "issued", sentAt: undefined, recipientEmail: undefined, projectId: "proj-1" });
-    invoicePayLink.mockResolvedValue({
-      ...firstLink,
-      decision: { ...firstLink.decision, sequence: "oneoff", reason: "mandate-already-given" },
-    });
-
-    await sendInvoiceToCustomer("inv-1");
-
-    const [args] = sendDocumentMail.mock.calls[0] as [{ activates?: unknown; projectName?: string }];
-    expect(args.activates).toBeUndefined();
-    expect(args.projectName).toBe("Website Alfa BV");
-  });
-});
-
-/*
-  The fourteen days are counted from the day the invoice actually goes out.
-  This mail is the announcement of the first collection, so a date it could
-  not announce in time stops the send instead of going out as a promise that
-  cannot be kept.
-*/
-describe("the first collection date at the moment of sending", () => {
-  // The same calendar the server judges by, so the boundary is exact rather
-  // than a day out for a test that runs late in the evening.
-  const days = (count: number) => addDays(toDateKey(new Date()), count);
-
-  it("refuses to send when the first collection is thirteen days away", async () => {
-    linkedService = { startsOn: days(13) };
-
-    const result = await sendInvoiceToCustomer("inv-1");
-
-    expect(result.ok).toBe(false);
-    expect(result.ok === false && result.error).toContain("minder dan 14 dagen");
+    expect(result.ok === false && result.error).toContain("aparte activatielink");
     expect(invoicePayLink).not.toHaveBeenCalled();
     expect(sendDocumentMail).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
   });
-
-  it("sends when the first collection is fourteen days away", async () => {
-    linkedService = { startsOn: days(14) };
-
-    const result = await sendInvoiceToCustomer("inv-1");
-
-    expect(result).toEqual({ ok: true, value: { number: "YM-F-2026-000001", recipient: "a@example.com" } });
-    expect(sendDocumentMail).toHaveBeenCalledTimes(1);
-  });
-
-  it("leaves an invoice without a monthly service alone", async () => {
-    linkedService = undefined;
-
-    const result = await sendInvoiceToCustomer("inv-1");
-
-    expect(result).toEqual({ ok: true, value: { number: "YM-F-2026-000001", recipient: "a@example.com" } });
-  });
 });
 
+describe("an ordinary invoice", () => {
+  it("is filed as an invoice and says nothing about a monthly service", async () => {
+    project = { id: "proj-1", name: "Website Alfa BV" };
+    stored = invoiceFixture({ status: "issued", sentAt: undefined, recipientEmail: undefined, projectId: "proj-1" });
+
+    await sendInvoiceToCustomer("inv-1");
+
+    const [args] = sendDocumentMail.mock.calls[0] as [{ activates?: unknown; projectName?: string; log: { category: string } }];
+    expect(args.activates).toBeUndefined();
+    expect(args.log.category).toBe("invoice_sent");
+    expect(args.projectName).toBe("Website Alfa BV");
+  });
+});
 
 /*
   What sending is allowed to change about the document: nothing, and that now

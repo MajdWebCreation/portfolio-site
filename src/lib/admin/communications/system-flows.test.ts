@@ -1,16 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { invalidRecipientReason } from "@/lib/admin/communications/recipient";
 import { fixtureDocumentPath, fixturePdfBytes } from "@/lib/admin/invoices/storage-fixture";
 import { createFakeDb, invoiceFixture, recipientFixture, recurringFixture } from "@/lib/payments/fixtures";
 import type { InvoiceMailer } from "@/lib/payments/prenotification-runner";
 
 /*
-  The three mail flows that carry no admin session or no document of the
-  admin's own making: the standalone direct debit link, the monthly term the
-  customer already paid (settled by the Mollie webhook), and the daily
-  pre-notification run.
+  The mail flows that carry no document of the admin's own making: the direct
+  debit activation link and the daily pre-notification run.
 
-  All three write to the log through the same helper the admin flows use, with
+  Both write to the log through the same helper the admin flows use, with
   the elevated client instead of an admin's session. What is checked here is
   that each one files its mail under the right customer, the right category
   and the right service -- because these are the flows nobody is watching when
@@ -18,6 +16,16 @@ import type { InvoiceMailer } from "@/lib/payments/prenotification-runner";
 */
 const deliverEmail = vi.fn();
 const runPrenotifications = vi.fn();
+const createPaymentLink = vi.fn();
+const getPaymentLink = vi.fn();
+const listMandates = vi.fn();
+
+vi.mock("@/lib/mollie/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/mollie/client")>()),
+  createPaymentLink: (...args: unknown[]) => createPaymentLink(...args),
+  getPaymentLink: (...args: unknown[]) => getPaymentLink(...args),
+  listMandates: (...args: unknown[]) => listMandates(...args),
+}));
 
 let db: ReturnType<typeof createFakeDb>;
 
@@ -47,8 +55,7 @@ vi.mock("@/lib/payments/prenotification-runner", () => ({
 }));
 vi.mock("@/lib/payments/prenotification-store", () => ({ createPrenotificationStore: () => ({}) }));
 
-const { sendRecurringActivation } = await import("@/lib/payments/actions");
-const { createWebhookStore } = await import("@/lib/payments/webhook-store");
+const { mailMandateActivation } = await import("@/lib/payments/actions");
 const { POST: runCron } = await import("@/app/api/cron/debit-prenotifications/route");
 
 const rows = () => db.rows("customer_communications");
@@ -57,41 +64,72 @@ beforeEach(() => {
   vi.clearAllMocks();
   db = createFakeDb({
     customers: [{ id: "cust-1", company_name: "Alfa BV", contact_name: "A. Alfa", email: "a@example.com" }],
+    customer_payment_providers: [
+      { id: "cpp-1", customer_id: "cust-1", provider: "mollie", provider_customer_id: "cst_1", provider_mandate_id: null },
+    ],
+    recurring_services: [
+      { id: "svc-1", customer_id: "cust-1", name: "Websitebeheer", amount_cents: 2500, vat_rate: 21, status: "draft", mollie_subscription_id: null },
+    ],
+  });
+  process.env.MOLLIE_API_KEY = "test_dummy";
+  process.env.NEXT_PUBLIC_SITE_URL = "https://example.test";
+  listMandates.mockResolvedValue([]);
+  createPaymentLink.mockResolvedValue({
+    id: "pl_act",
+    description: "Activeren automatische incasso",
+    _links: { paymentLink: { href: "https://payment-links.mollie.com/payment/act" } },
+  });
+  getPaymentLink.mockResolvedValue({
+    id: "pl_act",
+    description: "Activeren automatische incasso",
+    _links: { paymentLink: { href: "https://payment-links.mollie.com/payment/act" } },
   });
   /* The stored PDF of the term these flows mail; they attach it, never a new one. */
   db.bucket.files.set(fixtureDocumentPath, fixturePdfBytes);
   deliverEmail.mockResolvedValue({ sent: true, sentAt: "2026-09-14T09:00:00.000Z", messageId: "resend-1" });
 });
 
-describe("the standalone direct debit link", () => {
-  it("files the mail under the customer and the service it activates", async () => {
-    const result = await sendRecurringActivation("svc-1");
+describe("the direct debit activation link", () => {
+  const flat = (value: string) => value.replace(/\u00a0/g, " ");
 
-    expect(result.ok).toBe(true);
+  it("files the mail under the customer, as a direct debit activation", async () => {
+    const result = await mailMandateActivation("cust-1");
+
+    expect(result).toEqual({ ok: true, value: "a@example.com" });
     expect(rows()).toHaveLength(1);
     expect(rows()[0]).toMatchObject({
       customer_id: "cust-1",
       category: "direct_debit_activation",
-      recurring_service_id: "svc-1",
-      project_id: "proj-1",
       recipient: "a@example.com",
       status: "sent",
       provider_message_id: "resend-1",
     });
   });
 
-  /* No document was sent, so nothing may claim one was. */
+  /* The cent is not a payment of anything, so nothing may claim it is. */
   it("names no invoice and no quote", async () => {
-    await sendRecurringActivation("svc-1");
+    await mailMandateActivation("cust-1");
 
     expect(rows()[0].invoice_id).toBeUndefined();
     expect(rows()[0].quote_id).toBeUndefined();
   });
 
+  it("says what the cent is for, that it is not an invoice payment, and carries the link", async () => {
+    await mailMandateActivation("cust-1");
+
+    const { text, html } = deliverEmail.mock.calls[0][0];
+    for (const body of [flat(text), flat(html)]) {
+      expect(body).toContain("€ 0,01");
+      expect(body).toContain("Websitebeheer (€ 30,25 per maand incl. btw)");
+      expect(body).toContain("geen betaling van een factuur");
+      expect(body).toContain("https://payment-links.mollie.com/payment/act");
+    }
+  });
+
   it("writes nothing when the mail is refused", async () => {
     deliverEmail.mockResolvedValue({ sent: false, reason: "Invalid recipient", failure: "rejected" });
 
-    const result = await sendRecurringActivation("svc-1");
+    const result = await mailMandateActivation("cust-1");
 
     expect(result.ok).toBe(false);
     expect(rows()).toHaveLength(0);
@@ -101,114 +139,31 @@ describe("the standalone direct debit link", () => {
   it("goes to the address on record now, greeting the contact on record now", async () => {
     Object.assign(db.rows("customers")[0], { email: "new@example.com", contact_name: "N. Nieuw" });
 
-    const result = await sendRecurringActivation("svc-1");
+    const result = await mailMandateActivation("cust-1");
 
     expect(result).toEqual({ ok: true, value: "new@example.com" });
     expect(deliverEmail.mock.calls[0][0].to).toBe("new@example.com");
     expect(deliverEmail.mock.calls[0][0].text).toContain("Beste N. Nieuw,");
   });
 
-  /* Refused before the old link is revoked, so the customer keeps a working one. */
-  it("sends nothing and revokes nothing when the customer has no usable address", async () => {
-    db.rows("recurring_activations").push({ id: "act-1", recurring_service_id: "svc-1", used_at: null });
+  /* Refused before anything is made at Mollie: no address, no link. */
+  it("makes no link and sends nothing when the customer has no usable address", async () => {
     db.rows("customers")[0].email = "geen-adres";
 
-    const result = await sendRecurringActivation("svc-1");
+    const result = await mailMandateActivation("cust-1");
 
     expect(result).toEqual({ ok: false, error: invalidRecipientReason });
+    expect(createPaymentLink).not.toHaveBeenCalled();
     expect(deliverEmail).not.toHaveBeenCalled();
-    expect(db.rows("recurring_activations")).toEqual([{ id: "act-1", recurring_service_id: "svc-1", used_at: null }]);
   });
 
-  /*
-    While the invoice that switches the service on is open, paying it is the
-    customer's authorisation; a second route would bill the same start twice.
-    Once it is paid without a mandate -- YM-F-2026-000002 -- this link is the
-    explicit way to ask for one.
-  */
-  describe("for a service with an activation invoice", () => {
-    afterEach(() => {
-      delete service.activationInvoiceId;
-    });
-
-    it("refuses while that invoice is still open", async () => {
-      service.activationInvoiceId = "inv-act";
-      db.rows("invoices").push({ id: "inv-act", number_value: "YM-F-2026-000002", status: "sent" });
-
-      const result = await sendRecurringActivation("svc-1");
-
-      expect(result).toMatchObject({ ok: false });
-      expect(!result.ok && result.error).toContain("YM-F-2026-000002");
-      expect(deliverEmail).not.toHaveBeenCalled();
-      expect(db.rows("recurring_activations")).toHaveLength(0);
-    });
-
-    it("sends the link once that invoice is paid", async () => {
-      service.activationInvoiceId = "inv-act";
-      db.rows("invoices").push({ id: "inv-act", number_value: "YM-F-2026-000002", status: "paid" });
-
-      const result = await sendRecurringActivation("svc-1");
-
-      expect(result).toEqual({ ok: true, value: "a@example.com" });
-      expect(db.rows("recurring_activations")).toHaveLength(1);
-    });
-  });
-
-  /* Asking again replaces the link, and is a second mail in the inbox. */
-  it("adds a separate communication each time the link is sent", async () => {
-    await sendRecurringActivation("svc-1");
-    await sendRecurringActivation("svc-1");
+  /* Mailing again is a second mail, with the same link -- never a second payable one. */
+  it("mails the same link again rather than making a second one", async () => {
+    await mailMandateActivation("cust-1");
+    await mailMandateActivation("cust-1");
 
     expect(rows()).toHaveLength(2);
-  });
-});
-
-describe("the monthly term the customer already paid", () => {
-  const term = invoiceFixture({
-    id: "inv-9",
-    number: { value: "YM-F-2026-000009", provisional: false },
-    recurringServiceId: "svc-1",
-    billingPeriodStart: "2026-10-01",
-    billingPeriodEnd: "2026-10-31",
-  });
-
-  it("files it as a settled monthly invoice, under its service", async () => {
-    const store = createWebhookStore();
-
-    const result = await store.sendSettledInvoice(term, service);
-
-    expect(result).toEqual({ sent: true });
-    expect(rows()).toHaveLength(1);
-    expect(rows()[0]).toMatchObject({
-      customer_id: "cust-1",
-      category: "recurring_invoice_settled",
-      invoice_id: "inv-9",
-      recurring_service_id: "svc-1",
-      /* The invoice was not filed under a project, so the service's is used. */
-      project_id: "proj-1",
-    });
-  });
-
-  /* The term copied the customer when it was issued; the mail goes where the customer is now. */
-  it("goes to the address on record now, not the one the term copied", async () => {
-    db.rows("customers")[0].email = "new@example.com";
-    const store = createWebhookStore();
-
-    const result = await store.sendSettledInvoice(invoiceFixture({ ...term, customer: { ...term.customer, email: "old@example.com" } }), service);
-
-    expect(result).toEqual({ sent: true });
-    expect(deliverEmail.mock.calls[0][0].to).toBe("new@example.com");
-    expect(rows()[0].recipient).toBe("new@example.com");
-  });
-
-  it("writes nothing when the mail is refused", async () => {
-    deliverEmail.mockResolvedValue({ sent: false, reason: "Invalid recipient", failure: "rejected" });
-    const store = createWebhookStore();
-
-    const result = await store.sendSettledInvoice(term, service);
-
-    expect(result).toEqual({ sent: false, reason: "Invalid recipient" });
-    expect(rows()).toHaveLength(0);
+    expect(createPaymentLink).toHaveBeenCalledTimes(1);
   });
 });
 

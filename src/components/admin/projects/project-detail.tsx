@@ -6,7 +6,6 @@ import AdminButton from "@/components/admin/admin-button";
 import AdminSection from "@/components/admin/admin-section";
 import { DetailList, DetailRow } from "@/components/admin/detail-list";
 import { SelectField, TextField, TextareaField } from "@/components/admin/form-field";
-import ActivationLines from "@/components/admin/payments/activation-lines";
 import ProjectDocuments from "@/components/admin/projects/project-documents";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import StatusBadge from "@/components/admin/status-badge";
@@ -24,7 +23,6 @@ import {
 } from "@/lib/admin/projects/types";
 import { hasProjectErrors, validateProject, type ProjectErrors } from "@/lib/admin/projects/validation";
 import type { Quote } from "@/lib/admin/quotes/types";
-import type { ActivationSummary } from "@/lib/payments/activation-view";
 import { recurringChargeCents, recurringStatusLabels, recurringStatusTone, type RecurringService } from "@/lib/payments/types";
 import { formatCents } from "@/lib/money";
 
@@ -48,7 +46,6 @@ export default function ProjectDetail({
   quotes,
   invoices,
   recurringServices,
-  recurringActivations,
   todayKey,
 }: {
   project: Project;
@@ -60,7 +57,6 @@ export default function ProjectDetail({
   /** Monthly services that belong to this project. */
   recurringServices: RecurringService[];
   /** How far the one-off invoice and the mandate have got, per service. */
-  recurringActivations: Record<string, ActivationSummary>;
   todayKey: string;
 }) {
   const stored = toForm(project);
@@ -171,7 +167,20 @@ export default function ProjectDetail({
                       {recurringStatusLabels[service.status]}
                     </StatusBadge>
                   </div>
-                  <ActivationLines summary={recurringActivations[service.id]} />
+                  {/* Direct debit is the customer's, so it is activated and started there. */}
+                  <p className="mt-1.5 text-[0.82rem] text-muted">
+                    {service.mollie.subscriptionId ? (
+                      "Maandelijkse incasso loopt."
+                    ) : (
+                      <>
+                        Nog geen maandelijkse incasso;{" "}
+                        <Link href={`/admin/klanten/${service.customerId}`} className="link-static text-ink">
+                          activeren en starten bij de klant
+                        </Link>
+                        .
+                      </>
+                    )}
+                  </p>
                 </li>
               ))}
             </ul>

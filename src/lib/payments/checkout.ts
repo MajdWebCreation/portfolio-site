@@ -19,15 +19,17 @@ import type { Payment } from "@/lib/payments/types";
  * payment. The difference matters for a mail: a checkout URL is short-lived
  * and belongs to one attempt, so a customer opening the mail a week later
  * would find a dead button, while a payment link stays valid until it is paid.
- * The link is also where the sequence lives -- `oneoff`, or `first` when
- * paying the invoice has to establish a direct debit mandate as well.
+ * It is always a one-off payment: paying an invoice never establishes a
+ * direct debit mandate. That has its own EUR 0.01 link, see
+ * `mandate-activation.ts`.
  *
  * Sending the same invoice twice must not hand out two live links for one
  * debt, so the link that already exists is reused: our own row names it,
  * Mollie is asked for its current state, and if it is still payable its own
  * URL is handed back. A new link is created only when there is nothing usable
  * -- the old one was paid, expired or archived, the outstanding amount
- * changed, or the sequence has to change because a mandate is now needed.
+ * changed, or it is a `first` link from before invoices stopped asking for
+ * a mandate.
  *
  * A link that is replaced while it could still be paid is archived first.
  * One invoice has at most one payable link, so a customer holding an older
@@ -57,17 +59,6 @@ export type CheckoutDependencies = {
   storedLink?: StoredPaymentLink;
   /** Records the link that is now the invoice's; replaces any earlier one. */
   persistLink: (link: StoredPaymentLink) => Promise<void>;
-  /**
-   * "first" turns this into a link that also establishes a mandate, for an
-   * invoice that switches a monthly service on. It needs the customer's
-   * identity at the provider; "oneoff" needs neither.
-   *
-   * Required, with no default here: which one an invoice asks for is decided
-   * once, by `invoicePaymentIntent` in pay-link.ts, for the first mail and
-   * every reminder alike.
-   */
-  sequence: "oneoff" | "first";
-  providerCustomerId?: string;
 };
 
 /**
@@ -88,21 +79,17 @@ export async function ensureInvoiceCheckout(
   if (settlement.settled) return { ok: false, reason: "Deze factuur is al betaald." };
 
   const config = getMollieConfig();
-  const sequence = deps.sequence;
-  if (sequence === "first" && !deps.providerCustomerId) {
-    return { ok: false, reason: "Er is geen Mollie-klant om de machtiging aan te koppelen." };
-  }
 
   const stored = deps.storedLink;
   /*
-    Only a link that asks the same question for the same amount may be reused.
-    A link made before a monthly service was attached asks `oneoff` and would
-    never produce a mandate; one made before a part payment asks too much.
+    Only a one-off link for the same amount may be reused. One made before a
+    part payment asks too much; a `first` link from before would also
+    authorise direct debit, which an invoice payment no longer does.
   */
   if (stored) {
     const current: MolliePaymentLink = await getPaymentLink(stored.providerPaymentLinkId, config);
     const href = payableLink(current);
-    const fits = stored.sequenceType === sequence && stored.amountCents === settlement.outstandingCents;
+    const fits = stored.sequenceType === "oneoff" && stored.amountCents === settlement.outstandingCents;
     if (href && fits) {
       return { ok: true, checkoutUrl: href, paymentLinkId: current.id, reused: true };
     }
@@ -116,10 +103,8 @@ export async function ensureInvoiceCheckout(
   }
 
   /*
-    The amount is the invoice's outstanding gross total, whichever sequence
-    this is. A monthly price is never added here: that is collected later by
-    the subscription, and adding it would charge the customer twice for the
-    first month.
+    The amount is the invoice's outstanding gross total. A monthly price is
+    never added here: that is collected by the subscription.
   */
   const created = await createPaymentLink({
     amountCents: settlement.outstandingCents,
@@ -133,11 +118,12 @@ export async function ensureInvoiceCheckout(
       anything is written.
     */
     webhookUrl: `${mollieWebhookUrl(config)}?invoice=${encodeURIComponent(invoice.id)}`,
-    sequenceType: sequence,
-    ...(sequence === "first" ? { customerId: deps.providerCustomerId } : {}),
-    // Same invoice, same sequence and same amount means the same key, so a
-    // retried request returns the link the first one made.
-    idempotencyKey: `invoice-link-${invoice.id}-${sequence}-${settlement.outstandingCents}`,
+    // An invoice link only ever settles the invoice. Mandates are obtained
+    // through their own link, never through an invoice payment.
+    sequenceType: "oneoff",
+    // Same invoice and same amount means the same key, so a retried request
+    // returns the link the first one made.
+    idempotencyKey: `invoice-link-${invoice.id}-oneoff-${settlement.outstandingCents}`,
     config,
   });
 
@@ -147,7 +133,7 @@ export async function ensureInvoiceCheckout(
   await deps.persistLink({
     providerPaymentLinkId: created.id,
     checkoutUrl: href,
-    sequenceType: sequence,
+    sequenceType: "oneoff",
     amountCents: settlement.outstandingCents,
   });
 

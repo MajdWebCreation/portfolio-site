@@ -3,8 +3,8 @@
  *
  * The rule, in one place because two places would drift:
  *
- *   period 1 starts on the service's `starts_on`, or on the day the first
- *   payment succeeded when no start date was set;
+ *   period 1 starts on the service's `starts_on` -- the first automatic
+ *   collection, set when the monthly collection is started;
  *
  *   every period is one calendar month, so period n+1 starts on the same day
  *   of the next month, and a period ends on the day before the next one
@@ -14,10 +14,9 @@
  *   falls back to that month's last day. The anchor is not moved by that, so
  *   a service starting on the 31st is billed on the 31st again in March.
  *
- * The first payment of an activation pays period 1. The provider subscription
- * is therefore given `nextPeriodStart(period 1)` as its start date: the first
- * automatic collection happens when period 2 begins, and the customer is
- * never charged twice for the month they just paid.
+ * The EUR 0.01 that activates direct debit pays no period at all; when the
+ * collection is started, `collection-start.ts` picks the first date after
+ * every period already billed, so no month is ever collected twice.
  */
 export type BillingPeriod = { start: string; end: string };
 

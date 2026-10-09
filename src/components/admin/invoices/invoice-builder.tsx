@@ -11,7 +11,6 @@ import LineItemsEditor, { newLine } from "@/components/admin/documents/line-item
 import ProjectSelect from "@/components/admin/documents/project-select";
 import { TextField, TextareaField } from "@/components/admin/form-field";
 import InvoiceFinalize from "@/components/admin/invoices/invoice-finalize";
-import InvoiceRecurring from "@/components/admin/invoices/invoice-recurring";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import type { Customer } from "@/lib/admin/customers/types";
 import { companyProfile } from "@/lib/admin/documents/company";
@@ -22,8 +21,6 @@ import { addDays, hasLineErrors, validateDates, validateLine, type LineErrors } 
 import { saveInvoice } from "@/lib/admin/invoices/actions";
 import type { Project } from "@/lib/admin/projects/types";
 import { invoiceStatusLabels, invoiceStatusTone, isInvoiceStatus, selectableInvoiceStatuses, type Invoice } from "@/lib/admin/invoices/types";
-import type { InvoiceActivationView } from "@/lib/payments/activation-view";
-import { documentActivation } from "@/lib/payments/activation-decision";
 import { calculateTotals } from "@/lib/money";
 
 type Errors = Partial<Record<"customer" | "issueDate" | "dueDate" | "lines", string>>;
@@ -67,12 +64,10 @@ type InvoiceBuilderProps = {
   projects: Project[];
   /** The project of the quote this invoice follows from, when it has one. */
   quoteProjectId?: string;
-  /** The monthly service this invoice switches on, and what may be linked. */
-  activation?: InvoiceActivationView;
   todayKey: string;
 };
 
-export default function InvoiceBuilder({ stored, customers, projects, quoteProjectId, activation, todayKey }: InvoiceBuilderProps) {
+export default function InvoiceBuilder({ stored, customers, projects, quoteProjectId, todayKey }: InvoiceBuilderProps) {
   const router = useRouter();
   // "NIEUW" until the record is created; both server and client render the same number.
   const [invoice, setInvoice] = useState<Invoice>(() => stored ?? blank(todayKey, "nieuw", "factuur-regel-1"));
@@ -81,14 +76,6 @@ export default function InvoiceBuilder({ stored, customers, projects, quoteProje
   const { save: runSave, pending, error: saveError, savedAt } = useSave();
   const totals = useMemo(() => calculateTotals(invoice.lines.filter((line) => !hasLineErrors(validateLine(line)))), [invoice.lines]);
   const ready = Boolean(invoice.customer.customerId) && invoice.lines.length > 0 && invoice.lines.every((line) => !hasLineErrors(validateLine(line)));
-  /*
-    What paying this invoice also switches on, by the same rule the send flow
-    uses -- so the PDF the admin previews and the mail the admin confirms say
-    exactly what the customer will read, instead of leaving the note out.
-  */
-  const activates = activation
-    ? documentActivation({ ...(activation.attached ? { service: activation.attached } : {}), status: activation.status })
-    : undefined;
   /*
     Which projects this invoice may name. Always the customer's own; and when
     the invoice follows from a quote, only that quote's project, because the
@@ -196,38 +183,6 @@ export default function InvoiceBuilder({ stored, customers, projects, quoteProje
           </div>
         </AdminSection>
 
-        {/*
-          Always shown, so an admin filling in a first invoice can see that a
-          monthly service is part of this screen. Only an invoice that exists
-          can actually carry one: the link is stored on the service and needs
-          an invoice to point at, which is also the order the admin works in.
-        */}
-        <AdminSection
-          id="recurring"
-          title="Maandelijkse service"
-          note="Optioneel; wordt geactiveerd door de betaling van deze factuur"
-        >
-          {activation && invoice.id ? (
-            <InvoiceRecurring
-              invoiceId={invoice.id}
-              services={activation.candidates}
-              attached={activation.attached}
-              status={activation.status}
-              invoicePaid={invoice.status === "paid"}
-              todayKey={todayKey}
-              projects={customerProjects}
-              defaultProjectId={invoice.projectId}
-              sent={Boolean(stored?.issuedAt)}
-            />
-          ) : (
-            <p className="text-[0.9rem] text-muted">
-              Maak deze factuur eerst aan. Daarna kun je hier een maandelijkse service koppelen of aanmaken: de klant
-              betaalt dan deze factuur en machtigt in dezelfde stap de automatische incasso. Het maandbedrag komt niet
-              bij het totaal van deze factuur.
-            </p>
-          )}
-        </AdminSection>
-
         <AdminSection id="notes" title="Opmerkingen">
           <TextareaField id="invoice-notes" label="Opmerkingen" optional value={invoice.notes} onChange={(event) => update("notes", event.target.value)} hint="Staat onder de betaalinformatie op de factuur." />
         </AdminSection>
@@ -246,7 +201,7 @@ export default function InvoiceBuilder({ stored, customers, projects, quoteProje
         </div>
         <div className="border-t border-line pt-6">
           <DocumentPanel
-            document={{ kind: "invoice", ...invoiceDocument(invoice, activates) }}
+            document={{ kind: "invoice", ...invoiceDocument(invoice) }}
             fileName={`${invoice.number.value}.pdf`}
             ready={ready}
             action={<InvoiceFinalize invoice={invoice} ready={ready} />}

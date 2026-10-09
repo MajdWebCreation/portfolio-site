@@ -12,7 +12,8 @@ import { listInvoicesForCustomer } from "@/lib/admin/invoices/repository";
 import { listProjectsForCustomer } from "@/lib/admin/projects/repository";
 import { listQuotesForCustomer } from "@/lib/admin/quotes/repository";
 import { readCustomer, readInquiry, readLead } from "@/lib/admin/readers";
-import { activationSummaries, mandateByCustomer } from "@/lib/payments/activation-view";
+import { firstCollectionDate } from "@/lib/payments/collection-start";
+import { directDebitView } from "@/lib/payments/direct-debit-view";
 import { customerFinancials, customerPaymentStatusLabels, customerPaymentStatusTone } from "@/lib/payments/customer-status";
 import { formatCents } from "@/lib/money";
 import { recurringOverview, type RecurringOverview } from "@/lib/payments/prenotification";
@@ -56,7 +57,7 @@ export default async function CustomerPage({ params }: PageProps) {
     recurringServices,
     prenotifications,
     communications,
-    mandates,
+    directDebit,
   ] = await Promise.all([
     customer.sourceInquiryId ? readInquiry(customer.sourceInquiryId) : undefined,
     customer.sourceLeadId ? readLead(customer.sourceLeadId) : undefined,
@@ -67,7 +68,7 @@ export default async function CustomerPage({ params }: PageProps) {
     listRecurringServicesForCustomer(customer.id),
     listPrenotificationsForCustomer(customer.id),
     listCommunicationsForCustomer(customer.id),
-    mandateByCustomer([customer.id]),
+    directDebitView(customer.id),
   ]);
 
   const todayKey = toDateKey(new Date());
@@ -92,9 +93,25 @@ export default async function CustomerPage({ params }: PageProps) {
     ]),
   );
 
-  // The customer's own invoices include every activation invoice its services
-  // can name, and the mandates were read above: no further round trip.
-  const activations = await activationSummaries(recurringServices, { customerIds: [customer.id], mandates, invoices });
+  /*
+    For every service that does not collect yet: the earliest first collection,
+    from the same rule the start action applies -- after every billed period,
+    and far enough ahead to be announced.
+  */
+  const firstCollections: Record<string, string> = Object.fromEntries(
+    recurringServices
+      .filter((service) => !service.mollie.subscriptionId && service.status !== "canceled")
+      .map((service) => [
+        service.id,
+        firstCollectionDate({
+          ...(service.startsOn ? { startsOn: service.startsOn } : {}),
+          billedPeriodStarts: invoices
+            .filter((invoice) => invoice.recurringServiceId === service.id && invoice.billingPeriodStart)
+            .map((invoice) => invoice.billingPeriodStart!),
+          todayKey,
+        }),
+      ]),
+  );
 
   // The invoices and payments read above are this customer's already, so
   // there is nothing left to filter out here.
@@ -134,7 +151,8 @@ export default async function CustomerPage({ params }: PageProps) {
         financials={financials}
         recurringServices={recurringServices}
         recurringOverviews={recurringOverviews}
-        recurringActivations={activations}
+        directDebit={directDebit}
+        firstCollections={firstCollections}
         todayKey={todayKey}
       />
     </div>

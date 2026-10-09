@@ -142,9 +142,9 @@ export type RecurringService = {
   /** The project this service is part of, when it belongs to one. */
   projectId?: string;
   /**
-   * The one-off invoice whose payment establishes the mandate for this
-   * service. Stored rather than remembered, so a webhook retry hours later
-   * still knows which service that payment was meant to switch on.
+   * History only: the one-off invoice whose payment used to establish the
+   * mandate for this service, before direct debit got its own EUR 0.01
+   * activation link. Nothing reads it to decide anything any more.
    */
   activationInvoiceId?: string;
   status: RecurringStatus;

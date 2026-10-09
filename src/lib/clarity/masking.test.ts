@@ -21,7 +21,6 @@ describe("Clarity masking", () => {
   it.each([
     "components/contact-form.tsx",
     "components/project-planner.tsx",
-    "app/[locale]/incasso/[token]/page.tsx",
     "app/[locale]/betaling/afgerond/page.tsx",
     "app/[locale]/betaling/incasso-afgerond/page.tsx",
   ])("masks %s as a whole", (file) => {

@@ -1,22 +1,20 @@
-import { invoiceLinks } from "@/lib/admin/communications/links";
-import { resolveCustomerRecipient } from "@/lib/admin/communications/recipient";
-import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email";
 import { toDateKey } from "@/lib/admin/format";
-import { documentFileName } from "@/lib/admin/pdf/to-buffer";
-import { readInvoiceArtifact } from "@/lib/admin/invoices/artifact";
-import { calculateTotals, formatCents } from "@/lib/money";
 import { invoiceColumns, invoiceFromRow, type InvoiceRow } from "@/lib/admin/invoices/mapper";
 import type { Invoice, InvoiceStatus } from "@/lib/admin/invoices/types";
-import { createSubscription as createMollieSubscription, listPaymentLinkPayments } from "@/lib/mollie/client";
-import { getMollieConfig, mollieWebhookUrl } from "@/lib/mollie/config";
+import { listPaymentLinkPayments } from "@/lib/mollie/client";
+import { getMollieConfig } from "@/lib/mollie/config";
 import { paymentFromRow, recurringServiceFromRow } from "@/lib/payments/mapper";
 import { paymentsAdminClient } from "@/lib/payments/admin-client";
 import type { BillingPeriod } from "@/lib/payments/billing-period";
-import { lookupMandate } from "@/lib/payments/provider-customer";
-import { ensureRecurringInvoice, markInvoiceMailed } from "@/lib/payments/recurring-invoice";
+import {
+  activationForPayment,
+  activationIdForPaymentLink,
+  processActivationPayment,
+} from "@/lib/payments/mandate-activation";
+import { ensureRecurringInvoice } from "@/lib/payments/recurring-invoice";
 import type { PaymentRecord, WebhookStore } from "@/lib/payments/webhook";
 import { nextPaymentStatus } from "@/lib/payments/webhook";
-import { recurringChargeCents, type Payment, type RecurringService } from "@/lib/payments/types";
+import type { Payment, RecurringService } from "@/lib/payments/types";
 
 /**
  * The `WebhookStore` against Supabase, used by the routes that have no admin
@@ -115,201 +113,18 @@ export function createWebhookStore(): WebhookStore {
       fail("Factuurstatus bijwerken", error);
     },
 
-    async findActivationByPaymentId(molliePaymentId: string) {
-      const { data, error } = await db
-        .from("recurring_activations")
-        .select("id, recurring_service_id, used_at")
-        .eq("mollie_payment_id", molliePaymentId)
-        .maybeSingle();
-      fail("Activatie zoeken", error);
-      return data
-        ? { id: data.id, recurringServiceId: data.recurring_service_id, ...(data.used_at ? { usedAt: data.used_at } : {}) }
-        : undefined;
-    },
-
-    async getRecurringService(id: string): Promise<RecurringService | undefined> {
-      const { data, error } = await db.from("recurring_services").select(recurringColumns).eq("id", id).maybeSingle();
-      fail("Terugkerende dienst laden", error);
-      return data ? recurringServiceFromRow(data) : undefined;
-    },
-
     /*
-      One identity per customer at the provider, and the mandate with it: a
-      mandate authorises collection from the customer, not from one service,
-      so a second service reuses this row rather than making another.
+      A payment on a direct debit activation link goes to its own flow, with
+      this same elevated client. It never comes back here as an invoice
+      payment.
     */
-    async storeProviderMandate({ customerId, providerCustomerId, providerMandateId }) {
-      const { data: existing, error: readError } = await db
-        .from("customer_payment_providers")
-        .select("id")
-        .eq("customer_id", customerId)
-        .eq("provider", "mollie")
-        .maybeSingle();
-      fail("Providerkoppeling laden", readError);
-
-      if (existing) {
-        const { error } = await db
-          .from("customer_payment_providers")
-          .update({ provider_customer_id: providerCustomerId, provider_mandate_id: providerMandateId })
-          .eq("id", existing.id);
-        fail("Machtiging vastleggen", error);
-        return;
-      }
-
-      const { error } = await db.from("customer_payment_providers").insert({
-        customer_id: customerId,
-        provider: "mollie",
-        provider_customer_id: providerCustomerId,
-        provider_mandate_id: providerMandateId,
-      });
-      // 23505 means a concurrent delivery wrote it first, which is the same
-      // outcome by a different route.
-      if (error && error.code !== "23505") fail("Machtiging vastleggen", error);
+    async handleMandateActivation(payment, activationIdHint) {
+      const activation = await activationForPayment(db, payment.id, activationIdHint);
+      return activation ? processActivationPayment(db, payment, activation) : undefined;
     },
 
-    /* Fixes the billing anchor the first time, and never moves it after. */
-    async activateService(serviceId: string, startsOn: string): Promise<RecurringService | undefined> {
-      /*
-        The anchor is what every later date is derived from, so it is the date
-        the subscription is actually being created with -- which is the chosen
-        one, unless a late payment moved it forward. Writing it unconditionally
-        keeps the announcements and the collections on the same calendar.
-      */
-      const { error: anchorError } = await db
-        .from("recurring_services")
-        .update({ starts_on: startsOn })
-        .eq("id", serviceId);
-      fail("Startdatum vastleggen", anchorError);
-
-      const { data, error } = await db
-        .from("recurring_services")
-        .update({ status: "active" })
-        .eq("id", serviceId)
-        .neq("status", "canceled")
-        .select(recurringColumns)
-        .maybeSingle();
-      fail("Dienst activeren", error);
-      return data ? recurringServiceFromRow(data) : undefined;
-    },
-
-    async markActivationUsed(activationId: string): Promise<void> {
-      const { error } = await db
-        .from("recurring_activations")
-        .update({ used_at: new Date().toISOString() })
-        .eq("id", activationId)
-        .is("used_at", null);
-      fail("Activatie afronden", error);
-    },
-
-    /*
-      One subscription per service. The provider call carries an idempotency
-      key derived from the service, so a retry returns the subscription the
-      first call made instead of adding one; the unique index on
-      `mollie_subscription_id` is the backstop, and the conditional update
-      means a late second writer changes nothing.
-
-      `startDate` is the second period: the first was paid by the activation.
-    */
-    async createSubscription(service: RecurringService, startDate: string): Promise<void> {
-      if (service.mollie.subscriptionId) return;
-
-      const { data: link, error: linkError } = await db
-        .from("customer_payment_providers")
-        .select("provider_customer_id, provider_mandate_id")
-        .eq("customer_id", service.customerId)
-        .eq("provider", "mollie")
-        .maybeSingle();
-      fail("Providerkoppeling laden", linkError);
-      if (!link?.provider_customer_id || !link.provider_mandate_id) return;
-
-      const config = getMollieConfig();
-      const subscription = await createMollieSubscription({
-        customerId: link.provider_customer_id,
-        // The gross amount, matching the invoice the charge settles.
-        amountCents: recurringChargeCents(service),
-        interval: "1 month",
-        description: service.name,
-        webhookUrl: mollieWebhookUrl(config),
-        mandateId: link.provider_mandate_id,
-        startDate,
-        metadata: { kind: "recurring", recurringServiceId: service.id, customerId: service.customerId },
-        idempotencyKey: `recurring-${service.id}`,
-        config,
-      });
-
-      const { error } = await db
-        .from("recurring_services")
-        .update({ mollie_subscription_id: subscription.id })
-        .eq("id", service.id)
-        .is("mollie_subscription_id", null);
-      fail("Abonnement vastleggen", error);
-    },
-
-    /*
-      The document for a term the customer already paid. Same stored file and
-      same mailer as every other invoice; only the wording differs, because
-      there is no collection coming. Marked as sent through the same field a
-      manual send writes, which is what keeps the daily job away from it.
-
-      The PDF is the one that was stored when the term was issued, verified
-      against its hash. Rendering a fresh one here would attach a different
-      file from the one the administration holds as this invoice.
-    */
-    async sendSettledInvoice(invoice: Invoice, service: RecurringService) {
-      /* The customer as they are now, not the address the term copied. */
-      const addressed = await resolveCustomerRecipient(db, invoice.customer.customerId);
-      if (!addressed.ok) return { sent: false, reason: addressed.reason };
-      const { recipient } = addressed;
-
-      const artifact = await readInvoiceArtifact(db, invoice);
-      if (!artifact.ok) return { sent: false, reason: artifact.reason };
-      const pdf = artifact.pdf;
-
-      /* The invoice knows its project when it was filed under one; a term
-         created by the activation flow may not, and then the service does. */
-      const projectId = invoice.projectId ?? service.projectId;
-
-      const mail = await sendDocumentMail({
-        kind: "invoice",
-        number: invoice.number.value,
-        /* The elevated client, because a webhook carries no admin session --
-           the same client every other write in this store uses. */
-        log: {
-          db,
-          customerId: invoice.customer.customerId,
-          category: "recurring_invoice_settled",
-          ...invoiceLinks(invoice),
-          recurringServiceId: service.id,
-          ...(projectId ? { projectId } : {}),
-        },
-        recipient,
-        issueDateLabel: documentDateLabel(invoice.issueDate),
-        deadlineLabel: documentDateLabel(invoice.dueDate),
-        totalLabel: formatCents(calculateTotals(invoice.lines).totalCents),
-        pdf,
-        fileName: documentFileName(invoice.number.value),
-        recurring: { serviceName: service.name, collection: { kind: "settled" } },
-      });
-
-      if (!mail.sent) return { sent: false, reason: mail.reason };
-
-      await markInvoiceMailed(db, invoice.id, recipient.email, mail.sentAt);
-      return { sent: true };
-    },
-
-    async findServiceActivatedByInvoice(invoiceId: string): Promise<RecurringService | undefined> {
-      const { data, error } = await db
-        .from("recurring_services")
-        .select(recurringColumns)
-        .eq("activation_invoice_id", invoiceId)
-        .maybeSingle();
-      fail("Gekoppelde dienst laden", error);
-      return data ? recurringServiceFromRow(data) : undefined;
-    },
-
-    /* Asked of Mollie, so neither a pending nor a revoked mandate is ever used. */
-    async findMandate(customerId: string, fallbackProviderCustomerId?: string) {
-      return lookupMandate(db, customerId, fallbackProviderCustomerId);
+    async findActivationIdForPaymentLink(providerPaymentLinkId: string): Promise<string | undefined> {
+      return activationIdForPaymentLink(db, providerPaymentLinkId);
     },
 
     async findInvoiceIdForProviderPayment(molliePaymentId: string): Promise<string | undefined> {

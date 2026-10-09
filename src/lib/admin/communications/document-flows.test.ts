@@ -29,7 +29,6 @@ let db: ReturnType<typeof createFakeDb>;
 let storedInvoice: Invoice;
 let storedQuote: Quote | undefined;
 let project: { id: string; name: string } | undefined;
-let linkedService: { startsOn?: string } | undefined;
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/admin/db", async (importOriginal) => ({
@@ -53,7 +52,6 @@ vi.mock("@/lib/admin/pdf/to-buffer", () => ({
 }));
 vi.mock("@/lib/payments/pay-link", () => ({
   invoicePayLink: (...args: unknown[]) => invoicePayLink(...args),
-  serviceActivatedBy: async () => linkedService,
 }));
 vi.mock("@/lib/admin/communications/provider", () => ({
   deliverEmail: (...args: unknown[]) => deliverEmail(...args),
@@ -79,7 +77,6 @@ const quoteFixture = (overrides: Partial<Quote> = {}): Quote => ({
 const oneoffLink = {
   kind: "link",
   url: "https://payment-link.mollie.com/payment/pl_1",
-  decision: { sequence: "oneoff", reason: "no-recurring-service" },
 };
 
 const rows = () => db.rows("customer_communications");
@@ -93,7 +90,6 @@ beforeEach(() => {
   storedInvoice = issuedInvoice();
   storedQuote = quoteFixture();
   project = undefined;
-  linkedService = undefined;
   invoicePayLink.mockResolvedValue(oneoffLink);
   deliverEmail.mockResolvedValue({ sent: true, sentAt: "2026-09-14T09:00:00.000Z", messageId: "resend-1" });
 });
@@ -144,15 +140,10 @@ describe("sending an invoice", () => {
   });
 
   /*
-    An invoice that also establishes the mandate is a different event from an
-    ordinary invoice, and it is the only thing in the log that explains a
-    mandate appearing. It names the service it switches on.
+    An invoice that still promises direct debit through its payment is not
+    mailed any more, so it leaves nothing in the log either.
   */
-  it("files an invoice that starts a monthly service under its own category", async () => {
-    /*
-      The document was issued with the note on it, which is what makes this
-      an activation mail; the payment link agrees, as it must.
-    */
+  it("files nothing for an invoice that still promises direct debit", async () => {
     storedInvoice = issuedInvoice({
       projectId: "proj-1",
       activationNote: {
@@ -163,33 +154,11 @@ describe("sending an invoice", () => {
         firstDebitOn: "2026-10-01",
       },
     });
-    project = { id: "proj-1", name: "Website Alfa BV" };
-    invoicePayLink.mockResolvedValue({
-      ...oneoffLink,
-      decision: {
-        sequence: "first",
-        reason: "needs-mandate",
-        service: {
-          id: "svc-1",
-          customerId: "cust-1",
-          name: "Websitebeheer",
-          amountCents: 2500,
-          vatRate: 21,
-          startsOn: "2026-10-01",
-          status: "draft",
-          mollie: {},
-        },
-      },
-    });
 
-    await sendInvoiceToCustomer("inv-1");
+    const result = await sendInvoiceToCustomer("inv-1");
 
-    expect(rows()[0]).toMatchObject({
-      category: "invoice_activation_sent",
-      invoice_id: "inv-1",
-      recurring_service_id: "svc-1",
-      project_id: "proj-1",
-    });
+    expect(result.ok).toBe(false);
+    expect(rows()).toHaveLength(0);
   });
 
   /* Sending it again is a second mail, so it is a second row. */

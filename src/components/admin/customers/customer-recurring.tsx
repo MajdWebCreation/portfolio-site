@@ -3,13 +3,12 @@
 import { useState } from "react";
 import AdminButton from "@/components/admin/admin-button";
 import { SelectField, TextField } from "@/components/admin/form-field";
-import ActivationLines from "@/components/admin/payments/activation-lines";
+import DirectDebitPanel from "@/components/admin/payments/direct-debit-panel";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import StatusBadge from "@/components/admin/status-badge";
 import { formatDate } from "@/lib/admin/format";
-import { createRecurringService, sendRecurringActivation } from "@/lib/payments/actions";
-import { activationLinkOffered } from "@/lib/payments/activation-decision";
-import type { ActivationSummary } from "@/lib/payments/activation-view";
+import { createRecurringService, startMonthlyCollection } from "@/lib/payments/actions";
+import type { DirectDebitView } from "@/lib/payments/direct-debit-view";
 import {
   prenotificationStateLabels,
   prenotificationStateTone,
@@ -19,12 +18,13 @@ import { recurringStatusLabels, recurringStatusTone, type RecurringService } fro
 import { formatCents, parseCents } from "@/lib/money";
 
 /**
- * The customer's recurring services, and the two things an admin does with
- * them: add one, and ask the customer to authorise direct debit.
+ * The customer's direct debit and recurring services.
  *
- * Activation is never a status the admin picks. It is a link the customer has
- * to open, because only the customer can give a mandate -- so the button here
- * sends that link and the status follows from what actually happened.
+ * Three steps, each visible on its own: the activation link the customer pays
+ * EUR 0.01 through (`DirectDebitPanel`), the mandate Mollie then confirms,
+ * and -- per service, only once that mandate is valid -- starting the monthly
+ * collection. Activation is never a status the admin picks; it follows from
+ * what the customer and Mollie actually did.
  */
 const day = (key: string) => formatDate(`${key}T12:00:00+02:00`);
 
@@ -32,14 +32,17 @@ export default function CustomerRecurring({
   customerId,
   services,
   overviews,
-  activations,
+  directDebit,
+  firstCollections,
 }: {
   customerId: string;
   services: RecurringService[];
   /** Next collection and announcement state per service, derived on the server. */
   overviews: Record<string, RecurringOverview>;
-  /** How far the one-off invoice and the mandate have got, per service. */
-  activations: Record<string, ActivationSummary>;
+  /** Where the customer's direct debit stands, from what Mollie last said. */
+  directDebit: DirectDebitView;
+  /** Per service without a subscription: the earliest first collection, from the server. */
+  firstCollections: Record<string, string>;
 }) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -47,8 +50,8 @@ export default function CustomerRecurring({
   const [vatRate, setVatRate] = useState("21");
   const [error, setError] = useState<string | null>(null);
   const { save, pending, error: saveError, savedAt } = useSave();
-  const activation = useSave();
-  const [sentTo, setSentTo] = useState<string | null>(null);
+  const start = useSave();
+  const [startDates, setStartDates] = useState<Record<string, string>>({});
 
   function submit() {
     const amountCents = parseCents(amount);
@@ -76,7 +79,12 @@ export default function CustomerRecurring({
 
   return (
     <div className="border-t border-line pt-6">
-      <h2 className="label-mono text-ink">Terugkerende diensten</h2>
+      <h2 className="label-mono text-ink">Automatische incasso</h2>
+      <div className="mt-3">
+        <DirectDebitPanel customerId={customerId} view={directDebit} />
+      </div>
+
+      <h2 className="label-mono mt-8 text-ink">Terugkerende diensten</h2>
 
       {services.length === 0 ? (
         <p className="mt-3 text-[0.9rem] text-muted">Nog geen terugkerende diensten.</p>
@@ -91,32 +99,50 @@ export default function CustomerRecurring({
                 </span>
                 <StatusBadge tone={recurringStatusTone[service.status]}>{recurringStatusLabels[service.status]}</StatusBadge>
               </div>
-              <ActivationLines summary={activations[service.id]} />
               {service.mollie.subscriptionId ? (
                 <Schedule overview={overviews[service.id]} />
-              ) : service.status === "canceled" || !activationLinkOffered(activations[service.id]) ? null : (
-                <AdminButton
-                  variant="secondary"
-                  className="mt-2 min-h-8 px-3 text-[0.85rem]"
-                  disabled={activation.pending}
-                  onClick={() =>
-                    activation.save(() => sendRecurringActivation(service.id), (email: string) => setSentTo(email))
-                  }
-                >
-                  {activation.pending ? "Versturen…" : "Incasso-activatielink versturen"}
-                </AdminButton>
+              ) : service.status === "canceled" ? null : directDebit.status !== "active" ? (
+                <p className="mt-1.5 text-[0.82rem] text-muted">
+                  Maandelijkse incasso kan starten zodra de machtiging geldig is.
+                </p>
+              ) : (
+                <div className="mt-2 space-y-2">
+                  <TextField
+                    id={`first-collection-${service.id}`}
+                    label="Eerste automatische incasso"
+                    type="date"
+                    value={startDates[service.id] ?? firstCollections[service.id] ?? ""}
+                    min={firstCollections[service.id]}
+                    onChange={(event) => setStartDates({ ...startDates, [service.id]: event.target.value })}
+                    hint={`Op zijn vroegst ${firstCollections[service.id] ? day(firstCollections[service.id]!) : "–"}: na alle gefactureerde periodes en minstens 14 dagen vooruit, zodat de vooraankondiging op tijd komt.`}
+                  />
+                  <AdminButton
+                    variant="secondary"
+                    className="min-h-8 px-3 text-[0.85rem]"
+                    disabled={start.pending}
+                    onClick={() =>
+                      start.save(() => {
+                        const chosen = startDates[service.id];
+                        return startMonthlyCollection(
+                          service.id,
+                          chosen && chosen !== firstCollections[service.id] ? chosen : undefined,
+                        );
+                      })
+                    }
+                  >
+                    {start.pending ? "Starten…" : "Maandelijkse incasso starten"}
+                  </AdminButton>
+                </div>
               )}
             </li>
           ))}
         </ul>
       )}
 
-      {activation.error ? (
+      {start.error ? (
         <p role="alert" className="mt-2 border-l-2 border-danger pl-3 text-[0.85rem] text-danger">
-          {activation.error}
+          {start.error}
         </p>
-      ) : sentTo ? (
-        <p className="mt-2 text-[0.85rem] text-muted">Activatielink verstuurd naar {sentTo}.</p>
       ) : null}
 
       {adding ? (

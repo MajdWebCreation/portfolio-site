@@ -5,13 +5,8 @@ import { actionFailed, type ActionResult } from "@/lib/admin/action-result";
 import { resolveCustomerRecipient } from "@/lib/admin/communications/recipient";
 import { adminDb } from "@/lib/admin/db";
 import { documentIncompleteReason } from "@/lib/admin/documents/validation";
-import type { IssuedActivation } from "@/lib/admin/documents/types";
 import { issueInvoiceDocument } from "@/lib/admin/invoices/issue";
 import { getInvoice } from "@/lib/admin/invoices/repository";
-import { activationStatus, documentActivation } from "@/lib/payments/activation-decision";
-import { mandateByCustomer } from "@/lib/payments/activation-view";
-import { serviceActivatedBy } from "@/lib/payments/pay-link";
-import { recurringChargeCents } from "@/lib/payments/types";
 
 /**
  * Making an invoice definitive.
@@ -43,38 +38,6 @@ import { recurringChargeCents } from "@/lib/payments/types";
  * the same completeness check the send flow applies, before the counter is
  * touched.
  */
-
-/**
- * What the document will say about a monthly service, frozen at this moment.
- *
- * Read from our own administration, never from Mollie: this decides what a
- * document says, and a document may not depend on whether a provider is
- * reachable. The rule is the one the admin screen already showed -- the note
- * appears only while paying this invoice is still what establishes the
- * mandate.
- */
-async function activationToFreeze(invoice: {
-  id: string;
-  status: string;
-  customer: { customerId: string };
-}): Promise<IssuedActivation | undefined> {
-  const [service, mandates] = await Promise.all([
-    serviceActivatedBy(invoice.id),
-    mandateByCustomer([invoice.customer.customerId]),
-  ]);
-
-  const note = documentActivation({
-    ...(service ? { service } : {}),
-    status: activationStatus({
-      ...(service ? { service } : {}),
-      hasUsableMandate: mandates.has(invoice.customer.customerId),
-      activationInvoicePaid: invoice.status === "paid",
-    }),
-  });
-
-  if (!note || !service) return undefined;
-  return { ...note, serviceId: service.id, monthlyNetCents: service.amountCents, monthlyGrossCents: recurringChargeCents(service) };
-}
 
 export async function finalizeInvoice(id: string): Promise<ActionResult<string>> {
   const db = await adminDb();
@@ -108,7 +71,12 @@ export async function finalizeInvoice(id: string): Promise<ActionResult<string>>
     if (!addressed.ok) return { ok: false, error: addressed.reason };
   }
 
-  const activation = invoice.finalizingAt ? invoice.activationNote : await activationToFreeze(invoice);
+  /*
+    A new document never carries a direct debit note: paying an invoice no
+    longer authorises anything, so there is nothing to promise. Only a
+    finalization that was interrupted completes with what it already froze.
+  */
+  const activation = invoice.finalizingAt ? invoice.activationNote : undefined;
 
   const issued = await issueInvoiceDocument(db, id, activation);
   if (!issued.ok) return { ok: false, error: issued.error };

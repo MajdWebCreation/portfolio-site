@@ -46,8 +46,11 @@ export async function POST(request: Request) {
 
   // A UUID, and only a hint; the store checks it against Mollie before it
   // routes anything.
-  const hinted = new URL(request.url).searchParams.get("invoice");
-  const fromUrl = hinted && /^[0-9a-f-]{36}$/i.test(hinted) ? hinted : undefined;
+  const search = new URL(request.url).searchParams;
+  const uuidOrNothing = (value: string | null) => (value && /^[0-9a-f-]{36}$/i.test(value) ? value : undefined);
+  const fromUrl = uuidOrNothing(search.get("invoice"));
+  /* An activation link names its activation the same way, and as untrusted. */
+  const activationFromUrl = uuidOrNothing(search.get("activation"));
   const isLink = id.startsWith("pl_");
 
   try {
@@ -61,7 +64,11 @@ export async function POST(request: Request) {
     */
     const payments: MolliePayment[] = isLink ? await listPaymentLinkPayments(id) : [await getPayment(id)];
     const invoiceId = isLink ? await store.findInvoiceIdForPaymentLink(id) : fromUrl;
-    const context = invoiceId ? { invoiceIdHint: invoiceId } : {};
+    const activationId = isLink ? await store.findActivationIdForPaymentLink(id) : activationFromUrl;
+    const context = {
+      ...(invoiceId ? { invoiceIdHint: invoiceId } : {}),
+      ...(activationId ? { activationIdHint: activationId } : {}),
+    };
 
     let retry = false;
     for (const payment of payments) {
@@ -71,8 +78,8 @@ export async function POST(request: Request) {
       retry ||= Boolean(outcome.retry);
     }
     /*
-      Something will change by itself -- a mandate Mollie still calls pending
-      -- so Mollie is asked to deliver again later. Everything already written
+      Something will change by itself -- an activation whose mandate Mollie
+      still calls pending -- so Mollie is asked to deliver again later. Everything already written
       is idempotent; the redelivery only finishes the job.
     */
     if (retry) return new Response("Retry", { status: 503 });

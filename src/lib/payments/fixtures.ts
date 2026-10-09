@@ -145,6 +145,19 @@ const uniques: Unique[] = [
      Postgres. */
   { table: "invoice_collection_events", columns: ["invoice_id", "stage"] },
   { table: "invoice_collections", columns: ["invoice_id"] },
+  /* The direct debit activation links: one row per Mollie link and payment,
+     and at most one payable link per customer. */
+  { table: "mandate_activations", columns: ["provider", "provider_payment_link_id"] },
+  {
+    table: "mandate_activations",
+    columns: ["provider", "provider_payment_id"],
+    where: (row) => row.provider_payment_id != null,
+  },
+  {
+    table: "mandate_activations",
+    columns: ["customer_id"],
+    where: (row) => row.paid_at == null && row.archived_at == null,
+  },
 ];
 
 export class UniqueViolation extends Error {

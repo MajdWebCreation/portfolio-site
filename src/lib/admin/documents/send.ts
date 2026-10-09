@@ -6,7 +6,6 @@ import { invoiceLinks, quoteLinks } from "@/lib/admin/communications/links";
 import { resolveCustomerRecipient } from "@/lib/admin/communications/recipient";
 import { adminDb } from "@/lib/admin/db";
 import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email";
-import { toDateKey } from "@/lib/admin/format";
 import { documentFingerprint, invoiceDocument } from "@/lib/admin/documents/document-payload";
 import { documentIncompleteReason } from "@/lib/admin/documents/validation";
 import { getInvoice } from "@/lib/admin/invoices/repository";
@@ -15,8 +14,7 @@ import { readInvoiceArtifact } from "@/lib/admin/invoices/artifact";
 import { getQuote } from "@/lib/admin/quotes/repository";
 import { calculateTotals, formatCents } from "@/lib/money";
 import { getProject } from "@/lib/admin/projects/repository";
-import { earliestDebitDate, prenotificationDays } from "@/lib/payments/prenotification";
-import { invoicePayLink, serviceActivatedBy } from "@/lib/payments/pay-link";
+import { invoicePayLink } from "@/lib/payments/pay-link";
 
 /**
  * Sending a document to its customer.
@@ -156,7 +154,6 @@ export async function sendInvoiceToCustomer(
     between looking and sending.
   */
   const document = invoiceDocument(invoice);
-  const activates = invoice.activationNote;
 
   /*
     And the proof that it is the same document. The screen sends the
@@ -184,6 +181,21 @@ export async function sendInvoiceToCustomer(
   const numbered = invoice;
 
   /*
+    An invoice issued before direct debit was split off from invoices may
+    carry a frozen note saying that paying it also authorises the monthly
+    collection. That is no longer true -- an invoice payment is always a plain
+    one-off payment and the mandate has its own activation link -- so such a
+    document is not mailed: it would promise something the button does not do.
+  */
+  if (numbered.activationNote) {
+    return {
+      ok: false,
+      error:
+        "Deze factuur zegt dat betalen ook de automatische incasso activeert. Dat gaat voortaan via een aparte activatielink bij de klant. Annuleer deze factuur en maak een nieuwe aan.",
+    };
+  }
+
+  /*
     A pay-by-link is part of sending a normal invoice, not a bonus. If Mollie
     is configured and cannot produce one, the mail does not go out: an invoice
     whose only promised way to pay is a button that is not there is worse than
@@ -198,24 +210,6 @@ export async function sendInvoiceToCustomer(
     `invoicePayLink` reuses an attempt that is still running rather than
     creating a second one, so resending keeps handing out the same link.
   */
-  /*
-    The fourteen days are counted from the day the invoice actually goes out,
-    not from the day the admin filled the form in. A date that was far enough
-    away last week may be too close today, and this mail is the announcement
-    for that first collection -- so it is refused rather than sent with a
-    promise that cannot be kept.
-  */
-  const activating = await serviceActivatedBy(numbered.id);
-  if (activating?.startsOn) {
-    const earliest = earliestDebitDate(toDateKey(new Date()));
-    if (activating.startsOn < earliest) {
-      return {
-        ok: false,
-        error: `De eerste automatische incasso staat op ${activating.startsOn}, en dat is minder dan ${prenotificationDays} dagen na vandaag. Zet de datum op ${earliest} of later; deze factuurmail is de vooraankondiging.`,
-      };
-    }
-  }
-
   const payLink = await invoicePayLink(numbered);
   if (payLink.kind === "failed") {
     return {
@@ -225,45 +219,9 @@ export async function sendInvoiceToCustomer(
   }
   const payUrl = payLink.kind === "link" ? payLink.url : undefined;
 
-  /*
-    The document promises a mandate exactly when the payment establishes one.
-
-    The note was frozen when the invoice was issued, out of our own records;
-    the sequence is decided here, by asking Mollie. They agree in every
-    ordinary case, and when they do not, something changed between making the
-    document and sending it -- the customer authorised us elsewhere, or a
-    service was attached to an invoice that was already definitive. Sending
-    anyway would mean one of the two lies: a customer establishing a direct
-    debit that the invoice never mentions, or an invoice announcing a
-    mandate that this payment does not ask for.
-
-    So it stops, and the admin resolves it deliberately: cancel this invoice
-    and issue a new one that says the right thing.
-  */
-  const establishesMandate = payLink.kind === "link" && payLink.decision.sequence === "first";
-  if (payLink.kind === "link" && establishesMandate !== Boolean(activates)) {
-    return {
-      ok: false,
-      error: establishesMandate
-        ? "Deze betaling zou ook een automatische incasso machtigen, maar dat staat niet op de definitieve factuur. Annuleer deze factuur en maak een nieuwe aan."
-        : "Deze factuur kondigt een automatische incasso aan, maar de betaling vraagt daar geen machtiging meer voor. Annuleer deze factuur en maak een nieuwe aan.",
-    };
-  }
-
   /* The mail is named after the project; the document itself is not. */
   const project = numbered.projectId ? await getProject(numbered.projectId) : undefined;
   const totals = calculateTotals(numbered.lines);
-
-  const mailActivation = activates
-    ? {
-        serviceName: activates.serviceName,
-        monthlyNetCents: activates.monthlyNetCents,
-        monthlyGrossCents: activates.monthlyGrossCents,
-        invoiceNetCents: totals.subtotalCents,
-        firstDebitOn: activates.firstDebitOn,
-        projectSummary: project?.name ?? numbered.lines[0]?.description ?? "de geleverde werkzaamheden",
-      }
-    : undefined;
 
   /*
     The attachment is the file, read back and verified. Not a render of the
@@ -281,18 +239,12 @@ export async function sendInvoiceToCustomer(
   const mail = await sendDocumentMail({
     kind: "invoice",
     number: numbered.number.value,
-    /*
-      What the customer is about to receive, filed under what it is about. An
-      invoice that also establishes the mandate is its own category: reading
-      the list later, "factuur" and "factuur die de incasso aanzet" are not
-      the same event, and only one of them explains a mandate appearing.
-    */
+    /* What the customer is about to receive, filed under what it is about. */
     log: {
       db,
       customerId: numbered.customer.customerId,
-      category: activates ? "invoice_activation_sent" : "invoice_sent",
+      category: "invoice_sent",
       ...invoiceLinks(numbered),
-      ...(activates ? { recurringServiceId: activates.serviceId } : {}),
     },
     recipient,
     issueDateLabel: documentDateLabel(numbered.issueDate),
@@ -303,7 +255,6 @@ export async function sendInvoiceToCustomer(
     ...(payUrl ? { payUrl } : {}),
     ...(project ? { projectName: project.name } : {}),
     paymentReference: numbered.paymentReference,
-    ...(mailActivation ? { activates: mailActivation } : {}),
   });
 
   if (!mail.sent) return { ok: false, error: `Versturen mislukt: ${mail.reason}` };

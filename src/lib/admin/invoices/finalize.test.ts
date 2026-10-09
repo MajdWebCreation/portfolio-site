@@ -3,8 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { invalidRecipientReason } from "@/lib/admin/communications/recipient";
 import { sha256Hex } from "@/lib/admin/invoices/artifact";
 import { createFinalizationRpc, fakeInvoiceStorage, fixtureDocumentPath } from "@/lib/admin/invoices/storage-fixture";
-import { createFakeDb, customerRowFixture, invoiceFixture, recurringFixture } from "@/lib/payments/fixtures";
-import type { RecurringService } from "@/lib/payments/types";
+import { createFakeDb, customerRowFixture, invoiceFixture } from "@/lib/payments/fixtures";
 
 /*
   Making an invoice definitive, with the database and the bucket replaced.
@@ -42,8 +41,6 @@ let rpcImplementation = createFinalizationRpc(
 const rpc = vi.fn(async (name: string, args?: Record<string, unknown>) => rpcImplementation(name, args ?? {}));
 
 let stored = invoiceFixture();
-let service: RecurringService | undefined;
-let mandates = new Set<string>();
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/admin/db", async (importOriginal) => ({
@@ -51,8 +48,6 @@ vi.mock("@/lib/admin/db", async (importOriginal) => ({
   adminDb: async () => ({ from, rpc, storage: bucket.storage }),
 }));
 vi.mock("@/lib/admin/invoices/repository", () => ({ getInvoice: async () => stored }));
-vi.mock("@/lib/payments/pay-link", () => ({ serviceActivatedBy: async () => service }));
-vi.mock("@/lib/payments/activation-view", () => ({ mandateByCustomer: async () => mandates }));
 vi.mock("@/lib/admin/pdf/to-buffer", () => ({
   renderInvoicePdf: () => renderInvoicePdf(),
   renderQuotePdf: async () => Buffer.from("pdf"),
@@ -148,8 +143,6 @@ beforeEach(() => {
     () => `YM-F-2026-${String(sequence++).padStart(6, "0")}`,
   );
   place(concept());
-  service = undefined;
-  mandates = new Set();
 });
 
 describe("making a concept definitive", () => {
@@ -350,43 +343,17 @@ describe("when storing the PDF fails", () => {
   });
 });
 
-describe("the monthly-service note that is frozen into the document", () => {
-  beforeEach(() => {
-    service = recurringFixture({ id: "svc-1", name: "Websitebeheer", amountCents: 2500, vatRate: 21, startsOn: "2026-10-01" });
-  });
-
-  it("is frozen when paying this invoice is what establishes the mandate", async () => {
-    await finalizeInvoice("inv-1");
-
-    expect(rpc).toHaveBeenCalledWith("begin_invoice_finalization", {
-      p_invoice_id: "inv-1",
-      p_activation: {
-        serviceId: "svc-1",
-        serviceName: "Websitebeheer",
-        monthlyNetCents: 2500,
-        monthlyGrossCents: 3025,
-        firstDebitOn: "2026-10-01",
-      },
-    });
-    expect(row().activation_note).toMatchObject({ serviceName: "Websitebeheer", monthlyGrossCents: 3025 });
-  });
-
-  /* Already authorised: the document must not announce a mandate again. */
-  it("is left off when the customer already gave a mandate", async () => {
-    mandates = new Set(["cust-1"]);
-
+/*
+  Paying an invoice no longer authorises direct debit, so a new document never
+  says it does. Only a finalization that was interrupted completes with the
+  note it had already frozen -- the number and the file belong together.
+*/
+describe("the direct debit note on a document", () => {
+  it("is never frozen into a new document", async () => {
     await finalizeInvoice("inv-1");
 
     expect(rpc).toHaveBeenCalledWith("begin_invoice_finalization", { p_invoice_id: "inv-1" });
-    expect(row().activation_note).toBeNull();
-  });
-
-  it("is left off when no service hangs off the invoice", async () => {
-    service = undefined;
-
-    await finalizeInvoice("inv-1");
-
-    expect(rpc).toHaveBeenCalledWith("begin_invoice_finalization", { p_invoice_id: "inv-1" });
+    expect(row().activation_note ?? null).toBeNull();
   });
 
   /* A retry keeps the note the document was frozen with, not today's answer. */
@@ -409,7 +376,6 @@ describe("the monthly-service note that is frozen into the document", () => {
         activationNote: note,
       }),
     );
-    mandates = new Set(["cust-1"]);
 
     await finalizeInvoice("inv-1");
 

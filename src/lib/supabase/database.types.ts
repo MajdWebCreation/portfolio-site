@@ -1099,6 +1099,71 @@ export type Database = {
         }
         Relationships: []
       }
+      mandate_activations: {
+        Row: {
+          amount_cents: number
+          archived_at: string | null
+          checkout_url: string
+          created_at: string
+          customer_id: string
+          id: string
+          mandate_checked_at: string | null
+          mandate_id: string | null
+          mandate_status: string | null
+          paid_at: string | null
+          provider: string
+          provider_customer_id: string
+          provider_payment_id: string | null
+          provider_payment_link_id: string
+          updated_at: string
+          validated_at: string | null
+        }
+        Insert: {
+          amount_cents: number
+          archived_at?: string | null
+          checkout_url: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          mandate_checked_at?: string | null
+          mandate_id?: string | null
+          mandate_status?: string | null
+          paid_at?: string | null
+          provider?: string
+          provider_customer_id: string
+          provider_payment_id?: string | null
+          provider_payment_link_id: string
+          updated_at?: string
+          validated_at?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          archived_at?: string | null
+          checkout_url?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          mandate_checked_at?: string | null
+          mandate_id?: string | null
+          mandate_status?: string | null
+          paid_at?: string | null
+          provider?: string
+          provider_customer_id?: string
+          provider_payment_id?: string | null
+          provider_payment_link_id?: string
+          updated_at?: string
+          validated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mandate_activations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_cents: number

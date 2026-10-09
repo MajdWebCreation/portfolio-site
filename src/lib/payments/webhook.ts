@@ -1,10 +1,8 @@
 import { calculateTotals } from "@/lib/money";
 import type { Invoice, InvoiceStatus } from "@/lib/admin/invoices/types";
 import { centsFromMollie, paymentStatusFromMollie, type MolliePayment } from "@/lib/mollie/client";
-import { billingPeriod, firstPeriodStart, nextPeriodStart, periodForCharge, type BillingPeriod } from "@/lib/payments/billing-period";
-import { activationPeriodStart, announceableStart } from "@/lib/payments/prenotification";
+import { periodForCharge, type BillingPeriod } from "@/lib/payments/billing-period";
 import { settleInvoice } from "@/lib/payments/settlement";
-import type { MandateLookup } from "@/lib/payments/provider-customer";
 import type { Payment, PaymentStatus, RecurringService } from "@/lib/payments/types";
 
 /**
@@ -16,9 +14,10 @@ import type { Payment, PaymentStatus, RecurringService } from "@/lib/payments/ty
  *                               enforced by a unique index, not by a check in
  *                               this file. A retry updates that row.
  *
- *   no duplicate subscriptions  `mollie_subscription_id` is unique, and the
- *                               service is only asked to create one when it
- *                               has none.
+ *   no invoice from a mandate   a payment on a direct debit activation link
+ *                               is recognised first and handed to its own
+ *                               flow; it never reaches the invoice routing,
+ *                               so the EUR 0.01 can never settle anything.
  *
  *   no wrong statuses           a row that already says `paid` is never
  *                               written back to something worse, and the
@@ -47,45 +46,25 @@ export type WebhookStore = {
   getInvoice: (invoiceId: string) => Promise<Invoice | undefined>;
   listPaymentsForInvoice: (invoiceId: string) => Promise<Payment[]>;
   setInvoiceStatus: (invoiceId: string, status: InvoiceStatus) => Promise<void>;
-  /** The activation this first payment belongs to, if it is one. */
-  findActivationByPaymentId: (molliePaymentId: string) => Promise<{ id: string; recurringServiceId: string; usedAt?: string } | undefined>;
-  getRecurringService: (id: string) => Promise<RecurringService | undefined>;
-  /** The customer's identity and mandate at the provider; one per customer. */
-  storeProviderMandate: (input: {
-    customerId: string;
-    providerCustomerId: string;
-    providerMandateId: string;
-  }) => Promise<void>;
-  /** Turns the service on and fixes the billing anchor if it had none. */
-  activateService: (serviceId: string, startsOn: string) => Promise<RecurringService | undefined>;
-  markActivationUsed: (activationId: string) => Promise<void>;
+  /**
+   * A payment on a direct debit activation link, handled by its own flow
+   * (`mandate-activation.ts`) and never as an invoice payment. Returns
+   * nothing when the payment is not an activation payment. The activation id
+   * from the webhook URL is only a hint, confirmed with Mollie first.
+   */
+  handleMandateActivation: (payment: MolliePayment, activationIdHint?: string) => Promise<WebhookOutcome | undefined>;
   /**
    * The YM invoice for one billing period. Returns the existing one when the
    * period was already billed; the unique index is what decides, not a check
    * in application code.
    */
   ensureRecurringInvoice: (service: RecurringService, period: BillingPeriod) => Promise<Invoice>;
-  /** Creates the provider subscription and stores its id; skipped when one exists. */
-  createSubscription: (service: RecurringService, startDate: string) => Promise<void>;
-  /**
-   * Mails the invoice for a term the customer already paid, PDF attached, and
-   * marks the document as sent. Not a pre-notification: nothing is going to
-   * be collected, so there is nothing to announce.
-   */
-  sendSettledInvoice: (invoice: Invoice, service: RecurringService) => Promise<{ sent: boolean; reason?: string }>;
-  /** The service a paid invoice is meant to switch on, if it is meant to. */
-  findServiceActivatedByInvoice: (invoiceId: string) => Promise<RecurringService | undefined>;
-  /**
-   * The customer's mandate as Mollie reports it now -- valid, pending, invalid
-   * or none -- asked of the provider rather than of our own column.
-   * `fallbackProviderCustomerId` is the customer the payment names, used only
-   * when the administration holds no provider identity for this customer.
-   */
-  findMandate: (customerId: string, fallbackProviderCustomerId?: string) => Promise<MandateLookup>;
   /** The invoice an already recorded provider payment belongs to. */
   findInvoiceIdForProviderPayment: (molliePaymentId: string) => Promise<string | undefined>;
   /** The invoice we recorded a Mollie payment link for. */
   findInvoiceIdForPaymentLink: (providerPaymentLinkId: string) => Promise<string | undefined>;
+  /** The direct debit activation a Mollie payment link was made for. */
+  findActivationIdForPaymentLink: (providerPaymentLinkId: string) => Promise<string | undefined>;
   /**
    * Confirms that a payment really came from the payment link of this
    * invoice, by asking Mollie which payments that link produced.
@@ -112,9 +91,6 @@ export type WebhookOutcome = {
    */
   retry?: boolean;
 };
-
-/** A mandate that is still being verified: wait for Mollie, do not act. */
-const mandatePending = (note: string): WebhookOutcome => ({ handled: false, retry: true, note });
 
 /** Never move a payment backwards from money-arrived to anything else. */
 export function nextPaymentStatus(previous: PaymentStatus | undefined, incoming: PaymentStatus): PaymentStatus {
@@ -194,6 +170,8 @@ export type WebhookContext = {
    * verified against Mollie before it routes anything.
    */
   invoiceIdHint?: string;
+  /** The activation named in the webhook URL of an activation link; a hint too. */
+  activationIdHint?: string;
 };
 
 export async function processMolliePayment(
@@ -212,8 +190,13 @@ export async function processMolliePayment(
     return { handled: true, note: "integration test payment ignored" };
   }
 
-  const activation = await store.findActivationByPaymentId(payment.id);
-  if (activation) return processActivation(payment, activation, store, todayKey);
+  /*
+    Next, a direct debit activation. Its EUR 0.01 buys a mandate, not a term,
+    so it is handled by its own flow and returns before any invoice could be
+    looked up -- whatever the payment does or does not carry.
+  */
+  const activation = await store.handleMandateActivation(payment, context.activationIdHint);
+  if (activation) return activation;
 
   /*
     Which invoice this payment is for, in order of how much it is worth
@@ -253,17 +236,6 @@ export async function processMolliePayment(
 
   if (status !== invoice.status) await store.setInvoiceStatus(invoice.id, status);
 
-  /*
-    A paid one-off invoice may be the one that switches a monthly service on.
-    Whether the mandate came from this very payment (`sequenceType: first`) or
-    already existed, the same central step decides -- and it is only reached
-    once the invoice is actually settled.
-  */
-  if (settled) {
-    const activation = await activateServiceForInvoice(invoice, payment, store, todayKey);
-    if (activation) return { ...activation, invoiceStatus: status };
-  }
-
   return { handled: true, note: `invoice ${settled ? "settled" : "not settled"}`, invoiceStatus: status };
 }
 
@@ -284,74 +256,6 @@ async function linkPaymentInvoiceId(
   const invoiceId = context.invoiceIdHint;
   if (!invoiceId) return undefined;
   return (await store.confirmLinkPayment(payment.id, invoiceId)) ? invoiceId : undefined;
-}
-
-/**
- * Switching on the service a paid invoice was meant to switch on.
- *
- * The one place a subscription is created from an invoice, so the ordinary
- * flow and the standalone activation link cannot drift apart. Returns nothing
- * when this invoice was not meant to switch anything on.
- *
- * Exactly once, guaranteed three ways over: the service is only asked to
- * subscribe when it has no subscription id, the provider call carries an
- * idempotency key derived from the service, and a unique index refuses a
- * second subscription id. A repeated webhook therefore finds the work done.
- */
-async function activateServiceForInvoice(
-  invoice: Invoice,
-  payment: MolliePayment,
-  store: WebhookStore,
-  todayKey: string,
-): Promise<WebhookOutcome | undefined> {
-  const service = await store.findServiceActivatedByInvoice(invoice.id);
-  if (!service) return undefined;
-  if (service.mollie.subscriptionId) return { handled: true, note: "subscription already active" };
-  if (service.status === "canceled") return { handled: true, note: "service cancelled; not activating" };
-
-  /*
-    Which mandate to collect against. Mollie's own list decides, and only a
-    mandate it calls valid counts: a paid first payment is not proof of one
-    -- the mandate it produced can still be pending -- and one revoked at the
-    bank is no mandate at all. The mandate id the payment carries is never
-    stored on its own say-so.
-  */
-  const mandate = await store.findMandate(invoice.customer.customerId, payment.customerId);
-
-  if (mandate.state === "pending") return mandatePending("invoice paid; mandate still pending at the provider");
-  if (mandate.state !== "valid" || !mandate.providerCustomerId || !mandate.mandateId) {
-    // The money arrived but the authorisation did not. Reported rather than
-    // retried forever: nothing here will produce a mandate on its own.
-    return { handled: true, note: "invoice paid but no usable mandate yet" };
-  }
-
-  await store.storeProviderMandate({
-    customerId: invoice.customer.customerId,
-    providerCustomerId: mandate.providerCustomerId,
-    providerMandateId: mandate.mandateId,
-  });
-
-  /*
-    The start date the admin chose is the first monthly collection, and the
-    invoice mail announced it. Nothing monthly has been billed yet, so it is
-    not shifted by a period -- except when the customer paid so late that the
-    date has come too close or gone by. Collecting then would be collecting
-    without the fourteen days' notice YM Creations promises, so the date moves
-    on by whole months to the first one that can still be announced, and the
-    ordinary monthly invoice announces it.
-  */
-  if (!service.startsOn) return { handled: true, note: "service has no start date; not activating" };
-  const startDate = announceableStart(service.startsOn, todayKey);
-  const moved = startDate !== service.startsOn;
-
-  const active = (await store.activateService(service.id, startDate)) ?? service;
-  if (active.mollie.subscriptionId) return { handled: true, note: "subscription already active" };
-
-  await store.createSubscription(active, startDate);
-  return {
-    handled: true,
-    note: moved ? "subscription created from invoice payment, start date moved forward" : "subscription created from invoice payment",
-  };
 }
 
 /**
@@ -385,104 +289,4 @@ async function recurringChargeInvoiceId(payment: MolliePayment, store: WebhookSt
 
 function chargeDate(payment: MolliePayment): string {
   return (payment.paidAt ?? new Date().toISOString()).slice(0, 10);
-}
-
-/**
- * The first payment of a direct debit mandate.
- *
- * That payment is the first billing period, so it produces a normal YM
- * invoice like any other charge and is attached to it through the ordinary
- * payments table. The subscription is created afterwards and starts at the
- * *next* period, so the month just paid is never collected a second time.
- *
- * The customer paid this term themselves, in the checkout they just left, so
- * it is not a SEPA pre-notification and gets no announcement row. It gets
- * what a paid invoice gets: the document, by mail, straight away.
- *
- * Every step is separately idempotent -- the mandate is an upsert, the invoice
- * is decided by a unique index, the payment by its provider id, the
- * subscription by the service already having one -- so a repeat delivery, or
- * one that resumes after a crash halfway, finishes the job instead of
- * doubling it.
- */
-async function processActivation(
-  payment: MolliePayment,
-  activation: { id: string; recurringServiceId: string; usedAt?: string },
-  store: WebhookStore,
-  todayKey: string,
-): Promise<WebhookOutcome> {
-  const status = paymentStatusFromMollie(payment.status);
-  if (status !== "paid") return { handled: true, note: `activation payment ${status}` };
-
-  if (!payment.customerId || !payment.mandateId) {
-    return { handled: false, note: "activation payment carries no mandate yet" };
-  }
-
-  const service = await store.getRecurringService(activation.recurringServiceId);
-  if (!service) return { handled: false, note: "recurring service no longer exists" };
-
-  /*
-    The payment names a mandate; Mollie decides whether it may be used. The
-    term is invoiced and recorded either way, because the money is real. Only
-    a valid mandate switches the service on and starts the subscription; a
-    pending one asks Mollie to deliver again, and the redelivery finds the
-    recorded term and finishes the activation.
-  */
-  const mandate = await store.findMandate(service.customerId, payment.customerId);
-  const valid = mandate.state === "valid" && mandate.providerCustomerId && mandate.mandateId ? mandate : undefined;
-
-  if (valid) {
-    await store.storeProviderMandate({
-      customerId: service.customerId,
-      providerCustomerId: valid.providerCustomerId!,
-      providerMandateId: valid.mandateId!,
-    });
-  }
-
-  /*
-    Period one starts on the agreed date, or on the day this was paid -- and
-    moves on by whole months if the collection after it could no longer be
-    announced fourteen days ahead.
-  */
-  const periodStart = activationPeriodStart(firstPeriodStart(service, chargeDate(payment)), todayKey);
-  const period = billingPeriod(periodStart);
-
-  const active = valid ? ((await store.activateService(service.id, periodStart)) ?? service) : service;
-  const invoice = await store.ensureRecurringInvoice(active, period);
-
-  await store.upsertPayment(recordFrom(payment, invoice.id, invoice.customer.customerId));
-
-  const payments = await store.listPaymentsForInvoice(invoice.id);
-  const total = calculateTotals(invoice.lines).totalCents;
-  const { settled } = settleInvoice(total, payments);
-  const invoiceStatus = nextInvoiceStatus(invoice, settled, todayKey);
-  if (invoiceStatus !== invoice.status) await store.setInvoiceStatus(invoice.id, invoiceStatus);
-
-  await store.markActivationUsed(activation.id);
-
-  if (valid && !active.mollie.subscriptionId) {
-    // The first automatic collection is the second period: the first is paid.
-    await store.createSubscription(active, nextPeriodStart(periodStart));
-  }
-
-  /*
-    The invoice goes out now, not tomorrow. Idempotent on the document's own
-    `sent_at`, so a repeated delivery of this webhook mails nothing twice.
-
-    A mail that fails is reported as unhandled, which makes the route answer
-    non-2xx and Mollie deliver again. Everything above it is idempotent, so a
-    redelivery reuses this invoice and this number and only retries the mail.
-  */
-  if (!invoice.sentAt) {
-    const mailed = await store.sendSettledInvoice({ ...invoice, status: invoiceStatus }, active);
-    if (!mailed.sent) {
-      return { handled: false, note: `first term invoice mail failed: ${mailed.reason ?? "unknown"}`, invoiceStatus };
-    }
-  }
-
-  if (mandate.state === "pending") {
-    return { ...mandatePending("first term invoiced; mandate still pending at the provider"), invoiceStatus };
-  }
-  if (!valid) return { handled: true, note: "first term invoiced; no valid mandate, service not activated", invoiceStatus };
-  return { handled: true, note: "first term invoiced and mailed", invoiceStatus };
 }
