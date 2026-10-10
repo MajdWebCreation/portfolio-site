@@ -1,4 +1,5 @@
 import { calculateTotals, type Cents } from "@/lib/money";
+import type { ProrationRule } from "@/lib/payments/pricing";
 
 /**
  * Three separate ideas, deliberately not merged:
@@ -166,6 +167,26 @@ export type RecurringService = {
    */
   endsOn?: string;
   cancellationRequestedAt?: string;
+  /**
+   * What the cancellation was decided on, fixed with the request and never
+   * derived again: the notice applied, the last day that notice gives (which
+   * `endsOn` differs from only by an agreed deviation), the agreement
+   * revision and source it was read from, and how the partial last term is
+   * billed. Present exactly when `cancellationRequestedAt` is, for a
+   * cancellation planned since the agreement layer exists.
+   */
+  cancellation?: {
+    noticeMonths: number;
+    /** The minimum term that applied, when one was agreed, and its last day. */
+    minimumTermMonths?: number;
+    minimumTermEndsOn?: string;
+    contractualEndsOn: string;
+    source: string;
+    prorationRule: ProrationRule;
+    agreementRevisionId?: string;
+    /** On whose agreement `endsOn` deviates from `contractualEndsOn`; always present when it lies inside the minimum term. */
+    deviation?: { sourceKind: "accepted_offer" | "later_written_amendment"; sourceLabel: string; agreedOn: string; reason: string };
+  };
   /**
    * The partial last period, once Mollie was checked for it: the net amount
    * it is billed and collected at (pro rata, or the full amount when Mollie

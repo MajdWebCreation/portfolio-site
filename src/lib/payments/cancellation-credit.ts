@@ -2,7 +2,7 @@ import type { CreditNoteDraft } from "@/lib/admin/credit-notes/issue";
 import { addDays } from "@/lib/admin/documents/validation";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import { periodForCharge } from "@/lib/payments/billing-period";
-import { amountForPeriod, grossOf, lastTermOf, proratedNetCents, type LastTerm } from "@/lib/payments/pricing";
+import { amountForPeriod, grossOf, lastTermOf, proratedNetCents, standardProrationRule, type LastTerm } from "@/lib/payments/pricing";
 import type { PriceChange, RecurringService } from "@/lib/payments/types";
 
 /**
@@ -36,7 +36,7 @@ export type LastTermCredit = {
  * exists at the full amount, or Mollie settled on the full amount.
  */
 export function lastTermCredit(input: {
-  service: Pick<RecurringService, "amountCents" | "vatRate" | "startsOn" | "endsOn" | "lastTerm">;
+  service: Pick<RecurringService, "amountCents" | "vatRate" | "startsOn" | "endsOn" | "lastTerm" | "cancellation">;
   priceChanges: readonly PriceChange[];
   billedPeriodStarts: readonly string[];
 }): LastTermCredit | undefined {
@@ -46,7 +46,8 @@ export function lastTermCredit(input: {
   const lastTerm = lastTermOf(lastPeriod, service.endsOn);
   if (!lastTerm.partial) return undefined;
   const fullNet = amountForPeriod(service, input.priceChanges, lastPeriod.start);
-  const prorated = proratedNetCents(fullNet, lastTerm);
+  // The rule the cancellation was decided on: with the full term agreed, nothing is owed back.
+  const prorated = proratedNetCents(fullNet, lastTerm, service.cancellation?.prorationRule ?? standardProrationRule);
   const collectsFull = service.lastTerm ? service.lastTerm.amountCents === fullNet : input.billedPeriodStarts.includes(lastPeriod.start);
   const netCents = collectsFull ? fullNet - prorated : 0;
   if (netCents <= 0) return undefined;

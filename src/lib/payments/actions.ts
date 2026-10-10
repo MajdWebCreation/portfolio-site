@@ -7,13 +7,15 @@ import { resolveCustomerRecipient } from "@/lib/admin/communications/recipient";
 import { adminDb, orNull } from "@/lib/admin/db";
 import { isDateKey, toDateKey } from "@/lib/admin/format";
 import { sendActivationMail } from "@/lib/payments/activation-email";
-import { requestCancellation, withdrawCancellation, type CancellationPlan } from "@/lib/payments/cancellation";
+import { requestCancellation, withdrawCancellation, type CancellationDeviation, type CancellationPlan } from "@/lib/payments/cancellation";
 import { startCollection } from "@/lib/payments/collection-start";
 import type { DirectDebitStatus } from "@/lib/payments/direct-debit-status";
 import { refreshDirectDebit, requestMandateActivation } from "@/lib/payments/mandate-activation";
 import { listPriceChangesForService, schedulePriceChange, withdrawPriceChange } from "@/lib/payments/price-change";
 import { grossOf } from "@/lib/payments/pricing";
 import { getRecurringService } from "@/lib/payments/repository";
+import type { ServiceAgreementInput, ServiceAgreementRevision } from "@/lib/payments/service-agreement";
+import { createRecurringServiceWithAgreement, recordAgreementRevision } from "@/lib/payments/service-agreement-revisions";
 import { sendCancellationMail, sendPriceChangeMail, type MailResult } from "@/lib/payments/service-change-email";
 import { isRecurringStatus, recurringChargeCents } from "@/lib/payments/types";
 
@@ -48,27 +50,34 @@ export async function createRecurringService(input: RecurringServiceInput): Prom
   const invalid = validate(input);
   if (invalid) return { ok: false, error: invalid };
 
+  /*
+    The service and its first agreement revision -- the general terms as
+    published today, no deviation -- are one transaction in the database
+    (`create_recurring_service`): a service never exists without the record
+    of which terms it began under. A deviation from the offer is the
+    admin's to add afterwards, with its source.
+  */
+  const admin = await requireAdmin();
   const db = await adminDb();
-  const { data, error } = await db
-    .from("recurring_services")
-    .insert({
-      customer_id: input.customerId,
-      name: input.name.trim(),
+  const result = await createRecurringServiceWithAgreement(
+    db,
+    {
+      customerId: input.customerId,
+      name: input.name,
       description: input.description,
-      amount_cents: input.amountCents,
-      vat_rate: input.vatRate,
-      billing_interval: "monthly",
-      starts_on: orNull(input.startsOn),
+      amountCents: input.amountCents,
+      vatRate: input.vatRate,
+      ...(orNull(input.startsOn) ? { startsOn: input.startsOn! } : {}),
       status: input.status,
-    })
-    .select("id")
-    .single();
-
-  if (error || !data) return referenceFailed(error, missingCustomer, "Dienst aanmaken mislukt.");
+      todayKey: toDateKey(new Date()),
+    },
+    admin.userId,
+  );
+  if (!result.ok) return referenceFailed(result.error, missingCustomer, "Dienst aanmaken mislukt.");
 
   revalidatePath(`/admin/klanten/${input.customerId}`);
   revalidatePath("/admin/betalingen");
-  return { ok: true, value: data.id };
+  return { ok: true, value: result.id };
 }
 
 export async function updateRecurringService(
@@ -348,7 +357,7 @@ export type CancellationOutcome = {
 
 export async function cancelRecurringService(
   serviceId: string,
-  input: { endsOn?: string; agreedDeviation: boolean; sendMail: boolean },
+  input: { endsOn?: string; deviation?: CancellationDeviation; sendMail: boolean },
 ): Promise<ActionResult<CancellationOutcome>> {
   const service = await getRecurringService(serviceId);
   if (!service) return { ok: false, error: "Deze dienst bestaat niet (meer)." };
@@ -361,7 +370,7 @@ export async function cancelRecurringService(
     const result = await requestCancellation(
       db,
       serviceId,
-      { ...(input.endsOn ? { endsOn: input.endsOn } : {}), agreedDeviation: input.agreedDeviation },
+      { ...(input.endsOn ? { endsOn: input.endsOn } : {}), ...(input.deviation ? { deviation: input.deviation } : {}) },
       todayKey,
       admin.userId,
     );
@@ -431,5 +440,36 @@ export async function withdrawRecurringCancellation(serviceId: string): Promise<
   } catch (error) {
     console.error("Could not withdraw a cancellation", { serviceId, error });
     return failure(error, "De opzegging kon niet worden ingetrokken.");
+  }
+}
+
+// ------------------------------------------------------------- agreements
+
+/**
+ * "Afspraken bewerken": a new revision of the service's contract terms,
+ * superseding the one the admin edited from. The rules -- a deviation needs
+ * a non-standard source and an acceptance date, the effective date never
+ * goes back, one successor per revision -- are checked in
+ * `recordAgreementRevision` and again by the database.
+ */
+export async function saveServiceAgreement(
+  serviceId: string,
+  input: ServiceAgreementInput,
+): Promise<ActionResult<ServiceAgreementRevision>> {
+  const service = await getRecurringService(serviceId);
+  if (!service) return { ok: false, error: "Deze dienst bestaat niet (meer)." };
+
+  try {
+    const admin = await requireAdmin();
+    const db = await adminDb();
+    const result = await recordAgreementRevision(db, serviceId, input, admin.userId);
+    if (!result.ok) return { ok: false, error: result.reason };
+    revalidateCustomer(service.customerId);
+    revalidatePath(`/admin/betalingen/incassos/${serviceId}`);
+    if (service.projectId) revalidatePath(`/admin/projecten/${service.projectId}`);
+    return { ok: true, value: result.revision };
+  } catch (error) {
+    console.error("Could not record an agreement revision", { serviceId, error });
+    return failure(error, "De afspraken konden niet worden vastgelegd.");
   }
 }

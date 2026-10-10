@@ -4,7 +4,7 @@ import { invoiceColumns, invoiceFromRow, type InvoiceRow } from "@/lib/admin/inv
 import type { Invoice } from "@/lib/admin/invoices/types";
 import type { BillingPeriod } from "@/lib/payments/billing-period";
 import { listPriceChangesForService } from "@/lib/payments/price-change";
-import { amountForPeriod, endsInside, grossOf, lastTermOf, proratedNetCents } from "@/lib/payments/pricing";
+import { amountForPeriod, endsInside, grossOf, lastTermOf, proratedNetCents, standardProrationRule } from "@/lib/payments/pricing";
 import { isPendingPriceChange, type PriceChange, type RecurringService } from "@/lib/payments/types";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -57,12 +57,18 @@ export function recurringInvoiceLine(service: RecurringService, changes: readonl
     The service ends inside this period. Billed for the days delivered, at
     the amount Mollie collects: the one fixed when Mollie was checked for
     this term (pro rata, or the full amount when Mollie had created the
-    payment already), else the pro-rata figure the terms give.
+    payment already), else the figure the rule this cancellation was
+    decided on gives -- pro rata by days, or the full period when that was
+    agreed.
   */
+  const rule = service.cancellation?.prorationRule ?? standardProrationRule;
   return {
-    description: `${service.name} — ${billed.start} t/m ${billed.end} (${billed.term.daysUsed} van ${billed.term.periodDays} dagen)`,
+    description:
+      rule === "none"
+        ? `${service.name} — ${billed.start} t/m ${billed.end} (laatste termijn, volledig volgens afspraak)`
+        : `${service.name} — ${billed.start} t/m ${billed.end} (${billed.term.daysUsed} van ${billed.term.periodDays} dagen)`,
     quantityHundredths: 100,
-    unitPriceCents: service.lastTerm?.amountCents ?? proratedNetCents(fullNet, billed.term),
+    unitPriceCents: service.lastTerm?.amountCents ?? proratedNetCents(fullNet, billed.term, rule),
     vatRate: service.vatRate,
   };
 }

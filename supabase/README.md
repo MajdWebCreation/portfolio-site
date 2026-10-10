@@ -177,3 +177,68 @@ update public.admin_profiles set is_active = false where user_id = '<uid>';
 Sign-up is currently open on the project. It grants no admin access — that
 needs a row in `admin_profiles` — but with no public sign-up flow on the site
 there is nothing that needs it, and leaving it on lets anyone create accounts.
+
+## Dienstafspraken (recurring_service_agreements)
+
+The contract terms of a monthly service, as a chain of immutable revisions
+per service. Only what the general terms leave open lives here: the notice
+period, a minimum term, how a partial last term is billed, a special
+arrangement, where those come from (`standard_terms`, `accepted_offer`,
+`later_written_amendment`) and which set of general terms applies
+(`terms_edition` + `terms_published_on`, as `docs/legal/voorwaarden`
+registers it). Price, VAT, start date and billing day are **not** here; they
+keep their one owner (`recurring_price_changes`, `recurring_services`).
+
+A `null` term means the general terms' standard (one calendar month, pro
+rata by days, no minimum term; `standardTermsFor()` in
+`lib/payments/service-agreement.ts`). A deviation needs a non-standard
+source and an acceptance date — check constraints, not form logic. A
+`null` set of terms (both columns) means the set is not historically
+established: the backfill records every pre-existing service that way,
+because a set published later does not apply to an existing agreement by
+itself (art. 29.1), and nothing in the data says which set did. The admin
+sees "Voorwaardenversie niet historisch vastgesteld" and can record the
+set when known.
+
+Revisions are never updated or deleted: no grant, plus triggers for every
+other role. The only writes let through are the foreign key's SET NULL of
+`source_quote_id` when the offer goes (the label snapshot stays) and the
+cascade when the service itself is removed. A change is a new row naming
+the one it supersedes, and `supersedes_id` is unique, so two admins saving
+at once cannot both land. `sequence` is assigned by trigger and
+`effective_from` never goes backwards along the chain, so the revision in
+force on a day is the highest sequence effective by then.
+
+A new service is created through `create_recurring_service()`, which writes
+the service and its first revision (the standard, under the set published
+today) in one transaction: neither exists without the other.
+
+A cancellation reads the notice, an agreed minimum term and the proration
+rule from the revision in force on the request day and writes what it
+applied on the service (`cancellation_notice_months`,
+`cancellation_minimum_term_months` / `_ends_on`,
+`cancellation_contractual_ends_on`, `cancellation_agreement_revision_id`,
+`cancellation_source`, `cancellation_proration_rule`). A last day other
+than the contractual one — earlier, inside an agreed minimum term, or
+later — is a contractual deviation agreed in writing: the
+`cancellation_deviation_*` columns (kind, label, agreed date, reason) are
+required by check constraint for every deviation, and the contractual day
+itself stays in `cancellation_contractual_ends_on`. There is no separate
+"operational" stop date: the service is billed and collected through
+`ends_on`, so a later day is a contractual one or nothing. Those columns
+are the record of that one decision;
+what applies today is always resolved from the chain. Later revisions do
+not touch an existing cancellation.
+
+A recurring service is never deleted by the application (no grant, no
+path), and a service with history — a subscription, a cancellation,
+invoices, price changes or announcements, or any status past
+`awaiting_mandate` — is refused by trigger for every role; only an unused
+draft can be removed, which is what local test cleanup relies on.
+
+Billing stays monthly in advance for every service: `billing_interval`
+allows only `monthly` (the create function hard-codes it), the invoice
+falls due on the first day of the period it bills, and the agreement has
+no billing column. A contract that needs billing in arrears or another
+frequency cannot be activated until the billing lifecycle is extended for
+it; the admin screen shows "Maandelijks vooraf" as the only supported way.

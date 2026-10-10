@@ -176,8 +176,25 @@ export function lastTermOf(period: BillingPeriod, endsOn: string): LastTerm {
   return { period, endsOn, daysUsed, periodDays, partial: endsOn < period.end };
 }
 
+/**
+ * How a partial last term is billed. `pro_rata_days` is the standard the
+ * general terms give; `none` bills the full period, which only an explicit
+ * agreement with the customer can provide for. The agreement names the
+ * rule; this is the one place that applies it.
+ */
+export type ProrationRule = "pro_rata_days" | "none";
+
+export const prorationRules: readonly ProrationRule[] = ["pro_rata_days", "none"];
+
+export const standardProrationRule: ProrationRule = "pro_rata_days";
+
 /** The net amount for the days delivered, rounded once to whole cents. */
-export function proratedNetCents(fullNetCents: Cents, term: Pick<LastTerm, "daysUsed" | "periodDays">): Cents {
+export function proratedNetCents(
+  fullNetCents: Cents,
+  term: Pick<LastTerm, "daysUsed" | "periodDays">,
+  rule: ProrationRule = standardProrationRule,
+): Cents {
+  if (rule === "none") return fullNetCents;
   if (term.daysUsed >= term.periodDays) return fullNetCents;
   return roundHalfUp((fullNetCents * term.daysUsed) / term.periodDays);
 }

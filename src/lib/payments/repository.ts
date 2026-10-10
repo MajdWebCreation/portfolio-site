@@ -1,6 +1,8 @@
 import { adminDb, failed } from "@/lib/admin/db";
 import { paymentFromRow, prenotificationFromRow, recurringServiceFromRow } from "@/lib/payments/mapper";
 import { listPriceChangesForCustomer, listPriceChangesForServices } from "@/lib/payments/price-change";
+import type { ServiceAgreementRevision } from "@/lib/payments/service-agreement";
+import { listAgreementRevisionsForCustomer, listAgreementRevisionsForService } from "@/lib/payments/service-agreement-revisions";
 import type { DebitPrenotification, Payment, PriceChange, RecurringService } from "@/lib/payments/types";
 
 /** Read access to payments and recurring services; admins only, as elsewhere. */
@@ -8,7 +10,7 @@ const paymentColumns =
   "id, invoice_id, customer_id, amount_cents, currency, status, source, provider_payment_id, method, paid_at, description, created_at, updated_at";
 
 const recurringColumns =
-  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, project_id, activation_invoice_id, mollie_subscription_id, subscription_canceled_at, ends_on, cancellation_requested_at, last_term_amount_cents, last_term_synced_at, lifecycle_problem, created_at, updated_at";
+  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, project_id, activation_invoice_id, mollie_subscription_id, subscription_canceled_at, ends_on, cancellation_requested_at, cancellation_notice_months, cancellation_minimum_term_months, cancellation_minimum_term_ends_on, cancellation_deviation_source_kind, cancellation_deviation_source_label, cancellation_deviation_agreed_on, cancellation_deviation_reason, cancellation_contractual_ends_on, cancellation_agreement_revision_id, cancellation_source, cancellation_proration_rule, last_term_amount_cents, last_term_synced_at, lifecycle_problem, created_at, updated_at";
 
 export async function listPayments(): Promise<Payment[]> {
   const db = await adminDb();
@@ -115,4 +117,14 @@ export async function listPriceChangesOfCustomer(customerId: string): Promise<Pr
 /** The price history of a set of services, for the overview screens. */
 export async function listPriceChangesOfServices(serviceIds: readonly string[]): Promise<PriceChange[]> {
   return listPriceChangesForServices(await adminDb(), serviceIds);
+}
+
+/** The agreement revisions of one service, oldest first. */
+export async function listAgreementRevisionsOfService(serviceId: string): Promise<ServiceAgreementRevision[]> {
+  return listAgreementRevisionsForService(await adminDb(), serviceId);
+}
+
+/** The agreement revisions of a customer's services, oldest first. */
+export async function listAgreementRevisionsOfCustomer(customerId: string): Promise<ServiceAgreementRevision[]> {
+  return listAgreementRevisionsForCustomer(await adminDb(), customerId);
 }

@@ -25,7 +25,9 @@ import {
   prenotificationStateTone,
   type RecurringOverview,
 } from "@/lib/payments/prenotification";
+import type { CancellationDeviation } from "@/lib/payments/cancellation";
 import type { RecurringManagement } from "@/lib/payments/recurring-management";
+import { agreementSourceKindLabels, noticeLabel, prorationRuleLabels } from "@/lib/payments/service-agreement";
 import type { MailResult } from "@/lib/payments/service-change-email";
 import { recurringLifecycleLabel, recurringLifecycleTone, type RecurringService } from "@/lib/payments/types";
 import { calculateTotals, formatCents, parseCents } from "@/lib/money";
@@ -336,6 +338,29 @@ function Ending({ serviceId, management }: { serviceId: string; management: Recu
       <p className="font-medium text-ink">{ended ? `Beëindigd op ${day(ending.endsOn)}` : `Opgezegd — eindigt op ${day(ending.endsOn)}`}</p>
       <dl className="mt-1 space-y-1">
         {ending.requestedAt ? <Row term="Opgezegd op">{formatDateTime(ending.requestedAt)}</Row> : null}
+        {ending.notice ? (
+          <>
+            <Row term="Opzegtermijn">
+              {noticeLabel(ending.notice.months)} · {ending.notice.source}
+            </Row>
+            {ending.notice.minimumTermMonths !== undefined ? (
+              <Row term="Minimale looptijd">
+                {ending.notice.minimumTermMonths} {ending.notice.minimumTermMonths === 1 ? "maand" : "maanden"} vanaf de start
+              </Row>
+            ) : null}
+            <Row term="Volgens afspraken">{day(ending.notice.contractualEndsOn)}</Row>
+            {ending.notice.deviates ? <Row term="Laatste dag">{day(ending.endsOn)} · contractuele afwijking</Row> : null}
+            {ending.notice.deviation ? (
+              <>
+                <Row term="Afwijking op grond van">
+                  {agreementSourceKindLabels[ending.notice.deviation.sourceKind]} · {ending.notice.deviation.sourceLabel} · {day(ending.notice.deviation.agreedOn)}
+                </Row>
+                <Row term="Reden">{ending.notice.deviation.reason}</Row>
+              </>
+            ) : null}
+            {ending.notice.prorationRule !== "pro_rata_days" ? <Row term="Laatste termijn volgens afspraak">{prorationRuleLabels[ending.notice.prorationRule]}</Row> : null}
+          </>
+        ) : null}
         <Row term="Laatste termijn">
           {day(ending.lastTerm.period.start)} t/m {day(ending.lastTerm.partial ? ending.endsOn : ending.lastTerm.period.end)}
           {ending.lastTerm.partial ? ` (${ending.lastTerm.daysUsed} van ${ending.lastTerm.periodDays} dagen)` : ""} · {formatCents(ending.lastTermGrossCents)} incl. btw
@@ -591,7 +616,10 @@ function CancellationForm({
   const contractual = options[0];
   const [choice, setChoice] = useState<string>(contractual?.endsOn ?? "");
   const [customDate, setCustomDate] = useState("");
-  const [agreedDeviation, setAgreedDeviation] = useState(false);
+  const [deviationKind, setDeviationKind] = useState<CancellationDeviation["sourceKind"]>("later_written_amendment");
+  const [deviationLabel, setDeviationLabel] = useState("");
+  const [deviationAgreedOn, setDeviationAgreedOn] = useState("");
+  const [deviationReason, setDeviationReason] = useState("");
   const [sendMail, setSendMail] = useState(true);
   const [mail, setMail] = useState<MailResult | undefined>();
   const { save, pending, error } = useSave();
@@ -616,7 +644,17 @@ function CancellationForm({
           return "error" in computed ? computed.error : undefined;
         })()
       : undefined;
-  const confirmable = Boolean(plan) && (!plan!.deviates || agreedDeviation);
+  /*
+    Any day other than the contractual one is a contractual deviation the
+    parties agreed in writing -- earlier, inside a minimum term, or later --
+    and is written down with the end: its source, date and reason. The day
+    the agreement gave stays on the record next to it. There is no
+    "running on for free": the service is billed through its last day.
+  */
+  const deviationGiven = Boolean(deviationLabel.trim() && deviationAgreedOn && deviationReason.trim());
+  const deviation: CancellationDeviation | undefined =
+    plan?.deviates && deviationGiven ? { sourceKind: deviationKind, sourceLabel: deviationLabel, agreedOn: deviationAgreedOn, reason: deviationReason } : undefined;
+  const confirmable = Boolean(plan) && (!plan!.deviates || Boolean(deviation));
   const lastTermLabel = (candidate: CancellationPlan) =>
     `${day(candidate.lastTerm.period.start)} t/m ${day(candidate.lastTerm.partial ? candidate.endsOn : candidate.lastTerm.period.end)}${
       candidate.lastTerm.partial ? ` (${candidate.lastTerm.daysUsed} van ${candidate.lastTerm.periodDays} dagen)` : ""
@@ -629,16 +667,19 @@ function CancellationForm({
         id={`ends-${service.id}`}
         label="Laatste dag van de dienst"
         value={choice}
-        onChange={(event) => {
-          setChoice(event.target.value);
-          setAgreedDeviation(false);
-        }}
-        hint="Volgens de voorwaarden één maand opzegtermijn: de dienst eindigt precies een maand na vandaag en de laatste maandperiode wordt naar rato van de dagen gefactureerd. Een andere dag alleen als dat zo met de klant is afgesproken."
+        onChange={(event) => setChoice(event.target.value)}
+        hint={`Opzegtermijn voor deze dienst: ${noticeLabel(management.agreement.noticeMonths)}${
+          management.agreement.noticeIsStandard ? " volgens de algemene voorwaarden" : ` volgens ${management.agreement.source.label}`
+        }. De dienst eindigt precies ${management.agreement.noticeMonths === 1 ? "een kalendermaand" : `${management.agreement.noticeMonths} kalendermaanden`} na vandaag${
+          management.agreement.prorationRule === "pro_rata_days"
+            ? " en de laatste maandperiode wordt naar rato van de dagen gefactureerd"
+            : " en de laatste maandperiode wordt volgens afspraak volledig gefactureerd"
+        }. Een andere dag alleen als dat zo met de klant is afgesproken.`}
       >
         {options.map((candidate, index) => (
           <option key={candidate.endsOn} value={candidate.endsOn}>
             {day(candidate.endsOn)}
-            {index === 0 ? " — volgens voorwaarden" : " — einde maandperiode, met instemming klant"}
+            {index === 0 ? " — volgens afspraken" : " — einde maandperiode, contractuele afwijking"}
           </option>
         ))}
         <option value="custom">Andere dag (afgesproken)</option>
@@ -667,7 +708,15 @@ function CancellationForm({
           {overview?.debitOn ? `${day(overview.debitOn)} · ${formatCents(overview.amountCents!)} incl. btw` : "—"}
         </Row>
         <Row term="Opzegdatum">{plan ? day(plan.requestedOn) : "—"}</Row>
+        <Row term="Opzegtermijn">
+          {plan ? `${noticeLabel(plan.noticeMonths)} · ${management.agreement.source.label}` : "—"}
+        </Row>
         <Row term="Opzegtermijn verstrijkt">{plan ? day(plan.noticeEndsOn) : "—"}</Row>
+        {plan?.minimumTermEndsOn ? (
+          <Row term="Minimale looptijd tot en met">
+            {day(plan.minimumTermEndsOn)} ({plan.minimumTermMonths} {plan.minimumTermMonths === 1 ? "maand" : "maanden"} vanaf de start)
+          </Row>
+        ) : null}
         <Row term="Laatste dag van de dienst">{plan ? day(plan.endsOn) : "—"}</Row>
         <Row term="Laatste termijn">
           {plan ? `${lastTermLabel(plan)} · ${formatCents(plan.creditDue ? plan.lastTermGrossCents + plan.creditDue.grossCents : plan.lastTermGrossCents)} incl. btw` : "—"}
@@ -700,12 +749,48 @@ function CancellationForm({
         </p>
       ) : null}
       {plan?.deviates ? (
-        <label className="flex items-center gap-2 text-[0.85rem] text-ink">
-          <input type="checkbox" checked={agreedDeviation} onChange={(event) => setAgreedDeviation(event.target.checked)} />
-          {plan.belowNotice
-            ? "Korter dan de opzegtermijn van één maand; dit is zo met de klant afgesproken."
-            : "Later dan de opzegtermijn van één maand; de klant heeft hiermee ingestemd."}
-        </label>
+        <div className="space-y-3 border-l-2 border-line-strong pl-3">
+          <p className="text-[0.85rem] font-medium text-ink">
+            Contractuele afwijking:{" "}
+            {plan.belowMinimumTerm
+              ? `eerder dan het einde van de minimale looptijd (${day(plan.minimumTermEndsOn!)}).`
+              : plan.belowNotice
+                ? `korter dan de opzegtermijn van ${noticeLabel(plan.noticeMonths)}.`
+                : `later dan de contractuele einddatum (${day(plan.contractualEndsOn)}).`}
+          </p>
+          <p className="text-[0.82rem] text-muted">
+            Een andere laatste dag dan de afspraken geven is een schriftelijke afspraak tussen beide partijen; de dienst wordt tot en met die dag gefactureerd en geïncasseerd. Leg de afspraak hier vast; ze wordt
+            met de opzegging bewaard, naast de contractuele datum van {day(plan.contractualEndsOn)}.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SelectField id={`deviation-kind-${service.id}`} label="Afwijking op grond van" value={deviationKind} onChange={(event) => setDeviationKind(event.target.value as CancellationDeviation["sourceKind"])}>
+              <option value="later_written_amendment">{agreementSourceKindLabels.later_written_amendment}</option>
+              <option value="accepted_offer">{agreementSourceKindLabels.accepted_offer}</option>
+            </SelectField>
+            <TextField
+              id={`deviation-label-${service.id}`}
+              label="Bron"
+              value={deviationLabel}
+              onChange={(event) => setDeviationLabel(event.target.value)}
+              placeholder={deviationKind === "accepted_offer" ? "Offerte YM-O-2026-000014" : "E-mail van de klant, 12 maart 2027"}
+            />
+            <TextField
+              id={`deviation-agreed-${service.id}`}
+              label="Afgesproken op"
+              type="date"
+              value={deviationAgreedOn}
+              max={management.planInput?.todayKey}
+              onChange={(event) => setDeviationAgreedOn(event.target.value)}
+            />
+            <TextField
+              id={`deviation-reason-${service.id}`}
+              label="Reden"
+              value={deviationReason}
+              onChange={(event) => setDeviationReason(event.target.value)}
+              placeholder="Klant verhuist naar eigen omgeving"
+            />
+          </div>
+        </div>
       ) : null}
       <label className="flex items-center gap-2 text-[0.85rem] text-ink">
         <input type="checkbox" checked={sendMail} onChange={(event) => setSendMail(event.target.checked)} />
@@ -723,7 +808,7 @@ function CancellationForm({
           disabled={pending || !confirmable}
           onClick={() =>
             save(
-              () => cancelRecurringService(service.id, { endsOn, agreedDeviation, sendMail }),
+              () => cancelRecurringService(service.id, { endsOn, ...(deviation ? { deviation } : {}), sendMail }),
               (value) => {
                 setMail(value.mail);
                 if (!value.mail || value.mail.sent) onClose();

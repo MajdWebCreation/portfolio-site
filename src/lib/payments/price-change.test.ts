@@ -370,7 +370,7 @@ describe("carrying a price change out", () => {
     // and the customer agreed to end on 3 December, a period end.
     db = seed(flexora(), ["2026-09-04", "2026-10-04"]);
     expect(await plan({ newAmountCents: 1500, effectiveFrom: "2026-11-04" }, "2026-10-10")).toMatchObject({ ok: true });
-    const cancelled = await requestCancellation(db as never, "svc-1", { endsOn: "2026-12-03", agreedDeviation: true }, "2026-10-10", "admin-1");
+    const cancelled = await requestCancellation(db as never, "svc-1", { endsOn: "2026-12-03", deviation: { sourceKind: "later_written_amendment" as const, sourceLabel: "E-mail van de klant", agreedOn: "2026-10-09", reason: "Einde maandperiode afgesproken" } }, "2026-10-10", "admin-1");
     expect(cancelled).toMatchObject({ ok: true, plan: { endsOn: "2026-12-03", lastTerm: { partial: false } }, lapsedPriceChanges: 0 });
 
     const run = await runPriceChanges(db as never, "2026-10-21");

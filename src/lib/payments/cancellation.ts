@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { addDays } from "@/lib/admin/documents/validation";
+import { isDateKey } from "@/lib/admin/format";
 import {
   cancelPayment,
   cancelSubscription,
@@ -14,10 +16,13 @@ import { periodForCharge } from "@/lib/payments/billing-period";
 import {
   cancellationPlan,
   isProviderCancelDue,
+  standardNoticeMonths,
   type CancellationPlan,
 } from "@/lib/payments/cancellation-plan";
 import { listPriceChangesForService, providerCustomerId } from "@/lib/payments/price-change";
-import { amountForPeriod, grossOf, lastTermOf, proratedNetCents } from "@/lib/payments/pricing";
+import { amountForPeriod, grossOf, lastTermOf, proratedNetCents, standardProrationRule, type ProrationRule } from "@/lib/payments/pricing";
+import { resolveAgreementAt, type ResolvedAgreement } from "@/lib/payments/service-agreement";
+import { listAgreementRevisionsForService } from "@/lib/payments/service-agreement-revisions";
 import {
   describeUnknownPayments,
   isOpenPayment,
@@ -35,6 +40,7 @@ export {
   cancellationPlan,
   contractualLastDay,
   isProviderCancelDue,
+  standardNoticeMonths,
   type CancellationInput,
   type CancellationPlan,
 } from "@/lib/payments/cancellation-plan";
@@ -43,15 +49,24 @@ export {
  * Ending a monthly service.
  *
  * The general terms (art. 25.1, A4.2) give a continuing hosting or
- * management service one month's notice, and nothing more: the fee stays
- * due while the service runs, and "na daadwerkelijke beëindiging stopt het
- * maandbedrag" (A4.3). So the service ends exactly one month after the
- * request -- the last day of service is the day before -- whatever the
- * billing calendar says. The billing period that day falls in is delivered
- * in part, and is billed and collected pro rata by days. Rounding the end up
- * to the period's end would add up to a month the terms do not provide for,
- * so it is never done on the system's own authority: a different end needs
- * an agreement with the customer, and the admin says so when choosing one.
+ * management service one calendar month's notice, and nothing more: the fee
+ * stays due while the service runs, and "na daadwerkelijke beëindiging
+ * stopt het maandbedrag" (A4.3). So the service ends exactly one month
+ * after the request -- the last day of service is the day before --
+ * whatever the billing calendar says. The billing period that day falls in
+ * is delivered in part, and is billed and collected pro rata by days.
+ * Rounding the end up to the period's end would add up to a month the terms
+ * do not provide for, so it is never done on the system's own authority: a
+ * different end needs an agreement with the customer, and the admin says so
+ * when choosing one.
+ *
+ * Which notice and which proration rule apply is read, on the day of the
+ * request, from the service's agreement as it stood that day
+ * (service-agreement.ts): an offer may have agreed a longer notice. What
+ * was applied is then written on the service next to the dates -- the
+ * notice, the last day it gives, the revision and source it came from --
+ * so the end stays explicable after the agreement is amended, and nothing
+ * below derives it again.
  *
  * Mollie has no cancel-at date, and the last legitimate collection may still
  * be weeks ahead, so the subscription is cancelled by the daily job on the
@@ -74,7 +89,7 @@ function fail(operation: string, error: { message: string } | null): void {
 }
 
 const serviceColumns =
-  "id, customer_id, name, amount_cents, vat_rate, starts_on, status, ends_on, cancellation_requested_at, last_term_amount_cents, last_term_synced_at, lifecycle_problem, mollie_subscription_id, subscription_canceled_at";
+  "id, customer_id, name, amount_cents, vat_rate, starts_on, status, ends_on, cancellation_requested_at, cancellation_notice_months, cancellation_minimum_term_months, cancellation_minimum_term_ends_on, cancellation_deviation_source_kind, cancellation_deviation_source_label, cancellation_deviation_agreed_on, cancellation_deviation_reason, cancellation_contractual_ends_on, cancellation_agreement_revision_id, cancellation_source, cancellation_proration_rule, last_term_amount_cents, last_term_synced_at, lifecycle_problem, mollie_subscription_id, subscription_canceled_at";
 
 async function readService(db: Db, serviceId: string) {
   const { data, error } = await db.from("recurring_services").select(serviceColumns).eq("id", serviceId).maybeSingle();
@@ -90,7 +105,28 @@ async function billedPeriodStarts(db: Db, serviceId: string): Promise<string[]> 
   return (data ?? []).flatMap((row) => (row.billing_period_start ? [row.billing_period_start] : []));
 }
 
-async function planFor(db: Db, state: ServiceState, todayKey: string, requestedEndsOn?: string) {
+type AppliedTerms = { noticeMonths: number; prorationRule: ProrationRule; minimumTermMonths?: number };
+
+/**
+ * The terms a planned cancellation was decided on, off its own snapshot --
+ * the `cancellation_*` columns, written once with the request. They are
+ * read only here, for the one cancellation they record; what applies to
+ * the service today is always resolved from the agreement chain, never
+ * from these. A cancellation from before the agreement layer existed
+ * carries none and was decided on the standard, which is what the
+ * fallbacks say.
+ */
+function appliedTerms(
+  state: Pick<ServiceState, "cancellation_notice_months" | "cancellation_proration_rule" | "cancellation_minimum_term_months">,
+): AppliedTerms {
+  return {
+    noticeMonths: state.cancellation_notice_months ?? standardNoticeMonths,
+    prorationRule: (state.cancellation_proration_rule as ProrationRule | null) ?? standardProrationRule,
+    ...(state.cancellation_minimum_term_months !== null ? { minimumTermMonths: state.cancellation_minimum_term_months } : {}),
+  };
+}
+
+async function planFor(db: Db, state: ServiceState, todayKey: string, terms: AppliedTerms, requestedEndsOn?: string) {
   return cancellationPlan({
     startsOn: state.starts_on!,
     amountCents: state.amount_cents,
@@ -98,21 +134,78 @@ async function planFor(db: Db, state: ServiceState, todayKey: string, requestedE
     priceChanges: await listPriceChangesForService(db, state.id),
     billedPeriodStarts: await billedPeriodStarts(db, state.id),
     todayKey,
+    noticeMonths: terms.noticeMonths,
+    prorationRule: terms.prorationRule,
+    ...(terms.minimumTermMonths !== undefined ? { minimumTermMonths: terms.minimumTermMonths } : {}),
     ...(requestedEndsOn ? { requestedEndsOn } : {}),
   });
 }
 
+/**
+ * The plan of a cancellation already made, as it was decided: the
+ * contractual day comes off the snapshot the request wrote, not off a
+ * recomputation from the request timestamp -- which is UTC, while the
+ * request day was Amsterdam's, and which would say something else once
+ * the agreement is amended.
+ */
+async function existingPlan(db: Db, state: ServiceState, todayKey: string) {
+  const requestedOn = state.cancellation_requested_at?.slice(0, 10) ?? todayKey;
+  const plan = await planFor(db, state, requestedOn, appliedTerms(state), state.ends_on!);
+  if ("error" in plan) return plan;
+  const contractualEndsOn = state.cancellation_contractual_ends_on ?? plan.contractualEndsOn;
+  return {
+    ...plan,
+    contractualEndsOn,
+    noticeEndsOn: addDays(contractualEndsOn, 1),
+    deviates: plan.endsOn !== contractualEndsOn,
+    belowNotice: plan.endsOn < plan.noticeLastDay,
+    belowMinimumTerm: Boolean(plan.minimumTermEndsOn && plan.endsOn < plan.minimumTermEndsOn),
+  };
+}
+
+/**
+ * On whose agreement a last day deviates from the contractual one: the
+ * same two kinds a deviating agreement revision has, how it reads, when it
+ * was agreed and why. Required for every deviation. A last day other than
+ * the one the agreement gives -- earlier, inside an agreed minimum term, or
+ * later -- is a contractual deviation the parties agreed in writing, never
+ * an operational choice: the service is billed and collected through its
+ * last day, so there is no "running on for free" to record separately. The
+ * contractual day the agreement gave stays on the snapshot untouched.
+ */
+export type CancellationDeviation = {
+  sourceKind: "accepted_offer" | "later_written_amendment";
+  sourceLabel: string;
+  agreedOn: string;
+  reason: string;
+};
+
 export type CancellationRequest = {
   /** A last day other than the contractual one. */
   endsOn?: string;
-  /** Required for any end other than the contractual one: the customer agreed to it. */
-  agreedDeviation?: boolean;
+  /** The written agreement behind that other day; required for any end other than the contractual one. */
+  deviation?: CancellationDeviation;
 };
+
+export const earlyTerminationNeedsSourceReason =
+  "Deze einddatum ligt binnen de afgesproken minimale looptijd. Dat kan alleen op grond van een latere schriftelijke afspraak of geaccepteerde offerte: leg bron, datum en reden vast.";
+
+function invalidDeviation(deviation: CancellationDeviation | undefined, todayKey: string): string | null {
+  if (!deviation) return null;
+  if (deviation.sourceKind !== "accepted_offer" && deviation.sourceKind !== "later_written_amendment") return "Kies een geldige bron voor de afwijkende einddatum.";
+  if (!deviation.sourceLabel.trim()) return "Omschrijf de bron van de afwijkende einddatum.";
+  if (!isDateKey(deviation.agreedOn)) return "De datum van de afspraak over de einddatum is geen geldige datum.";
+  if (deviation.agreedOn > todayKey) return "De afspraak over de einddatum kan niet na vandaag zijn gemaakt.";
+  if (!deviation.reason.trim()) return "Geef de reden van de afwijkende einddatum.";
+  return null;
+}
 
 export type CancellationResult =
   | {
       ok: true;
       plan: CancellationPlan;
+      /** The terms the plan was decided on; the service's agreement on the request day. */
+      agreement: ResolvedAgreement;
       reused: boolean;
       /** The subscription was cancelled at Mollie right away. */
       providerCanceledNow: boolean;
@@ -125,16 +218,18 @@ export type CancellationResult =
 export const notCollectingReason = "Alleen een dienst waarvan de maandelijkse incasso loopt kan worden opgezegd.";
 export const alreadyEndedReason = "Deze dienst is al beëindigd.";
 export const deviationReason =
-  "Deze einddatum wijkt af van de opzegtermijn van één maand uit de voorwaarden. Bevestig dat dit zo met de klant is afgesproken.";
+  "Deze einddatum wijkt af van de contractuele einddatum van deze dienst. Dat is een contractuele afwijking: leg de afspraak met de klant vast (bron, datum en reden).";
 
 /**
- * Plans the end of one service. Writes the dates on the service row as a
- * compare-and-swap against "nothing planned yet", so a second click finds
- * the plan already there and returns it. A price change that would only
- * have started after the end, or in the partial last period before Mollie
- * was told of it, lapses with it. Mollie is then checked for the last term
- * straight away (see `syncLastTerm`), and the subscription is cancelled at
- * once when nothing legitimate is left to collect.
+ * Plans the end of one service. The notice and the proration rule are read
+ * from the agreement in force on the request day, and written on the
+ * service with the dates, as a compare-and-swap against "nothing planned
+ * yet", so a second click finds the plan already there and returns it. A
+ * price change that would only have started after the end, or in the
+ * partial last period before Mollie was told of it, lapses with it. Mollie
+ * is then checked for the last term straight away (see `syncLastTerm`),
+ * and the subscription is cancelled at once when nothing legitimate is
+ * left to collect.
  */
 export async function requestCancellation(
   db: Db,
@@ -152,16 +247,41 @@ export async function requestCancellation(
   if (lifecycle === "ended") return { ok: false, reason: alreadyEndedReason };
   if (lifecycle === "other" || !state.mollie_subscription_id || !state.starts_on) return { ok: false, reason: notCollectingReason };
 
+  const revisions = await listAgreementRevisionsForService(db, state.id);
+
   if (state.ends_on) {
-    // Already planned: the same answer again, nothing written.
-    const existing = await planFor(db, state, state.cancellation_requested_at?.slice(0, 10) ?? todayKey, state.ends_on);
+    // Already planned: the same answer again, nothing written, on the terms
+    // it was planned with -- not on today's agreement.
+    const requestedOn = state.cancellation_requested_at?.slice(0, 10) ?? todayKey;
+    const existing = await existingPlan(db, state, todayKey);
     if ("error" in existing) return { ok: false, reason: existing.error };
-    return { ok: true, plan: existing, reused: true, providerCanceledNow: false, lastTermSynced: Boolean(state.last_term_synced_at), lapsedPriceChanges: 0 };
+    return {
+      ok: true,
+      plan: existing,
+      agreement: resolveAgreementAt(revisions, requestedOn),
+      reused: true,
+      providerCanceledNow: false,
+      lastTermSynced: Boolean(state.last_term_synced_at),
+      lapsedPriceChanges: 0,
+    };
   }
 
-  const plan = await planFor(db, state, todayKey, request.endsOn);
+  // The agreement as it stands today decides the notice; a revision
+  // effective today counts, one effective tomorrow does not.
+  const agreement = resolveAgreementAt(revisions, todayKey);
+  const terms: AppliedTerms = {
+    noticeMonths: agreement.noticeMonths,
+    prorationRule: agreement.prorationRule,
+    ...(agreement.minimumTermMonths !== undefined ? { minimumTermMonths: agreement.minimumTermMonths } : {}),
+  };
+  const plan = await planFor(db, state, todayKey, terms, request.endsOn);
   if ("error" in plan) return { ok: false, reason: plan.error };
-  if (plan.deviates && !request.agreedDeviation) return { ok: false, reason: deviationReason };
+  // A contract term is set aside only by a later agreement, and that agreement is written down with the end.
+  if (plan.belowMinimumTerm && !request.deviation) return { ok: false, reason: earlyTerminationNeedsSourceReason };
+  if (plan.deviates && !request.deviation) return { ok: false, reason: deviationReason };
+  const deviation = plan.deviates ? request.deviation : undefined;
+  const badDeviation = invalidDeviation(deviation, todayKey);
+  if (badDeviation) return { ok: false, reason: badDeviation };
 
   const { data: planned, error } = await db
     .from("recurring_services")
@@ -169,6 +289,17 @@ export async function requestCancellation(
       cancellation_requested_at: now.toISOString(),
       cancellation_requested_by: requestedBy ?? null,
       ends_on: plan.endsOn,
+      cancellation_notice_months: plan.noticeMonths,
+      cancellation_minimum_term_months: plan.minimumTermMonths ?? null,
+      cancellation_minimum_term_ends_on: plan.minimumTermEndsOn ?? null,
+      cancellation_deviation_source_kind: deviation?.sourceKind ?? null,
+      cancellation_deviation_source_label: deviation?.sourceLabel.trim() ?? null,
+      cancellation_deviation_agreed_on: deviation?.agreedOn ?? null,
+      cancellation_deviation_reason: deviation?.reason.trim() ?? null,
+      cancellation_contractual_ends_on: plan.contractualEndsOn,
+      cancellation_agreement_revision_id: agreement.revision?.id ?? null,
+      cancellation_source: agreement.source.label,
+      cancellation_proration_rule: plan.prorationRule,
     })
     .eq("id", state.id)
     .eq("status", "active")
@@ -181,9 +312,18 @@ export async function requestCancellation(
     // Someone else planned it a moment ago; theirs stands.
     const after = await readService(db, serviceId);
     if (after?.ends_on && after.starts_on) {
-      const theirs = await planFor(db, after, todayKey, after.ends_on);
+      const requestedOn = after.cancellation_requested_at?.slice(0, 10) ?? todayKey;
+      const theirs = await existingPlan(db, after, todayKey);
       if (!("error" in theirs)) {
-        return { ok: true, plan: theirs, reused: true, providerCanceledNow: false, lastTermSynced: Boolean(after.last_term_synced_at), lapsedPriceChanges: 0 };
+        return {
+          ok: true,
+          plan: theirs,
+          agreement: resolveAgreementAt(revisions, requestedOn),
+          reused: true,
+          providerCanceledNow: false,
+          lastTermSynced: Boolean(after.last_term_synced_at),
+          lapsedPriceChanges: 0,
+        };
       }
     }
     return { ok: false, reason: "De dienst is intussen gewijzigd. Ververs de pagina." };
@@ -203,7 +343,7 @@ export async function requestCancellation(
   // When nothing legitimate is left to collect, Mollie need not wait for the job.
   const settled = await settleCancellation(db, state.id, todayKey, now);
 
-  return { ok: true, plan, reused: false, providerCanceledNow: settled.providerCanceled, lastTermSynced, lapsedPriceChanges };
+  return { ok: true, plan, agreement, reused: false, providerCanceledNow: settled.providerCanceled, lastTermSynced, lapsedPriceChanges };
 }
 
 /**
@@ -262,7 +402,8 @@ export async function syncLastTerm(db: Db, serviceId: string, now: Date = new Da
 
   const changes = await listPriceChangesForService(db, state.id);
   const fullNet = amountForPeriod({ amountCents: state.amount_cents }, changes, lastPeriod.start);
-  const proratedNet = proratedNetCents(fullNet, term);
+  // The rule this cancellation was decided on, never today's agreement.
+  const proratedNet = proratedNetCents(fullNet, term, appliedTerms(state).prorationRule);
 
   const providerId = await providerCustomerId(db, state.customer_id);
   if (!providerId) throw new Error("De klant heeft geen Mollie-klantprofiel.");
@@ -389,6 +530,17 @@ export async function withdrawCancellation(db: Db, serviceId: string, todayKey: 
       cancellation_requested_at: null,
       cancellation_requested_by: null,
       ends_on: null,
+      cancellation_notice_months: null,
+      cancellation_minimum_term_months: null,
+      cancellation_minimum_term_ends_on: null,
+      cancellation_deviation_source_kind: null,
+      cancellation_deviation_source_label: null,
+      cancellation_deviation_agreed_on: null,
+      cancellation_deviation_reason: null,
+      cancellation_contractual_ends_on: null,
+      cancellation_agreement_revision_id: null,
+      cancellation_source: null,
+      cancellation_proration_rule: null,
       last_term_amount_cents: null,
       last_term_synced_at: null,
       lifecycle_problem: null,

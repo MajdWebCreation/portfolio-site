@@ -21,9 +21,11 @@ import { customerFinancials, customerPaymentStatusLabels, customerPaymentStatusT
 import { formatCents } from "@/lib/money";
 import { recurringOverview, type RecurringOverview } from "@/lib/payments/prenotification";
 import { recurringManagement, type RecurringManagement } from "@/lib/payments/recurring-management";
+import { resolveAgreementAt } from "@/lib/payments/service-agreement";
 import {
   listPaymentsForCustomer,
   listPrenotificationsForCustomer,
+  listAgreementRevisionsOfCustomer,
   listPriceChangesOfCustomer,
   listRecurringServicesForCustomer,
 } from "@/lib/payments/repository";
@@ -66,6 +68,7 @@ export default async function CustomerPage({ params }: PageProps) {
     priceChanges,
     creditNotes,
     refunds,
+    agreementRevisions,
   ] = await Promise.all([
     customer.sourceInquiryId ? readInquiry(customer.sourceInquiryId) : undefined,
     customer.sourceLeadId ? readLead(customer.sourceLeadId) : undefined,
@@ -80,6 +83,7 @@ export default async function CustomerPage({ params }: PageProps) {
     listPriceChangesOfCustomer(customer.id),
     listCreditNotesForCustomer(customer.id),
     listRefundsForCustomer(customer.id),
+    listAgreementRevisionsOfCustomer(customer.id),
   ]);
 
   const todayKey = toDateKey(new Date());
@@ -145,6 +149,11 @@ export default async function CustomerPage({ params }: PageProps) {
           billedPeriodStarts: billedPeriodStarts(service.id),
           overview: recurringOverviews[service.id]!,
           todayKey,
+          // The terms in force today, so the cancellation form applies this service's own notice.
+          agreement: resolveAgreementAt(
+            agreementRevisions.filter((revision) => revision.recurringServiceId === service.id),
+            todayKey,
+          ),
           ...(cancellationCreditNote ? { cancellationCreditNote } : {}),
         }),
       ];

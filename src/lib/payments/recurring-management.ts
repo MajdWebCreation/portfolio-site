@@ -11,9 +11,12 @@ import {
   priceChangeOptions,
   proratedNetCents,
   providerUpdateDay,
+  standardProrationRule,
   type LastTerm,
   type PriceChangeOption,
+  type ProrationRule,
 } from "@/lib/payments/pricing";
+import { resolveAgreementAt, type ResolvedAgreement } from "@/lib/payments/service-agreement";
 import { recurringLifecycle, type PriceChange, type RecurringLifecycle, type RecurringService } from "@/lib/payments/types";
 
 /**
@@ -55,6 +58,24 @@ export type PriceChangeHistoryEntry = {
 export type ServiceEnding = {
   endsOn: string;
   requestedAt?: string;
+  /**
+   * Why this last day: the notice the cancellation was decided on, the day
+   * that notice gives, and where the notice came from. Off the snapshot
+   * the request wrote, so a later amendment of the agreement changes
+   * nothing here. Absent for a cancellation planned before that snapshot
+   * existed.
+   */
+  notice?: {
+    months: number;
+    minimumTermMonths?: number;
+    minimumTermEndsOn?: string;
+    contractualEndsOn: string;
+    source: string;
+    deviates: boolean;
+    prorationRule: ProrationRule;
+    /** The later agreement the deviation rests on, when recorded; always when the end lies inside the minimum term. */
+    deviation?: NonNullable<RecurringService["cancellation"]>["deviation"];
+  };
   /** The last period still collected, pro rata when partial. */
   lastTerm: LastTerm;
   lastDebitOn: string;
@@ -88,6 +109,8 @@ export type CancellationCreditNote = {
 
 export type RecurringManagement = {
   lifecycle: RecurringLifecycle;
+  /** The terms in force today: notice, proration, source, applicable set of general terms. */
+  agreement: ResolvedAgreement;
   /** The price in effect for the period running today. */
   currentNetCents: number;
   currentGrossCents: number;
@@ -100,7 +123,17 @@ export type RecurringManagement = {
   /** The ends offered: the contractual one first, then period ends after it. */
   cancellationOptions: CancellationPlan[];
   /** What the form needs to preview any other date the admin types. */
-  planInput?: { startsOn: string; amountCents: number; vatRate: number; priceChanges: PriceChange[]; billedPeriodStarts: string[]; todayKey: string };
+  planInput?: {
+    startsOn: string;
+    amountCents: number;
+    vatRate: number;
+    priceChanges: PriceChange[];
+    billedPeriodStarts: string[];
+    todayKey: string;
+    noticeMonths: number;
+    prorationRule: ProrationRule;
+    minimumTermMonths?: number;
+  };
   canChangePrice: boolean;
   canCancel: boolean;
   canWithdrawCancellation: boolean;
@@ -118,8 +151,11 @@ export function recurringManagement(input: {
   todayKey: string;
   /** The credit note already made for this service's cancellation credit, when there is one. */
   cancellationCreditNote?: CancellationCreditNote;
+  /** The service's agreement in force on `todayKey`; the standard when not given. */
+  agreement?: ResolvedAgreement;
 }): RecurringManagement {
   const { service, priceChanges, billedPeriodStarts, todayKey } = input;
+  const agreement = input.agreement ?? resolveAgreementAt([], todayKey);
   const lifecycle = recurringLifecycle(service, todayKey);
   const anchor = service.startsOn;
   const collecting = Boolean(service.mollie.subscriptionId && anchor);
@@ -169,6 +205,9 @@ export function recurringManagement(input: {
           priceChanges: [...priceChanges],
           billedPeriodStarts: [...billedPeriodStarts],
           todayKey,
+          noticeMonths: agreement.noticeMonths,
+          prorationRule: agreement.prorationRule,
+          ...(agreement.minimumTermMonths !== undefined ? { minimumTermMonths: agreement.minimumTermMonths } : {}),
         }
       : undefined;
   const options = planInput ? cancellationOptions(planInput) : [];
@@ -179,7 +218,8 @@ export function recurringManagement(input: {
           const lastPeriod = periodForCharge(anchor, service.endsOn!);
           const lastTerm = lastTermOf(lastPeriod, service.endsOn!);
           const fullNet = amountForPeriod(service, priceChanges, lastPeriod.start);
-          const proratedNet = proratedNetCents(fullNet, lastTerm);
+          // The rule this cancellation was decided on, off its snapshot.
+          const proratedNet = proratedNetCents(fullNet, lastTerm, service.cancellation?.prorationRule ?? standardProrationRule);
           const synced = Boolean(service.lastTerm);
           const netCents = service.lastTerm?.amountCents ?? proratedNet;
           /*
@@ -196,6 +236,20 @@ export function recurringManagement(input: {
           return {
             endsOn: service.endsOn!,
             ...(service.cancellationRequestedAt ? { requestedAt: service.cancellationRequestedAt } : {}),
+            ...(service.cancellation
+              ? {
+                  notice: {
+                    months: service.cancellation.noticeMonths,
+                    ...(service.cancellation.minimumTermMonths !== undefined ? { minimumTermMonths: service.cancellation.minimumTermMonths } : {}),
+                    ...(service.cancellation.minimumTermEndsOn ? { minimumTermEndsOn: service.cancellation.minimumTermEndsOn } : {}),
+                    ...(service.cancellation.deviation ? { deviation: service.cancellation.deviation } : {}),
+                    contractualEndsOn: service.cancellation.contractualEndsOn,
+                    source: service.cancellation.source,
+                    deviates: service.cancellation.contractualEndsOn !== service.endsOn,
+                    prorationRule: service.cancellation.prorationRule,
+                  },
+                }
+              : {}),
             lastTerm,
             lastDebitOn: lastPeriod.start,
             lastTermNetCents: collectsFull ? fullNet : netCents,
@@ -237,6 +291,7 @@ export function recurringManagement(input: {
 
   return {
     lifecycle,
+    agreement,
     currentNetCents,
     currentGrossCents: grossOf(currentNetCents, service.vatRate),
     vatRate: service.vatRate,

@@ -284,7 +284,9 @@ describe("planning the end of a service", () => {
     expect(await cancel("2026-10-10", { endsOn: "2026-10-20" })).toEqual({ ok: false, reason: deviationReason });
     expect(service().ends_on).toBeNull();
 
-    const agreed = await cancel("2026-10-10", { endsOn: "2026-12-03", agreedDeviation: true });
+    // Any other day is a contractual deviation, recorded with its written agreement.
+    expect(await cancel("2026-10-10", { endsOn: "2026-12-03", deviation: { ...{ sourceKind: "later_written_amendment" as const, sourceLabel: "E-mail van de klant", agreedOn: "2026-10-09", reason: "Einde maandperiode afgesproken" }, reason: "" } })).toEqual({ ok: false, reason: expect.stringContaining("reden") });
+    const agreed = await cancel("2026-10-10", { endsOn: "2026-12-03", deviation: { sourceKind: "later_written_amendment" as const, sourceLabel: "E-mail van de klant", agreedOn: "2026-10-09", reason: "Einde maandperiode afgesproken" } });
     expect(agreed).toMatchObject({ ok: true, plan: { endsOn: "2026-12-03", deviates: true, lastTerm: { partial: false } } });
     // A whole last period: nothing to settle at Mollie.
     expect(updateSubscriptionAmount).not.toHaveBeenCalled();
@@ -310,7 +312,7 @@ describe("planning the end of a service", () => {
   it("is idempotent: a second request returns the plan that exists", async () => {
     await cancel();
     const requestedAt = service().cancellation_requested_at;
-    const second = await cancel("2026-10-12", { endsOn: "2027-01-03", agreedDeviation: true });
+    const second = await cancel("2026-10-12", { endsOn: "2027-01-03", deviation: { sourceKind: "later_written_amendment" as const, sourceLabel: "E-mail van de klant", agreedOn: "2026-10-09", reason: "Einde maandperiode afgesproken" } });
 
     expect(second).toMatchObject({ ok: true, reused: true, plan: { endsOn: "2026-11-09" } });
     expect(service()).toMatchObject({ ends_on: "2026-11-09", cancellation_requested_at: requestedAt });
@@ -512,7 +514,7 @@ describe("what still happens before the end, and what does not", () => {
   });
 
   it("cancels right away when no legitimate collection is left", async () => {
-    const result = await cancel("2026-10-10", { endsOn: "2026-10-20", agreedDeviation: true });
+    const result = await cancel("2026-10-10", { endsOn: "2026-10-20", deviation: { sourceKind: "later_written_amendment" as const, sourceLabel: "E-mail van de klant", agreedOn: "2026-10-09", reason: "Einde maandperiode afgesproken" } });
     expect(result).toMatchObject({ ok: true, providerCanceledNow: true, plan: { collectionsAhead: [], providerCancelFrom: "2026-10-10", creditDue: { days: 14 } } });
     expect(cancelSubscription).toHaveBeenCalledTimes(1);
   });

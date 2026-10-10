@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import AdminPageHeader from "@/components/admin/admin-page-header";
 import AdminSection from "@/components/admin/admin-section";
 import CustomerRecurring from "@/components/admin/customers/customer-recurring";
+import ServiceAgreementPanel from "@/components/admin/payments/service-agreement-panel";
 import StatusBadge from "@/components/admin/status-badge";
 import { requireAdminAccess } from "@/lib/admin/access";
 import { listCreditNotesForCustomer, listRefundsForCustomer } from "@/lib/admin/credit-notes/repository";
@@ -11,13 +12,21 @@ import { creditNoteLedger } from "@/lib/admin/credit-notes/settlement";
 import { formatDate, formatDateTime, toDateKey } from "@/lib/admin/format";
 import { listInvoicesForRecurringService } from "@/lib/admin/invoices/repository";
 import { invoiceStatusLabels, invoiceStatusTone } from "@/lib/admin/invoices/types";
+import { listQuotesForCustomer } from "@/lib/admin/quotes/repository";
 import { readCustomer } from "@/lib/admin/readers";
 import { calculateTotals, formatCents } from "@/lib/money";
 import { firstCollectionDate } from "@/lib/payments/collection-start";
 import { directDebitView } from "@/lib/payments/direct-debit-view";
 import { recurringOverview } from "@/lib/payments/prenotification";
 import { recurringManagement } from "@/lib/payments/recurring-management";
-import { getRecurringService, listPaymentsForCustomer, listPrenotificationsForCustomer, listPriceChangesOfCustomer } from "@/lib/payments/repository";
+import {
+  getRecurringService,
+  listAgreementRevisionsOfService,
+  listPaymentsForCustomer,
+  listPrenotificationsForCustomer,
+  listPriceChangesOfCustomer,
+} from "@/lib/payments/repository";
+import { agreementHistory, headRevision, resolveAgreementAt } from "@/lib/payments/service-agreement";
 import { paymentSourceLabels, paymentStatusLabels, paymentStatusTone, recurringLifecycleLabel, recurringLifecycleTone } from "@/lib/payments/types";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -42,7 +51,7 @@ export default async function CollectionPage({ params }: PageProps) {
   const service = await getRecurringService(id);
   if (!service) notFound();
 
-  const [customer, invoices, payments, prenotifications, priceChanges, directDebit, creditNotes, refunds] = await Promise.all([
+  const [customer, invoices, payments, prenotifications, priceChanges, directDebit, creditNotes, refunds, revisions, quotes] = await Promise.all([
     readCustomer(service.customerId),
     listInvoicesForRecurringService(service.id),
     listPaymentsForCustomer(service.customerId),
@@ -51,10 +60,19 @@ export default async function CollectionPage({ params }: PageProps) {
     directDebitView(service.customerId),
     listCreditNotesForCustomer(service.customerId),
     listRefundsForCustomer(service.customerId),
+    listAgreementRevisionsOfService(service.id),
+    listQuotesForCustomer(service.customerId),
   ]);
   if (!customer) notFound();
 
   const todayKey = toDateKey(new Date());
+  /*
+    The contract terms in force today, off the service's agreement chain:
+    what the cancellation form will apply, and what the agreement block
+    shows. The chain's head is what a new revision supersedes.
+  */
+  const agreement = resolveAgreementAt(revisions, todayKey);
+  const agreementHead = headRevision(revisions);
   const billedPeriodStarts = invoices.flatMap((invoice) => (invoice.billingPeriodStart ? [invoice.billingPeriodStart] : []));
   const changes = priceChanges.filter((change) => change.recurringServiceId === service.id);
   const overview = recurringOverview({ service, billedPeriodStarts, priceChanges: changes }, prenotifications, todayKey);
@@ -80,6 +98,7 @@ export default async function CollectionPage({ params }: PageProps) {
     billedPeriodStarts,
     overview,
     todayKey,
+    agreement,
     ...(cancellationCreditNote ? { cancellationCreditNote } : {}),
   });
   const firstCollection =
@@ -119,6 +138,23 @@ export default async function CollectionPage({ params }: PageProps) {
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-12">
         <div className="space-y-10">
+          <AdminSection id="agreements" title="Dienstafspraken" note="Wat voor deze dienst geldt, en waar het vandaan komt">
+            <ServiceAgreementPanel
+              serviceId={service.id}
+              agreement={agreement}
+              {...(agreementHead ? { head: agreementHead } : {})}
+              history={agreementHistory(revisions)}
+              financials={{
+                currentNetCents: management.currentNetCents,
+                currentGrossCents: management.currentGrossCents,
+                vatRate: service.vatRate,
+                ...(service.startsOn ? { startsOn: service.startsOn, anchorDay: Number(service.startsOn.slice(8, 10)) } : {}),
+              }}
+              quotes={quotes.map((quote) => ({ id: quote.id, number: quote.number.value, provisional: quote.number.provisional, status: quote.status, issueDate: quote.issueDate }))}
+              todayKey={todayKey}
+            />
+          </AdminSection>
+
           <AdminSection id="terms" title="Termijnen" note="Elke maandfactuur van deze dienst">
             {terms.length === 0 ? (
               <p className="text-[0.95rem] text-muted">Nog geen termijn gefactureerd.</p>

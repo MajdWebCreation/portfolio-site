@@ -1863,13 +1863,126 @@ export type Database = {
           },
         ]
       }
+      recurring_service_agreements: {
+        Row: {
+          accepted_on: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          effective_from: string
+          id: string
+          minimum_term_months: number | null
+          note: string
+          notice_months: number | null
+          proration_rule: string | null
+          recurring_service_id: string
+          sequence: number
+          source_kind: string
+          source_label: string
+          source_quote_id: string | null
+          special_terms: string
+          supersedes_id: string | null
+          terms_edition: string | null
+          terms_published_on: string | null
+        }
+        Insert: {
+          accepted_on?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          effective_from: string
+          id?: string
+          minimum_term_months?: number | null
+          note?: string
+          notice_months?: number | null
+          proration_rule?: string | null
+          recurring_service_id: string
+          sequence?: number
+          source_kind: string
+          source_label: string
+          source_quote_id?: string | null
+          special_terms?: string
+          supersedes_id?: string | null
+          terms_edition?: string | null
+          terms_published_on?: string | null
+        }
+        Update: {
+          accepted_on?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          effective_from?: string
+          id?: string
+          minimum_term_months?: number | null
+          note?: string
+          notice_months?: number | null
+          proration_rule?: string | null
+          recurring_service_id?: string
+          sequence?: number
+          source_kind?: string
+          source_label?: string
+          source_quote_id?: string | null
+          special_terms?: string
+          supersedes_id?: string | null
+          terms_edition?: string | null
+          terms_published_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_service_agreements_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_service_agreements_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "recurring_service_agreements_quote_same_customer"
+            columns: ["source_quote_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id", "customer_id"]
+          },
+          {
+            foreignKeyName: "recurring_service_agreements_same_customer"
+            columns: ["recurring_service_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_services"
+            referencedColumns: ["id", "customer_id"]
+          },
+          {
+            foreignKeyName: "recurring_service_agreements_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: true
+            referencedRelation: "recurring_service_agreements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_services: {
         Row: {
           activation_invoice_id: string | null
           amount_cents: number
           billing_interval: string
+          cancellation_agreement_revision_id: string | null
+          cancellation_contractual_ends_on: string | null
+          cancellation_deviation_agreed_on: string | null
+          cancellation_deviation_reason: string | null
+          cancellation_deviation_source_kind: string | null
+          cancellation_deviation_source_label: string | null
+          cancellation_minimum_term_ends_on: string | null
+          cancellation_minimum_term_months: number | null
+          cancellation_notice_months: number | null
+          cancellation_proration_rule: string | null
           cancellation_requested_at: string | null
           cancellation_requested_by: string | null
+          cancellation_source: string | null
           created_at: string
           currency: string
           customer_id: string
@@ -1894,8 +2007,19 @@ export type Database = {
           activation_invoice_id?: string | null
           amount_cents: number
           billing_interval?: string
+          cancellation_agreement_revision_id?: string | null
+          cancellation_contractual_ends_on?: string | null
+          cancellation_deviation_agreed_on?: string | null
+          cancellation_deviation_reason?: string | null
+          cancellation_deviation_source_kind?: string | null
+          cancellation_deviation_source_label?: string | null
+          cancellation_minimum_term_ends_on?: string | null
+          cancellation_minimum_term_months?: number | null
+          cancellation_notice_months?: number | null
+          cancellation_proration_rule?: string | null
           cancellation_requested_at?: string | null
           cancellation_requested_by?: string | null
+          cancellation_source?: string | null
           created_at?: string
           currency?: string
           customer_id: string
@@ -1920,8 +2044,19 @@ export type Database = {
           activation_invoice_id?: string | null
           amount_cents?: number
           billing_interval?: string
+          cancellation_agreement_revision_id?: string | null
+          cancellation_contractual_ends_on?: string | null
+          cancellation_deviation_agreed_on?: string | null
+          cancellation_deviation_reason?: string | null
+          cancellation_deviation_source_kind?: string | null
+          cancellation_deviation_source_label?: string | null
+          cancellation_minimum_term_ends_on?: string | null
+          cancellation_minimum_term_months?: number | null
+          cancellation_notice_months?: number | null
+          cancellation_proration_rule?: string | null
           cancellation_requested_at?: string | null
           cancellation_requested_by?: string | null
+          cancellation_source?: string | null
           created_at?: string
           currency?: string
           customer_id?: string
@@ -1949,6 +2084,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "invoices"
             referencedColumns: ["id", "customer_id"]
+          },
+          {
+            foreignKeyName: "recurring_services_cancellation_agreement_revision_id_fkey"
+            columns: ["cancellation_agreement_revision_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_service_agreements"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "recurring_services_customer_id_fkey"
@@ -2150,6 +2292,23 @@ export type Database = {
           p_sha256: string
         }
         Returns: Json
+      }
+      create_recurring_service: {
+        Args: {
+          p_amount_cents: number
+          p_created_by?: string | null
+          p_customer_id: string
+          p_description: string
+          p_effective_from: string
+          p_name: string
+          p_note: string
+          p_starts_on: string | null
+          p_status: string
+          p_terms_edition: string
+          p_terms_published_on: string
+          p_vat_rate: number
+        }
+        Returns: string
       }
       create_credit_note: {
         Args: {

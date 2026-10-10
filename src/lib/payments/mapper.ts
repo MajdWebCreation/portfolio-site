@@ -10,6 +10,8 @@ import type {
   RecurringService,
   RecurringStatus,
 } from "@/lib/payments/types";
+import type { ProrationRule } from "@/lib/payments/pricing";
+import type { AgreementSourceKind, ServiceAgreementRevision } from "@/lib/payments/service-agreement";
 import type { Database } from "@/lib/supabase/database.types";
 
 export type PaymentRow = Database["public"]["Tables"]["payments"]["Row"];
@@ -24,6 +26,7 @@ export type RecurringServiceRow = Omit<
 export type CustomerPaymentProviderRow = Database["public"]["Tables"]["customer_payment_providers"]["Row"];
 export type PriceChangeRow = Database["public"]["Tables"]["recurring_price_changes"]["Row"];
 export type DebitPrenotificationRow = Database["public"]["Tables"]["debit_prenotifications"]["Row"];
+export type ServiceAgreementRow = Database["public"]["Tables"]["recurring_service_agreements"]["Row"];
 
 export function paymentFromRow(row: PaymentRow): Payment {
   return {
@@ -63,6 +66,33 @@ export function recurringServiceFromRow(row: RecurringServiceRow): RecurringServ
     ...(row.starts_on ? { startsOn: row.starts_on } : {}),
     ...(row.ends_on ? { endsOn: row.ends_on } : {}),
     ...(row.cancellation_requested_at ? { cancellationRequestedAt: row.cancellation_requested_at } : {}),
+    ...(row.cancellation_requested_at &&
+    row.cancellation_notice_months !== null &&
+    row.cancellation_contractual_ends_on &&
+    row.cancellation_source &&
+    row.cancellation_proration_rule
+      ? {
+          cancellation: {
+            noticeMonths: row.cancellation_notice_months,
+            ...(row.cancellation_minimum_term_months !== null ? { minimumTermMonths: row.cancellation_minimum_term_months } : {}),
+            ...(row.cancellation_minimum_term_ends_on ? { minimumTermEndsOn: row.cancellation_minimum_term_ends_on } : {}),
+            contractualEndsOn: row.cancellation_contractual_ends_on,
+            source: row.cancellation_source,
+            prorationRule: row.cancellation_proration_rule as ProrationRule,
+            ...(row.cancellation_agreement_revision_id ? { agreementRevisionId: row.cancellation_agreement_revision_id } : {}),
+            ...(row.cancellation_deviation_source_kind && row.cancellation_deviation_source_label && row.cancellation_deviation_agreed_on && row.cancellation_deviation_reason
+              ? {
+                  deviation: {
+                    sourceKind: row.cancellation_deviation_source_kind as "accepted_offer" | "later_written_amendment",
+                    sourceLabel: row.cancellation_deviation_source_label,
+                    agreedOn: row.cancellation_deviation_agreed_on,
+                    reason: row.cancellation_deviation_reason,
+                  },
+                }
+              : {}),
+          },
+        }
+      : {}),
     ...(row.last_term_amount_cents !== null && row.last_term_synced_at
       ? { lastTerm: { amountCents: row.last_term_amount_cents, syncedAt: row.last_term_synced_at } }
       : {}),
@@ -121,5 +151,28 @@ export function prenotificationFromRow(row: DebitPrenotificationRow): DebitPreno
     ...(row.provider_message_id ? { providerMessageId: row.provider_message_id } : {}),
     ...(row.error ? { error: row.error } : {}),
     ...(row.sent_at ? { sentAt: row.sent_at } : {}),
+  };
+}
+
+export function agreementRevisionFromRow(row: ServiceAgreementRow): ServiceAgreementRevision {
+  return {
+    id: row.id,
+    recurringServiceId: row.recurring_service_id,
+    customerId: row.customer_id,
+    sequence: row.sequence,
+    effectiveFrom: row.effective_from,
+    sourceKind: row.source_kind as AgreementSourceKind,
+    sourceLabel: row.source_label,
+    specialTerms: row.special_terms,
+    ...(row.terms_edition && row.terms_published_on ? { terms: { edition: row.terms_edition, publishedOn: row.terms_published_on } } : {}),
+    note: row.note,
+    createdAt: row.created_at,
+    ...(row.supersedes_id ? { supersedesId: row.supersedes_id } : {}),
+    ...(row.source_quote_id ? { sourceQuoteId: row.source_quote_id } : {}),
+    ...(row.accepted_on ? { acceptedOn: row.accepted_on } : {}),
+    ...(row.notice_months !== null ? { noticeMonths: row.notice_months } : {}),
+    ...(row.minimum_term_months !== null ? { minimumTermMonths: row.minimum_term_months } : {}),
+    ...(row.proration_rule ? { prorationRule: row.proration_rule as ProrationRule } : {}),
+    ...(row.created_by ? { createdBy: row.created_by } : {}),
   };
 }
