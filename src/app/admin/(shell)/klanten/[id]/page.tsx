@@ -17,9 +17,11 @@ import { directDebitView } from "@/lib/payments/direct-debit-view";
 import { customerFinancials, customerPaymentStatusLabels, customerPaymentStatusTone } from "@/lib/payments/customer-status";
 import { formatCents } from "@/lib/money";
 import { recurringOverview, type RecurringOverview } from "@/lib/payments/prenotification";
+import { recurringManagement, type RecurringManagement } from "@/lib/payments/recurring-management";
 import {
   listPaymentsForCustomer,
   listPrenotificationsForCustomer,
+  listPriceChangesOfCustomer,
   listRecurringServicesForCustomer,
 } from "@/lib/payments/repository";
 
@@ -58,6 +60,7 @@ export default async function CustomerPage({ params }: PageProps) {
     prenotifications,
     communications,
     directDebit,
+    priceChanges,
   ] = await Promise.all([
     customer.sourceInquiryId ? readInquiry(customer.sourceInquiryId) : undefined,
     customer.sourceLeadId ? readLead(customer.sourceLeadId) : undefined,
@@ -69,6 +72,7 @@ export default async function CustomerPage({ params }: PageProps) {
     listPrenotificationsForCustomer(customer.id),
     listCommunicationsForCustomer(customer.id),
     directDebitView(customer.id),
+    listPriceChangesOfCustomer(customer.id),
   ]);
 
   const todayKey = toDateKey(new Date());
@@ -77,19 +81,38 @@ export default async function CustomerPage({ params }: PageProps) {
     The next collection per service, worked out from the service's anchor and
     the periods its invoices already cover. No second calendar is consulted.
   */
+  const billedPeriodStarts = (serviceId: string) =>
+    invoices
+      .filter((invoice) => invoice.recurringServiceId === serviceId && invoice.billingPeriodStart)
+      .map((invoice) => invoice.billingPeriodStart!);
+  const changesOf = (serviceId: string) => priceChanges.filter((change) => change.recurringServiceId === serviceId);
+
   const recurringOverviews: Record<string, RecurringOverview> = Object.fromEntries(
     recurringServices.map((service) => [
       service.id,
       recurringOverview(
-        {
-          service,
-          billedPeriodStarts: invoices
-            .filter((invoice) => invoice.recurringServiceId === service.id && invoice.billingPeriodStart)
-            .map((invoice) => invoice.billingPeriodStart!),
-        },
+        { service, billedPeriodStarts: billedPeriodStarts(service.id), priceChanges: changesOf(service.id) },
         prenotifications,
-        toDateKey(new Date()),
+        todayKey,
       ),
+    ]),
+  );
+
+  /*
+    What the admin may do with each service -- change its price, end it, take
+    either back -- and what each would mean, worked out here from the same
+    facts, so the screen can only offer what the actions will accept.
+  */
+  const recurringManagements: Record<string, RecurringManagement> = Object.fromEntries(
+    recurringServices.map((service) => [
+      service.id,
+      recurringManagement({
+        service,
+        priceChanges: changesOf(service.id),
+        billedPeriodStarts: billedPeriodStarts(service.id),
+        overview: recurringOverviews[service.id]!,
+        todayKey,
+      }),
     ]),
   );
 
@@ -151,6 +174,7 @@ export default async function CustomerPage({ params }: PageProps) {
         financials={financials}
         recurringServices={recurringServices}
         recurringOverviews={recurringOverviews}
+        recurringManagements={recurringManagements}
         directDebit={directDebit}
         firstCollections={firstCollections}
         todayKey={todayKey}

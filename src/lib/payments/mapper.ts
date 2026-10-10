@@ -6,6 +6,7 @@ import type {
   Payment,
   PaymentSource,
   PaymentStatus,
+  PriceChange,
   RecurringService,
   RecurringStatus,
 } from "@/lib/payments/types";
@@ -18,9 +19,10 @@ export type PaymentRow = Database["public"]["Tables"]["payments"]["Row"];
 */
 export type RecurringServiceRow = Omit<
   Database["public"]["Tables"]["recurring_services"]["Row"],
-  "subscription_claim_id" | "subscription_claimed_at"
+  "subscription_claim_id" | "subscription_claimed_at" | "cancellation_requested_by" | "credit_settled_by"
 >;
 export type CustomerPaymentProviderRow = Database["public"]["Tables"]["customer_payment_providers"]["Row"];
+export type PriceChangeRow = Database["public"]["Tables"]["recurring_price_changes"]["Row"];
 export type DebitPrenotificationRow = Database["public"]["Tables"]["debit_prenotifications"]["Row"];
 
 export function paymentFromRow(row: PaymentRow): Payment {
@@ -54,12 +56,41 @@ export function recurringServiceFromRow(row: RecurringServiceRow): RecurringServ
     status: row.status as RecurringStatus,
     mollie: {
       ...(row.mollie_subscription_id ? { subscriptionId: row.mollie_subscription_id } : {}),
+      ...(row.subscription_canceled_at ? { subscriptionCanceledAt: row.subscription_canceled_at } : {}),
     },
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...(row.starts_on ? { startsOn: row.starts_on } : {}),
+    ...(row.ends_on ? { endsOn: row.ends_on } : {}),
+    ...(row.cancellation_requested_at ? { cancellationRequestedAt: row.cancellation_requested_at } : {}),
+    ...(row.last_term_amount_cents !== null && row.last_term_synced_at
+      ? { lastTerm: { amountCents: row.last_term_amount_cents, syncedAt: row.last_term_synced_at } }
+      : {}),
+    ...(row.lifecycle_problem ? { lifecycleProblem: row.lifecycle_problem } : {}),
+    ...(row.credit_settled_at ? { creditSettledAt: row.credit_settled_at } : {}),
     ...(row.project_id ? { projectId: row.project_id } : {}),
     ...(row.activation_invoice_id ? { activationInvoiceId: row.activation_invoice_id } : {}),
+  };
+}
+
+export function priceChangeFromRow(row: PriceChangeRow): PriceChange {
+  return {
+    id: row.id,
+    recurringServiceId: row.recurring_service_id,
+    customerId: row.customer_id,
+    oldAmountCents: row.old_amount_cents,
+    newAmountCents: row.new_amount_cents,
+    effectiveFrom: row.effective_from,
+    requestedAt: row.requested_at,
+    ...(row.requested_by ? { requestedBy: row.requested_by } : {}),
+    ...(row.provider_updated_at ? { providerUpdatedAt: row.provider_updated_at } : {}),
+    ...(row.applied_at ? { appliedAt: row.applied_at } : {}),
+    ...(row.canceled_at ? { canceledAt: row.canceled_at } : {}),
+    ...(row.canceled_reason ? { canceledReason: row.canceled_reason as PriceChange["canceledReason"] } : {}),
+    ...(row.rescheduled_from ? { rescheduledFrom: row.rescheduled_from } : {}),
+    ...(row.reschedule_reason ? { rescheduleReason: row.reschedule_reason } : {}),
+    ...(row.blocked_at ? { blockedAt: row.blocked_at } : {}),
+    ...(row.blocked_reason ? { blockedReason: row.blocked_reason } : {}),
   };
 }
 

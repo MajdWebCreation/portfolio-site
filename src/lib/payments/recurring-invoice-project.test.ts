@@ -116,3 +116,102 @@ describe("the invoice a monthly service generates", () => {
     expect(db.bucket.uploads).toHaveLength(1);
   });
 });
+
+describe("the price the term invoice is built at", () => {
+  /* Test 5: the line carries the period's price from the history, the same figure Mollie collects. */
+  it("takes the amount the price history gives for that period, not the row's current amount", async () => {
+    const db = fakeDb();
+    const service = recurringFixture({ id: "svc-1", amountCents: 1000, startsOn: "2026-09-04", status: "active", mollie: { subscriptionId: "sub_1" } });
+    db.rows("recurring_price_changes").push({
+      id: "pc-1",
+      recurring_service_id: "svc-1",
+      customer_id: "cust-1",
+      old_amount_cents: 1000,
+      new_amount_cents: 1500,
+      currency: "EUR",
+      effective_from: "2026-12-04",
+      requested_at: "2026-10-25T10:00:00.000Z",
+      requested_by: null,
+      provider_updated_at: "2026-11-20T07:00:00.000Z",
+      applied_at: null,
+      canceled_at: null,
+      canceled_reason: null,
+    });
+
+    await ensureRecurringInvoice(db as never, service, { start: "2026-12-04", end: "2027-01-03" }, "2026-11-20");
+    await ensureRecurringInvoice(db as never, service, { start: "2026-11-04", end: "2026-12-03" }, "2026-11-20");
+
+    const lines = db.rpc.mock.calls
+      .filter(([name]) => name === "save_invoice_lines")
+      .map(([, args]) => (args as { p_lines: { unitPriceCents: number; vatRate: number; description: string }[] }).p_lines[0]!);
+    expect(lines).toMatchObject([
+      { unitPriceCents: 1500, vatRate: 21, description: expect.stringContaining("2026-12-04 t/m 2027-01-03") },
+      { unitPriceCents: 1000, vatRate: 21, description: expect.stringContaining("2026-11-04 t/m 2026-12-03") },
+    ]);
+  });
+});
+
+describe("an invoice made for a collection that already happened", () => {
+  const change = {
+    id: "pc-1",
+    recurring_service_id: "svc-1",
+    customer_id: "cust-1",
+    old_amount_cents: 1000,
+    new_amount_cents: 1500,
+    currency: "EUR",
+    effective_from: "2026-12-04",
+    requested_at: "2026-10-25T10:00:00.000Z",
+    requested_by: null,
+    provider_updated_at: null,
+    applied_at: null,
+    canceled_at: null,
+    canceled_reason: null,
+    rescheduled_from: null,
+    reschedule_reason: null,
+    blocked_at: null,
+    blocked_reason: null,
+  };
+  const collecting = () => recurringFixture({ id: "svc-1", amountCents: 1000, startsOn: "2026-09-04", status: "active", mollie: { subscriptionId: "sub_1" } });
+  const linesSaved = (db: ReturnType<typeof fakeDb>) =>
+    db.rpc.mock.calls.filter(([name]) => name === "save_invoice_lines").map(([, args]) => (args as { p_lines: { unitPriceCents: number }[] }).p_lines[0]!);
+
+  it("bills the old amount when Mollie collected the old amount for a period whose change never reached it", async () => {
+    const db = fakeDb();
+    db.rows("recurring_price_changes").push({ ...change });
+    await ensureRecurringInvoice(db as never, collecting(), { start: "2026-12-04", end: "2027-01-03" }, "2026-12-04", { collectedGrossCents: 1210 });
+    expect(linesSaved(db)).toMatchObject([{ unitPriceCents: 1000 }]);
+  });
+
+  it("bills the new amount when Mollie collected it", async () => {
+    const db = fakeDb();
+    db.rows("recurring_price_changes").push({ ...change, provider_updated_at: "2026-11-20T07:00:00.000Z" });
+    await ensureRecurringInvoice(db as never, collecting(), { start: "2026-12-04", end: "2027-01-03" }, "2026-12-04", { collectedGrossCents: 1815 });
+    expect(linesSaved(db)).toMatchObject([{ unitPriceCents: 1500 }]);
+  });
+
+  it("refuses an amount that matches no term, rather than inventing an invoice for it", async () => {
+    const db = fakeDb();
+    await expect(
+      ensureRecurringInvoice(db as never, collecting(), { start: "2026-12-04", end: "2027-01-03" }, "2026-12-04", { collectedGrossCents: 999 }),
+    ).rejects.toThrow(/past bij geen termijnbedrag/);
+    expect(db.rows("invoices")).toEqual([]);
+  });
+
+  it("settles an unsettled last term by what Mollie collected, full or pro rata", async () => {
+    const ending = recurringFixture({ id: "svc-1", amountCents: 1000, startsOn: "2026-09-04", status: "active", endsOn: "2026-11-09", cancellationRequestedAt: "2026-10-10T10:00:00.000Z", mollie: { subscriptionId: "sub_1" } });
+    const serviceRow = { id: "svc-1", customer_id: "cust-1", ends_on: "2026-11-09", last_term_amount_cents: null, last_term_synced_at: null };
+
+    const full = fakeDb();
+    full.rows("recurring_services").push({ ...serviceRow });
+    await ensureRecurringInvoice(full as never, ending, { start: "2026-11-04", end: "2026-12-03" }, "2026-11-04", { collectedGrossCents: 1210 });
+    expect(linesSaved(full)).toMatchObject([{ unitPriceCents: 1000 }]);
+    expect(full.rows("recurring_services")[0]).toMatchObject({ last_term_amount_cents: 1000, last_term_synced_at: expect.any(String) });
+    expect(full.rows("invoices")[0]).toMatchObject({ billing_period_start: "2026-11-04", billing_period_end: "2026-11-09" });
+
+    const prorata = fakeDb();
+    prorata.rows("recurring_services").push({ ...serviceRow });
+    await ensureRecurringInvoice(prorata as never, ending, { start: "2026-11-04", end: "2026-12-03" }, "2026-11-04", { collectedGrossCents: 242 });
+    expect(linesSaved(prorata)).toMatchObject([{ unitPriceCents: 200 }]);
+    expect(prorata.rows("recurring_services")[0]).toMatchObject({ last_term_amount_cents: 200 });
+  });
+});

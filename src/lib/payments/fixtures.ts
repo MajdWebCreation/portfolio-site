@@ -158,6 +158,12 @@ const uniques: Unique[] = [
     columns: ["customer_id"],
     where: (row) => row.paid_at == null && row.archived_at == null,
   },
+  /* One price change in flight per service. */
+  {
+    table: "recurring_price_changes",
+    columns: ["recurring_service_id"],
+    where: (row) => row.applied_at == null && row.canceled_at == null,
+  },
 ];
 
 export class UniqueViolation extends Error {
@@ -213,6 +219,23 @@ export function createFakeDb(seed: Record<string, Row[]> = {}) {
       },
       is(column: string, value: null) {
         filters.push((row) => (row[column] ?? null) === value);
+        return api;
+      },
+      /* Date keys and ISO timestamps compare as strings, as they do in SQL. */
+      lt(column: string, value: string) {
+        filters.push((row) => row[column] != null && String(row[column]) < value);
+        return api;
+      },
+      lte(column: string, value: string) {
+        filters.push((row) => row[column] != null && String(row[column]) <= value);
+        return api;
+      },
+      gt(column: string, value: string) {
+        filters.push((row) => row[column] != null && String(row[column]) > value);
+        return api;
+      },
+      gte(column: string, value: string) {
+        filters.push((row) => row[column] != null && String(row[column]) >= value);
         return api;
       },
       order() {

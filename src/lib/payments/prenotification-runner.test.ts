@@ -407,3 +407,55 @@ describe("when sending fails", () => {
     expect(sent).toHaveLength(1);
   });
 });
+
+describe("a service with a planned end", () => {
+  /* Nothing after the end: no invoice, no announcement, and no problem reported. */
+  it("announces the last period and nothing after it", async () => {
+    const ending = { endsOn: "2026-11-11", cancellationRequestedAt: "2026-09-20T10:00:00.000Z" } as const;
+    const last = makeStore([collecting(ending, ["2026-09-12"])]);
+    expect(await runPrenotifications(last.store, render, mail, dueDay)).toMatchObject({ invoicesCreated: 1, announced: 1, problems: [] });
+
+    const after = makeStore([collecting(ending, ["2026-09-12", "2026-10-12"])]);
+    expect(await runPrenotifications(after.store, render, mail, "2026-10-28")).toMatchObject({ invoicesCreated: 0, announced: 0, problems: [] });
+    expect(after.invoices.size).toBe(0);
+  });
+});
+
+describe("a price change that has not reached Mollie", () => {
+  it("holds the period's invoice back and reports it, rather than announcing a figure Mollie will not collect", async () => {
+    const change = {
+      id: "pc-1",
+      recurringServiceId: "svc-1",
+      customerId: "cust-1",
+      oldAmountCents: 2500,
+      newAmountCents: 3000,
+      effectiveFrom: "2026-10-12",
+      requestedAt: "2026-09-20T10:00:00.000Z",
+    };
+    const { store, invoices } = makeStore([{ ...collecting(), priceChanges: [change] }]);
+    const summary = await runPrenotifications(store, render, mail, dueDay);
+
+    expect(summary).toMatchObject({ invoicesCreated: 0, announced: 0 });
+    expect(summary.problems).toEqual([{ serviceId: "svc-1", reason: expect.stringContaining("2026-10-12") }]);
+    expect(invoices.size).toBe(0);
+
+    // Once Mollie holds the new amount, the period is invoiced as usual.
+    const synced = makeStore([{ ...collecting(), priceChanges: [{ ...change, providerUpdatedAt: "2026-09-28T07:00:00.000Z" }] }]);
+    expect(await runPrenotifications(synced.store, render, mail, dueDay)).toMatchObject({ invoicesCreated: 1, announced: 1, problems: [] });
+  });
+});
+
+describe("a partial last period", () => {
+  const ending = { endsOn: "2026-10-20", cancellationRequestedAt: "2026-09-20T10:00:00.000Z" } as const;
+
+  it("waits for Mollie to be settled before it is invoiced, then bills the settled amount", async () => {
+    const unsettled = makeStore([collecting(ending, ["2026-09-12"])]);
+    const held = await runPrenotifications(unsettled.store, render, mail, dueDay);
+    expect(held).toMatchObject({ invoicesCreated: 0, announced: 0 });
+    expect(held.problems).toEqual([{ serviceId: "svc-1", reason: expect.stringContaining("2026-10-20") }]);
+    expect(unsettled.invoices.size).toBe(0);
+
+    const settled = makeStore([collecting({ ...ending, lastTerm: { amountCents: 726, syncedAt: "2026-09-21T07:00:00.000Z" } }, ["2026-09-12"])]);
+    expect(await runPrenotifications(settled.store, render, mail, dueDay)).toMatchObject({ invoicesCreated: 1, announced: 1, problems: [] });
+  });
+});

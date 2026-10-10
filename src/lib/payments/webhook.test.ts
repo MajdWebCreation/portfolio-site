@@ -335,6 +335,26 @@ describe("a monthly direct debit charge", () => {
     expect(payments).toHaveLength(1);
   });
 
+  /* The invoice is made at the amount Mollie collected, for the period of the direct debit's due date. */
+  it("hands the collected amount to the invoice, and places the charge by its due date rather than when it was paid", async () => {
+    const { store, invoices } = makeStore({ services: [active] });
+    const seen: { periodStart: string; collectedGrossCents: number }[] = [];
+    const original = store.ensureRecurringInvoice;
+    store.ensureRecurringInvoice = async (service, period, collectedGrossCents) => {
+      seen.push({ periodStart: period.start, collectedGrossCents });
+      return original(service, period, collectedGrossCents);
+    };
+
+    // Due 12 November, confirmed paid days later: November's term, not October's.
+    await processMolliePayment(
+      chargePayment({ details: { dueDate: "2026-11-12" }, paidAt: "2026-11-16T06:00:00.000Z", createdAt: "2026-11-09T06:00:00.000Z" }),
+      store,
+      "2026-11-16",
+    );
+    expect(seen).toEqual([{ periodStart: "2026-11-12", collectedGrossCents: 3025 }]);
+    expect([...invoices.values()].at(-1)!.billingPeriodStart).toBe("2026-11-12");
+  });
+
   it("creates one invoice across a hundred retries", async () => {
     const { store, createdInvoices, payments } = makeStore({ services: [active] });
     for (let i = 0; i < 100; i += 1) {

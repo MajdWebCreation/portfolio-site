@@ -30,7 +30,9 @@ export type CommunicationCategory =
   | "direct_debit_activation"
   | "payment_reminder_first"
   | "payment_reminder_second"
-  | "payment_final_notice";
+  | "payment_final_notice"
+  | "recurring_price_change"
+  | "recurring_cancellation";
 
 export const communicationCategoryOrder: readonly CommunicationCategory[] = [
   "quote_sent",
@@ -42,6 +44,8 @@ export const communicationCategoryOrder: readonly CommunicationCategory[] = [
   "payment_reminder_first",
   "payment_reminder_second",
   "payment_final_notice",
+  "recurring_price_change",
+  "recurring_cancellation",
 ];
 
 export const communicationCategoryLabels: Record<CommunicationCategory, string> = {
@@ -54,6 +58,8 @@ export const communicationCategoryLabels: Record<CommunicationCategory, string> 
   payment_reminder_first: "Eerste betalingsherinnering",
   payment_reminder_second: "Tweede betalingsherinnering",
   payment_final_notice: "Laatste aanmaning",
+  recurring_price_change: "Bevestiging prijswijziging maanddienst",
+  recurring_cancellation: "Bevestiging opzegging maanddienst",
 };
 
 /**
@@ -143,6 +149,10 @@ const groups: Record<CommunicationCategory, Exclude<CommunicationFilter, "all" |
   payment_reminder_first: "payments",
   payment_reminder_second: "payments",
   payment_final_notice: "payments",
+  /* Written confirmations about a monthly service: about the collection,
+     carrying no document. */
+  recurring_price_change: "payments",
+  recurring_cancellation: "payments",
 };
 
 /**

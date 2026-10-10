@@ -23,7 +23,7 @@ import {
 } from "@/lib/admin/projects/types";
 import { hasProjectErrors, validateProject, type ProjectErrors } from "@/lib/admin/projects/validation";
 import type { Quote } from "@/lib/admin/quotes/types";
-import { recurringChargeCents, recurringStatusLabels, recurringStatusTone, type RecurringService } from "@/lib/payments/types";
+import { recurringChargeCents, recurringLifecycleLabel, recurringLifecycleTone, type RecurringService } from "@/lib/payments/types";
 import { formatCents } from "@/lib/money";
 
 function dateOnly(value: string | undefined) {
@@ -163,8 +163,8 @@ export default function ProjectDetail({
                         {formatCents(recurringChargeCents(service))} per maand, incl. btw
                       </span>
                     </span>
-                    <StatusBadge tone={recurringStatusTone[service.status]}>
-                      {recurringStatusLabels[service.status]}
+                    <StatusBadge tone={recurringLifecycleTone(service, todayKey)}>
+                      {recurringLifecycleLabel(service, todayKey, (key) => formatDate(`${key}T12:00:00+02:00`))}
                     </StatusBadge>
                   </div>
                   {/* Direct debit is the customer's, so it is activated and started there. */}

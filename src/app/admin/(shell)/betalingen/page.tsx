@@ -15,8 +15,8 @@ import { customerFinancials } from "@/lib/payments/customer-status";
 import { prenotificationStateLabels, prenotificationStateTone, recurringOverview } from "@/lib/payments/prenotification";
 import { listCollectionEvents, listCollectionStates } from "@/lib/payments/collection-repository";
 import { invoiceCollectionViews } from "@/lib/payments/collection-state";
-import { listPayments, listPrenotifications, listRecurringServices } from "@/lib/payments/repository";
-import { isCollecting, recurringStatusLabels, recurringStatusTone } from "@/lib/payments/types";
+import { listPayments, listPrenotifications, listPriceChangesOfServices, listRecurringServices } from "@/lib/payments/repository";
+import { isCollecting, recurringLifecycleLabel, recurringLifecycleTone } from "@/lib/payments/types";
 import { formatDate } from "@/lib/admin/format";
 import { formatCents } from "@/lib/money";
 
@@ -37,6 +37,7 @@ export default async function PaymentsPage() {
     ]);
 
   const todayKey = toDateKey(new Date());
+  const priceChanges = await listPriceChangesOfServices(services.map((service) => service.id));
 
   // Derived here and nowhere stored: the invoices and the payments are the
   // truth, and this is a reading of them.
@@ -68,6 +69,7 @@ export default async function PaymentsPage() {
           billedPeriodStarts: invoices
             .filter((invoice) => invoice.recurringServiceId === service.id && invoice.billingPeriodStart)
             .map((invoice) => invoice.billingPeriodStart!),
+          priceChanges: priceChanges.filter((change) => change.recurringServiceId === service.id),
         },
         prenotifications,
         todayKey,
@@ -128,7 +130,9 @@ export default async function PaymentsPage() {
                     {byCustomer.get(service.customerId) ?? "Onbekende klant"} · {formatCents(service.amountCents)} per maand, excl. btw
                   </span>
                 </span>
-                <StatusBadge tone={recurringStatusTone[service.status]}>{recurringStatusLabels[service.status]}</StatusBadge>
+                <StatusBadge tone={recurringLifecycleTone(service, todayKey)}>
+                  {recurringLifecycleLabel(service, todayKey, day)}
+                </StatusBadge>
               </li>
             ))}
           </ul>

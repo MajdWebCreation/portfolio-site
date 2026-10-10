@@ -8,7 +8,7 @@ import { getMollieConfig, type MollieConfig } from "@/lib/mollie/config";
  * replaceable and the API key in a single module -- and it is why this file
  * has no React, no Supabase and no knowledge of invoices.
  *
- * Plain `fetch` against the REST API rather than a client library: the five
+ * Plain `fetch` against the REST API rather than a client library: the dozen
  * calls below are all this needs, and a dependency for that would earn
  * nothing.
  */
@@ -93,12 +93,27 @@ export type MolliePayment = {
   amount: { currency: string; value: string };
   description: string;
   method: string | null;
+  createdAt?: string;
   paidAt?: string;
+  canceledAt?: string;
+  /**
+   * "Whether the payment can be canceled. This parameter is omitted if the
+   * payment reaches a final state." (get-payment reference). Only `true`
+   * here is ever acted on.
+   */
+  isCancelable?: boolean;
   customerId?: string;
   mandateId?: string;
   subscriptionId?: string;
   sequenceType?: "oneoff" | "first" | "recurring";
   metadata?: Record<string, unknown> | null;
+  /**
+   * Method-specific details. For SEPA direct debit, `dueDate` is the
+   * "Estimated date the payment is debited from the customer's bank
+   * account" (extra-payment-parameters reference) -- the collection date a
+   * subscription payment was created for.
+   */
+  details?: { dueDate?: string | null; [key: string]: unknown } | null;
   _links?: { checkout?: { href: string } };
 };
 
@@ -133,13 +148,29 @@ export type MollieCustomer = { id: string };
  * "invalid" has been revoked or failed.
  */
 export type MollieMandate = { id: string; status: "valid" | "pending" | "invalid"; method: string };
+/**
+ * Mollie's five subscription states. Only `pending`, `active` and `suspended`
+ * are a current subscription; `canceled` and `completed` are over, carry no
+ * `nextPaymentDate`, and -- per the update reference -- cannot be updated.
+ * See docs.mollie.com/reference/get-subscription.
+ */
 export type MollieSubscriptionStatus = "pending" | "active" | "canceled" | "suspended" | "completed";
 export type MollieSubscription = {
   id: string;
   status: MollieSubscriptionStatus;
+  amount?: { currency: string; value: string };
   startDate?: string;
+  /** Read-only at Mollie; absent once the subscription is completed or canceled. */
+  nextPaymentDate?: string;
+  /** Absent while the subscription is not canceled. */
+  canceledAt?: string;
   metadata?: Record<string, unknown> | null;
 };
+
+/** States in which Mollie will still create payments for a subscription. */
+export function isCurrentSubscription(subscription: Pick<MollieSubscription, "status">): boolean {
+  return subscription.status === "pending" || subscription.status === "active" || subscription.status === "suspended";
+}
 
 export type CreatePaymentInput = {
   amountCents: number;
@@ -359,6 +390,90 @@ export async function listSubscriptions(customerId: string, config?: MollieConfi
     config,
   });
   return response._embedded?.subscriptions ?? [];
+}
+
+/** GET /v2/customers/{cid}/subscriptions/{sid}: the subscription as Mollie holds it now. */
+export async function getSubscription(
+  customerId: string,
+  subscriptionId: string,
+  config?: MollieConfig,
+): Promise<MollieSubscription> {
+  return request<MollieSubscription>({
+    method: "GET",
+    path: `/customers/${encodeURIComponent(customerId)}/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    config,
+  });
+}
+
+/**
+ * Changes what a subscription collects from now on.
+ *
+ * PATCH with only `amount`: per docs.mollie.com/reference/update-subscription
+ * that is "the amount for future payments of this subscription". A payment
+ * Mollie has already created keeps its own amount, which is why the caller
+ * only sends this once the previous collection is final and well before the
+ * next one is created. Nothing else about the subscription is touched:
+ * interval, start date, mandate and description stay as they are.
+ */
+export async function updateSubscriptionAmount(
+  input: { customerId: string; subscriptionId: string; amountCents: number; config?: MollieConfig },
+): Promise<MollieSubscription> {
+  return request<MollieSubscription>({
+    method: "PATCH",
+    path: `/customers/${encodeURIComponent(input.customerId)}/subscriptions/${encodeURIComponent(input.subscriptionId)}`,
+    body: { amount: mollieAmount(input.amountCents) },
+    config: input.config,
+  });
+}
+
+/**
+ * Ends a subscription at Mollie, now. There is no cancel-at date in the API
+ * (docs.mollie.com/reference/cancel-subscription), so *when* this is called
+ * is the caller's decision; and "Canceling a subscription has no effect on
+ * the mandates of the customer", so the customer's other subscriptions keep
+ * collecting against the same mandate.
+ */
+export async function cancelSubscription(
+  customerId: string,
+  subscriptionId: string,
+  config?: MollieConfig,
+): Promise<MollieSubscription> {
+  return request<MollieSubscription>({
+    method: "DELETE",
+    path: `/customers/${encodeURIComponent(customerId)}/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    config,
+  });
+}
+
+/**
+ * The payments a subscription produced, newest first. Up to 250, the API's
+ * own page maximum; a monthly subscription takes decades to fill that.
+ *
+ * This is what settles whether Mollie has already created the payment for
+ * a coming collection: the one fact the lifecycle flows may not assume,
+ * because the docs give no lead time. See list-subscription-payments.
+ */
+export async function listSubscriptionPayments(
+  customerId: string,
+  subscriptionId: string,
+  config?: MollieConfig,
+): Promise<MolliePayment[]> {
+  const response = await request<{ _embedded?: { payments?: MolliePayment[] } }>({
+    method: "GET",
+    path: `/customers/${encodeURIComponent(customerId)}/subscriptions/${encodeURIComponent(subscriptionId)}/payments?limit=250`,
+    config,
+  });
+  return response._embedded?.payments ?? [];
+}
+
+/**
+ * Cancels one payment. Only for a payment Mollie itself marks
+ * `isCancelable: true`; the API answers 422 "if you are trying to cancel a
+ * payment that can no longer be canceled" (cancel-payment reference), and
+ * that error is left to the caller to turn into a visible problem.
+ */
+export async function cancelPayment(id: string, config?: MollieConfig): Promise<MolliePayment> {
+  return request<MolliePayment>({ method: "DELETE", path: `/payments/${encodeURIComponent(id)}`, config });
 }
 
 // ----------------------------------------------------- read-only surface

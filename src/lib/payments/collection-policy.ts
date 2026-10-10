@@ -53,6 +53,15 @@ export const collectionReadyDays = reminderSteps[2].daysOverdue + finalNoticeGra
  */
 export const directDebitGraceDays = 5;
 
+/**
+ * YM Creations announces a direct debit this many calendar days in advance.
+ * The same term decides when Mollie may be given a changed amount or a
+ * cancellation: on the announcement day of the first collection that must
+ * differ, never later. Read by `prenotification.ts`, `pricing.ts` and
+ * `cancellation.ts`; defined here so none of them has to import the others.
+ */
+export const prenotificationDays = 14;
+
 /*
   ---------------------------------------------------------------------------
   The EUR 20, and the line it may not cross.

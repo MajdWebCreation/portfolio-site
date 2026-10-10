@@ -3,7 +3,9 @@ import { issueInvoiceDocument } from "@/lib/admin/invoices/issue";
 import { invoiceColumns, invoiceFromRow, type InvoiceRow } from "@/lib/admin/invoices/mapper";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import type { BillingPeriod } from "@/lib/payments/billing-period";
-import type { RecurringService } from "@/lib/payments/types";
+import { listPriceChangesForService } from "@/lib/payments/price-change";
+import { amountForPeriod, endsInside, grossOf, lastTermOf, proratedNetCents } from "@/lib/payments/pricing";
+import { isPendingPriceChange, type PriceChange, type RecurringService } from "@/lib/payments/types";
 import type { Database } from "@/lib/supabase/database.types";
 
 /**
@@ -33,14 +35,43 @@ export function recurringInvoiceDates(period: BillingPeriod, todayKey: string): 
   };
 }
 
-/** The single line: the service, once, at its own price and VAT rate. */
-function invoiceLine(service: RecurringService, period: BillingPeriod) {
+/**
+ * The single line: the service, once, at the price that applies to *this*
+ * period and its VAT rate. The price comes from the service's history, not
+ * from the row's current amount: a change that starts with this period is
+ * invoiced at the new figure, and a period before it keeps the old one,
+ * whichever day the invoice happens to be made.
+ */
+export function recurringInvoiceLine(service: RecurringService, changes: readonly PriceChange[], period: BillingPeriod) {
+  const billed = billedRange(service, period);
+  const fullNet = amountForPeriod(service, changes, period.start);
+  if (!billed.term) {
+    return {
+      description: `${service.name} — ${period.start} t/m ${period.end}`,
+      quantityHundredths: 100,
+      unitPriceCents: fullNet,
+      vatRate: service.vatRate,
+    };
+  }
+  /*
+    The service ends inside this period. Billed for the days delivered, at
+    the amount Mollie collects: the one fixed when Mollie was checked for
+    this term (pro rata, or the full amount when Mollie had created the
+    payment already), else the pro-rata figure the terms give.
+  */
   return {
-    description: `${service.name} — ${period.start} t/m ${period.end}`,
+    description: `${service.name} — ${billed.start} t/m ${billed.end} (${billed.term.daysUsed} van ${billed.term.periodDays} dagen)`,
     quantityHundredths: 100,
-    unitPriceCents: service.amountCents,
+    unitPriceCents: service.lastTerm?.amountCents ?? proratedNetCents(fullNet, billed.term),
     vatRate: service.vatRate,
   };
+}
+
+/** The range an invoice for this period covers: up to the last day of service when that falls inside it. */
+export function billedRange(service: Pick<RecurringService, "endsOn">, period: BillingPeriod): BillingPeriod & { term?: ReturnType<typeof lastTermOf> } {
+  if (!endsInside(period, service.endsOn)) return { start: period.start, end: period.end };
+  const term = lastTermOf(period, service.endsOn!);
+  return { start: period.start, end: service.endsOn!, term };
 }
 
 function fail(operation: string, error: { message: string } | null): void {
@@ -62,11 +93,22 @@ export async function findRecurringInvoice(
   return data ? invoiceFromRow(data as unknown as InvoiceRow) : undefined;
 }
 
+export type EnsureInvoiceOptions = {
+  /**
+   * The gross amount Mollie actually collected, when the caller is the
+   * webhook. The invoice is then built at the figure that matches it, and
+   * refused when none does: a term invoice never says one amount while the
+   * collection says another.
+   */
+  collectedGrossCents?: number;
+};
+
 export async function ensureRecurringInvoice(
   db: SupabaseClient<Database>,
   service: RecurringService,
   period: BillingPeriod,
   todayKey: string,
+  options: EnsureInvoiceOptions = {},
 ): Promise<Invoice> {
   /*
     One of the two callers got here first. Usually it is finished and this is
@@ -85,6 +127,12 @@ export async function ensureRecurringInvoice(
   fail("Klant laden", customerError);
 
   const { issueDate, dueDate } = recurringInvoiceDates(period, todayKey);
+  const changes = await listPriceChangesForService(db, service.id);
+  const line =
+    options.collectedGrossCents === undefined
+      ? recurringInvoiceLine(service, changes, period)
+      : await reconciledLine(db, service, changes, period, options.collectedGrossCents);
+  const range = billedRange(service, period);
 
   const { data: created, error } = await db
     .from("invoices")
@@ -107,7 +155,7 @@ export async function ensureRecurringInvoice(
       // sit on the same project page.
       project_id: service.projectId ?? null,
       billing_period_start: period.start,
-      billing_period_end: period.end,
+      billing_period_end: range.end,
       issue_date: issueDate,
       due_date: dueDate,
       payment_reference: "",
@@ -129,7 +177,7 @@ export async function ensureRecurringInvoice(
 
   const { error: linesError } = await db.rpc("save_invoice_lines", {
     p_invoice_id: created.id,
-    p_lines: [invoiceLine(service, period)] as never,
+    p_lines: [line] as never,
   });
   fail("Factuurregel aanmaken", linesError);
 
@@ -168,4 +216,51 @@ export async function markInvoiceMailed(
     .update({ sent_at: sentAt, recipient_email: recipientEmail })
     .eq("id", invoiceId);
   fail("Factuur als verzonden vastleggen", error);
+}
+
+/**
+ * The line for a period Mollie has just collected, at the amount it
+ * collected.
+ *
+ * Normally that is simply the line the price history gives. Two states can
+ * make the history ahead of Mollie: a planned price change that has not
+ * reached the subscription yet (the collection is still at the old amount),
+ * and a partial last period whose amount was not settled with Mollie yet.
+ * In both the collection decides, and the figure it matches is the one
+ * billed -- and for a last period, written down as the settled amount, so
+ * the announcement says the same. A collection that matches no figure is
+ * refused: an invoice is never made up to fit money that cannot be placed.
+ */
+async function reconciledLine(
+  db: SupabaseClient<Database>,
+  service: RecurringService,
+  changes: readonly PriceChange[],
+  period: BillingPeriod,
+  collectedGrossCents: number,
+): Promise<ReturnType<typeof recurringInvoiceLine>> {
+  const settledChanges = changes.filter((change) => !(isPendingPriceChange(change) && !change.providerUpdatedAt));
+  const candidates = [recurringInvoiceLine(service, changes, period), recurringInvoiceLine(service, settledChanges, period)];
+  const unsettledLastTerm = endsInside(period, service.endsOn) && !service.lastTerm;
+  if (unsettledLastTerm) {
+    const fullNet = amountForPeriod(service, settledChanges, period.start);
+    candidates.push({ ...candidates[1]!, unitPriceCents: fullNet });
+  }
+
+  const match = candidates.find((candidate) => grossOf(candidate.unitPriceCents, candidate.vatRate) === collectedGrossCents);
+  if (!match) {
+    throw new Error(
+      `Incasso van ${collectedGrossCents} cent voor ${service.name} (${period.start}) past bij geen termijnbedrag van die periode; de factuur is niet aangemaakt.`,
+    );
+  }
+
+  if (unsettledLastTerm) {
+    // Mollie decided the last term's amount by collecting it; recorded as such.
+    const { error } = await db
+      .from("recurring_services")
+      .update({ last_term_amount_cents: match.unitPriceCents, last_term_synced_at: new Date().toISOString() })
+      .eq("id", service.id)
+      .is("last_term_synced_at", null);
+    fail("Laatste termijn vastleggen", error);
+  }
+  return match;
 }

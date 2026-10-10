@@ -33,9 +33,11 @@ export const retentionRedactedBody = "[inhoud verwijderd volgens bewaarbeleid]";
 /**
  * Mail categories that belong to the financial administration and are kept
  * for the fiscal retention period, bodies included: the invoice itself, the
- * invoice that opened a direct debit, the monthly term, and the reminders
- * that chased one. Listed so that the exclusion is explicit and a category
- * added later has to be placed on one side or the other on purpose.
+ * invoice that opened a direct debit, the monthly term, the reminders that
+ * chased one, and the written confirmations of what a monthly service costs
+ * and when it ends -- the agreed basis of the term invoices. Listed so that
+ * the exclusion is explicit and a category added later has to be placed on
+ * one side or the other on purpose.
  */
 export const fiscalCategories: readonly CommunicationCategory[] = [
   "invoice_sent",
@@ -44,6 +46,8 @@ export const fiscalCategories: readonly CommunicationCategory[] = [
   "payment_reminder_first",
   "payment_reminder_second",
   "payment_final_notice",
+  "recurring_price_change",
+  "recurring_cancellation",
 ];
 
 /** Categories whose body may go after twelve months: the quote, the activation link, the pre-notification. */

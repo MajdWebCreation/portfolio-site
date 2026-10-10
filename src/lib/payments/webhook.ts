@@ -54,11 +54,11 @@ export type WebhookStore = {
    */
   handleMandateActivation: (payment: MolliePayment, activationIdHint?: string) => Promise<WebhookOutcome | undefined>;
   /**
-   * The YM invoice for one billing period. Returns the existing one when the
-   * period was already billed; the unique index is what decides, not a check
-   * in application code.
+   * The YM invoice for one billing period, at the amount Mollie collected.
+   * Returns the existing one when the period was already billed; the unique
+   * index is what decides, not a check in application code.
    */
-  ensureRecurringInvoice: (service: RecurringService, period: BillingPeriod) => Promise<Invoice>;
+  ensureRecurringInvoice: (service: RecurringService, period: BillingPeriod, collectedGrossCents: number) => Promise<Invoice>;
   /** The invoice an already recorded provider payment belongs to. */
   findInvoiceIdForProviderPayment: (molliePaymentId: string) => Promise<string | undefined>;
   /** The invoice we recorded a Mollie payment link for. */
@@ -283,10 +283,21 @@ async function recurringChargeInvoiceId(payment: MolliePayment, store: WebhookSt
     which is what keeps one charge to one invoice.
   */
   const anchor = service.startsOn ?? chargeDate(payment);
-  const invoice = await store.ensureRecurringInvoice(service, periodForCharge(anchor, chargeDate(payment)));
+  const invoice = await store.ensureRecurringInvoice(
+    service,
+    periodForCharge(anchor, chargeDate(payment)),
+    centsFromMollie(payment.amount.value),
+  );
   return invoice.id;
 }
 
+/**
+ * The day a collection is for: the direct debit's due date when Mollie
+ * reports one (the documented collection date), else the day the money was
+ * confirmed. Never the day the payment object was created.
+ */
 function chargeDate(payment: MolliePayment): string {
+  const due = payment.details?.dueDate;
+  if (typeof due === "string" && /^\d{4}-\d{2}-\d{2}$/.test(due)) return due;
   return (payment.paidAt ?? new Date().toISOString()).slice(0, 10);
 }

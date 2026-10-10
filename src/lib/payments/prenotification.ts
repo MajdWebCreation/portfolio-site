@@ -1,6 +1,8 @@
 import { addDays } from "@/lib/admin/documents/validation";
 import { billingPeriod, nextPeriodStart, type BillingPeriod } from "@/lib/payments/billing-period";
-import { isCollecting, recurringChargeCents, type DebitPrenotification, type RecurringService } from "@/lib/payments/types";
+import { prenotificationDays } from "@/lib/payments/collection-policy";
+import { amountForPeriod, endsInside, grossOf, lastTermOf, proratedNetCents } from "@/lib/payments/pricing";
+import { isCollecting, type DebitPrenotification, type PriceChange, type RecurringService } from "@/lib/payments/types";
 
 /**
  * When the next direct debit falls, and when the customer has to be told.
@@ -16,8 +18,7 @@ import { isCollecting, recurringChargeCents, type DebitPrenotification, type Rec
  * is what the billing helpers already do.
  */
 
-/** YM Creations announces a collection this many calendar days in advance. */
-export const prenotificationDays = 14;
+export { prenotificationDays } from "@/lib/payments/collection-policy";
 
 /**
  * Why no collection is expected. These are the cases where the job must stay
@@ -27,7 +28,8 @@ export const prenotificationDays = 14;
 export type NoDebitReason =
   | "not_active"
   | "no_subscription"
-  | "missing_anchor";
+  | "missing_anchor"
+  | "ended";
 
 export type DebitSchedule = {
   /** The day the money is expected to be taken. */
@@ -39,9 +41,11 @@ export type DebitSchedule = {
 };
 
 export type ServiceSchedule = {
-  service: Pick<RecurringService, "id" | "customerId" | "name" | "amountCents" | "vatRate" | "status" | "startsOn" | "mollie">;
+  service: Pick<RecurringService, "id" | "customerId" | "name" | "amountCents" | "vatRate" | "status" | "startsOn" | "endsOn" | "lastTerm" | "mollie">;
   /** `billing_period_start` of every invoice that bills this service. */
   billedPeriodStarts: readonly string[];
+  /** The service's price history; what a period costs is read off it. */
+  priceChanges?: readonly PriceChange[];
 };
 
 function anchorDayOf(dateKey: string): number {
@@ -93,6 +97,10 @@ export function announceableStart(startsOn: string, todayKey: string): string {
  * subscription at the provider collects nothing either, whatever its status
  * says. And a service with no anchor cannot be placed on the calendar at all,
  * which is a data problem, not a date.
+ *
+ * A service with a planned end collects its remaining periods as agreed, and
+ * then nothing: the first period starting after `endsOn` is not a
+ * collection, so it is neither invoiced nor announced.
  */
 export function nextDebitSchedule(input: ServiceSchedule): DebitSchedule | { reason: NoDebitReason } {
   const { service, billedPeriodStarts } = input;
@@ -113,6 +121,7 @@ export function nextDebitSchedule(input: ServiceSchedule): DebitSchedule | { rea
     spot -- the next collection is the month after the latest one.
   */
   const debitOn = latestBilled ? nextPeriodStart(latestBilled, anchorDay) : service.startsOn;
+  if (service.endsOn && debitOn > service.endsOn) return { reason: "ended" };
 
   return {
     debitOn,
@@ -206,7 +215,16 @@ export function recurringOverview(
   const schedule = nextDebitSchedule(entry);
   if ("reason" in schedule) return { reason: schedule.reason, state: "not_needed" };
 
-  const amountCents = recurringChargeCents(entry.service);
+  // The amount for *this* period, from the price history: a change that
+  // starts with this collection is announced at the new figure. A partial
+  // last period at what was settled with Mollie, else its pro-rata figure.
+  const net = amountForPeriod(entry.service, entry.priceChanges ?? [], schedule.period.start);
+  const amountCents = grossOf(
+    endsInside(schedule.period, entry.service.endsOn)
+      ? (entry.service.lastTerm?.amountCents ?? proratedNetCents(net, lastTermOf(schedule.period, entry.service.endsOn!)))
+      : net,
+    entry.service.vatRate,
+  );
   const forThisService = records.filter((record) => record.recurringServiceId === entry.service.id);
   const record = matchingAnnouncement(schedule, amountCents, forThisService);
 

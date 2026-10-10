@@ -1590,21 +1590,111 @@ export type Database = {
           },
         ]
       }
+      recurring_price_changes: {
+        Row: {
+          applied_at: string | null
+          blocked_at: string | null
+          blocked_reason: string | null
+          canceled_at: string | null
+          canceled_reason: string | null
+          created_at: string
+          currency: string
+          customer_id: string
+          effective_from: string
+          id: string
+          new_amount_cents: number
+          old_amount_cents: number
+          provider_updated_at: string | null
+          recurring_service_id: string
+          reschedule_reason: string | null
+          rescheduled_from: string | null
+          requested_at: string
+          requested_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          applied_at?: string | null
+          blocked_at?: string | null
+          blocked_reason?: string | null
+          canceled_at?: string | null
+          canceled_reason?: string | null
+          created_at?: string
+          currency?: string
+          customer_id: string
+          effective_from: string
+          id?: string
+          new_amount_cents: number
+          old_amount_cents: number
+          provider_updated_at?: string | null
+          recurring_service_id: string
+          reschedule_reason?: string | null
+          rescheduled_from?: string | null
+          requested_at?: string
+          requested_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          applied_at?: string | null
+          blocked_at?: string | null
+          blocked_reason?: string | null
+          canceled_at?: string | null
+          canceled_reason?: string | null
+          created_at?: string
+          currency?: string
+          customer_id?: string
+          effective_from?: string
+          id?: string
+          new_amount_cents?: number
+          old_amount_cents?: number
+          provider_updated_at?: string | null
+          recurring_service_id?: string
+          reschedule_reason?: string | null
+          rescheduled_from?: string | null
+          requested_at?: string
+          requested_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_price_changes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_price_changes_same_customer"
+            columns: ["recurring_service_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_services"
+            referencedColumns: ["id", "customer_id"]
+          },
+        ]
+      }
       recurring_services: {
         Row: {
           activation_invoice_id: string | null
           amount_cents: number
           billing_interval: string
+          cancellation_requested_at: string | null
+          cancellation_requested_by: string | null
           created_at: string
           currency: string
+          credit_settled_at: string | null
+          credit_settled_by: string | null
           customer_id: string
           description: string
+          ends_on: string | null
           id: string
+          last_term_amount_cents: number | null
+          last_term_synced_at: string | null
+          lifecycle_problem: string | null
           mollie_subscription_id: string | null
           name: string
           project_id: string | null
           starts_on: string | null
           status: string
+          subscription_canceled_at: string | null
           subscription_claim_id: string | null
           subscription_claimed_at: string | null
           updated_at: string
@@ -1614,16 +1704,25 @@ export type Database = {
           activation_invoice_id?: string | null
           amount_cents: number
           billing_interval?: string
+          cancellation_requested_at?: string | null
+          cancellation_requested_by?: string | null
           created_at?: string
           currency?: string
+          credit_settled_at?: string | null
+          credit_settled_by?: string | null
           customer_id: string
           description?: string
+          ends_on?: string | null
           id?: string
+          last_term_amount_cents?: number | null
+          last_term_synced_at?: string | null
+          lifecycle_problem?: string | null
           mollie_subscription_id?: string | null
           name: string
           project_id?: string | null
           starts_on?: string | null
           status?: string
+          subscription_canceled_at?: string | null
           subscription_claim_id?: string | null
           subscription_claimed_at?: string | null
           updated_at?: string
@@ -1633,16 +1732,25 @@ export type Database = {
           activation_invoice_id?: string | null
           amount_cents?: number
           billing_interval?: string
+          cancellation_requested_at?: string | null
+          cancellation_requested_by?: string | null
           created_at?: string
           currency?: string
+          credit_settled_at?: string | null
+          credit_settled_by?: string | null
           customer_id?: string
           description?: string
+          ends_on?: string | null
           id?: string
+          last_term_amount_cents?: number | null
+          last_term_synced_at?: string | null
+          lifecycle_problem?: string | null
           mollie_subscription_id?: string | null
           name?: string
           project_id?: string | null
           starts_on?: string | null
           status?: string
+          subscription_canceled_at?: string | null
           subscription_claim_id?: string | null
           subscription_claimed_at?: string | null
           updated_at?: string

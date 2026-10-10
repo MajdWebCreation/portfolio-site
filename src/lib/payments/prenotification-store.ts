@@ -6,6 +6,7 @@ import { paymentsAdminClient } from "@/lib/payments/admin-client";
 import type { BillingPeriod } from "@/lib/payments/billing-period";
 import { recurringServiceFromRow } from "@/lib/payments/mapper";
 import type { ServiceSchedule } from "@/lib/payments/prenotification";
+import { listPriceChangesForServices } from "@/lib/payments/price-change";
 import type {
   ClaimKey,
   PendingInvoice,
@@ -25,7 +26,7 @@ import type { RecurringService } from "@/lib/payments/types";
  * re-checks nothing.
  */
 const recurringColumns =
-  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, project_id, activation_invoice_id, mollie_subscription_id, created_at, updated_at";
+  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, project_id, activation_invoice_id, mollie_subscription_id, subscription_canceled_at, ends_on, cancellation_requested_at, last_term_amount_cents, last_term_synced_at, lifecycle_problem, credit_settled_at, created_at, updated_at";
 
 function fail(operation: string, error: { message: string } | null): void {
   if (error) throw new Error(`${operation}: ${error.message}`);
@@ -69,9 +70,13 @@ export function createPrenotificationStore(): PrenotificationStore {
         billed.set(row.recurring_service_id, list);
       }
 
+      // The price history, so a period is announced at the amount it costs.
+      const changes = await listPriceChangesForServices(db, services.map((service) => service.id));
+
       return services.map((service) => ({
         service,
         billedPeriodStarts: billed.get(service.id) ?? [],
+        priceChanges: changes.filter((change) => change.recurringServiceId === service.id),
       }));
     },
 

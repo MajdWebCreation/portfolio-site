@@ -3,7 +3,8 @@ import type { Invoice } from "@/lib/admin/invoices/types";
 import { calculateTotals } from "@/lib/money";
 import type { BillingPeriod } from "@/lib/payments/billing-period";
 import { isAnnounceable, nextDebitSchedule, type ServiceSchedule } from "@/lib/payments/prenotification";
-import type { RecurringService } from "@/lib/payments/types";
+import { endsInside } from "@/lib/payments/pricing";
+import { isPendingPriceChange, type RecurringService } from "@/lib/payments/types";
 
 /**
  * The daily pass, in two halves.
@@ -139,6 +140,34 @@ export async function runPrenotifications(
     }
 
     if (!isAnnounceable(schedule, todayKey)) continue;
+
+    /*
+      A price change that starts with this period must have reached Mollie
+      before the period is invoiced, or the invoice would say one figure and
+      the collection another. The lifecycle pass runs first and normally has
+      done it; if it could not, the invoice waits for tomorrow's run and the
+      problem is reported rather than announced wrong.
+    */
+    const unsynced = (entry.priceChanges ?? []).find(
+      (change) => isPendingPriceChange(change) && !change.providerUpdatedAt && !change.blockedAt && change.effectiveFrom <= schedule.period.start,
+    );
+    if (unsynced) {
+      summary.problems.push({
+        serviceId: entry.service.id,
+        reason: `Prijswijziging per ${unsynced.effectiveFrom} is nog niet doorgevoerd bij Mollie; de factuur voor die periode wacht.`,
+      });
+      continue;
+    }
+
+    // The same holds for a partial last period: its pro-rata amount has to be
+    // settled with Mollie before it is invoiced at that amount.
+    if (endsInside(schedule.period, entry.service.endsOn) && !entry.service.lastTerm) {
+      summary.problems.push({
+        serviceId: entry.service.id,
+        reason: `De laatste termijn (tot ${entry.service.endsOn}) is nog niet met Mollie afgestemd; de factuur voor die periode wacht.`,
+      });
+      continue;
+    }
 
     try {
       const before = entry.billedPeriodStarts.includes(schedule.period.start);

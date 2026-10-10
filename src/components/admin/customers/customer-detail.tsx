@@ -17,6 +17,7 @@ import type { Project } from "@/lib/admin/projects/types";
 import type { DirectDebitView } from "@/lib/payments/direct-debit-view";
 import type { CustomerFinancials } from "@/lib/payments/customer-status";
 import type { RecurringOverview } from "@/lib/payments/prenotification";
+import type { RecurringManagement } from "@/lib/payments/recurring-management";
 import type { RecurringService } from "@/lib/payments/types";
 import type { Quote } from "@/lib/admin/quotes/types";
 
@@ -36,6 +37,8 @@ type CustomerDetailProps = {
   recurringServices: RecurringService[];
   /** Next collection and announcement state per service; derived, never stored. */
   recurringOverviews: Record<string, RecurringOverview>;
+  /** What may be done with each service, and what it would mean; derived on the server. */
+  recurringManagements: Record<string, RecurringManagement>;
   /** How far the one-off invoice and the mandate have got, per service. */
   directDebit: DirectDebitView;
   /** Earliest first collection per service that is not collecting yet. */
@@ -92,6 +95,7 @@ export default function CustomerDetail({
   financials,
   recurringServices,
   recurringOverviews,
+  recurringManagements,
   directDebit,
   firstCollections,
   todayKey,
@@ -188,8 +192,10 @@ export default function CustomerDetail({
           customerId={customer.id}
           services={recurringServices}
           overviews={recurringOverviews}
+          managements={recurringManagements}
           directDebit={directDebit}
           firstCollections={firstCollections}
+          todayKey={todayKey}
         />
 
         <CustomerDocuments quotes={quotes} invoices={invoices} />

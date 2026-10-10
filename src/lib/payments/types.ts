@@ -155,10 +155,119 @@ export type RecurringService = {
    */
   mollie: {
     subscriptionId?: string;
+    /** When the subscription was cancelled at Mollie, or found cancelled. */
+    subscriptionCanceledAt?: string;
   };
+  /**
+   * The last day the service runs, once a cancellation is planned: the end
+   * of the last billing period that is still collected. Nothing is billed,
+   * announced or collected for a period that starts after it. Present
+   * exactly when `cancellationRequestedAt` is.
+   */
+  endsOn?: string;
+  cancellationRequestedAt?: string;
+  /**
+   * The partial last period, once Mollie was checked for it: the net amount
+   * it is billed and collected at (pro rata, or the full amount when Mollie
+   * had already created that payment) and when that was settled.
+   */
+  lastTerm?: { amountCents: Cents; syncedAt: string };
+  /** What the daily job could not resolve and an admin has to look at. */
+  lifecycleProblem?: string;
+  /** An admin recorded that the credit for the last term was made and refunded by hand. */
+  creditSettledAt?: string;
   createdAt: string;
   updatedAt: string;
 };
+
+/**
+ * One change to what a service costs per month, kept for good.
+ *
+ * The amount a period costs is read off these rows (`amountForPeriod` in
+ * pricing.ts): the latest change effective by the period's start decides,
+ * and before any change the first change's old amount. So the history is
+ * the truth and `RecurringService.amountCents` is merely "the price in effect
+ * today", switched over by the daily job on the effective date.
+ */
+export type PriceChange = {
+  id: string;
+  recurringServiceId: string;
+  customerId: string;
+  oldAmountCents: Cents;
+  newAmountCents: Cents;
+  /** First day of the first billing period at the new amount. */
+  effectiveFrom: string;
+  requestedAt: string;
+  requestedBy?: string;
+  /** Mollie holds the new amount for future payments. */
+  providerUpdatedAt?: string;
+  /** `amountCents` on the service was switched over. */
+  appliedAt?: string;
+  canceledAt?: string;
+  canceledReason?: "withdrawn" | "service_ended";
+  /** The effective date it was planned for, when Mollie had already created that period's payment. */
+  rescheduledFrom?: string;
+  rescheduleReason?: string;
+  /** Mollie could not be given the new amount for any period; waits for an admin. */
+  blockedAt?: string;
+  blockedReason?: string;
+};
+
+/** A change still to be carried out, in full or in part. */
+export function isPendingPriceChange(change: Pick<PriceChange, "appliedAt" | "canceledAt">): boolean {
+  return !change.appliedAt && !change.canceledAt;
+}
+
+/** A change that applies to no period at all until an admin resolves it. */
+export function isBlockedPriceChange(change: Pick<PriceChange, "appliedAt" | "canceledAt" | "blockedAt">): boolean {
+  return isPendingPriceChange(change) && Boolean(change.blockedAt);
+}
+
+/**
+ * Where a service stands in its life, read off its dates rather than off a
+ * fourth status value:
+ *
+ *   active                  collects, and nothing is planned to end it;
+ *   cancellation_scheduled  collects until `endsOn`, which is still ahead;
+ *   ended                   `endsOn` has passed, or the status says stopped.
+ *
+ * `other` is everything before collection starts (draft, awaiting mandate,
+ * paused), for which neither changing the price through Mollie nor ending
+ * the collection applies.
+ */
+export type RecurringLifecycle = "active" | "cancellation_scheduled" | "ended" | "other";
+
+export function recurringLifecycle(
+  service: Pick<RecurringService, "status" | "endsOn">,
+  todayKey: string,
+): RecurringLifecycle {
+  if (service.status === "canceled") return "ended";
+  if (service.endsOn && service.endsOn < todayKey) return "ended";
+  if (service.status !== "active") return "other";
+  return service.endsOn ? "cancellation_scheduled" : "active";
+}
+
+/** "Actief", "Opgezegd — eindigt op 3 dec 2026", "Beëindigd op 3 dec 2026". */
+export function recurringLifecycleLabel(
+  service: Pick<RecurringService, "status" | "endsOn">,
+  todayKey: string,
+  formatDay: (dateKey: string) => string,
+): string {
+  const lifecycle = recurringLifecycle(service, todayKey);
+  if (lifecycle === "cancellation_scheduled") return `Opgezegd — eindigt op ${formatDay(service.endsOn!)}`;
+  if (lifecycle === "ended") return service.endsOn ? `Beëindigd op ${formatDay(service.endsOn)}` : recurringStatusLabels.canceled;
+  return recurringStatusLabels[service.status];
+}
+
+export function recurringLifecycleTone(
+  service: Pick<RecurringService, "status" | "endsOn">,
+  todayKey: string,
+): "neutral" | "accent" | "success" | "danger" {
+  const lifecycle = recurringLifecycle(service, todayKey);
+  if (lifecycle === "cancellation_scheduled") return "accent";
+  if (lifecycle === "ended") return "danger";
+  return recurringStatusTone[service.status];
+}
 
 export const recurringStatusOrder: readonly RecurringStatus[] = [
   "draft",
@@ -204,7 +313,10 @@ export function isRecurringStatus(value: string): value is RecurringStatus {
   return (recurringStatusOrder as readonly string[]).includes(value);
 }
 
-/** A service that collects money by direct debit right now. */
+/**
+ * A service that collects money by direct debit right now. One with an end
+ * date still ahead counts: its remaining periods are collected as agreed.
+ */
 export function isCollecting(service: Pick<RecurringService, "status">): boolean {
   return service.status === "active";
 }

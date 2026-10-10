@@ -9,6 +9,7 @@ import type { Invoice } from "@/lib/admin/invoices/types";
 import { calculateTotals, formatCents } from "@/lib/money";
 import { runPrenotifications } from "@/lib/payments/prenotification-runner";
 import { createPrenotificationStore } from "@/lib/payments/prenotification-store";
+import { runRecurringLifecycle } from "@/lib/payments/recurring-lifecycle";
 
 /**
  * The daily SEPA pre-notification pass.
@@ -61,6 +62,26 @@ async function handle(request: Request): Promise<Response> {
   };
 
   try {
+    /*
+      Planned price changes and ends first: a change reaches Mollie on the
+      announcement day of its first period, before that period's invoice is
+      made below. Its problems are reported with the announcement ones; a
+      failure here does not stop the announcements, whose own guard refuses
+      to invoice a period whose change has not reached Mollie.
+    */
+    const todayKey = toDateKey(new Date());
+    const lifecycle = await runRecurringLifecycle(communicationsDb(), todayKey);
+    console.info("Recurring lifecycle run finished", {
+      providerUpdated: lifecycle.priceChanges.providerUpdated,
+      applied: lifecycle.priceChanges.applied,
+      lapsed: lifecycle.priceChanges.lapsed,
+      priceChangeProblems: lifecycle.priceChanges.problems.length,
+      cancellationsConsidered: lifecycle.cancellations.considered,
+      subscriptionsCanceled: lifecycle.cancellations.providerCanceled,
+      ended: lifecycle.cancellations.ended,
+      cancellationProblems: lifecycle.cancellations.problems.length,
+    });
+
     const summary = await runPrenotifications(
       createPrenotificationStore(),
       storedPdf,
@@ -90,7 +111,7 @@ async function handle(request: Request): Promise<Response> {
           fileName: documentFileName(invoice.number.value),
           recurring: { serviceName, collection: { kind: "scheduled", debitOn } },
         }),
-      toDateKey(new Date()),
+      todayKey,
     );
 
     // Counts and service ids only: no customer, no address, no amount.
@@ -103,7 +124,7 @@ async function handle(request: Request): Promise<Response> {
       problems: summary.problems.length,
     });
 
-    return Response.json(summary, { status: 200 });
+    return Response.json({ ...summary, lifecycle }, { status: 200 });
   } catch (error) {
     console.error("Pre-notification run failed", { error });
     return new Response("Run failed", { status: 500 });

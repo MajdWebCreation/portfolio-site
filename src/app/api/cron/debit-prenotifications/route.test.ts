@@ -14,10 +14,24 @@ vi.mock("@/lib/payments/prenotification-store", () => ({
   createPrenotificationStore: () => createPrenotificationStore(),
 }));
 vi.mock("@/lib/payments/prenotification-email", () => ({ sendPrenotificationMail: vi.fn() }));
+/* The elevated client is built for the lifecycle pass; nothing here queries it. */
+vi.mock("@/lib/payments/admin-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/payments/admin-client")>()),
+  paymentsAdminClient: () => ({ from: vi.fn() }),
+}));
+/* The lifecycle pass runs first and its summary rides along in the response. */
+const runRecurringLifecycle = vi.fn();
+vi.mock("@/lib/payments/recurring-lifecycle", () => ({
+  runRecurringLifecycle: (...args: unknown[]) => runRecurringLifecycle(...args),
+}));
 
 const { GET, POST } = await import("@/app/api/cron/debit-prenotifications/route");
 
 const summary = { considered: 1, announced: 1, skipped: 0, failed: 0, problems: [] };
+const lifecycle = {
+  priceChanges: { providerUpdated: 0, applied: 0, lapsed: 0, problems: [] },
+  cancellations: { considered: 0, providerCanceled: 0, ended: 0, problems: [] },
+};
 
 function request(headers: Record<string, string> = {}) {
   return new Request("https://ymcreations.com/api/cron/debit-prenotifications", { headers });
@@ -26,6 +40,7 @@ function request(headers: Record<string, string> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   runPrenotifications.mockResolvedValue(summary);
+  runRecurringLifecycle.mockResolvedValue(lifecycle);
   process.env.CRON_SECRET = "s3cret-value";
   process.env.SUPABASE_SECRET_KEY = "sb_secret_test";
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
@@ -41,8 +56,11 @@ describe("who may run the job", () => {
     const response = await GET(request({ authorization: "Bearer s3cret-value" }));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual(summary);
+    expect(await response.json()).toEqual({ ...summary, lifecycle });
     expect(runPrenotifications).toHaveBeenCalledTimes(1);
+    // Price changes reach Mollie before the period they start is invoiced.
+    expect(runRecurringLifecycle).toHaveBeenCalledTimes(1);
+    expect(runRecurringLifecycle.mock.invocationCallOrder[0]).toBeLessThan(runPrenotifications.mock.invocationCallOrder[0]!);
   });
 
   it("also accepts an authorised POST, for a manual rerun", async () => {

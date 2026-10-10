@@ -24,7 +24,7 @@ import type { Payment, RecurringService } from "@/lib/payments/types";
 const paymentColumns =
   "id, invoice_id, customer_id, amount_cents, currency, status, source, provider_payment_id, method, paid_at, description, created_at, updated_at";
 const recurringColumns =
-  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, project_id, activation_invoice_id, mollie_subscription_id, created_at, updated_at";
+  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, project_id, activation_invoice_id, mollie_subscription_id, subscription_canceled_at, ends_on, cancellation_requested_at, last_term_amount_cents, last_term_synced_at, lifecycle_problem, credit_settled_at, created_at, updated_at";
 
 function fail(operation: string, error: { message: string } | null): void {
   if (error) throw new Error(`${operation}: ${error.message}`);
@@ -178,8 +178,8 @@ export function createWebhookStore(): WebhookStore {
       pass uses -- so a charge that arrives before the announcement, or after
       it, always lands on the same document and the same YM-F number.
     */
-    async ensureRecurringInvoice(service: RecurringService, period: BillingPeriod): Promise<Invoice> {
-      return ensureRecurringInvoice(db, service, period, toDateKey(new Date()));
+    async ensureRecurringInvoice(service: RecurringService, period: BillingPeriod, collectedGrossCents: number): Promise<Invoice> {
+      return ensureRecurringInvoice(db, service, period, toDateKey(new Date()), { collectedGrossCents });
     },
   };
 }
