@@ -2,11 +2,10 @@ import Link from "next/link";
 import AdminSection from "@/components/admin/admin-section";
 import CustomerCommunications, { type CommunicationTargets } from "@/components/admin/customers/customer-communications";
 import CustomerDocuments from "@/components/admin/customers/customer-documents";
-import CustomerEdit from "@/components/admin/customers/customer-edit";
+import CustomerDetails, { CustomerNotes } from "@/components/admin/customers/customer-details";
 import CustomerFinance from "@/components/admin/customers/customer-finance";
 import CustomerProjects from "@/components/admin/customers/customer-projects";
 import CustomerRecurring from "@/components/admin/customers/customer-recurring";
-import { DetailList, DetailRow } from "@/components/admin/detail-list";
 import type { CustomerCommunication } from "@/lib/admin/communications/types";
 import type { Customer } from "@/lib/admin/customers/types";
 import { formatDateTime } from "@/lib/admin/format";
@@ -46,10 +45,6 @@ type CustomerDetailProps = {
   /** Today in Amsterdam, for the deadline states. */
   todayKey: string;
 };
-
-function Dash() {
-  return <span className="text-muted">—</span>;
-}
 
 /**
  * Names for the records a mail points at, from what this page already loaded.
@@ -100,46 +95,12 @@ export default function CustomerDetail({
   firstCollections,
   todayKey,
 }: CustomerDetailProps) {
-  const { address } = customer;
-
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12">
       <div className="space-y-10">
-        <AdminSection id="customer" title="Bedrijf en contact">
-          <DetailList>
-            <DetailRow term="Bedrijf">{customer.companyName}</DetailRow>
-            <DetailRow term="Contactpersoon">{customer.contactName}</DetailRow>
-            <DetailRow term="E-mail">
-              <a href={`mailto:${customer.email}`} className="link-static">
-                {customer.email}
-              </a>
-            </DetailRow>
-            <DetailRow term="Telefoon">
-              {customer.phone ? (
-                <a href={`tel:${customer.phone.replace(/\s/g, "")}`} className="link-static tabular">
-                  {customer.phone}
-                </a>
-              ) : (
-                <Dash />
-              )}
-            </DetailRow>
-            <DetailRow term="Klant sinds">{formatDateTime(customer.createdAt)}</DetailRow>
-          </DetailList>
-        </AdminSection>
+        <CustomerDetails customer={customer} />
 
-        <AdminSection id="billing" title="Adres en identificatie" note="Voor offertes en facturen">
-          <DetailList>
-            <DetailRow term="Adres">
-              {address.street}
-              <span className="block">
-                {address.postalCode} {address.city}
-              </span>
-              <span className="block">{address.country}</span>
-            </DetailRow>
-            <DetailRow term="KvK-nummer">{customer.kvkNumber ?? <Dash />}</DetailRow>
-            <DetailRow term="Btw-nummer">{customer.vatNumber ?? <Dash />}</DetailRow>
-          </DetailList>
-        </AdminSection>
+        <CustomerNotes customer={customer} />
 
         <AdminSection
           id="communication"
@@ -151,8 +112,6 @@ export default function CustomerDetail({
             targets={communicationTargets({ quotes, invoices, projects, recurringServices })}
           />
         </AdminSection>
-
-        <CustomerEdit customer={customer} />
       </div>
 
       <aside className="space-y-8 lg:border-l lg:border-line lg:pl-8">
