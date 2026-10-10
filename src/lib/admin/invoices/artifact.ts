@@ -130,7 +130,7 @@ async function existingRender(
   const prefix = `${invoice.number.value}-`;
 
   const { data, error } = await db.storage.from(invoiceDocumentBucket).list(folder, { search: prefix });
-  if (error) throw new Error(`Factuur-PDF zoeken: ${error.message}`);
+  if (error) throw new Error(`PDF zoeken: ${error.message}`);
 
   const found = (data ?? []).filter((item) => item.name.startsWith(prefix) && item.name.endsWith(".pdf"));
   /*
@@ -146,6 +146,8 @@ export async function storeInvoiceArtifact(
   db: SupabaseClient<Database>,
   invoice: Pick<Invoice, "number" | "issueDate">,
   pdf: Uint8Array,
+  /* The document kind in error messages: a credit note is stored the same way. */
+  label = "Factuur",
 ): Promise<StoredArtifact> {
   const sha256 = sha256Hex(pdf);
   const path = invoiceDocumentObjectPath(invoice, sha256);
@@ -159,7 +161,7 @@ export async function storeInvoiceArtifact(
   });
 
   if (!error) return { path, sha256, bytes: pdf.byteLength, adopted: false };
-  if (!alreadyExists(error)) throw new Error(`Factuur-PDF opslaan: ${error.message}`);
+  if (!alreadyExists(error)) throw new Error(`${label}-PDF opslaan: ${error.message}`);
 
   /* These exact bytes are already stored: the same upload, once more. */
   return adopt(db, path);
@@ -172,7 +174,7 @@ async function adopt(db: SupabaseClient<Database>, path: string): Promise<Stored
   const existing = await db.storage.from(invoiceDocumentBucket).download(path);
   if (existing.error || !existing.data) {
     throw new Error(
-      `Factuur-PDF opslaan: er ligt al een document op ${path}, maar het kon niet worden gelezen: ${
+      `PDF opslaan: er ligt al een document op ${path}, maar het kon niet worden gelezen: ${
         existing.error?.message ?? "geen bestand"
       }`,
     );
@@ -181,7 +183,7 @@ async function adopt(db: SupabaseClient<Database>, path: string): Promise<Stored
   const stored = Buffer.from(await existing.data.arrayBuffer());
   const sha256 = sha256Hex(stored);
   if (sha256 !== expected) {
-    throw new Error(`Factuur-PDF opslaan: het bestand op ${path} komt niet overeen met zijn eigen controlesom.`);
+    throw new Error(`PDF opslaan: het bestand op ${path} komt niet overeen met zijn eigen controlesom.`);
   }
 
   return { path, sha256, bytes: stored.byteLength, adopted: true };
@@ -204,12 +206,13 @@ export type ArtifactRead =
 export async function readInvoiceArtifact(
   db: SupabaseClient<Database>,
   invoice: Pick<Invoice, "number" | "document">,
+  label = "factuur",
 ): Promise<ArtifactRead> {
   const document = invoice.document;
   if (!document) {
     return {
       ok: false,
-      reason: `Van factuur ${invoice.number.value} is geen definitieve PDF opgeslagen.`,
+      reason: `Van ${label} ${invoice.number.value} is geen definitieve PDF opgeslagen.`,
     };
   }
 

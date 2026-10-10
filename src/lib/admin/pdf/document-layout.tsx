@@ -16,7 +16,7 @@ import { calculateTotals, formatCents, formatQuantity, lineNetCents } from "@/li
 export type MetaItem = { label: string; value: string };
 
 type DocumentLayoutProps = {
-  kind: "OFFERTE" | "FACTUUR";
+  kind: "OFFERTE" | "FACTUUR" | "CREDITNOTA";
   title: string;
   number: string;
   provisional: boolean;
@@ -28,7 +28,12 @@ type DocumentLayoutProps = {
   notes?: string;
   /** Block under the totals, e.g. payment details on an invoice. */
   afterTotals?: ReactNode;
+  /** The labels of the totals block; a credit note says what it credits rather than what is due. */
+  totalsLabels?: TotalsLabels;
 };
+
+export type TotalsLabels = { subtotal: string; total: string };
+const invoiceTotalsLabels: TotalsLabels = { subtotal: "Subtotaal excl. btw", total: "Totaal incl. btw" };
 
 const columns = { description: "50%", quantity: "10%", price: "15%", vat: "8%", amount: "17%" } as const;
 
@@ -98,7 +103,7 @@ function LineRow({ line }: { line: DocumentLine }) {
   );
 }
 
-function TotalsBlock({ lines }: { lines: DocumentLine[] }) {
+function TotalsBlock({ lines, labels }: { lines: DocumentLine[]; labels: TotalsLabels }) {
   const totals = calculateTotals(lines);
   const row = (label: string, value: string, strong = false) => (
     <View key={label} style={[styles.row, strong ? { borderTopWidth: 1.2, borderTopColor: colors.ink, paddingTop: 7, marginTop: 3 } : styles.hairline, { paddingVertical: 4, justifyContent: "space-between" }]}>
@@ -108,9 +113,9 @@ function TotalsBlock({ lines }: { lines: DocumentLine[] }) {
   );
   return (
     <View style={{ alignSelf: "flex-end", width: "46%", marginTop: 10 }}>
-      {row("Subtotaal excl. btw", formatCents(totals.subtotalCents))}
+      {row(labels.subtotal, formatCents(totals.subtotalCents))}
       {totals.vatGroups.map((group) => row(`Btw ${group.rate}% over ${formatCents(group.netCents)}`, formatCents(group.vatCents)))}
-      {row("Totaal incl. btw", formatCents(totals.totalCents), true)}
+      {row(labels.total, formatCents(totals.totalCents), true)}
     </View>
   );
 }
@@ -120,7 +125,7 @@ function TotalsBlock({ lines }: { lines: DocumentLine[] }) {
  * last line and the totals stay together, so the totals never appear on a
  * page without at least one line above them.
  */
-function LineTable({ lines }: { lines: DocumentLine[] }) {
+function LineTable({ lines, labels }: { lines: DocumentLine[]; labels: TotalsLabels }) {
   const head = lines.slice(0, -1);
   const last = lines[lines.length - 1];
   return (
@@ -137,13 +142,13 @@ function LineTable({ lines }: { lines: DocumentLine[] }) {
       ))}
       <View wrap={false}>
         {last ? <LineRow line={last} /> : null}
-        <TotalsBlock lines={lines} />
+        <TotalsBlock lines={lines} labels={labels} />
       </View>
     </View>
   );
 }
 
-export default function DocumentLayout({ kind, title, number, provisional, meta, customer, subject, intro, lines, notes, afterTotals }: DocumentLayoutProps) {
+export default function DocumentLayout({ kind, title, number, provisional, meta, customer, subject, intro, lines, notes, afterTotals, totalsLabels }: DocumentLayoutProps) {
   return (
     <Document title={title} author={companyProfile.name} language="nl">
       <Page size="A4" style={styles.page}>
@@ -174,7 +179,7 @@ export default function DocumentLayout({ kind, title, number, provisional, meta,
         {subject ? <Text style={[styles.bold, { fontSize: 13, marginTop: 26 }]}>{subject}</Text> : null}
         {intro ? <Text style={[styles.prose, { marginTop: subject ? 6 : 26, maxWidth: "88%" }]}>{intro}</Text> : null}
 
-        <LineTable lines={lines} />
+        <LineTable lines={lines} labels={totalsLabels ?? invoiceTotalsLabels} />
 
         {afterTotals}
 

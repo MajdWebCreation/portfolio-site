@@ -1,3 +1,4 @@
+import { isFinanciallyIssuedRow } from "@/lib/admin/credit-notes/types";
 import { linesFromRows, snapshotFromRow, type LineRow } from "@/lib/admin/documents/mapper";
 import type { IssuedActivation } from "@/lib/admin/documents/types";
 import type { Invoice, InvoiceDocumentFile, InvoiceStatus } from "@/lib/admin/invoices/types";
@@ -42,6 +43,8 @@ export type InvoiceRow = {
   recipient_email: string | null;
   updated_at: string;
   invoice_lines: LineRow[];
+  /** The credit notes against this invoice; absent on a client that did not embed them. */
+  credit_notes?: { total_cents: number; issued_at: string | null; document_path: string | null }[] | null;
 };
 
 export const invoiceColumns = `
@@ -53,7 +56,8 @@ export const invoiceColumns = `
   issue_date, due_date, finalizing_at, issued_at, activation_note,
   document_path, document_sha256, document_bytes, document_generated_at,
   payment_reference, notes, quote_id, sent_at, recipient_email, created_at, updated_at,
-  invoice_lines ( id, position, description, quantity_hundredths, unit_price_cents, vat_rate )
+  invoice_lines ( id, position, description, quantity_hundredths, unit_price_cents, vat_rate ),
+  credit_notes ( total_cents, issued_at, document_path )
 `;
 
 /**
@@ -88,9 +92,15 @@ function documentFromRow(row: InvoiceRow): InvoiceDocumentFile | undefined {
   };
 }
 
+/** Only a credit note that is a document counts; one still being issued does not yet correct anything. */
+function creditedFromRow(row: InvoiceRow): number {
+  return (row.credit_notes ?? []).filter(isFinanciallyIssuedRow).reduce((sum, note) => sum + note.total_cents, 0);
+}
+
 export function invoiceFromRow(row: InvoiceRow): Invoice {
   const activationNote = activationNoteFromJson(row.activation_note);
   const document = documentFromRow(row);
+  const creditedCents = creditedFromRow(row);
   return {
     id: row.id,
     number: { value: row.number_value, provisional: row.number_provisional },
@@ -113,5 +123,6 @@ export function invoiceFromRow(row: InvoiceRow): Invoice {
     ...(document ? { document } : {}),
     ...(row.sent_at ? { sentAt: row.sent_at } : {}),
     ...(row.recipient_email ? { recipientEmail: row.recipient_email } : {}),
+    ...(creditedCents > 0 ? { creditedCents } : {}),
   };
 }

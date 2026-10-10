@@ -108,6 +108,14 @@ export type MolliePayment = {
   sequenceType?: "oneoff" | "first" | "recurring";
   metadata?: Record<string, unknown> | null;
   /**
+   * "The total amount that is already refunded" and "the remaining amount
+   * that can be refunded" (get-payment reference). Both present only when
+   * refunds are available for the payment; a payment without them cannot be
+   * refunded through the API at all.
+   */
+  amountRefunded?: { currency: string; value: string } | null;
+  amountRemaining?: { currency: string; value: string } | null;
+  /**
    * Method-specific details. For SEPA direct debit, `dueDate` is the
    * "Estimated date the payment is debited from the customer's bank
    * account" (extra-payment-parameters reference) -- the collection date a
@@ -565,6 +573,75 @@ export async function listMethodsForSequence(
 }
 
 /** Mollie's payment states mapped onto ours; "authorized" is money promised, not moved. */
+// ---------------------------------------------------------------- refunds
+
+/**
+ * Mollie's refund states (create-refund reference): queued, pending,
+ * processing, refunded, failed, canceled. Only `refunded` means the money
+ * went back; `failed` and `canceled` mean it did not and will not.
+ */
+export type MollieRefundStatus = "queued" | "pending" | "processing" | "refunded" | "failed" | "canceled";
+
+export type MollieRefund = {
+  id: string;
+  paymentId: string;
+  status: MollieRefundStatus;
+  amount: { currency: string; value: string };
+  description?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt?: string;
+};
+
+export type CreateRefundInput = {
+  paymentId: string;
+  amountCents: number;
+  description: string;
+  /** Our own refund id, so a refund Mollie made for us can be recognised afterwards. */
+  metadata: Record<string, string>;
+  /** The same key on a retry makes Mollie answer with the refund it already made. */
+  idempotencyKey: string;
+  config?: MollieConfig;
+};
+
+/** POST /v2/payments/{id}/refunds. The amount may be lower than the payment; never higher than `amountRemaining`. */
+export async function createRefund(input: CreateRefundInput): Promise<MollieRefund> {
+  return request<MollieRefund>({
+    method: "POST",
+    path: `/payments/${encodeURIComponent(input.paymentId)}/refunds`,
+    idempotencyKey: input.idempotencyKey,
+    body: {
+      amount: mollieAmount(input.amountCents),
+      description: input.description,
+      metadata: input.metadata,
+    },
+    config: input.config,
+  });
+}
+
+export async function getRefund(paymentId: string, refundId: string, config?: MollieConfig): Promise<MollieRefund> {
+  return request<MollieRefund>({
+    method: "GET",
+    path: `/payments/${encodeURIComponent(paymentId)}/refunds/${encodeURIComponent(refundId)}`,
+    config,
+  });
+}
+
+/** Every refund of one payment; a handful at most, so one page is the list. */
+export async function listPaymentRefunds(paymentId: string, config?: MollieConfig): Promise<MollieRefund[]> {
+  const page = await request<{ _embedded?: { refunds?: MollieRefund[] } }>({
+    method: "GET",
+    path: `/payments/${encodeURIComponent(paymentId)}/refunds?limit=250`,
+    config,
+  });
+  return page._embedded?.refunds ?? [];
+}
+
+/** Whether Mollie would accept a refund of `amountCents` on this payment right now. */
+export function refundableCents(payment: Pick<MolliePayment, "status" | "amountRemaining">): number {
+  if (payment.status !== "paid" || !payment.amountRemaining) return 0;
+  return centsFromMollie(payment.amountRemaining.value);
+}
+
 export function paymentStatusFromMollie(status: MolliePaymentStatus) {
   switch (status) {
     case "paid":

@@ -1,5 +1,7 @@
 import { renderToBuffer } from "@react-pdf/renderer";
+import type { CreditNote } from "@/lib/admin/credit-notes/types";
 import type { Invoice } from "@/lib/admin/invoices/types";
+import CreditNotePdf from "@/lib/admin/pdf/credit-note-pdf";
 import InvoicePdf, { type InvoiceActivation } from "@/lib/admin/pdf/invoice-pdf";
 import QuotePdf from "@/lib/admin/pdf/quote-pdf";
 import type { Quote } from "@/lib/admin/quotes/types";
@@ -19,6 +21,10 @@ export function renderQuotePdf(quote: Quote): Promise<Buffer> {
 
 export function renderInvoicePdf(invoice: Invoice, activates?: InvoiceActivation): Promise<Buffer> {
   return renderToBuffer(<InvoicePdf invoice={invoice} activates={activates} />);
+}
+
+export function renderCreditNotePdf(creditNote: CreditNote, invoiceNumber: string): Promise<Buffer> {
+  return renderToBuffer(<CreditNotePdf creditNote={creditNote} invoiceNumber={invoiceNumber} />);
 }
 
 /** File name a customer sees on the attachment: the number, nothing else. */

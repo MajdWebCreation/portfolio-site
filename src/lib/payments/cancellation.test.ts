@@ -732,14 +732,32 @@ describe("a credit owed to the customer", () => {
       todayKey: "2026-10-26",
     });
 
-  it("stays in view as an open task until an admin records it was done", () => {
+  it("stays in view as an open task until the credit note exists and is processed", () => {
     const open = view(announced());
-    expect(open.ending?.creditDue).toMatchObject({ days: 9, grossCents: 363 });
-    expect(open.ending?.creditDue?.settledAt).toBeUndefined();
-    expect(open.warning).toContain("Creditering open");
+    expect(open.ending?.creditDue).toMatchObject({ days: 9, netCents: 300, grossCents: 363 });
+    expect(open.ending?.creditDue?.creditNote).toBeUndefined();
+    expect(open.warning).toContain("Te crediteren");
 
-    const settled = view(flexora({ ...announced(), creditSettledAt: "2026-11-01T09:00:00.000Z" }));
-    expect(settled.ending?.creditDue).toMatchObject({ settledAt: "2026-11-01T09:00:00.000Z" });
-    expect(settled.warning).toBeUndefined();
+    const note = { id: "cn-1", number: "YM-C-2026-000001", state: "refund_due" as const, remainingCents: 363 };
+    const credited = recurringManagement({
+      service: announced(),
+      priceChanges: [],
+      billedPeriodStarts: ["2026-09-04", "2026-10-04", "2026-11-04"],
+      overview: { state: "not_needed", reason: "ended" },
+      todayKey: "2026-10-26",
+      cancellationCreditNote: note,
+    });
+    expect(credited.ending?.creditDue?.creditNote).toEqual(note);
+    expect(credited.warning).toContain("YM-C-2026-000001");
+
+    const processed = recurringManagement({
+      service: announced(),
+      priceChanges: [],
+      billedPeriodStarts: ["2026-09-04", "2026-10-04", "2026-11-04"],
+      overview: { state: "not_needed", reason: "ended" },
+      todayKey: "2026-10-26",
+      cancellationCreditNote: { ...note, state: "processed", remainingCents: 0 },
+    });
+    expect(processed.warning).toBeUndefined();
   });
 });

@@ -1,16 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import AdminButton from "@/components/admin/admin-button";
 import { SelectField, TextField } from "@/components/admin/form-field";
 import DirectDebitPanel from "@/components/admin/payments/direct-debit-panel";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import StatusBadge from "@/components/admin/status-badge";
+import { createCancellationCreditNote } from "@/lib/admin/credit-notes/actions";
+import { creditNoteStateLabels, creditNoteStateTone } from "@/lib/admin/credit-notes/settlement";
 import { formatDate, formatDateTime } from "@/lib/admin/format";
 import {
   cancelRecurringService,
   createRecurringService,
-  markRecurringCreditSettled,
   scheduleRecurringPriceChange,
   startMonthlyCollection,
   withdrawRecurringCancellation,
@@ -54,6 +56,7 @@ export default function CustomerRecurring({
   directDebit,
   firstCollections,
   todayKey,
+  allowAdding = true,
 }: {
   customerId: string;
   services: RecurringService[];
@@ -66,6 +69,8 @@ export default function CustomerRecurring({
   /** Per service without a subscription: the earliest first collection, from the server. */
   firstCollections: Record<string, string>;
   todayKey: string;
+  /** The collection detail page shows one service and offers no "add" form. */
+  allowAdding?: boolean;
 }) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -199,7 +204,7 @@ export default function CustomerRecurring({
         </p>
       ) : null}
 
-      {adding ? (
+      {!allowAdding ? null : adding ? (
         <div className="mt-4 space-y-4">
           <TextField id="recurring-name" label="Naam" value={name} onChange={(event) => setName(event.target.value)} placeholder="Websitebeheer" />
           <div className="grid gap-4 sm:grid-cols-2">
@@ -324,6 +329,7 @@ function Ending({ serviceId, management }: { serviceId: string; management: Recu
   const ending = management.ending!;
   const withdraw = useSave();
   const credit = useSave();
+  const [created, setCreated] = useState<string | null>(null);
   const ended = management.lifecycle === "ended";
   return (
     <div className="mt-2 border-l-2 border-line-strong pl-3 text-[0.82rem]">
@@ -345,13 +351,23 @@ function Ending({ serviceId, management }: { serviceId: string; management: Recu
           </Row>
         ) : null}
         {ending.creditDue ? (
-          <Row term="Creditering">
-            {ending.creditDue.settledAt ? (
-              `Verwerkt op ${formatDateTime(ending.creditDue.settledAt)}`
+          <Row term="Creditnota">
+            {ending.creditDue.creditNote ? (
+              <span className="inline-flex flex-wrap items-center justify-end gap-2">
+                <Link href={`/admin/betalingen/creditnotas/${ending.creditDue.creditNote.id}`} className="link-static text-ink">
+                  {ending.creditDue.creditNote.number}
+                </Link>
+                <StatusBadge tone={creditNoteStateTone[ending.creditDue.creditNote.state]}>
+                  {creditNoteStateLabels[ending.creditDue.creditNote.state]}
+                </StatusBadge>
+              </span>
             ) : (
-              <StatusBadge tone="accent">Open — handmatig crediteren en terugbetalen</StatusBadge>
+              <StatusBadge tone="accent">Nog aan te maken</StatusBadge>
             )}
           </Row>
+        ) : null}
+        {ending.creditDue?.creditNote && ending.creditDue.creditNote.state === "refund_due" ? (
+          <Row term="Nog terug te betalen">{formatCents(ending.creditDue.creditNote.remainingCents)}</Row>
         ) : null}
         <Row term="Nog te incasseren">
           {ending.collectionsAhead.length > 0 ? ending.collectionsAhead.map(day).join(", ") : "Niets meer"}
@@ -372,15 +388,20 @@ function Ending({ serviceId, management }: { serviceId: string; management: Recu
           {withdraw.pending ? "Intrekken…" : "Opzegging intrekken"}
         </AdminButton>
       ) : null}
-      {ending.creditDue && !ending.creditDue.settledAt ? (
+      {ending.creditDue && !ending.creditDue.creditNote ? (
         <AdminButton
           variant="secondary"
           className="mt-1.5 min-h-7 px-2.5 text-[0.8rem]"
           disabled={credit.pending}
-          onClick={() => credit.save(() => markRecurringCreditSettled(serviceId))}
+          onClick={() => credit.save(() => createCancellationCreditNote(serviceId), (value) => setCreated(value.number))}
         >
-          {credit.pending ? "Vastleggen…" : "Creditering als verwerkt markeren"}
+          {credit.pending ? "Aanmaken…" : "Creditnota aanmaken"}
         </AdminButton>
+      ) : null}
+      {created ? (
+        <p role="status" className="mt-1 text-success">
+          Creditnota {created} aangemaakt. Terugbetalen regel je op de creditnota zelf, onder Betalingen.
+        </p>
       ) : null}
       {credit.error ? (
         <p role="alert" className="mt-1 text-danger">

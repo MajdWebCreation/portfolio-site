@@ -32,7 +32,8 @@ export type CommunicationCategory =
   | "payment_reminder_second"
   | "payment_final_notice"
   | "recurring_price_change"
-  | "recurring_cancellation";
+  | "recurring_cancellation"
+  | "credit_note_sent";
 
 export const communicationCategoryOrder: readonly CommunicationCategory[] = [
   "quote_sent",
@@ -46,6 +47,7 @@ export const communicationCategoryOrder: readonly CommunicationCategory[] = [
   "payment_final_notice",
   "recurring_price_change",
   "recurring_cancellation",
+  "credit_note_sent",
 ];
 
 export const communicationCategoryLabels: Record<CommunicationCategory, string> = {
@@ -60,6 +62,7 @@ export const communicationCategoryLabels: Record<CommunicationCategory, string> 
   payment_final_notice: "Laatste aanmaning",
   recurring_price_change: "Bevestiging prijswijziging maanddienst",
   recurring_cancellation: "Bevestiging opzegging maanddienst",
+  credit_note_sent: "Creditnota",
 };
 
 /**
@@ -153,6 +156,8 @@ const groups: Record<CommunicationCategory, Exclude<CommunicationFilter, "all" |
      carrying no document. */
   recurring_price_change: "payments",
   recurring_cancellation: "payments",
+  /* A credit note carries a document, like the invoice it corrects. */
+  credit_note_sent: "invoices",
 };
 
 /**

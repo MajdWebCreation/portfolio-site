@@ -433,32 +433,3 @@ export async function withdrawRecurringCancellation(serviceId: string): Promise<
     return failure(error, "De opzegging kon niet worden ingetrokken.");
   }
 }
-
-/**
- * "Creditering verwerkt": an admin records that the credit note for the
- * undelivered days of a last term was made and the refund done -- both by
- * hand, outside this system. Nothing is credited or refunded here; the
- * record only takes the task out of view. Idempotent.
- */
-export async function markRecurringCreditSettled(serviceId: string): Promise<ActionResult> {
-  const service = await getRecurringService(serviceId);
-  if (!service) return { ok: false, error: "Deze dienst bestaat niet (meer)." };
-  if (!service.endsOn) return { ok: false, error: "Deze dienst is niet opgezegd; er is niets te crediteren." };
-
-  try {
-    const admin = await requireAdmin();
-    const db = await adminDb();
-    const { error } = await db
-      .from("recurring_services")
-      .update({ credit_settled_at: new Date().toISOString(), credit_settled_by: admin.userId })
-      .eq("id", serviceId)
-      .not("ends_on", "is", null)
-      .is("credit_settled_at", null);
-    if (error) return actionFailed(error, "Creditering vastleggen mislukt.");
-    revalidateCustomer(service.customerId);
-    return { ok: true };
-  } catch (error) {
-    console.error("Could not record a settled credit", { serviceId, error });
-    return failure(error, "De creditering kon niet worden vastgelegd.");
-  }
-}

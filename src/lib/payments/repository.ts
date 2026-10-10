@@ -8,7 +8,7 @@ const paymentColumns =
   "id, invoice_id, customer_id, amount_cents, currency, status, source, provider_payment_id, method, paid_at, description, created_at, updated_at";
 
 const recurringColumns =
-  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, project_id, activation_invoice_id, mollie_subscription_id, subscription_canceled_at, ends_on, cancellation_requested_at, last_term_amount_cents, last_term_synced_at, lifecycle_problem, credit_settled_at, created_at, updated_at";
+  "id, customer_id, name, description, amount_cents, currency, vat_rate, billing_interval, starts_on, status, project_id, activation_invoice_id, mollie_subscription_id, subscription_canceled_at, ends_on, cancellation_requested_at, last_term_amount_cents, last_term_synced_at, lifecycle_problem, created_at, updated_at";
 
 export async function listPayments(): Promise<Payment[]> {
   const db = await adminDb();

@@ -163,6 +163,184 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_note_lines: {
+        Row: {
+          credit_note_id: string
+          description: string
+          id: string
+          position: number
+          quantity_hundredths: number
+          unit_price_cents: number
+          vat_rate: number
+        }
+        Insert: {
+          credit_note_id: string
+          description: string
+          id?: string
+          position: number
+          quantity_hundredths: number
+          unit_price_cents: number
+          vat_rate: number
+        }
+        Update: {
+          credit_note_id?: string
+          description?: string
+          id?: string
+          position?: number
+          quantity_hundredths?: number
+          unit_price_cents?: number
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_note_lines_credit_note_id_fkey"
+            columns: ["credit_note_id"]
+            isOneToOne: false
+            referencedRelation: "credit_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_notes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          currency: string
+          customer_city: string
+          customer_company_name: string
+          customer_contact_name: string
+          customer_country: string
+          customer_email: string
+          customer_id: string
+          customer_kvk_number: string | null
+          customer_postal_code: string
+          customer_street: string
+          customer_vat_number: string | null
+          document_bytes: number | null
+          document_generated_at: string | null
+          document_path: string | null
+          document_sha256: string | null
+          finalizing_at: string | null
+          id: string
+          invoice_id: string
+          issue_date: string
+          issued_at: string | null
+          number_provisional: boolean
+          number_value: string
+          reason: string
+          recipient_email: string | null
+          recurring_service_id: string | null
+          sent_at: string | null
+          source: string
+          status: string
+          subtotal_cents: number
+          total_cents: number
+          updated_at: string
+          vat_cents: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          customer_city: string
+          customer_company_name: string
+          customer_contact_name: string
+          customer_country: string
+          customer_email: string
+          customer_id: string
+          customer_kvk_number?: string | null
+          customer_postal_code: string
+          customer_street: string
+          customer_vat_number?: string | null
+          document_bytes?: number | null
+          document_generated_at?: string | null
+          document_path?: string | null
+          document_sha256?: string | null
+          finalizing_at?: string | null
+          id?: string
+          invoice_id: string
+          issue_date: string
+          issued_at?: string | null
+          number_provisional?: boolean
+          number_value: string
+          reason: string
+          recipient_email?: string | null
+          recurring_service_id?: string | null
+          sent_at?: string | null
+          source?: string
+          status?: string
+          subtotal_cents: number
+          total_cents: number
+          updated_at?: string
+          vat_cents: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          customer_city?: string
+          customer_company_name?: string
+          customer_contact_name?: string
+          customer_country?: string
+          customer_email?: string
+          customer_id?: string
+          customer_kvk_number?: string | null
+          customer_postal_code?: string
+          customer_street?: string
+          customer_vat_number?: string | null
+          document_bytes?: number | null
+          document_generated_at?: string | null
+          document_path?: string | null
+          document_sha256?: string | null
+          finalizing_at?: string | null
+          id?: string
+          invoice_id?: string
+          issue_date?: string
+          issued_at?: string | null
+          number_provisional?: boolean
+          number_value?: string
+          reason?: string
+          recipient_email?: string | null
+          recurring_service_id?: string | null
+          sent_at?: string | null
+          source?: string
+          status?: string
+          subtotal_cents?: number
+          total_cents?: number
+          updated_at?: string
+          vat_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_notes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_notes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "credit_notes_invoice_same_customer"
+            columns: ["invoice_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id", "customer_id"]
+          },
+          {
+            foreignKeyName: "credit_notes_service_same_customer"
+            columns: ["recurring_service_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_services"
+            referencedColumns: ["id", "customer_id"]
+          },
+        ]
+      }
       customer_communications: {
         Row: {
           body_html: string | null
@@ -1162,6 +1340,13 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "mandate_activations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
         ]
       }
       payments: {
@@ -1663,6 +1848,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "recurring_price_changes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
+          {
             foreignKeyName: "recurring_price_changes_same_customer"
             columns: ["recurring_service_id", "customer_id"]
             isOneToOne: false
@@ -1680,8 +1872,6 @@ export type Database = {
           cancellation_requested_by: string | null
           created_at: string
           currency: string
-          credit_settled_at: string | null
-          credit_settled_by: string | null
           customer_id: string
           description: string
           ends_on: string | null
@@ -1708,8 +1898,6 @@ export type Database = {
           cancellation_requested_by?: string | null
           created_at?: string
           currency?: string
-          credit_settled_at?: string | null
-          credit_settled_by?: string | null
           customer_id: string
           description?: string
           ends_on?: string | null
@@ -1736,8 +1924,6 @@ export type Database = {
           cancellation_requested_by?: string | null
           created_at?: string
           currency?: string
-          credit_settled_at?: string | null
-          credit_settled_by?: string | null
           customer_id?: string
           description?: string
           ends_on?: string | null
@@ -1787,6 +1973,114 @@ export type Database = {
           },
         ]
       }
+      refunds: {
+        Row: {
+          amount_cents: number
+          claimed_at: string | null
+          created_at: string
+          created_by: string | null
+          credit_note_id: string
+          currency: string
+          customer_id: string
+          failure_reason: string | null
+          id: string
+          idempotency_key: string
+          invoice_id: string
+          method: string
+          note: string
+          payment_id: string | null
+          provider: string | null
+          provider_payment_id: string | null
+          provider_refund_id: string | null
+          settled_at: string | null
+          settled_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          claimed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          credit_note_id: string
+          currency?: string
+          customer_id: string
+          failure_reason?: string | null
+          id?: string
+          idempotency_key: string
+          invoice_id: string
+          method: string
+          note?: string
+          payment_id?: string | null
+          provider?: string | null
+          provider_payment_id?: string | null
+          provider_refund_id?: string | null
+          settled_at?: string | null
+          settled_by?: string | null
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          claimed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          credit_note_id?: string
+          currency?: string
+          customer_id?: string
+          failure_reason?: string | null
+          id?: string
+          idempotency_key?: string
+          invoice_id?: string
+          method?: string
+          note?: string
+          payment_id?: string | null
+          provider?: string | null
+          provider_payment_id?: string | null
+          provider_refund_id?: string | null
+          settled_at?: string | null
+          settled_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "refunds_invoice_same_customer"
+            columns: ["invoice_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id", "customer_id"]
+          },
+          {
+            foreignKeyName: "refunds_note_same_customer"
+            columns: ["credit_note_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "credit_notes"
+            referencedColumns: ["id", "customer_id"]
+          },
+          {
+            foreignKeyName: "refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       inquiry_funnel: {
@@ -1831,9 +2125,22 @@ export type Database = {
     }
     Functions: {
       assign_quote_number: { Args: { p_quote_id: string }; Returns: string }
+      begin_credit_note_issue: {
+        Args: { p_credit_note_id: string }
+        Returns: string
+      }
       begin_invoice_finalization: {
         Args: { p_activation?: Json; p_invoice_id: string }
         Returns: string
+      }
+      complete_credit_note_issue: {
+        Args: {
+          p_bytes: number
+          p_credit_note_id: string
+          p_path: string
+          p_sha256: string
+        }
+        Returns: Json
       }
       complete_invoice_finalization: {
         Args: {
@@ -1843,6 +2150,20 @@ export type Database = {
           p_sha256: string
         }
         Returns: Json
+      }
+      create_credit_note: {
+        Args: {
+          p_invoice_id: string
+          p_issue_date: string
+          p_lines: Json
+          p_reason: string
+          p_recurring_service_id?: string
+          p_source?: string
+          p_subtotal_cents: number
+          p_total_cents: number
+          p_vat_cents: number
+        }
+        Returns: string
       }
       save_invoice_lines: {
         Args: { p_invoice_id: string; p_lines: Json }

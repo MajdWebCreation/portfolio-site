@@ -1,4 +1,6 @@
+import type { CreditNoteState } from "@/lib/admin/credit-notes/settlement";
 import { billingPeriod, nextPeriodStart, periodForCharge, type BillingPeriod } from "@/lib/payments/billing-period";
+import { lastTermCredit } from "@/lib/payments/cancellation-credit";
 import { cancellationOptions, type CancellationPlan } from "@/lib/payments/cancellation-plan";
 import type { RecurringOverview } from "@/lib/payments/prenotification";
 import {
@@ -63,15 +65,25 @@ export type ServiceEnding = {
   lastTermSynced: boolean;
   /**
    * Owed back: the full term was announced or created before the end was
-   * known. `settledAt` once an admin recorded the credit note and refund;
-   * until then it is an open task the screen keeps in view.
+   * known. Settled by a credit note -- `creditNote` once one exists -- and,
+   * when the term was paid, by the refund against it. Until the note's
+   * state says processed it is an open task the screen keeps in view.
    */
-  creditDue?: { days: number; netCents: number; grossCents: number; settledAt?: string };
+  creditDue?: { days: number; netCents: number; grossCents: number; creditNote?: CancellationCreditNote };
   /** Collections from today up to and including the last one. */
   collectionsAhead: string[];
   /** The day the daily job cancels the subscription at Mollie. */
   providerCancelFrom: string;
   subscriptionCanceledAt?: string;
+};
+
+/** The credit note that settles a cancellation credit, as the screen needs it. */
+export type CancellationCreditNote = {
+  id: string;
+  number: string;
+  /** Where the money side stands, from the ledger; see credit-notes/settlement. */
+  state: CreditNoteState;
+  remainingCents: number;
 };
 
 export type RecurringManagement = {
@@ -104,6 +116,8 @@ export function recurringManagement(input: {
   billedPeriodStarts: readonly string[];
   overview: RecurringOverview;
   todayKey: string;
+  /** The credit note already made for this service's cancellation credit, when there is one. */
+  cancellationCreditNote?: CancellationCreditNote;
 }): RecurringManagement {
   const { service, priceChanges, billedPeriodStarts, todayKey } = input;
   const lifecycle = recurringLifecycle(service, todayKey);
@@ -170,11 +184,11 @@ export function recurringManagement(input: {
           const netCents = service.lastTerm?.amountCents ?? proratedNet;
           /*
             Credit is owed when the full term was announced or created before
-            the end was known: Mollie settled on the full amount, or the invoice
-            existed before Mollie was checked.
+            the end was known; one computation, shared with the credit note
+            itself (cancellation-credit.ts).
           */
-          const collectsFull = lastTerm.partial && (synced ? netCents === fullNet : billedPeriodStarts.includes(lastPeriod.start));
-          const creditNet = collectsFull ? fullNet - proratedNet : 0;
+          const credit = lastTermCredit({ service, priceChanges, billedPeriodStarts });
+          const collectsFull = Boolean(credit);
           const collectionsAhead: string[] = [];
           for (let start = anchor, guard = 0; start <= lastPeriod.start && guard < 1200; start = nextPeriodStart(start, anchorDay), guard += 1) {
             if (start >= todayKey) collectionsAhead.push(start);
@@ -187,13 +201,13 @@ export function recurringManagement(input: {
             lastTermNetCents: collectsFull ? fullNet : netCents,
             lastTermGrossCents: grossOf(collectsFull ? fullNet : netCents, service.vatRate),
             lastTermSynced: synced,
-            ...(creditNet > 0
+            ...(credit
               ? {
                   creditDue: {
-                    days: lastTerm.periodDays - lastTerm.daysUsed,
-                    netCents: creditNet,
-                    grossCents: grossOf(fullNet, service.vatRate) - grossOf(proratedNet, service.vatRate),
-                    ...(service.creditSettledAt ? { settledAt: service.creditSettledAt } : {}),
+                    days: credit.days,
+                    netCents: credit.netCents,
+                    grossCents: credit.grossCents,
+                    ...(input.cancellationCreditNote ? { creditNote: input.cancellationCreditNote } : {}),
                   },
                 }
               : {}),
@@ -211,8 +225,11 @@ export function recurringManagement(input: {
     if (lifecycle === "ended" && service.mollie.subscriptionId && !service.mollie.subscriptionCanceledAt) {
       return "De dienst is beëindigd, maar het abonnement bij Mollie is nog niet geannuleerd. De dagelijkse taak probeert het opnieuw; controleer anders Mollie.";
     }
-    if (ending?.creditDue && !ending.creditDue.settledAt) {
-      return `Creditering open: ${ending.creditDue.days} dagen na ${ending.endsOn} zijn te veel geïncasseerd. Maak de creditnota en de terugbetaling handmatig en markeer dit daarna als verwerkt.`;
+    if (ending?.creditDue && !ending.creditDue.creditNote) {
+      return `Te crediteren: ${ending.creditDue.days} dagen na ${ending.endsOn} zijn te veel geïncasseerd. Maak de creditnota aan; daarna kun je terugbetalen.`;
+    }
+    if (ending?.creditDue?.creditNote && ending.creditDue.creditNote.state === "refund_due") {
+      return `Creditnota ${ending.creditDue.creditNote.number} is aangemaakt; er moet nog worden terugbetaald.`;
     }
     if (input.overview.reason === "missing_anchor") return "Geen startdatum vastgelegd; de incassodatum is niet te bepalen.";
     return undefined;

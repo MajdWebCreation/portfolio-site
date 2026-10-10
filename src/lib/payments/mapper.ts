@@ -19,7 +19,7 @@ export type PaymentRow = Database["public"]["Tables"]["payments"]["Row"];
 */
 export type RecurringServiceRow = Omit<
   Database["public"]["Tables"]["recurring_services"]["Row"],
-  "subscription_claim_id" | "subscription_claimed_at" | "cancellation_requested_by" | "credit_settled_by"
+  "subscription_claim_id" | "subscription_claimed_at" | "cancellation_requested_by"
 >;
 export type CustomerPaymentProviderRow = Database["public"]["Tables"]["customer_payment_providers"]["Row"];
 export type PriceChangeRow = Database["public"]["Tables"]["recurring_price_changes"]["Row"];
@@ -67,7 +67,6 @@ export function recurringServiceFromRow(row: RecurringServiceRow): RecurringServ
       ? { lastTerm: { amountCents: row.last_term_amount_cents, syncedAt: row.last_term_synced_at } }
       : {}),
     ...(row.lifecycle_problem ? { lifecycleProblem: row.lifecycle_problem } : {}),
-    ...(row.credit_settled_at ? { creditSettledAt: row.credit_settled_at } : {}),
     ...(row.project_id ? { projectId: row.project_id } : {}),
     ...(row.activation_invoice_id ? { activationInvoiceId: row.activation_invoice_id } : {}),
   };

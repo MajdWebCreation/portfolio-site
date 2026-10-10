@@ -48,6 +48,8 @@ export const fiscalCategories: readonly CommunicationCategory[] = [
   "payment_final_notice",
   "recurring_price_change",
   "recurring_cancellation",
+  /* A credit note corrects an invoice and is kept exactly as long. */
+  "credit_note_sent",
 ];
 
 /** Categories whose body may go after twelve months: the quote, the activation link, the pre-notification. */

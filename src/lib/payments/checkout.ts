@@ -1,5 +1,4 @@
-import { calculateTotals } from "@/lib/money";
-import type { Invoice } from "@/lib/admin/invoices/types";
+import { invoiceAmounts, type Invoice } from "@/lib/admin/invoices/types";
 import { companyProfile } from "@/lib/admin/documents/company";
 import {
   archivePaymentLink,
@@ -72,7 +71,7 @@ export async function ensureInvoiceCheckout(
 ): Promise<CheckoutResult> {
   if (!isMollieConfigured()) return { ok: false, reason: "Mollie is niet geconfigureerd." };
 
-  const total = calculateTotals(invoice.lines).totalCents;
+  const total = invoiceAmounts(invoice).dueCents;
   if (total <= 0) return { ok: false, reason: "Deze factuur heeft geen te betalen bedrag." };
 
   const settlement = settleInvoice(total, [...deps.existing]);

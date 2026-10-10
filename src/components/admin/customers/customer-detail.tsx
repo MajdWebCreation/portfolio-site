@@ -3,7 +3,7 @@ import AdminSection from "@/components/admin/admin-section";
 import CustomerCommunications, { type CommunicationTargets } from "@/components/admin/customers/customer-communications";
 import CustomerDocuments from "@/components/admin/customers/customer-documents";
 import CustomerDetails, { CustomerNotes } from "@/components/admin/customers/customer-details";
-import CustomerFinance from "@/components/admin/customers/customer-finance";
+import CustomerFinance, { type CustomerFinanceSummary } from "@/components/admin/customers/customer-finance";
 import CustomerProjects from "@/components/admin/customers/customer-projects";
 import CustomerRecurring from "@/components/admin/customers/customer-recurring";
 import type { CustomerCommunication } from "@/lib/admin/communications/types";
@@ -14,7 +14,6 @@ import type { Invoice } from "@/lib/admin/invoices/types";
 import type { Lead } from "@/lib/admin/leads/types";
 import type { Project } from "@/lib/admin/projects/types";
 import type { DirectDebitView } from "@/lib/payments/direct-debit-view";
-import type { CustomerFinancials } from "@/lib/payments/customer-status";
 import type { RecurringOverview } from "@/lib/payments/prenotification";
 import type { RecurringManagement } from "@/lib/payments/recurring-management";
 import type { RecurringService } from "@/lib/payments/types";
@@ -31,8 +30,8 @@ type CustomerDetailProps = {
   projects: Project[];
   /** Outbound mail this system sent to this customer; newest first already. */
   communications: CustomerCommunication[];
-  /** Derived from this customer's invoices and payments; never a stored field. */
-  financials: CustomerFinancials;
+  /** Derived from this customer's invoices, payments and credit notes; never a stored field. */
+  finance: CustomerFinanceSummary;
   recurringServices: RecurringService[];
   /** Next collection and announcement state per service; derived, never stored. */
   recurringOverviews: Record<string, RecurringOverview>;
@@ -87,7 +86,7 @@ export default function CustomerDetail({
   invoices,
   projects,
   communications,
-  financials,
+  finance,
   recurringServices,
   recurringOverviews,
   recurringManagements,
@@ -143,7 +142,7 @@ export default function CustomerDetail({
           )}
         </div>
 
-        <CustomerFinance financials={financials} />
+        <CustomerFinance customerId={customer.id} summary={finance} />
 
         <CustomerProjects customerId={customer.id} projects={projects} todayKey={todayKey} />
 

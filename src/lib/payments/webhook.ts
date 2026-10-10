@@ -1,5 +1,4 @@
-import { calculateTotals } from "@/lib/money";
-import type { Invoice, InvoiceStatus } from "@/lib/admin/invoices/types";
+import { invoiceAmounts, type Invoice, type InvoiceStatus } from "@/lib/admin/invoices/types";
 import { centsFromMollie, paymentStatusFromMollie, type MolliePayment } from "@/lib/mollie/client";
 import { periodForCharge, type BillingPeriod } from "@/lib/payments/billing-period";
 import { settleInvoice } from "@/lib/payments/settlement";
@@ -230,7 +229,7 @@ export async function processMolliePayment(
   await store.upsertPayment(recordFrom(payment, invoice.id, invoice.customer.customerId));
 
   const payments = await store.listPaymentsForInvoice(invoice.id);
-  const total = calculateTotals(invoice.lines).totalCents;
+  const total = invoiceAmounts(invoice).dueCents;
   const { settled } = settleInvoice(total, payments);
   const status = nextInvoiceStatus(invoice, settled, todayKey);
 

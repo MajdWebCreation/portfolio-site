@@ -4,9 +4,12 @@ import { notFound } from "next/navigation";
 import AdminPageHeader from "@/components/admin/admin-page-header";
 import AdminSection from "@/components/admin/admin-section";
 import InvoiceBuilder from "@/components/admin/invoices/invoice-builder";
+import InvoiceFinance from "@/components/admin/invoices/invoice-finance";
 import InvoiceIssued from "@/components/admin/invoices/invoice-issued";
 import InvoiceCollection from "@/components/admin/payments/invoice-collection";
 import { requireAdminAccess } from "@/lib/admin/access";
+import { listCommunicationsForInvoice } from "@/lib/admin/communications/repository";
+import { listCreditNotesForInvoice, listRefundsForInvoice } from "@/lib/admin/credit-notes/repository";
 import { listCustomers } from "@/lib/admin/customers/repository";
 import { toDateKey } from "@/lib/admin/format";
 import { listProjects } from "@/lib/admin/projects/repository";
@@ -48,7 +51,7 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
     ladder all depend on the invoice and on nothing else, so they are asked at
     the same time.
   */
-  const [quote, directDebit, payments, events, collectionState, services, recipient] = await Promise.all([
+  const [quote, directDebit, payments, events, collectionState, services, recipient, creditNotes, refunds, communications] = await Promise.all([
     item.quoteId ? readQuote(item.quoteId) : undefined,
     directDebitView(item.customer.customerId),
     listPaymentsForInvoice(item.id),
@@ -57,6 +60,9 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
     readRecurringServicesForCustomer(item.customer.customerId),
     /* Where a send goes now: the customer record, not the invoice's copy of it. */
     readCustomerRecipient(item.customer.customerId),
+    listCreditNotesForInvoice(item.id),
+    listRefundsForInvoice(item.id),
+    listCommunicationsForInvoice(item.id),
   ]);
 
   /*
@@ -128,6 +134,11 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
         <AdminSection id="collection" title="Betalingsopvolging" note="Automatische herinneringen">
           <InvoiceCollection invoiceId={item.id} view={collection} />
         </AdminSection>
+      ) : null}
+
+      {/* The money side: what came in, what was credited, what went back. Only once the invoice is a document. */}
+      {item.issuedAt ? (
+        <InvoiceFinance invoice={item} payments={payments} creditNotes={creditNotes} refunds={refunds} communications={communications} todayKey={todayKey} />
       ) : null}
     </div>
   );

@@ -1,4 +1,5 @@
 import type { CustomerSnapshot, DocumentLine, DocumentNumber, IssuedActivation } from "@/lib/admin/documents/types";
+import { calculateTotals, type Cents } from "@/lib/money";
 
 /**
  * The stored PDF of a definitive invoice.
@@ -76,9 +77,34 @@ export type Invoice = {
   billingPeriodStart?: string;
   /** Last day of that period. */
   billingPeriodEnd?: string;
+  /**
+   * The total of every issued credit note against this invoice, incl. VAT.
+   * The invoice's own figures never change; what is still owed on it is its
+   * total minus this. Read with the invoice (see `invoiceColumns`), so every
+   * screen and job that settles an invoice sees the same amount due.
+   */
+  creditedCents?: Cents;
   /** ISO timestamp. */
   updatedAt: string;
 };
+
+/**
+ * What the invoice charges, and what is still owed on it after its credit
+ * notes. The lines are the document; the credit notes are the corrections;
+ * neither is stored as a total. Everything that compares payments against
+ * an invoice -- settlement, reminders, the pay link, the webhook -- compares
+ * against `dueCents`, so a credited invoice is never chased for money it no
+ * longer asks for.
+ */
+export function invoiceAmounts(invoice: Pick<Invoice, "lines" | "creditedCents">): {
+  totalCents: Cents;
+  creditedCents: Cents;
+  dueCents: Cents;
+} {
+  const totalCents = calculateTotals(invoice.lines).totalCents;
+  const creditedCents = invoice.creditedCents ?? 0;
+  return { totalCents, creditedCents, dueCents: Math.max(0, totalCents - creditedCents) };
+}
 
 export const invoiceStatusOrder: readonly InvoiceStatus[] = ["draft", "issued", "sent", "paid", "overdue", "cancelled"];
 

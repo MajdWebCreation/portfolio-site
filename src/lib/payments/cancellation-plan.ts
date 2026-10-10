@@ -95,7 +95,8 @@ export function cancellationPlan(input: CancellationInput): CancellationPlan | {
   const creditNet = lastTermBilled && lastTerm.partial ? fullNet - proratedNet : 0;
   const creditDue =
     creditNet > 0
-      ? { days: lastTerm.periodDays - lastTerm.daysUsed, netCents: creditNet, grossCents: grossOf(fullNet, input.vatRate) - grossOf(proratedNet, input.vatRate) }
+      ? /* VAT over the credited net, as the credit note will compute it: the figure shown is the figure the document says. */
+        { days: lastTerm.periodDays - lastTerm.daysUsed, netCents: creditNet, grossCents: grossOf(creditNet, input.vatRate) }
       : undefined;
 
   const collectionsAhead: string[] = [];

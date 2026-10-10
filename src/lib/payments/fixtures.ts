@@ -164,6 +164,17 @@ const uniques: Unique[] = [
     columns: ["recurring_service_id"],
     where: (row) => row.applied_at == null && row.canceled_at == null,
   },
+  /* One credit note per cancellation credit, one Mollie refund in flight
+     per credit note, one row per Mollie refund: the indexes that make a
+     double click harmless. */
+  { table: "credit_notes", columns: ["recurring_service_id"], where: (row) => row.source === "cancellation_credit" },
+  {
+    table: "refunds",
+    columns: ["credit_note_id"],
+    where: (row) => row.method === "mollie" && row.provider_refund_id == null && row.status === "pending",
+  },
+  { table: "refunds", columns: ["provider", "provider_refund_id"], where: (row) => row.provider_refund_id != null },
+  { table: "refunds", columns: ["idempotency_key"] },
 ];
 
 export class UniqueViolation extends Error {
@@ -173,7 +184,16 @@ export class UniqueViolation extends Error {
   }
 }
 
-export function createFakeDb(seed: Record<string, Row[]> = {}) {
+export type FakeRpc = (name: string, args: Record<string, unknown>, db: { rows: (name: string) => Row[] }) => Promise<{ data: unknown; error: { code?: string; message: string } | null }>;
+
+/**
+ * A row-level trigger, as a test supplies it: called with the row as it
+ * would be after an insert or update, and with the table's other rows; an
+ * error refuses the write, the way `raise exception` does.
+ */
+export type FakeTrigger = (table: string, next: Row, db: { rows: (name: string) => Row[] }) => { code?: string; message: string } | null;
+
+export function createFakeDb(seed: Record<string, Row[]> = {}, options: { rpc?: FakeRpc; trigger?: FakeTrigger } = {}) {
   const tables = new Map<string, Row[]>(Object.entries(seed).map(([name, rows]) => [name, rows.map((row) => ({ ...row }))]));
   const table = (name: string) => {
     if (!tables.has(name)) tables.set(name, []);
@@ -191,14 +211,27 @@ export function createFakeDb(seed: Record<string, Row[]> = {}) {
     }
   }
 
+  /*
+    Embedded resources, the way PostgREST resolves `invoice_lines ( ... )` in
+    a select: the child rows of each parent, under the relation's name. Only
+    the relations the admin readers use.
+  */
+  const embeds: Record<string, Record<string, string>> = {
+    invoices: { invoice_lines: "invoice_id", credit_notes: "invoice_id" },
+    credit_notes: { credit_note_lines: "credit_note_id" },
+    quotes: { quote_lines: "quote_id" },
+  };
+
   function builder(name: string) {
     const filters: ((row: Row) => boolean)[] = [];
     let mode: "select" | "insert" | "update" | "delete" = "select";
     let payload: Row = {};
     let inserted: Row | undefined;
+    let embedded: string[] = [];
 
     const api = {
-      select() {
+      select(columns?: string) {
+        embedded = columns ? [...columns.matchAll(/(\w+)\s*\(/g)].map((match) => match[1]!).filter((relation) => embeds[name]?.[relation]) : [];
         return api;
       },
       eq(column: string, value: unknown) {
@@ -269,18 +302,25 @@ export function createFakeDb(seed: Record<string, Row[]> = {}) {
         return api;
       },
       run(): { data: Row[]; error: { code?: string; message: string } | null } {
+        const reads = { rows: (table_name: string) => table(table_name) };
         if (mode === "insert") {
           try {
             assertUnique(name, payload);
           } catch (error) {
             return { data: [], error: { code: "23505", message: (error as Error).message } };
           }
+          const refused = options.trigger?.(name, payload, reads);
+          if (refused) return { data: [], error: refused };
           table(name).push(payload);
           inserted = payload;
           return { data: [payload], error: null };
         }
         const matched = table(name).filter((row) => filters.every((test) => test(row)));
         if (mode === "update") {
+          for (const row of matched) {
+            const refused = options.trigger?.(name, { ...row, ...payload }, reads);
+            if (refused) return { data: [], error: refused };
+          }
           for (const row of matched) Object.assign(row, payload);
         }
         if (mode === "delete") {
@@ -290,7 +330,16 @@ export function createFakeDb(seed: Record<string, Row[]> = {}) {
         /* Copies, as Postgres returns: a row read earlier must not change
            under its reader when someone else writes, or a compare-and-swap
            would compare against what it is about to overwrite. */
-        return { data: matched.map((row) => ({ ...row })), error: null };
+        /* A row seeded with its children inline keeps them; otherwise the child table is consulted. */
+        const withEmbeds = (row: Row): Row => ({
+          ...row,
+          ...Object.fromEntries(
+            embedded
+              .filter((relation) => row[relation] === undefined)
+              .map((relation) => [relation, table(relation).filter((child) => child[embeds[name]![relation]!] === row.id).map((child) => ({ ...child }))]),
+          ),
+        });
+        return { data: matched.map(withEmbeds), error: null };
       },
       async maybeSingle() {
         const { data, error } = api.run();
@@ -315,11 +364,15 @@ export function createFakeDb(seed: Record<string, Row[]> = {}) {
   */
   const bucket = fakeInvoiceStorage();
 
-  return {
+  const handle = {
     from: (name: string) => builder(name),
     rows: (name: string) => table(name),
     all: tables,
     storage: bucket.storage,
     bucket,
+    /* Database functions, when a test supplies them; see credit-notes/test-support.ts. */
+    rpc: async (name: string, args: Record<string, unknown> = {}) =>
+      options.rpc ? options.rpc(name, args, { rows: (table_name: string) => table(table_name) }) : { data: null, error: { message: `rpc ${name} not provided` } },
   };
+  return handle;
 }

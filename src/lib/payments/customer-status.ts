@@ -1,6 +1,5 @@
 import type { Cents } from "@/lib/money";
-import { calculateTotals } from "@/lib/money";
-import type { Invoice } from "@/lib/admin/invoices/types";
+import { invoiceAmounts, type Invoice } from "@/lib/admin/invoices/types";
 import { settleInvoice } from "@/lib/payments/settlement";
 import type { Payment } from "@/lib/payments/types";
 
@@ -64,7 +63,7 @@ export function customerFinancials(
     if (!isChargeable(invoice)) continue;
 
     const invoicePayments = payments.filter((payment) => payment.invoiceId === invoice.id);
-    const total = calculateTotals(invoice.lines).totalCents;
+    const total = invoiceAmounts(invoice).dueCents;
     const settlement = settleInvoice(total, invoicePayments);
 
     if (settlement.lastSuccessful) successful.push(settlement.lastSuccessful);

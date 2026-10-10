@@ -25,3 +25,16 @@ export async function listCommunicationsForCustomer(customerId: string): Promise
   failed("Communicatie van klant laden", error);
   return (data ?? []).map(communicationFromRow);
 }
+
+/** The mail about one invoice -- the invoice itself, its reminders, its credit notes -- newest first. */
+export async function listCommunicationsForInvoice(invoiceId: string): Promise<CustomerCommunication[]> {
+  const db = await adminDb();
+  const { data, error } = await db
+    .from("customer_communications")
+    .select(communicationColumns)
+    .eq("invoice_id", invoiceId)
+    .order("sent_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  failed("Communicatie van factuur laden", error);
+  return (data ?? []).map(communicationFromRow);
+}

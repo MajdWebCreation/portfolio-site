@@ -2,6 +2,8 @@ import { getPayment, listPaymentLinkPayments, MollieError, type MolliePayment } 
 import { isMollieConfigured } from "@/lib/mollie/config";
 import { toDateKey } from "@/lib/admin/format";
 import { rateLimit, requestKey } from "@/lib/payments/rate-limit";
+import { paymentsAdminClient } from "@/lib/payments/admin-client";
+import { syncRefundsForPayment } from "@/lib/payments/refunds";
 import { createWebhookStore } from "@/lib/payments/webhook-store";
 import { processMolliePayment } from "@/lib/payments/webhook";
 
@@ -76,6 +78,16 @@ export async function POST(request: Request) {
       // The id is not a secret and the note carries no customer data.
       console.info("Mollie webhook handled", { id, paymentId: payment.id, handled: outcome.handled, note: outcome.note });
       retry ||= Boolean(outcome.retry);
+      /*
+        A refund reaching its final state makes Mollie call the payment's
+        webhook; the refund rows of this payment are brought up to date from
+        what Mollie lists. Only rows that exist are touched: nothing here
+        creates a refund.
+      */
+      if (payment.amountRefunded) {
+        const synced = await syncRefundsForPayment(paymentsAdminClient(), payment.id);
+        if (synced > 0) console.info("Mollie refunds synced", { paymentId: payment.id, synced });
+      }
     }
     /*
       Something will change by itself -- an activation whose mandate Mollie

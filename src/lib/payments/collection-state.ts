@@ -1,7 +1,7 @@
 import type { StatusTone } from "@/components/admin/status-badge";
 import { addDays, daysBetween } from "@/lib/admin/documents/validation";
-import type { Invoice } from "@/lib/admin/invoices/types";
-import { calculateTotals, type Cents } from "@/lib/money";
+import { invoiceAmounts, type Invoice } from "@/lib/admin/invoices/types";
+import type { Cents } from "@/lib/money";
 import {
   collectionReadyDays,
   directDebitGraceDays,
@@ -191,7 +191,8 @@ export function invoiceCollectionView(input: CollectionInput): CollectionView {
   const { invoice, payments, events, todayKey } = input;
   const state = input.state ?? "active";
 
-  const total = calculateTotals(invoice.lines).totalCents;
+  // What is owed after credit notes, never the bare document total.
+  const total = invoiceAmounts(invoice).dueCents;
   const settlement = settleInvoice(total, payments);
   const daysOverdue = Math.max(0, daysBetween(invoice.dueDate, todayKey));
   const collectionReadyOn = addDays(invoice.dueDate, collectionReadyDays);

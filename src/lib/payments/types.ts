@@ -174,8 +174,6 @@ export type RecurringService = {
   lastTerm?: { amountCents: Cents; syncedAt: string };
   /** What the daily job could not resolve and an admin has to look at. */
   lifecycleProblem?: string;
-  /** An admin recorded that the credit for the last term was made and refunded by hand. */
-  creditSettledAt?: string;
   createdAt: string;
   updatedAt: string;
 };

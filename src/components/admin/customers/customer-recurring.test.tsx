@@ -10,6 +10,7 @@ import type { PriceChange, RecurringService } from "@/lib/payments/types";
   what is checked is that every state the view model can be in renders, and
   says the right thing about what applies now versus what comes later.
 */
+vi.mock("@/lib/admin/credit-notes/actions", () => ({ createCancellationCreditNote: vi.fn() }));
 vi.mock("@/lib/payments/actions", () => ({
   cancelRecurringService: vi.fn(),
   createRecurringService: vi.fn(),
@@ -44,11 +45,24 @@ const change = (overrides: Partial<PriceChange> = {}): PriceChange => ({
   ...overrides,
 });
 
-function render(input: { service: RecurringService; priceChanges?: PriceChange[]; billed?: string[]; todayKey: string }) {
+function render(input: {
+  service: RecurringService;
+  priceChanges?: PriceChange[];
+  billed?: string[];
+  todayKey: string;
+  creditNote?: { id: string; number: string; state: "offset" | "refund_due" | "in_progress" | "processed"; remainingCents: number };
+}) {
   const billedPeriodStarts = input.billed ?? ["2026-09-04", "2026-10-04", "2026-11-04"];
   const priceChanges = input.priceChanges ?? [];
   const overview = recurringOverview({ service: input.service, billedPeriodStarts, priceChanges }, [], input.todayKey);
-  const management = recurringManagement({ service: input.service, priceChanges, billedPeriodStarts, overview, todayKey: input.todayKey });
+  const management = recurringManagement({
+    service: input.service,
+    priceChanges,
+    billedPeriodStarts,
+    overview,
+    todayKey: input.todayKey,
+    ...(input.creditNote ? { cancellationCreditNote: input.creditNote } : {}),
+  });
   return renderToStaticMarkup(
     <CustomerRecurring
       customerId="cust-1"
@@ -106,16 +120,28 @@ describe("the recurring services panel", () => {
     });
     expect(html).toContain("Te crediteren");
     expect(html).toContain("9 dagen na 24 nov 2026");
-    expect(html).toContain("Open — handmatig crediteren en terugbetalen");
-    expect(html).toContain("Creditering als verwerkt markeren");
-    expect(html).toContain("Creditering open");
+    expect(html).toContain("Nog aan te maken");
+    expect(html).toContain("Creditnota aanmaken");
+    expect(html).toContain("Te crediteren: 9 dagen");
 
-    const settled = render({
-      service: service({ endsOn: "2026-11-24", cancellationRequestedAt: "2026-10-25T10:00:00.000Z", lastTerm: { amountCents: 1000, syncedAt: "2026-10-25T10:00:01.000Z" }, creditSettledAt: "2026-11-01T09:00:00.000Z" }),
+    const credited = render({
+      service: service({ endsOn: "2026-11-24", cancellationRequestedAt: "2026-10-25T10:00:00.000Z", lastTerm: { amountCents: 1000, syncedAt: "2026-10-25T10:00:01.000Z" } }),
       todayKey: "2026-11-02",
+      creditNote: { id: "cn-1", number: "YM-C-2026-000001", state: "refund_due", remainingCents: 363 },
     });
-    expect(settled).toContain("Verwerkt op");
-    expect(settled).not.toContain("Creditering als verwerkt markeren");
+    expect(credited).toContain("YM-C-2026-000001");
+    expect(credited).toContain("/admin/betalingen/creditnotas/cn-1");
+    expect(credited).toContain("Nog terug te betalen");
+    expect(credited).toContain("3,63");
+    expect(credited).not.toContain("Creditnota aanmaken");
+
+    const processed = render({
+      service: service({ endsOn: "2026-11-24", cancellationRequestedAt: "2026-10-25T10:00:00.000Z", lastTerm: { amountCents: 1000, syncedAt: "2026-10-25T10:00:01.000Z" } }),
+      todayKey: "2026-11-02",
+      creditNote: { id: "cn-1", number: "YM-C-2026-000001", state: "processed", remainingCents: 0 },
+    });
+    expect(processed).toContain("Volledig verwerkt");
+    expect(processed).not.toContain("Nog terug te betalen");
   });
 
   it("reads as ended afterwards, and warns when Mollie was never cancelled or left a problem", () => {

@@ -1,8 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminDb } from "@/lib/admin/db";
-import type { Invoice } from "@/lib/admin/invoices/types";
+import { invoiceAmounts, type Invoice } from "@/lib/admin/invoices/types";
 import { isMollieConfigured } from "@/lib/mollie/config";
-import { calculateTotals } from "@/lib/money";
 import { ensureInvoiceCheckout, type CheckoutResult, type StoredPaymentLink } from "@/lib/payments/checkout";
 import { listPaymentsForInvoice } from "@/lib/payments/repository";
 import { settleInvoice } from "@/lib/payments/settlement";
@@ -185,7 +184,7 @@ export async function reminderPayLink(
   payments: readonly Payment[],
 ): Promise<string | undefined> {
   if (!isMollieConfigured()) return undefined;
-  if (settleInvoice(calculateTotals(invoice.lines).totalCents, [...payments]).settled) return undefined;
+  if (settleInvoice(invoiceAmounts(invoice).dueCents, [...payments]).settled) return undefined;
 
   try {
     const result = await invoiceCheckout(db, invoice, payments);

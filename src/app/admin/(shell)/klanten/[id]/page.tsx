@@ -6,6 +6,9 @@ import CustomerDetail from "@/components/admin/customers/customer-detail";
 import StatusBadge from "@/components/admin/status-badge";
 import { requireAdminAccess } from "@/lib/admin/access";
 import { listCommunicationsForCustomer } from "@/lib/admin/communications/repository";
+import { listCreditNotesForCustomer, listRefundsForCustomer } from "@/lib/admin/credit-notes/repository";
+import { creditNoteLedger } from "@/lib/admin/credit-notes/settlement";
+import { isFinanciallyIssued } from "@/lib/admin/credit-notes/types";
 import { customerStatusLabels, customerStatusTone } from "@/lib/admin/customers/types";
 import { toDateKey } from "@/lib/admin/format";
 import { listInvoicesForCustomer } from "@/lib/admin/invoices/repository";
@@ -61,6 +64,8 @@ export default async function CustomerPage({ params }: PageProps) {
     communications,
     directDebit,
     priceChanges,
+    creditNotes,
+    refunds,
   ] = await Promise.all([
     customer.sourceInquiryId ? readInquiry(customer.sourceInquiryId) : undefined,
     customer.sourceLeadId ? readLead(customer.sourceLeadId) : undefined,
@@ -73,6 +78,8 @@ export default async function CustomerPage({ params }: PageProps) {
     listCommunicationsForCustomer(customer.id),
     directDebitView(customer.id),
     listPriceChangesOfCustomer(customer.id),
+    listCreditNotesForCustomer(customer.id),
+    listRefundsForCustomer(customer.id),
   ]);
 
   const todayKey = toDateKey(new Date());
@@ -103,17 +110,45 @@ export default async function CustomerPage({ params }: PageProps) {
     either back -- and what each would mean, worked out here from the same
     facts, so the screen can only offer what the actions will accept.
   */
+  /*
+    The credit note of a cancelled service's last term, with where its money
+    stands, so the service panel can say "aangemaakt" and "nog terug te
+    betalen" from the same ledger the payments page reads.
+  */
+  const ledgerOf = (invoiceId: string) => {
+    const invoice = invoices.find((item) => item.id === invoiceId);
+    return invoice
+      ? {
+          invoice,
+          payments: payments.filter((payment) => payment.invoiceId === invoiceId),
+          creditNotes: creditNotes.filter((note) => note.invoiceId === invoiceId),
+          refunds: refunds.filter((refund) => refund.invoiceId === invoiceId),
+        }
+      : undefined;
+  };
+  const cancellationCreditNoteOf = (serviceId: string) => {
+    const note = creditNotes.find((item) => item.source === "cancellation_credit" && item.recurringServiceId === serviceId);
+    const context = note ? ledgerOf(note.invoiceId) : undefined;
+    if (!note || !context) return undefined;
+    const ledger = creditNoteLedger(note, context);
+    return { id: note.id, number: note.number.value, state: ledger.state, remainingCents: ledger.remainingCents };
+  };
+
   const recurringManagements: Record<string, RecurringManagement> = Object.fromEntries(
-    recurringServices.map((service) => [
-      service.id,
-      recurringManagement({
-        service,
-        priceChanges: changesOf(service.id),
-        billedPeriodStarts: billedPeriodStarts(service.id),
-        overview: recurringOverviews[service.id]!,
-        todayKey,
-      }),
-    ]),
+    recurringServices.map((service) => {
+      const cancellationCreditNote = cancellationCreditNoteOf(service.id);
+      return [
+        service.id,
+        recurringManagement({
+          service,
+          priceChanges: changesOf(service.id),
+          billedPeriodStarts: billedPeriodStarts(service.id),
+          overview: recurringOverviews[service.id]!,
+          todayKey,
+          ...(cancellationCreditNote ? { cancellationCreditNote } : {}),
+        }),
+      ];
+    }),
   );
 
   /*
@@ -139,6 +174,18 @@ export default async function CustomerPage({ params }: PageProps) {
   // The invoices and payments read above are this customer's already, so
   // there is nothing left to filter out here.
   const financials = customerFinancials(invoices, payments, todayKey);
+  const noteLedgers = creditNotes.flatMap((note) => {
+    const context = ledgerOf(note.invoiceId);
+    return context ? [creditNoteLedger(note, context)] : [];
+  });
+  const warning = Object.values(recurringManagements).find((management) => management.warning)?.warning;
+  const finance = {
+    financials,
+    collectingServices: recurringServices.filter((service) => service.status === "active").length,
+    refundDueCents: noteLedgers.reduce((sum, ledger) => sum + ledger.remainingCents, 0),
+    openCreditNotes: creditNotes.filter((note) => !isFinanciallyIssued(note)).length + noteLedgers.filter((ledger) => ledger.state === "refund_due" || ledger.state === "in_progress").length,
+    ...(warning ? { warning } : {}),
+  };
 
   return (
     <div className="space-y-8">
@@ -171,7 +218,7 @@ export default async function CustomerPage({ params }: PageProps) {
         invoices={invoices}
         projects={projects}
         communications={communications}
-        financials={financials}
+        finance={finance}
         recurringServices={recurringServices}
         recurringOverviews={recurringOverviews}
         recurringManagements={recurringManagements}
