@@ -41,7 +41,7 @@ vi.mock("@supabase/ssr", () => ({
   }),
 }));
 
-const { updateAdminSession } = await import("@/lib/supabase/session");
+const { updateAdminSession, updateSession } = await import("@/lib/supabase/session");
 
 const verified: Claims = { data: { claims: { sub: "user-1" } }, error: null };
 const noSession: Claims = { data: null, error: null };
@@ -147,6 +147,44 @@ describe("updateAdminSession", () => {
 
   it("never consults a table: being signed in is all it decides", async () => {
     await updateAdminSession(request("/admin/klanten"));
+    expect(calls.from).toBe(0);
+  });
+});
+
+/*
+  The same proxy serves the customer portal. A request without a session goes
+  to the portal's own login, the three pages a visitor without a session needs
+  stay open, and nothing about memberships is decided here.
+*/
+describe("the proxy on /portaal", () => {
+
+  it("sends a request without a session to the portal login, not the admin's", async () => {
+    fake = { claims: async () => noSession, user: null };
+
+    const response = await updateSession(request("/portaal/account?next=https://elsewhere.test", { cookie: false }));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://admin.test/portaal/inloggen");
+  });
+
+  it.each(["/portaal/inloggen", "/portaal/wachtwoord-vergeten", "/portaal/wachtwoord-instellen"])(
+    "leaves %s reachable without a session",
+    async (path) => {
+      fake = { claims: async () => noSession, user: null };
+      const response = await updateSession(request(path, { cookie: false }));
+      expect(response.status).toBe(200);
+    },
+  );
+
+  it("sends /portaal/geen-toegang without a session to the login", async () => {
+    fake = { claims: async () => noSession, user: null };
+    const response = await updateSession(request("/portaal/geen-toegang", { cookie: false }));
+    expect(response.headers.get("location")).toBe("https://admin.test/portaal/inloggen");
+  });
+
+  it("lets a signed-in request through and asks no table", async () => {
+    const response = await updateSession(request("/portaal"));
+    expect(response.status).toBe(200);
     expect(calls.from).toBe(0);
   });
 });

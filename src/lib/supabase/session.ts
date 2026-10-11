@@ -2,24 +2,29 @@ import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { adminLoginPath } from "@/lib/admin/modules";
+import { isPortalPath, isPortalPublicPath, portalLoginPath } from "@/lib/portal/paths";
 import type { Database } from "@/lib/supabase/database.types";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
 /**
- * Runs before every /admin request (see src/proxy.ts). It does two things:
+ * Runs before every /admin and /portaal request (see src/proxy.ts). It does
+ * two things:
  *
  *  1. Refreshes the Supabase session. Server components cannot write cookies,
  *     so without this the rotated access token would never be stored and a
  *     session would end at the first expiry instead of being renewed.
- *  2. Sends a request without a session straight to the login page.
+ *  2. Sends a request without a session straight to that area's login page.
+ *     The portal's public pages -- signing in, asking for a reset, the page
+ *     a mailed link lands on -- are the exception: they are for people
+ *     without a session.
  *
  * The second is a shortcut, not the protection. It only asks whether someone
- * is signed in, never whether they are an admin, and it can be skipped by any
- * path that does not run middleware. The real decision is made per render, in
- * the admin layout, in every page and in every repository — see
- * `lib/admin/access.ts`.
+ * is signed in, never whether they are an admin or a member, and it can be
+ * skipped by any path that does not run middleware. The real decision is made
+ * per render: `lib/admin/access.ts` for the admin, `lib/portal/access.ts`
+ * for the portal. The two areas share these cookies and nothing else.
  */
-export async function updateAdminSession(request: NextRequest): Promise<NextResponse> {
+export async function updateSession(request: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request });
   const { url, publishableKey } = getSupabaseEnv();
 
@@ -41,18 +46,24 @@ export async function updateAdminSession(request: NextRequest): Promise<NextResp
   });
 
   const signedIn = await hasVerifiedSession(supabase);
+  const pathname = request.nextUrl.pathname;
+  const loginPath = isPortalPath(pathname) ? portalLoginPath : adminLoginPath;
+  const open = isPortalPath(pathname) ? isPortalPublicPath(pathname) : pathname === adminLoginPath;
 
-  if (!signedIn && request.nextUrl.pathname !== adminLoginPath) {
+  if (!signedIn && !open) {
     const target = request.nextUrl.clone();
-    target.pathname = adminLoginPath;
+    target.pathname = loginPath;
     // No return path is carried along: a redirect target taken from the URL
-    // is a way to bounce visitors off the site. Signing in lands on /admin.
+    // is a way to bounce visitors off the site. Signing in lands on the area's home.
     target.search = "";
     return NextResponse.redirect(target);
   }
 
   return response;
 }
+
+/** The admin's name for the same proxy; kept so existing imports and tests read as before. */
+export const updateAdminSession = updateSession;
 
 /**
  * Is there a session whose token has been verified?

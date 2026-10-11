@@ -25,9 +25,17 @@ const files = sourceFiles(root).map((path) => ({ path, source: readFileSync(path
 const clientFiles = files.filter(({ source }) => /^\s*["']use client["']/.test(source));
 
 describe("the elevated Supabase client", () => {
-  it("is read from exactly one module", () => {
+  /*
+    Two readers, each narrow and named: the system client for the payment
+    jobs, and the Auth-admin client that invites portal members and mints
+    reset links. A third one is a leak until it is named here on purpose.
+  */
+  it("is read from exactly the two modules that need it", () => {
     const readers = files.filter(({ source }) => source.includes("process.env.SUPABASE_SECRET_KEY"));
-    expect(readers.map(({ path }) => path.replace(root, "src"))).toEqual(["src/lib/payments/admin-client.ts"]);
+    expect(readers.map(({ path }) => path.replace(root, "src")).sort()).toEqual([
+      "src/lib/payments/admin-client.ts",
+      "src/lib/portal/admin-auth.ts",
+    ]);
   });
 
   it("is never exposed under a NEXT_PUBLIC name", () => {
@@ -36,7 +44,7 @@ describe("the elevated Supabase client", () => {
   });
 
   it("is not imported by any client component", () => {
-    const offenders = clientFiles.filter(({ source }) => source.includes("payments/admin-client"));
+    const offenders = clientFiles.filter(({ source }) => source.includes("payments/admin-client") || source.includes("portal/admin-auth"));
     expect(offenders.map(({ path }) => path.replace(root, "src"))).toEqual([]);
   });
 

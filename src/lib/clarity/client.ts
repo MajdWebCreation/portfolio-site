@@ -38,7 +38,8 @@ export function normalizeClarityProjectId(raw: string | undefined): string | und
  * all of them show or carry customer or payment data, and Microsoft's terms
  * rule out using Clarity on content with financial information.
  */
-const excludedPrefixes = ["/admin", "/incasso/", "/betaling/"];
+/* "/portaal" has no locale in front of it and no trailing slash: the prefix test below covers it and its children. */
+const excludedPrefixes = ["/admin", "/portaal", "/incasso/", "/betaling/"];
 
 export function clarityAllowedOnPath(pathname: string): boolean {
   const path = pathname.split(/[?#]/)[0] ?? "";

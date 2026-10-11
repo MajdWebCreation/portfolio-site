@@ -203,9 +203,48 @@ update public.admin_profiles set is_active = false where user_id = '<uid>';
 ## Recommended setting
 
 **Authentication → Sign In / Providers → disable "Allow new users to sign up".**
-Sign-up is currently open on the project. It grants no admin access — that
-needs a row in `admin_profiles` — but with no public sign-up flow on the site
-there is nothing that needs it, and leaving it on lets anyone create accounts.
+The application offers no sign-up anywhere: admins are created out of band
+(above) and portal members only by invitation (below). Leaving public sign-up
+on grants nothing -- an account without an `admin_profiles` row or a
+`customer_users` row reaches neither area -- but there is nothing that needs
+it, and the local stack runs with it off (`[auth] enable_signup = false` in
+config.toml; the e-mail provider itself stays on, or nobody could sign in).
+
+## Klantportaal: memberships (customer_users)
+
+Who may act for which customer in `/portaal`. A portal member is an auth
+user with an active row in `customer_users` (`revoked_at is null`) for that
+customer -- never an e-mail address, a domain or a claim. One user may belong
+to several customers and one customer may have several users; access ends by
+setting `revoked_at`, the row stays. `role` exists from day one and allows
+only `member` for now.
+
+The tenant boundary is `private.portal_customer_ids()`: the active
+memberships of `auth.uid()`, SECURITY DEFINER, out of reach of anon. Every
+portal function starts from it. In this phase a member can read exactly one
+thing, `portal_memberships()` (their customers, by name); no business table
+carries a customer policy, by design. The projection of quotes, invoices and
+services comes in a later migration, column by column, through functions of
+the same shape.
+
+Invitations are made by an admin from the customer page. The flow spans the
+Auth server, this database and the mailer, which share no transaction, so
+every step is safe to repeat: the auth user first (one per address, through
+`auth.admin.generateLink`), then `admin_upsert_portal_membership()` (says
+whether it made, renewed or reactivated the row, or found it already active;
+records it in `portal_events`), then our own mail with a `token_hash` link to
+`/portaal/wachtwoord-instellen`. The Auth server's own redirect flow is not
+used. Revoking is `admin_revoke_portal_membership()`.
+
+`portal_events` is the append-only record of account actions (invited,
+reinvited, reactivated, revoked, accepted, password changed, customer
+selected). Admins read it; a member writes only the last two, through
+`portal_log_event()`, and only for their own customers. No tokens, passwords
+or secrets are ever stored.
+
+The secret key is read by two modules and no others: `lib/payments/admin-client.ts`
+(system jobs) and `lib/portal/admin-auth.ts` (the Auth admin API, nothing
+else). `lib/payments/boundaries.test.ts` names both.
 
 ## Dienstafspraken (recurring_service_agreements)
 

@@ -12,6 +12,7 @@ import { isFinanciallyIssued } from "@/lib/admin/credit-notes/types";
 import { customerStatusLabels, customerStatusTone } from "@/lib/admin/customers/types";
 import { toDateKey } from "@/lib/admin/format";
 import { listInvoicesForCustomer } from "@/lib/admin/invoices/repository";
+import { listPortalMembersForCustomer } from "@/lib/admin/portal-members/repository";
 import { listProjectsForCustomer } from "@/lib/admin/projects/repository";
 import { listQuotesForCustomer } from "@/lib/admin/quotes/repository";
 import { readCustomer, readInquiry, readLead } from "@/lib/admin/readers";
@@ -69,6 +70,7 @@ export default async function CustomerPage({ params }: PageProps) {
     creditNotes,
     refunds,
     agreementRevisions,
+    portalMembers,
   ] = await Promise.all([
     customer.sourceInquiryId ? readInquiry(customer.sourceInquiryId) : undefined,
     customer.sourceLeadId ? readLead(customer.sourceLeadId) : undefined,
@@ -84,6 +86,7 @@ export default async function CustomerPage({ params }: PageProps) {
     listCreditNotesForCustomer(customer.id),
     listRefundsForCustomer(customer.id),
     listAgreementRevisionsOfCustomer(customer.id),
+    listPortalMembersForCustomer(customer.id),
   ]);
 
   const todayKey = toDateKey(new Date());
@@ -234,6 +237,7 @@ export default async function CustomerPage({ params }: PageProps) {
         directDebit={directDebit}
         firstCollections={firstCollections}
         todayKey={todayKey}
+        portalMembers={portalMembers}
       />
     </div>
   );

@@ -492,6 +492,63 @@ export type Database = {
           },
         ]
       }
+      customer_users: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          invited_at: string
+          invited_by: string | null
+          invited_email: string
+          revoked_at: string | null
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          invited_at?: string
+          invited_by?: string | null
+          invited_email: string
+          revoked_at?: string | null
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          invited_at?: string
+          invited_by?: string | null
+          invited_email?: string
+          revoked_at?: string | null
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_users_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_users_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           city: string
@@ -1426,6 +1483,51 @@ export type Database = {
           },
         ]
       }
+      portal_events: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          customer_id: string | null
+          id: string
+          occurred_at: string
+          target_id: string | null
+          target_kind: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          customer_id?: string | null
+          id?: string
+          occurred_at?: string
+          target_id?: string | null
+          target_kind?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          customer_id?: string | null
+          id?: string
+          occurred_at?: string
+          target_id?: string | null
+          target_kind?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_events_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_events_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
+        ]
+      }
       pricing_addons: {
         Row: {
           addon_group: string
@@ -2297,6 +2399,14 @@ export type Database = {
       }
     }
     Functions: {
+      admin_revoke_portal_membership: {
+        Args: { p_customer_id: string; p_membership_id: string }
+        Returns: Json
+      }
+      admin_upsert_portal_membership: {
+        Args: { p_customer_id: string; p_email: string; p_user_id: string }
+        Returns: Json
+      }
       begin_credit_note_issue: {
         Args: { p_credit_note_id: string }
         Returns: string
@@ -2366,6 +2476,23 @@ export type Database = {
           p_vat_cents: number
         }
         Returns: string
+      }
+      portal_log_event: {
+        Args: { p_action: string; p_customer_id: string }
+        Returns: undefined
+      }
+      portal_mark_membership_accepted: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      portal_memberships: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          accepted_at: string | null
+          company_name: string
+          customer_id: string
+          role: string
+        }[]
       }
       save_invoice_lines: {
         Args: { p_invoice_id: string; p_lines: Json }

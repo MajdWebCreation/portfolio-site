@@ -4,6 +4,7 @@ import CustomerCommunications, { type CommunicationTargets } from "@/components/
 import CustomerDocuments from "@/components/admin/customers/customer-documents";
 import CustomerDetails, { CustomerNotes } from "@/components/admin/customers/customer-details";
 import CustomerFinance, { type CustomerFinanceSummary } from "@/components/admin/customers/customer-finance";
+import CustomerPortalMembers from "@/components/admin/customers/customer-portal-members";
 import CustomerProjects from "@/components/admin/customers/customer-projects";
 import CustomerRecurring from "@/components/admin/customers/customer-recurring";
 import type { CustomerCommunication } from "@/lib/admin/communications/types";
@@ -12,6 +13,7 @@ import { formatDateTime } from "@/lib/admin/format";
 import { inquiryOriginLabels, type Inquiry } from "@/lib/admin/inquiries/types";
 import type { Invoice } from "@/lib/admin/invoices/types";
 import type { Lead } from "@/lib/admin/leads/types";
+import type { PortalMember } from "@/lib/admin/portal-members/types";
 import type { Project } from "@/lib/admin/projects/types";
 import type { DirectDebitView } from "@/lib/payments/direct-debit-view";
 import type { RecurringOverview } from "@/lib/payments/prenotification";
@@ -43,6 +45,8 @@ type CustomerDetailProps = {
   firstCollections: Record<string, string>;
   /** Today in Amsterdam, for the deadline states. */
   todayKey: string;
+  /** Who may see this customer's portal; newest invitation first. */
+  portalMembers: PortalMember[];
 };
 
 /**
@@ -93,6 +97,7 @@ export default function CustomerDetail({
   directDebit,
   firstCollections,
   todayKey,
+  portalMembers,
 }: CustomerDetailProps) {
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12">
@@ -157,6 +162,8 @@ export default function CustomerDetail({
         />
 
         <CustomerDocuments quotes={quotes} invoices={invoices} />
+
+        <CustomerPortalMembers customerId={customer.id} members={portalMembers} />
       </aside>
     </div>
   );
