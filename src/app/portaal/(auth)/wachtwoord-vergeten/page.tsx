@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Wachtwoord vergeten" };
 
 export default function ForgotPasswordPage() {
   return (
-    <PortalFrame title="Wachtwoord vergeten" intro="Vul uw e-mailadres in. U ontvangt een link waarmee u een nieuw wachtwoord instelt.">
+    <PortalFrame title="Wachtwoord vergeten" intro="Vul uw e-mailadres in. U ontvangt een link waarmee u een nieuw wachtwoord instelt; ook als uw uitnodiging is verlopen.">
       <ForgotPasswordForm />
     </PortalFrame>
   );

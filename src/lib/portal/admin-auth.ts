@@ -63,16 +63,25 @@ export async function ensureAuthUserForEmail(email: string): Promise<EnsuredAuth
     return { userId: invited.data.user.id, kind: "new", tokenHash: invited.data.properties.hashed_token };
   }
 
-  const exists = invited.error?.code === "email_exists" || /already|exists|registered/i.test(invited.error?.message ?? "");
-  if (!exists) {
-    throw new Error(`De uitnodiging kon niet worden aangemaakt: ${invited.error?.message ?? "onbekende fout"}`);
+  /*
+    The invite was refused. Usually because the address has a user already
+    (`email_exists`); under two invitations at the same instant the Auth
+    server may answer less tidily for the one that lost the race. Either way
+    the question is the same -- is there a user for this address? -- and the
+    magic-link lookup answers it. Only when that also fails is the original
+    refusal the admin's problem.
+  */
+  const existing = await admin.generateLink({ type: "magiclink", email });
+  if (!existing.error && existing.data.user) {
+    return { userId: existing.data.user.id, kind: "existing" };
   }
 
-  const existing = await admin.generateLink({ type: "magiclink", email });
-  if (existing.error || !existing.data.user) {
-    throw new Error(`Het bestaande account kon niet worden opgezocht: ${existing.error?.message ?? "onbekende fout"}`);
-  }
-  return { userId: existing.data.user.id, kind: "existing" };
+  const exists = invited.error?.code === "email_exists" || /already|exists|registered/i.test(invited.error?.message ?? "");
+  throw new Error(
+    exists
+      ? `Het bestaande account kon niet worden opgezocht: ${existing.error?.message ?? "onbekende fout"}`
+      : `De uitnodiging kon niet worden aangemaakt: ${invited.error?.message ?? "onbekende fout"}`,
+  );
 }
 
 /**
@@ -88,9 +97,21 @@ export async function renewInviteToken(email: string): Promise<string | null> {
 /**
  * A password-recovery token for an address, or null when no user has it.
  * The caller answers the same whether or not a user exists.
+ *
+ * Measured against GoTrue: a recovery link is issued for a user who never
+ * confirmed (an invitation that was never used), so "wachtwoord vergeten" is
+ * also the way back in for someone whose invitation expired. Should the Auth
+ * server ever refuse that, a magic link does the same job and is tried next.
  */
-export async function recoveryTokenForEmail(email: string): Promise<string | null> {
-  const { data, error } = await authAdmin().generateLink({ type: "recovery", email });
-  if (error || !data.properties?.hashed_token) return null;
-  return data.properties.hashed_token;
+export async function recoveryTokenForEmail(email: string): Promise<{ tokenHash: string; type: "recovery" | "magiclink" } | null> {
+  const admin = authAdmin();
+  const recovery = await admin.generateLink({ type: "recovery", email });
+  if (!recovery.error && recovery.data.properties?.hashed_token) {
+    return { tokenHash: recovery.data.properties.hashed_token, type: "recovery" };
+  }
+  if (recovery.error?.code === "user_not_found" || /not found/i.test(recovery.error?.message ?? "")) return null;
+
+  const magic = await admin.generateLink({ type: "magiclink", email });
+  if (magic.error || !magic.data.properties?.hashed_token) return null;
+  return { tokenHash: magic.data.properties.hashed_token, type: "magiclink" };
 }

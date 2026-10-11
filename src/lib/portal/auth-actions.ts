@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { isEmailAddress } from "@/lib/email/address";
 import { rateLimit } from "@/lib/payments/rate-limit";
 import { recoveryTokenForEmail } from "@/lib/portal/admin-auth";
+import { isPortalAccount } from "@/lib/portal/account-lookup";
 import { getPortalAccess, portalCustomerCookie, readPortalMemberships } from "@/lib/portal/auth";
 import { passwordResetMail, sendPortalMail, type PortalTokenType } from "@/lib/portal/mail";
 import { passwordProblem } from "@/lib/portal/password";
@@ -19,7 +20,30 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
  * There is no sign-up anywhere in this file or this application. An account
  * exists because an admin invited it.
  */
-export type FormState = { error: string | null; done?: boolean };
+export type FormState = {
+  error: string | null;
+  done?: boolean;
+  /**
+   * What kind of failure, for the screens that offer a way on: a link that no
+   * longer works gets a button to ask for a new one; a rate limit gets a wait;
+   * a password the Auth server refused is tried again on the session the
+   * link already opened.
+   */
+  kind?: "invalid_link" | "rate_limited" | "password_rejected";
+  /** With `invalid_link`: the browser already holds a session, so "naar het portaal" is a way on too. */
+  signedIn?: boolean;
+};
+
+/** The Auth server's own brakes, told as such instead of as a broken link. */
+const rateLimited = { error: "Er zijn te veel pogingen gedaan. Probeer het over een paar minuten opnieuw.", kind: "rate_limited" as const };
+const invalidLink = {
+  error: "Deze link is niet meer geldig. Een link werkt één keer en beperkt lang; vraag hieronder een nieuwe aan.",
+  kind: "invalid_link" as const,
+};
+
+function isRateLimit(error: { code?: string; status?: number } | null | undefined): boolean {
+  return error?.code === "over_request_rate_limit" || error?.code === "over_email_send_rate_limit" || error?.status === 429;
+}
 
 /** One message for every sign-in failure, so the form cannot be used to find out which addresses exist. */
 const signInFailed = "Onbekende combinatie van e-mailadres en wachtwoord.";
@@ -49,6 +73,33 @@ function isTokenType(value: string): value is PortalTokenType {
   return (tokenTypes as readonly string[]).includes(value);
 }
 
+/** What the Auth server said about a new password, in the customer's words. */
+function passwordRejected(error: { code?: string } | null): FormState {
+  const message =
+    error?.code === "same_password"
+      ? "Kies een ander wachtwoord dan het vorige."
+      : error?.code === "weak_password"
+        ? "Dit wachtwoord is te zwak. Kies een langer of minder voorspelbaar wachtwoord."
+        : "Het wachtwoord kon niet worden ingesteld. Probeer het opnieuw.";
+  return { error: message, kind: "password_rejected" };
+}
+
+/** Who is signed in on this browser, if anyone. */
+async function currentUser(supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+}
+
+/** A member goes in; a session without a membership goes to the page that says so. */
+async function enter(supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>): Promise<never> {
+  const memberships = await readPortalMemberships(supabase);
+  if (!memberships || memberships.length === 0) redirect(portalNoAccessPath);
+  await supabase.rpc("portal_mark_membership_accepted");
+  redirect(portalRoot);
+}
+
 /**
  * Signing in. A password that checks out is not yet access: without an
  * active membership the visitor lands on the page that says so. They keep
@@ -59,17 +110,15 @@ export async function portalSignInAction(_previous: FormState, formData: FormDat
   const password = String(formData.get("password") ?? "");
 
   if (!email || !password) return { error: "Vul uw e-mailadres en wachtwoord in." };
-  if (!(await signInAllowed(email))) return { error: signInFailed };
+  /* Our own brake says so; it reveals nothing about the address, which it keys on whether it exists or not. */
+  if (!(await signInAllowed(email))) return rateLimited;
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error && isRateLimit(error)) return rateLimited;
   if (error || !data.user) return { error: signInFailed };
 
-  const memberships = await readPortalMemberships(supabase);
-  if (!memberships || memberships.length === 0) redirect(portalNoAccessPath);
-
-  await supabase.rpc("portal_mark_membership_accepted");
-  redirect(portalRoot);
+  return enter(supabase);
 }
 
 /** Ends the session server-side and clears its cookies. */
@@ -95,12 +144,21 @@ export async function requestPasswordResetAction(_previous: FormState, formData:
   const perCaller = rateLimit(await callerKey("portal-reset"), 10, 15 * 60);
   if (!perEmail.allowed || !perCaller.allowed) return { error: null, done: true };
 
-  const tokenHash = await recoveryTokenForEmail(email).catch((error: unknown) => {
+  /*
+    Only a portal account gets a reset mail from the portal. Every auth user
+    the Auth server knows -- an admin in particular -- is not the portal's to
+    reset: an admin's password changes through the admin's own means, not
+    through a customer mail nobody on the admin side sees. The answer to the
+    visitor is the same either way.
+  */
+  if (!(await isPortalAccount(email))) return { error: null, done: true };
+
+  const token = await recoveryTokenForEmail(email).catch((error: unknown) => {
     console.error("Portal password reset: token could not be made", { error });
     return null;
   });
-  if (tokenHash) {
-    const delivery = await sendPortalMail(email, passwordResetMail({ tokenHash }));
+  if (token) {
+    const delivery = await sendPortalMail(email, passwordResetMail({ tokenHash: token.tokenHash, type: token.type }));
     if (!delivery.sent) console.error("Portal password reset mail failed", { reason: delivery.reason });
   }
 
@@ -119,27 +177,51 @@ export async function setPasswordWithTokenAction(_previous: FormState, formData:
   const password = String(formData.get("password") ?? "");
   const confirmation = String(formData.get("confirmation") ?? "");
 
-  if (!tokenHash || !isTokenType(type)) return { error: "Deze link is niet geldig. Vraag een nieuwe aan." };
   const problem = passwordProblem(password, confirmation);
-  if (problem) return { error: problem };
+  if (problem) return { error: problem, ...(type === "session" ? { kind: "password_rejected" as const } : {}) };
 
   const supabase = await createSupabaseServerClient();
+
+  /*
+    The second attempt after the Auth server refused a password. The token
+    was spent by the first attempt and the session it opened is what carries
+    this one; without that session there is nothing to continue, and the
+    visitor asks for a new link.
+  */
+  if (type === "session") {
+    if (!(await currentUser(supabase))) return invalidLink;
+    const updated = await supabase.auth.updateUser({ password });
+    if (updated.error) return isRateLimit(updated.error) ? rateLimited : passwordRejected(updated.error);
+    return enter(supabase);
+  }
+
+  if (!tokenHash || !isTokenType(type)) return invalidLink;
+
   const verified = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
   if (verified.error || !verified.data.user) {
-    return { error: "Deze link is niet meer geldig. Vraag een nieuwe aan via 'Wachtwoord vergeten' of bij YM Creations." };
+    if (isRateLimit(verified.error)) return rateLimited;
+    /*
+      Spent or expired. Whoever is signed in on this browser is told so, and
+      offered the portal; the dead link itself did nothing, for them or for
+      the account it was meant for.
+    */
+    const user = await currentUser(supabase);
+    return user
+      ? { ...invalidLink, error: `${invalidLink.error} U bent op dit moment al ingelogd${user.email ? ` als ${user.email}` : ""}.`, signedIn: true }
+      : invalidLink;
   }
 
   const updated = await supabase.auth.updateUser({ password });
   if (updated.error) {
-    await supabase.auth.signOut();
-    return { error: updated.error.code === "weak_password" ? "Dit wachtwoord is te zwak. Kies een langer of minder voorspelbaar wachtwoord." : "Het wachtwoord kon niet worden ingesteld. Probeer het opnieuw." };
+    /*
+      The token is spent but the password is not set. The session the token
+      opened is kept, and the screen tries again on that session (type
+      "session" above) rather than on a token that is gone.
+    */
+    return isRateLimit(updated.error) ? rateLimited : passwordRejected(updated.error);
   }
 
-  const memberships = await readPortalMemberships(supabase);
-  if (!memberships || memberships.length === 0) redirect(portalNoAccessPath);
-
-  await supabase.rpc("portal_mark_membership_accepted");
-  redirect(portalRoot);
+  return enter(supabase);
 }
 
 /**
@@ -162,7 +244,7 @@ export async function changePasswordAction(_previous: FormState, formData: FormD
 
   const supabase = await createSupabaseServerClient();
   const check = await supabase.auth.signInWithPassword({ email: access.member.email, password: current });
-  if (check.error) return { error: "Het huidige wachtwoord klopt niet." };
+  if (check.error) return isRateLimit(check.error) ? rateLimited : { error: "Het huidige wachtwoord klopt niet." };
 
   const updated = await supabase.auth.updateUser({ password });
   if (updated.error) {

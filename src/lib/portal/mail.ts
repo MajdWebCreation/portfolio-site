@@ -90,12 +90,15 @@ export function accessGrantedMail(input: { companyName: string }): Mail {
 }
 
 /** A password reset the account holder asked for. */
-export function passwordResetMail(input: { tokenHash: string }): Mail {
+export function passwordResetMail(input: { tokenHash: string; type?: "recovery" | "magiclink" }): Mail {
   return mail({
     title: "Nieuw wachtwoord voor het klantportaal",
     preheader: "Deze link stelt één keer een nieuw wachtwoord in.",
-    paragraphs: ["Er is een nieuw wachtwoord aangevraagd voor uw account in het klantportaal van YM Creations.", "Kies via de knop hieronder een nieuw wachtwoord. De link werkt één keer."],
-    button: { href: portalTokenUrl(input.tokenHash, "recovery"), label: "Nieuw wachtwoord instellen" },
+    paragraphs: [
+      "Er is een nieuw wachtwoord aangevraagd voor uw account in het klantportaal van YM Creations. Deze link werkt ook als uw eerdere uitnodiging was verlopen.",
+      "Kies via de knop hieronder een nieuw wachtwoord. De link werkt één keer en een uur lang; een eerdere link werkt niet meer.",
+    ],
+    button: { href: portalTokenUrl(input.tokenHash, input.type ?? "recovery"), label: "Nieuw wachtwoord instellen" },
     closing: ["Heeft u dit niet aangevraagd? Dan kunt u deze mail negeren; uw wachtwoord verandert niet."],
   });
 }
