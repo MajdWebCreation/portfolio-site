@@ -1,6 +1,17 @@
 import type { CustomerSnapshot, DocumentLine, DocumentNumber } from "@/lib/admin/documents/types";
+import type { InvoiceDocumentFile } from "@/lib/admin/invoices/types";
 
 export type QuoteStatus = "draft" | "sent" | "accepted" | "rejected" | "expired";
+
+/**
+ * The stored PDF of a sent quote: the same four facts an invoice keeps about
+ * its file, in the same bucket, read back the same way. One type, so the
+ * viewer and the artifact reader serve both documents without a second copy.
+ */
+export type QuoteDocumentFile = InvoiceDocumentFile;
+
+/** The set of general terms a quote was issued under, as docs/legal/voorwaarden registers it. */
+export type QuoteTermsSet = { edition: string; publishedOn: string };
 
 export type Quote = {
   id: string;
@@ -18,9 +29,32 @@ export type Quote = {
   lines: DocumentLine[];
   /** Remarks and conditions printed under the totals. */
   notes: string;
-  /** ISO timestamp of the moment the mail was accepted; absent until then. */
+  /**
+   * The set of general terms this quote was issued under, snapshotted when
+   * its number was taken. Absent on a concept, and on a quote sent before
+   * the snapshot existed.
+   */
+  terms?: QuoteTermsSet;
+  /**
+   * The one PDF this quote is: rendered once when it was issued, stored, and
+   * read back -- never re-rendered -- for the admin's preview and for every
+   * mail that attaches it. Absent on a concept.
+   */
+  document?: QuoteDocumentFile;
+  /**
+   * The sent quote this one replaces, when it is a new version of one. Said
+   * at creation and never changed.
+   */
+  supersedesQuoteId?: string;
+  /**
+   * Sent before documents were stored: the PDF the customer received was
+   * rendered into that mail and nowhere else. Such a quote cannot be resent
+   * -- there is no file to resend -- and the way on is a new version.
+   */
+  legacyWithoutDocument?: boolean;
+  /** ISO timestamp of the moment the first mail was accepted; absent until then. */
   sentAt?: string;
-  /** The address the PDF was delivered to. */
+  /** The address the latest send went to. */
   recipientEmail?: string;
   /** ISO timestamp. */
   updatedAt: string;
@@ -46,6 +80,41 @@ export const quoteStatusTone: Record<QuoteStatus, "neutral" | "accent" | "succes
 
 export function isQuoteStatus(value: string): value is QuoteStatus {
   return (quoteStatusOrder as readonly string[]).includes(value);
+}
+
+/**
+ * The statuses an admin may give a quote the customer has.
+ *
+ * 'draft' is not among them: a number was spent and a file exists, and the
+ * database refuses the way back. 'sent' is, so a decision recorded by
+ * mistake can be undone until the customer's own decision replaces this
+ * dropdown.
+ */
+export const quoteOutcomeStatuses: readonly QuoteStatus[] = ["sent", "accepted", "rejected", "expired"];
+
+export function isQuoteOutcomeStatus(value: string): value is QuoteStatus {
+  return (quoteOutcomeStatuses as readonly string[]).includes(value);
+}
+
+/**
+ * Numbered, and therefore frozen: the database refuses every change to what
+ * the quote says from the moment its number exists. What a screen may still
+ * offer is sending, a decision, and a new version.
+ */
+export function isQuoteFrozen(quote: Pick<Quote, "number">): boolean {
+  return !quote.number.provisional;
+}
+
+/**
+ * Why this quote cannot get a new version, or null when it can. The same
+ * rules the database applies at insert, as sentences: a version follows a
+ * quote the customer has, and an accepted quote is an agreement rather than
+ * a proposal to revise.
+ */
+export function quoteRevisionBlockedReason(quote: Pick<Quote, "sentAt" | "status" | "number">): string | null {
+  if (!quote.sentAt) return "Een nieuwe versie maak je van een verzonden offerte.";
+  if (quote.status === "accepted") return `${quote.number.value} is geaccepteerd en krijgt geen nieuwe versie.`;
+  return null;
 }
 
 /**

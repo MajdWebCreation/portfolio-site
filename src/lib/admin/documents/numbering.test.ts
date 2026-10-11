@@ -6,7 +6,7 @@ import {
 } from "@/lib/admin/documents/numbering";
 
 /**
- * The format is agreed with `assign_quote_number` / `assign_invoice_number` in
+ * The format is agreed with `begin_quote_issue` / `begin_invoice_finalization` in
  * the database, which is what actually issues these numbers. If this drifts,
  * a document number produced here stops matching a stored one.
  */

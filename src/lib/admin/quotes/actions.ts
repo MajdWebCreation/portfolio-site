@@ -6,11 +6,9 @@ import { adminDb, orNull } from "@/lib/admin/db";
 import { snapshotToColumns } from "@/lib/admin/documents/mapper";
 import type { CustomerSnapshot, DocumentLine } from "@/lib/admin/documents/types";
 import { hasLineErrors, validateDates, validateLine } from "@/lib/admin/documents/validation";
-import { isQuoteStatus } from "@/lib/admin/quotes/types";
 import type { Json } from "@/lib/supabase/database.types";
 
 export type QuoteInput = {
-  status: string;
   customer: CustomerSnapshot;
   /** Project to file this quote under; always one of the customer's own. */
   projectId?: string;
@@ -28,7 +26,6 @@ export type QuoteInput = {
  * `documents/validation.ts`, so there is one set of rules.
  */
 function validate(input: QuoteInput): string | null {
-  if (!isQuoteStatus(input.status)) return "Kies een geldige status.";
   if (!input.customer.customerId) return "Kies een klant.";
   if (!input.subject.trim()) return "Vul een onderwerp in.";
 
@@ -55,6 +52,10 @@ function linesPayload(lines: DocumentLine[]): Json {
  * Creates or updates a quote and replaces its lines. The line replacement
  * runs in `save_quote_lines`, one transaction, so a failure never leaves a
  * document without lines.
+ *
+ * The status is not the form's to set. A concept is 'draft' until the send
+ * flow mails it; what became of it afterwards is `setQuoteOutcome`'s, and a
+ * numbered quote refuses this whole update anyway.
  */
 export async function saveQuote(
   id: string | null,
@@ -70,7 +71,6 @@ export async function saveQuote(
     // Which project this belongs to is a reference, not a copy: the database
     // checks it against (id, customer_id) on projects.
     project_id: orNull(input.projectId),
-    status: input.status,
     issue_date: input.issueDate,
     valid_until: input.validUntil,
     subject: input.subject.trim(),

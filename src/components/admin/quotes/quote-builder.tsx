@@ -2,16 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import AdminSection from "@/components/admin/admin-section";
 import CustomerSelect from "@/components/admin/documents/customer-select";
 import DocumentPanel from "@/components/admin/documents/document-panel";
-import DocumentStatus from "@/components/admin/documents/document-status";
 import DocumentTotalsView from "@/components/admin/documents/document-totals";
 import LineItemsEditor, { newLine } from "@/components/admin/documents/line-items-editor";
 import ProjectSelect from "@/components/admin/documents/project-select";
 import SendPanel from "@/components/admin/documents/send-panel";
 import { TextField, TextareaField } from "@/components/admin/form-field";
 import SaveControls, { useSave } from "@/components/admin/save-controls";
+import StatusBadge from "@/components/admin/status-badge";
 import type { RecipientResult } from "@/lib/admin/communications/recipient";
 import type { Customer } from "@/lib/admin/customers/types";
 import { provisionalDocumentNumber } from "@/lib/admin/documents/numbering";
@@ -19,7 +20,7 @@ import { snapshotCustomer } from "@/lib/admin/documents/types";
 import { addDays, hasLineErrors, validateDates, validateLine, type LineErrors } from "@/lib/admin/documents/validation";
 import type { Project } from "@/lib/admin/projects/types";
 import { saveQuote } from "@/lib/admin/quotes/actions";
-import { isQuoteStatus, quoteStatusLabels, quoteStatusOrder, quoteStatusTone, type Quote } from "@/lib/admin/quotes/types";
+import { quoteStatusLabels, quoteStatusTone, type Quote } from "@/lib/admin/quotes/types";
 import { calculateTotals } from "@/lib/money";
 
 type Errors = Partial<Record<"customer" | "issueDate" | "validUntil" | "subject" | "lines", string>>;
@@ -64,9 +65,11 @@ type QuoteBuilderProps = {
   todayKey: string;
   /** Where the stored quote's mail goes now, resolved by the page; absent for a new quote. */
   recipient?: RecipientResult;
+  /** The sent quote this concept is a new version of, when it is one. */
+  predecessor?: Pick<Quote, "id" | "number">;
 };
 
-export default function QuoteBuilder({ stored, customers, projects, todayKey, recipient }: QuoteBuilderProps) {
+export default function QuoteBuilder({ stored, customers, projects, todayKey, recipient, predecessor }: QuoteBuilderProps) {
   const router = useRouter();
   // "NIEUW" until the record is created; both server and client render the same number.
   const [quote, setQuote] = useState<Quote>(() => stored ?? blank(todayKey, "nieuw", "offerte-regel-1"));
@@ -102,7 +105,6 @@ export default function QuoteBuilder({ stored, customers, projects, todayKey, re
     runSave(
       () =>
         saveQuote(quote.id || null, {
-          status: quote.status,
           customer: quote.customer,
           projectId: quote.projectId,
           issueDate: quote.issueDate,
@@ -183,8 +185,21 @@ export default function QuoteBuilder({ stored, customers, projects, todayKey, re
           savedAt={savedAt}
           onSave={save}
         />
-        <div className="border-t border-line pt-6">
-          <DocumentStatus value={quote.status} order={quoteStatusOrder} labels={quoteStatusLabels} tones={quoteStatusTone} onChange={(value) => (isQuoteStatus(value) ? update("status", value) : null)} edited={false} />
+        <div className="space-y-3 border-t border-line pt-6">
+          <StatusBadge tone={quoteStatusTone[quote.status]}>{quoteStatusLabels[quote.status]}</StatusBadge>
+          <p className="text-[0.82rem] leading-snug text-muted">
+            Een concept wordt verzonden door het te versturen; daarna ligt de inhoud vast en kun je vastleggen wat de
+            klant besloot.
+          </p>
+          {predecessor ? (
+            <p className="text-[0.82rem] leading-snug text-muted">
+              Nieuwe versie van{" "}
+              <Link href={`/admin/offertes/${predecessor.id}`} className="link-static text-ink">
+                {predecessor.number.value}
+              </Link>
+              .
+            </p>
+          ) : null}
         </div>
         <div className="border-t border-line pt-6">
           <DocumentPanel

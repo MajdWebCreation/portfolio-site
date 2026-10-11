@@ -50,15 +50,44 @@ label *Ingepland*, and the article list can filter on it.
 ## Document numbers
 
 `public.document_counters` holds one counter per kind and year and is the only
-source of definitive numbers. `assign_quote_number(uuid)` and
-`assign_invoice_number(uuid)` issue `YM-O-YYYY-NNNNNN` / `YM-F-YYYY-NNNNNN`
-once per document: they lock the document row, return the number it already
-has when it has one, and otherwise take the next value from the counter in a
-single upsert. Both are SECURITY INVOKER and executable by `authenticated`
-only, so the policies decide and anon cannot reach them.
+source of definitive numbers. `begin_quote_issue(uuid, text, date)`,
+`begin_invoice_finalization(uuid, jsonb)` and `begin_credit_note_issue(uuid)`
+issue `YM-O-YYYY-NNNNNN` / `YM-F-YYYY-NNNNNN` / `YM-C-YYYY-NNNNNN` once per
+document: they lock the document row, return the number it already has when it
+has one, and otherwise take the next value from the counter in a single
+upsert. All are SECURITY INVOKER and executable by `authenticated` only, so the
+policies decide and anon cannot reach them.
 
 A document keeps its `OFF-CONCEPT-…` / `FAC-CONCEPT-…` number until it is
-actually sent. Never edit `next_sequence` by hand on a live series.
+actually issued. Never edit `next_sequence` by hand on a live series.
+
+## Offertes as documents
+
+A sent quote is a document the way an issued invoice is (`quote_issuance`):
+
+- **Freeze.** From the moment `begin_quote_issue` takes the number, the row
+  and its lines are refused every change by trigger. What may still move:
+  `status` (never back to `draft`), `recipient_email`, and -- each written
+  once -- `terms_*`, `document_*` and `sent_at`. A numbered quote is never
+  deleted.
+- **Artifact.** The PDF is rendered once, stored in the private
+  `invoice-documents` bucket under `YYYY/<number>-<sha256>.pdf`, and recorded
+  by `complete_quote_issue` with its SHA-256 and size. Every mail of that
+  quote -- the first and each resend -- reads that file back and verifies the
+  hash; nothing is rendered again.
+- **Terms.** `terms_edition` + `terms_published_on` are snapshotted from
+  `lib/content/terms.ts` when the number is taken, and never follow a later
+  edition.
+- **Versions.** A change to a sent quote is a new quote with
+  `supersedes_quote_id` pointing at it: same customer (composite foreign
+  key), predecessor sent and not accepted (trigger), one successor per quote
+  (unique index), link immutable. "Vervangen" is derived from the existence
+  of a sent successor; there is no such status.
+- **Legacy.** Quotes sent before this existed carry
+  `legacy_sent_without_document = true`, set by the migration and by nothing
+  else. They are frozen like any sent quote, cannot be resent (there is no
+  file to resend and none is fabricated), and are not portal-ready. The way
+  on is a new version.
 
 ## Customer communication
 

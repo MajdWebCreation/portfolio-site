@@ -40,7 +40,6 @@ const customer: CustomerSnapshot = {
 const line: DocumentLine = { id: "l1", description: "Werk", quantityHundredths: 100, unitPriceCents: 10000, vatRate: 21 };
 
 const valid = {
-  status: "draft",
   customer,
   issueDate: "2026-09-01",
   validUntil: "2026-10-01",

@@ -5,7 +5,7 @@ import type { DocumentKind, DocumentNumber } from "@/lib/admin/documents/types";
  *
  * A document carries a provisional number (OFF-CONCEPT-… / FAC-CONCEPT-…)
  * from the moment it is created until it is actually issued to the customer.
- * Issuing is not done here: `assign_quote_number` / `assign_invoice_number`
+ * Issuing is not done here: `begin_quote_issue` / `begin_invoice_finalization`
  * in the database hand out YM-O-YYYY-000001 and YM-F-YYYY-000001 from a
  * counter per kind and year, in one transaction, and return the number the
  * document already has when it has one. Nothing in this module can compose a

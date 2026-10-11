@@ -21,6 +21,17 @@ export default function QuotesList({ quotes }: { quotes: Quote[] }) {
     setQuery("");
   }
 
+  /*
+    "Vervangen" is not a status; it is the existence of a sent successor. Read
+    off the list itself, so a quote that was replaced says so without a column
+    that could disagree with the chain.
+  */
+  const replacedBy = useMemo(() => {
+    const map = new Map<string, Quote>();
+    for (const quote of quotes) if (quote.supersedesQuoteId && quote.sentAt) map.set(quote.supersedesQuoteId, quote);
+    return map;
+  }, [quotes]);
+
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return quotes
@@ -84,7 +95,12 @@ export default function QuotesList({ quotes }: { quotes: Quote[] }) {
                   {formatCents(calculateTotals(quote.lines).totalCents)}
                 </td>
                 <td data-label="Status">
-                  <StatusBadge tone={quoteStatusTone[quote.status]}>{quoteStatusLabels[quote.status]}</StatusBadge>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <StatusBadge tone={quoteStatusTone[quote.status]}>{quoteStatusLabels[quote.status]}</StatusBadge>
+                    {replacedBy.has(quote.id) ? (
+                      <StatusBadge>Vervangen door {replacedBy.get(quote.id)!.number.value}</StatusBadge>
+                    ) : null}
+                  </span>
                 </td>
               </tr>
             ))}

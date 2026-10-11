@@ -1647,9 +1647,14 @@ export type Database = {
           customer_postal_code: string
           customer_street: string
           customer_vat_number: string | null
+          document_bytes: number | null
+          document_generated_at: string | null
+          document_path: string | null
+          document_sha256: string | null
           id: string
           intro: string
           issue_date: string
+          legacy_sent_without_document: boolean
           notes: string
           number_provisional: boolean
           number_value: string
@@ -1658,6 +1663,9 @@ export type Database = {
           sent_at: string | null
           status: string
           subject: string
+          supersedes_quote_id: string | null
+          terms_edition: string | null
+          terms_published_on: string | null
           updated_at: string
           valid_until: string
         }
@@ -1673,9 +1681,14 @@ export type Database = {
           customer_postal_code: string
           customer_street: string
           customer_vat_number?: string | null
+          document_bytes?: number | null
+          document_generated_at?: string | null
+          document_path?: string | null
+          document_sha256?: string | null
           id?: string
           intro?: string
           issue_date: string
+          legacy_sent_without_document?: boolean
           notes?: string
           number_provisional?: boolean
           number_value: string
@@ -1684,6 +1697,9 @@ export type Database = {
           sent_at?: string | null
           status?: string
           subject?: string
+          supersedes_quote_id?: string | null
+          terms_edition?: string | null
+          terms_published_on?: string | null
           updated_at?: string
           valid_until: string
         }
@@ -1699,9 +1715,14 @@ export type Database = {
           customer_postal_code?: string
           customer_street?: string
           customer_vat_number?: string | null
+          document_bytes?: number | null
+          document_generated_at?: string | null
+          document_path?: string | null
+          document_sha256?: string | null
           id?: string
           intro?: string
           issue_date?: string
+          legacy_sent_without_document?: boolean
           notes?: string
           number_provisional?: boolean
           number_value?: string
@@ -1710,6 +1731,9 @@ export type Database = {
           sent_at?: string | null
           status?: string
           subject?: string
+          supersedes_quote_id?: string | null
+          terms_edition?: string | null
+          terms_published_on?: string | null
           updated_at?: string
           valid_until?: string
         }
@@ -1733,6 +1757,13 @@ export type Database = {
             columns: ["project_id", "customer_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id", "customer_id"]
+          },
+          {
+            foreignKeyName: "quotes_supersedes_same_customer"
+            columns: ["supersedes_quote_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id", "customer_id"]
           },
         ]
@@ -2266,13 +2297,16 @@ export type Database = {
       }
     }
     Functions: {
-      assign_quote_number: { Args: { p_quote_id: string }; Returns: string }
       begin_credit_note_issue: {
         Args: { p_credit_note_id: string }
         Returns: string
       }
       begin_invoice_finalization: {
         Args: { p_activation?: Json; p_invoice_id: string }
+        Returns: string
+      }
+      begin_quote_issue: {
+        Args: { p_quote_id: string; p_terms_edition: string; p_terms_published_on: string }
         Returns: string
       }
       complete_credit_note_issue: {
@@ -2289,6 +2323,15 @@ export type Database = {
           p_bytes: number
           p_invoice_id: string
           p_path: string
+          p_sha256: string
+        }
+        Returns: Json
+      }
+      complete_quote_issue: {
+        Args: {
+          p_bytes: number
+          p_path: string
+          p_quote_id: string
           p_sha256: string
         }
         Returns: Json

@@ -88,8 +88,10 @@ export default function SendPanel({ doc, recipient: addressed }: { doc: Document
           <p className="text-[0.85rem] leading-snug text-body">
             De opgeslagen {kindLabel} gaat als PDF naar <span className="text-ink">{recipient}</span>.
             {document.number.provisional
-              ? " Daarbij wordt het definitieve nummer toegekend."
-              : ` Dit is exact de PDF hierboven: ${document.number.value} en de bedragen veranderen niet meer.`}
+              ? " Daarbij wordt het definitieve nummer toegekend en de PDF één keer gemaakt en opgeslagen."
+              : doc.kind === "quote" && !doc.quote.document
+                ? ` De PDF van ${document.number.value} wordt nu één keer gemaakt en opgeslagen; de inhoud ligt al vast.`
+                : ` Dit is exact de PDF hierboven: ${document.number.value} en de bedragen veranderen niet meer.`}
           </p>
           {activates ? (
             <p className="text-[0.85rem] leading-snug text-body">

@@ -6,6 +6,8 @@ import type { Quote } from "@/lib/admin/quotes/types";
 import { fixtureDocumentPath, fixturePdfBytes } from "@/lib/admin/invoices/storage-fixture";
 import { invalidRecipientReason, missingCustomerReason } from "@/lib/admin/communications/recipient";
 import { documentFingerprint, invoiceDocument } from "@/lib/admin/documents/document-payload";
+import { quoteFromRow, type QuoteRow } from "@/lib/admin/quotes/mapper";
+import { createQuoteIssueRpc, quoteFixture, quoteRowFixture } from "@/lib/admin/quotes/test-support";
 import { createFakeDb, customerRowFixture } from "@/lib/payments/fixtures";
 import { invoiceFixture, testCustomer } from "@/lib/payments/fixtures";
 
@@ -27,7 +29,6 @@ const invoicePayLink = vi.fn();
 
 let db: ReturnType<typeof createFakeDb>;
 let storedInvoice: Invoice;
-let storedQuote: Quote | undefined;
 let project: { id: string; name: string } | undefined;
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -36,14 +37,31 @@ vi.mock("@/lib/admin/db", async (importOriginal) => ({
   adminDb: async () => ({
     from: (table: string) => db.from(table),
     storage: db.storage,
-    rpc: async (name: string) =>
-      name === "assign_quote_number"
-        ? { data: "YM-O-2026-000001", error: null }
-        : { data: "YM-F-2026-000001", error: null },
+    /* The quote issue functions against the fake table; invoices are issued before they get here. */
+    rpc: (name: string, args: Record<string, unknown>) =>
+      createQuoteIssueRpc(
+        () => db.rows("quotes"),
+        () => "YM-O-2026-000001",
+      )(name, args),
   }),
 }));
 vi.mock("@/lib/admin/invoices/repository", () => ({ getInvoice: async () => storedInvoice }));
-vi.mock("@/lib/admin/quotes/repository", () => ({ getQuote: async () => storedQuote }));
+/*
+  The quote is read from the fake table, so the flow sees what issuing wrote:
+  the number, the terms and the document it is about to mail.
+*/
+vi.mock("@/lib/admin/quotes/repository", () => ({
+  getQuote: async (id: string) => {
+    const row = db.rows("quotes").find((candidate) => candidate.id === id);
+    return row ? quoteFromRow(row as unknown as QuoteRow) : undefined;
+  },
+  findQuoteSuccessor: async (id: string) => {
+    const row = db.rows("quotes").find((candidate) => candidate.supersedes_quote_id === id);
+    return row
+      ? { id: row.id, number: { value: row.number_value, provisional: row.number_provisional }, status: row.status, ...(row.sent_at ? { sentAt: row.sent_at } : {}) }
+      : undefined;
+  },
+}));
 vi.mock("@/lib/admin/projects/repository", () => ({ getProject: async () => project }));
 vi.mock("@/lib/admin/pdf/to-buffer", () => ({
   renderInvoicePdf: async () => Buffer.from("pdf"),
@@ -59,27 +77,19 @@ vi.mock("@/lib/admin/communications/provider", () => ({
 
 const { sendInvoiceToCustomer, sendQuoteToCustomer } = await import("@/lib/admin/documents/send");
 
-const quoteFixture = (overrides: Partial<Quote> = {}): Quote => ({
-  id: "quo-1",
-  number: { value: "OFF-CONCEPT-X", provisional: true },
-  status: "draft",
-  customer: testCustomer,
-  issueDate: "2026-09-01",
-  validUntil: "2026-10-01",
-  subject: "Nieuwe website",
-  intro: "",
-  lines: [{ id: "l1", description: "Ontwerp", quantityHundredths: 100, unitPriceCents: 150000, vatRate: 21 }],
-  notes: "",
-  updatedAt: "2026-09-01T10:00:00.000Z",
-  ...overrides,
-});
-
 const oneoffLink = {
   kind: "link",
   url: "https://payment-link.mollie.com/payment/pl_1",
 };
 
 const rows = () => db.rows("customer_communications");
+
+/** Puts a quote in the fake table, replacing whatever was there. */
+function placeQuote(quote: Quote) {
+  const quotes = db.rows("quotes");
+  quotes.length = 0;
+  quotes.push(quoteRowFixture(quote));
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -88,7 +98,7 @@ beforeEach(() => {
   /* The document this invoice was issued with, already in its bucket. */
   db.bucket.files.set(fixtureDocumentPath, fixturePdfBytes);
   storedInvoice = issuedInvoice();
-  storedQuote = quoteFixture();
+  placeQuote(quoteFixture());
   project = undefined;
   invoicePayLink.mockResolvedValue(oneoffLink);
   deliverEmail.mockResolvedValue({ sent: true, sentAt: "2026-09-14T09:00:00.000Z", messageId: "resend-1" });
@@ -96,7 +106,7 @@ beforeEach(() => {
 
 describe("sending a quote", () => {
   it("files one communication under the quote and its customer", async () => {
-    storedQuote = quoteFixture({ projectId: "proj-1" });
+    placeQuote(quoteFixture({ projectId: "proj-1" }));
 
     const result = await sendQuoteToCustomer("quo-1");
 
@@ -276,7 +286,7 @@ describe("the customer's current address", () => {
 
   /* TEST 1: a concept quote, the customer's address changed, then sent. */
   it("sends a concept quote to the address the customer has now", async () => {
-    storedQuote = quoteFixture({ customer: before });
+    placeQuote(quoteFixture({ customer: before }));
     changeCustomer({ email: "new@example.com" });
 
     const result = await sendQuoteToCustomer("quo-1");
@@ -301,7 +311,7 @@ describe("the customer's current address", () => {
 
   /* The greeting belongs to the address: a new contact is greeted by name. */
   it("greets the contact the customer has now", async () => {
-    storedQuote = quoteFixture({ customer: before });
+    placeQuote(quoteFixture({ customer: before }));
     changeCustomer({ email: "new@example.com", contact_name: "N. Nieuw" });
 
     await sendQuoteToCustomer("quo-1");
@@ -335,7 +345,7 @@ describe("the customer's current address", () => {
     ["blank", "   "],
     ["not an address", "geen-adres"],
   ])("refuses to send when the customer's address is %s, without falling back", async (_label, email) => {
-    storedQuote = quoteFixture({ customer: before });
+    placeQuote(quoteFixture({ customer: before }));
     storedInvoice = issuedInvoice({ customer: before, sentAt: "2026-09-10T09:00:00.000Z", recipientEmail: "old@example.com" });
     changeCustomer({ email });
 

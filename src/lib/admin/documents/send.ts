@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { actionFailed, type ActionResult } from "@/lib/admin/action-result";
+import type { ActionResult } from "@/lib/admin/action-result";
 import { invoiceLinks, quoteLinks } from "@/lib/admin/communications/links";
 import { resolveCustomerRecipient } from "@/lib/admin/communications/recipient";
 import { adminDb } from "@/lib/admin/db";
@@ -9,9 +9,10 @@ import { documentDateLabel, sendDocumentMail } from "@/lib/admin/documents/email
 import { documentFingerprint, invoiceDocument } from "@/lib/admin/documents/document-payload";
 import { documentIncompleteReason } from "@/lib/admin/documents/validation";
 import { getInvoice } from "@/lib/admin/invoices/repository";
-import { documentFileName, renderQuotePdf } from "@/lib/admin/pdf/to-buffer";
+import { documentFileName } from "@/lib/admin/pdf/to-buffer";
 import { readInvoiceArtifact } from "@/lib/admin/invoices/artifact";
-import { getQuote } from "@/lib/admin/quotes/repository";
+import { issueQuoteDocument } from "@/lib/admin/quotes/issue";
+import { findQuoteSuccessor, getQuote } from "@/lib/admin/quotes/repository";
 import { calculateTotals, formatCents } from "@/lib/money";
 import { getProject } from "@/lib/admin/projects/repository";
 import { invoicePayLink } from "@/lib/payments/pay-link";
@@ -41,9 +42,12 @@ import { invoicePayLink } from "@/lib/payments/pay-link";
  * document changes at all, and the admin sees why it failed instead of a
  * status that lies.
  *
- * An invoice is numbered before any of this, by `finalizeInvoice`. A quote
- * still takes its number here: there is no second step for quotes, because a
- * quote is a proposal and nothing is frozen around it.
+ * An invoice is numbered before any of this, by `finalizeInvoice`. A quote is
+ * numbered, frozen and stored as a file inside this very action, by
+ * `issueQuoteDocument`, and only then mailed from that file: there is no
+ * separate "make definitive" step for a quote, but there is no longer a
+ * render into the mail either. A sent quote is a document the same way an
+ * invoice is.
  *
  * Both return the number that went out and the address it went to, so the
  * screen reports what the server did rather than what it had loaded.
@@ -53,67 +57,127 @@ export type SentDocument = { number: string; recipient: string };
 export async function sendQuoteToCustomer(id: string): Promise<ActionResult<SentDocument>> {
   const db = await adminDb();
 
-  const quote = await getQuote(id);
-  if (!quote) return { ok: false, error: "Deze offerte bestaat niet (meer)." };
+  const stored = await getQuote(id);
+  if (!stored) return { ok: false, error: "Deze offerte bestaat niet (meer)." };
 
-  const invalid = documentIncompleteReason(quote);
-  if (invalid) return { ok: false, error: invalid };
+  /*
+    Sent before documents were stored: the PDF the customer received was
+    rendered into that mail and exists nowhere else. Rendering one now and
+    calling it "the same offer" would be the one thing an artifact store must
+    never do, so it is not mailed again. A change, or a fresh send, is a new
+    version made from it.
+  */
+  if (stored.legacyWithoutDocument) {
+    return {
+      ok: false,
+      error: `${stored.number.value} is verzonden voordat offertes als bestand werden bewaard en kan niet opnieuw worden verstuurd. Maak er een nieuwe versie van.`,
+    };
+  }
 
-  // Before the number: a quote that cannot be mailed should not use one up.
-  const addressed = await resolveCustomerRecipient(db, quote.customer.customerId);
+  /*
+    A quote the customer already received a replacement for is not mailed
+    again: two offers in one inbox, both numbered and both valid, is exactly
+    what a new version exists to avoid.
+  */
+  if (stored.sentAt) {
+    const successor = await findQuoteSuccessor(id);
+    if (successor?.sentAt) {
+      return {
+        ok: false,
+        error: `${stored.number.value} is vervangen door ${successor.number.value} en wordt niet opnieuw verstuurd.`,
+      };
+    }
+  }
+
+  /*
+    Where it goes is asked of the customer record now, before anything is
+    spent: a quote that cannot be mailed should not use up a number, and a
+    resend goes to the address the customer has today.
+  */
+  const addressed = await resolveCustomerRecipient(db, stored.customer.customerId);
   if (!addressed.ok) return { ok: false, error: addressed.reason };
   const { recipient } = addressed;
 
-  const assigned = await db.rpc("assign_quote_number", { p_quote_id: id });
-  if (assigned.error || !assigned.data) {
-    return actionFailed(assigned.error, "Het offertenummer kon niet worden toegekend.");
+  let quote = stored;
+
+  if (!quote.document) {
+    /*
+      A concept, or a send that was interrupted before its file was recorded.
+      Only a concept is checked for completeness: a numbered quote is frozen,
+      and refusing it now could only strand it.
+    */
+    if (quote.number.provisional) {
+      const invalid = documentIncompleteReason(quote);
+      if (invalid) return { ok: false, error: invalid };
+    }
+
+    /* Number, terms, one render, one stored file. Idempotent on retry. */
+    const issued = await issueQuoteDocument(db, id);
+    if (!issued.ok) return { ok: false, error: issued.error };
+
+    const reread = await getQuote(id);
+    if (!reread?.document) return { ok: false, error: "De offerte is uitgegeven, maar het document kon niet worden teruggelezen." };
+    quote = reread;
   }
 
-  const numbered = { ...quote, number: { value: assigned.data, provisional: false } };
-
-  let pdf: Buffer;
-  try {
-    pdf = await renderQuotePdf(numbered);
-  } catch (error) {
-    console.error("Quote PDF render failed", { id, error });
-    return { ok: false, error: "De PDF kon niet worden gemaakt. Controleer de regels en probeer opnieuw." };
-  }
+  /*
+    The attachment is the file, read back and verified against the hash
+    recorded when it was stored. Not a render -- `@react-pdf` stamps a
+    creation date into every document, so a second render is a second file.
+    Resending hands over these same bytes; a file that is missing or altered
+    stops the send instead of being replaced.
+  */
+  const artifact = await readInvoiceArtifact(db, quote, "offerte");
+  if (!artifact.ok) return { ok: false, error: `${artifact.reason} De offerte is niet verstuurd.` };
 
   const mail = await sendDocumentMail({
     kind: "quote",
-    number: numbered.number.value,
+    number: quote.number.value,
     log: {
       db,
-      customerId: numbered.customer.customerId,
+      customerId: quote.customer.customerId,
       category: "quote_sent",
-      ...quoteLinks(numbered),
+      ...quoteLinks(quote),
     },
     recipient,
-    issueDateLabel: documentDateLabel(numbered.issueDate),
-    deadlineLabel: documentDateLabel(numbered.validUntil),
-    totalLabel: formatCents(calculateTotals(numbered.lines).totalCents),
-    pdf,
-    fileName: documentFileName(numbered.number.value),
+    issueDateLabel: documentDateLabel(quote.issueDate),
+    deadlineLabel: documentDateLabel(quote.validUntil),
+    totalLabel: formatCents(calculateTotals(quote.lines).totalCents),
+    pdf: artifact.pdf,
+    fileName: documentFileName(quote.number.value),
   });
 
   if (!mail.sent) return { ok: false, error: `Versturen mislukt: ${mail.reason}` };
 
-  const { error } = await db
-    .from("quotes")
-    .update({ status: "sent", sent_at: mail.sentAt, recipient_email: recipient.email })
-    .eq("id", id);
+  /*
+    The first send is the moment the quote was sent, and that moment is
+    written once. A resend changes nothing about the quote; the communication
+    log carries every send. Only the address the latest mail went to is kept
+    current, and only when it changed.
+  */
+  const changes = quote.sentAt
+    ? quote.recipientEmail === recipient.email
+      ? null
+      : { recipient_email: recipient.email }
+    : { status: "sent", sent_at: mail.sentAt, recipient_email: recipient.email };
 
-  if (error) {
-    // The mail is out; refusing to say so would be the bigger lie. The admin
-    // is told what did not get written so the status can be set by hand.
-    console.error("Quote sent but status update failed", { id, error });
-    return { ok: false, error: `De offerte is verstuurd naar ${recipient.email}, maar de status kon niet worden bijgewerkt.` };
+  if (changes) {
+    const { error } = await db.from("quotes").update(changes).eq("id", id);
+    if (error) {
+      // The mail is out; refusing to say so would be the bigger lie. The admin
+      // is told what did not get written so it can be checked by hand.
+      console.error("Quote sent but status update failed", { id, error });
+      return {
+        ok: false,
+        error: `De offerte is verstuurd naar ${recipient.email}, maar de status kon niet worden bijgewerkt.`,
+      };
+    }
   }
 
   revalidatePath("/admin/offertes");
   revalidatePath(`/admin/offertes/${id}`);
   revalidatePath("/admin");
-  return { ok: true, value: { number: numbered.number.value, recipient: recipient.email } };
+  return { ok: true, value: { number: quote.number.value, recipient: recipient.email } };
 }
 
 export async function sendInvoiceToCustomer(
