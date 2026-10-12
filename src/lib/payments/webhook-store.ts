@@ -9,8 +9,11 @@ import type { BillingPeriod } from "@/lib/payments/billing-period";
 import {
   activationForPayment,
   activationIdForPaymentLink,
+  closeOpenActivation,
   processActivationPayment,
+  recordMandate,
 } from "@/lib/payments/mandate-activation";
+import { lookupMandate, readProviderCustomerId } from "@/lib/payments/provider-customer";
 import { ensureRecurringInvoice } from "@/lib/payments/recurring-invoice";
 import type { PaymentRecord, WebhookStore } from "@/lib/payments/webhook";
 import { nextPaymentStatus } from "@/lib/payments/webhook";
@@ -125,6 +128,31 @@ export function createWebhookStore(): WebhookStore {
 
     async findActivationIdForPaymentLink(providerPaymentLinkId: string): Promise<string | undefined> {
       return activationIdForPaymentLink(db, providerPaymentLinkId);
+    },
+
+    /*
+      The mandate a paid `first` invoice payment gave. Our link asked Mollie
+      for it on the Mollie customer we hold for this customer, so that is the
+      only one looked at: a payment naming another Mollie customer is
+      reported, never adopted. Only "valid" is recorded as a mandate to
+      collect against; "pending" asks Mollie to deliver again.
+    */
+    async recordInvoiceMandate(payment, customerId) {
+      const ours = await readProviderCustomerId(db, customerId);
+      if (!ours) return { handled: true, note: "first payment, but no Mollie customer on record" };
+      if (payment.customerId && payment.customerId !== ours) {
+        return { handled: true, note: "first payment names another Mollie customer; mandate not recorded" };
+      }
+
+      const mandate = await lookupMandate(db, customerId);
+      await recordMandate(db, customerId, undefined, mandate);
+      if (mandate.state === "pending") return { handled: false, retry: true, note: "mandate still pending at the provider" };
+      if (mandate.state !== "valid") return { handled: true, note: `mandate ${mandate.state}` };
+      /* Authorised: an older EUR 0.01 link has nothing left to do. */
+      await closeOpenActivation(db, customerId).catch((error: unknown) => {
+        console.error("Could not close an open activation link", { customerId, error: error instanceof Error ? error.message : error });
+      });
+      return { handled: true, note: "mandate valid" };
     },
 
     async findInvoiceIdForProviderPayment(molliePaymentId: string): Promise<string | undefined> {

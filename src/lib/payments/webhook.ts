@@ -18,6 +18,15 @@ import type { Payment, PaymentStatus, RecurringService } from "@/lib/payments/ty
  *                               flow; it never reaches the invoice routing,
  *                               so the EUR 0.01 can never settle anything.
  *
+ *   one payment, two effects    an invoice payment Mollie made as `first`
+ *                               settles its invoice like any other, and
+ *                               then -- only once paid -- the customer's
+ *                               mandate is asked of Mollie and recorded.
+ *                               No subscription is made here: starting the
+ *                               monthly collection stays the admin's step
+ *                               (collection-start.ts), from the first
+ *                               period nobody paid yet.
+ *
  *   no wrong statuses           a row that already says `paid` is never
  *                               written back to something worse, and the
  *                               invoice is re-evaluated from all its payments
@@ -64,6 +73,13 @@ export type WebhookStore = {
   findInvoiceIdForPaymentLink: (providerPaymentLinkId: string) => Promise<string | undefined>;
   /** The direct debit activation a Mollie payment link was made for. */
   findActivationIdForPaymentLink: (providerPaymentLinkId: string) => Promise<string | undefined>;
+  /**
+   * After a paid `first` invoice payment: the customer's mandate as Mollie
+   * reports it now, recorded for our own customer -- through the Mollie
+   * customer we hold for them, never one the payment names. `retry` while
+   * Mollie still calls it pending. Idempotent: it only asks and records.
+   */
+  recordInvoiceMandate: (payment: MolliePayment, customerId: string) => Promise<WebhookOutcome>;
   /**
    * Confirms that a payment really came from the payment link of this
    * invoice, by asking Mollie which payments that link produced.
@@ -234,6 +250,18 @@ export async function processMolliePayment(
   const status = nextInvoiceStatus(invoice, settled, todayKey);
 
   if (status !== invoice.status) await store.setInvoiceStatus(invoice.id, status);
+
+  /*
+    The same payment was the customer's first payment: it paid the invoice
+    above, and now its mandate is recorded. Only a paid one -- a failed or
+    expired first payment gave nothing, and the invoice's link stays
+    payable for the next attempt. A subscription payment (`recurring`) is
+    never this.
+  */
+  if (payment.sequenceType === "first" && paymentStatusFromMollie(payment.status) === "paid") {
+    const mandate = await store.recordInvoiceMandate(payment, invoice.customer.customerId);
+    return { ...mandate, note: `invoice ${settled ? "settled" : "not settled"}; ${mandate.note}`, invoiceStatus: status };
+  }
 
   return { handled: true, note: `invoice ${settled ? "settled" : "not settled"}`, invoiceStatus: status };
 }

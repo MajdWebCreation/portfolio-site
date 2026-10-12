@@ -243,45 +243,46 @@ describe("every reminder", () => {
 });
 
 /*
-  Paying this invoice and activating direct debit are two actions. When a
-  reminder offers both, each has its own heading and button, and the
-  activation says its cent pays no invoice.
+  The YM rule in the reminder: while the customer's monthly service waits for
+  its mandate, the one payment the reminder offers is also the mandate --
+  exactly as the first invoice mail asked. One button, the invoice amount,
+  and no separate activation of any amount.
 */
-describe("a reminder for a customer whose direct debit is not active yet", () => {
-  const activation = { kind: "offer" as const, url: "https://payment-link.mollie.com/payment/pl_act" };
-  const withBoth = (stage: ReminderMailContent["stage"]) => buildReminderMailBody({ ...base, stage, activation });
+describe("a reminder whose payment is also the direct debit mandate", () => {
+  const combined = (stage: ReminderMailContent["stage"]) => buildReminderMailBody({ ...base, stage, payMode: "first" });
 
-  it("offers the invoice's button and the activation, apart and named for what they do", () => {
+  it("offers exactly one button, named for both, at every stage", () => {
     for (const stage of ["first_reminder", "second_reminder", "final_notice"] as const) {
-      const mail = withBoth(stage);
-      expect(mail.html).toContain(">Factuur betalen<");
-      expect(visible(mail.html)).toContain(">Incasso activeren (€ 0,01)<");
-      expect(mail.html).toContain("pl_1");
-      expect(mail.html).toContain("pl_act");
-      expect(flat(mail.text)).toContain("Factuur betalen: https://payment-link.mollie.com/payment/pl_1");
-      expect(flat(mail.text)).toContain("Incasso activeren (€ 0,01): https://payment-link.mollie.com/payment/pl_act");
-      expect(flat(mail.text)).toContain("Met de knop hieronder betaal je het openstaande bedrag van deze factuur: € 1.815,00.");
-      expect(flat(mail.text)).toContain("Die € 0,01 betaalt deze factuur niet en is geen maandtermijn");
-      expect(flat(mail.text).indexOf("Factuur betalen:")).toBeLessThan(flat(mail.text).indexOf("Incasso activeren (€ 0,01):"));
+      const mail = combined(stage);
+      expect(visible(mail.html)).toContain(">Factuur betalen en incasso activeren<");
+      expect(mail.html).not.toContain(">Factuur betalen<");
+      expect(mail.html.match(/payment-link\.mollie\.com/g)).toHaveLength(1);
+      expect(flat(mail.text)).toContain("Factuur betalen en incasso activeren: https://payment-link.mollie.com/payment/pl_1");
+      expect(flat(mail.text)).toContain("Met deze betaling voldoe je de factuur en geef je tegelijk toestemming voor de automatische incasso");
+      expect(flat(mail.text)).toContain("Je betaalt nu alleen het openstaande factuurbedrag");
     }
   });
 
-  it("offers only the activation when the invoice itself cannot be paid now", () => {
-    const mail = buildReminderMailBody({ ...base, stage: "first_reminder", payUrl: undefined, activation });
-    expect(mail.html).not.toContain(">Factuur betalen<");
-    expect(mail.html).toContain("pl_act");
+  it("never mentions a separate cent or activation link", () => {
+    for (const stage of ["first_reminder", "second_reminder", "final_notice"] as const) {
+      const mail = combined(stage);
+      for (const body of [mail.html, mail.text]) {
+        expect(body).not.toMatch(/0,01|activatielink|Incasso activeren \(/);
+      }
+    }
   });
 
-  it("says the authorisation is being processed instead of asking again", () => {
-    const mail = buildReminderMailBody({ ...base, stage: "second_reminder", activation: { kind: "awaiting_confirmation" } });
-    expect(mail.text).toContain("Je toestemming voor de automatische incasso is ontvangen en wordt nog verwerkt.");
-    expect(mail.text).not.toContain("Incasso activeren");
-    expect(mail.html).toContain(">Factuur betalen<");
+  it("keeps the voice of the other reminders", () => {
+    for (const body of [copy(combined("first_reminder").html), copy(combined("first_reminder").text)]) {
+      expect(body).not.toMatch(/\bu\b(?! bent ingelogd)/);
+      for (const word of ["mollie", "webhook", "provider", "sepa", "payment link", "mandaat"]) expect(body.toLowerCase()).not.toContain(word);
+    }
   });
 
-  it("keeps the ordinary layout when there is nothing about direct debit to say", () => {
-    expect(first.text).not.toContain("Incasso activeren");
-    expect(first.text).not.toContain("Met de knop hieronder betaal je");
+  it("keeps the ordinary layout for an ordinary payment", () => {
+    expect(first.text).not.toContain("incasso activeren");
+    expect(first.text).not.toContain("Met deze betaling voldoe je");
+    expect(first.html).toContain(">Factuur betalen<");
   });
 });
 
@@ -313,15 +314,9 @@ describe("a reminder for an invoice collected by direct debit", () => {
     }
   });
 
-  it("still carries the activation when the customer has to authorise it", () => {
-    const mail = dd("first_reminder", { activation: { kind: "offer", url: "https://payment-link.mollie.com/payment/pl_act" } });
-    expect(mail.html).toContain("pl_act");
-    expect(mail.html).not.toContain(">Factuur betalen<");
-  });
-
   it("keeps to the voice and the words of the other reminders", () => {
     for (const stage of stages) {
-      const mail = dd(stage, { activation: { kind: "offer", url: "https://payment-link.mollie.com/payment/pl_act" } });
+      const mail = dd(stage);
       for (const body of [copy(mail.html), copy(mail.text)]) {
         expect(body).not.toMatch(/\bu\b(?! bent ingelogd)/);
         for (const word of ["mollie", "webhook", "provider", "sepa", "payment link"]) expect(body.toLowerCase()).not.toContain(word);

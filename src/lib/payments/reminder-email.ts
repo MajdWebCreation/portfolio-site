@@ -4,7 +4,6 @@ import { contactSectionHtml, contactTextLines } from "@/lib/email/contact";
 import { emailButton, emailMeta, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
 import { formatCents } from "@/lib/money";
 import { reminderFeeAnnounced, reminderFeeCents, type ReminderStage } from "@/lib/payments/collection-policy";
-import { activationAmountCents } from "@/lib/payments/mandate-activation";
 
 /**
  * The three reminder mails.
@@ -32,20 +31,20 @@ export type ReminderMailContent = {
   outstandingLabel: string;
   /** "19 okt 2026" -- the last day of the final notice's grace period. */
   finalDateLabel: string;
-  /** The invoice's payment button, when an ordinary payment may be started (payLinkFor). */
+  /** The invoice's payment button, when a payment may be started (payLinkFor). */
   payUrl?: string;
+  /**
+   * `first`: that one payment also gives the direct debit mandate for the
+   * customer's monthly service (pay-link.ts) -- the button and the copy say
+   * so. Never a second button and never a separate amount.
+   */
+  payMode?: "oneoff" | "first";
   /**
    * The invoice belongs to a service collected by direct debit: there is no
    * button on purpose, and the mail says why instead of asking the customer
    * to pay -- a transfer beside a collection would be paid twice.
    */
   collectedByDirectDebit?: boolean;
-  /**
-   * The customer's direct debit, a separate action from paying this invoice
-   * (reminder-activation.ts): the EUR 0.01 activation to offer, or the note
-   * that their authorisation is being processed.
-   */
-  activation?: { kind: "offer"; url: string } | { kind: "awaiting_confirmation" };
 };
 
 export type ReminderMailResult = { sent: true; sentAt: string; messageId?: string; communicationId?: string } | { sent: false; reason: string };
@@ -92,55 +91,35 @@ const signOff = ["Met vriendelijke groet,", companyProfile.legalName];
 const contactIntro = "Heb je een vraag of klopt er iets niet? Neem gerust contact met ons op.";
 
 /*
-  Two actions that look alike and are not: paying this invoice, and
-  authorising the monthly collection. When both are offered each gets its own
-  heading and button, and the activation says in so many words that its cent
-  pays no invoice.
+  One button, whatever it does. When the payment is also the mandate, the
+  button says both and a short section says what that means: the invoice
+  amount and nothing more now, the monthly amounts by direct debit later.
 */
-const activationButtonText = `Incasso activeren (${formatCents(activationAmountCents)})`;
-const activationOffer = `Los van deze factuur: voor je maandelijkse dienst is de automatische incasso nog niet geactiveerd. Dat doe je met een eenmalige betaling van ${formatCents(activationAmountCents)} via de knop hieronder. Die ${formatCents(activationAmountCents)} betaalt deze factuur niet en is geen maandtermijn; het is alleen je toestemming voor de incasso.`;
-const activationAwaiting = "Je toestemming voor de automatische incasso is ontvangen en wordt nog verwerkt. Daarvoor hoef je niets meer te doen.";
+export const firstPaymentButtonText = "Factuur betalen en incasso activeren";
+export const firstPaymentExplanation =
+  "Met deze betaling voldoe je de factuur en geef je tegelijk toestemming voor de automatische incasso van de maandbedragen van je dienst. Je betaalt nu alleen het openstaande factuurbedrag; de maandbedragen worden later afgeschreven, en vooraf laten we je weten wanneer.";
 
-function payIntro(content: ReminderMailContent): string {
-  return `Met de knop hieronder betaal je het openstaande bedrag van deze factuur: ${content.outstandingLabel}.`;
-}
+const isFirst = (content: ReminderMailContent) => content.payMode === "first";
 
-/** The invoice's button -- under its own heading when the activation is offered beside it. */
 function payHtml(content: ReminderMailContent): string[] {
   if (!content.payUrl) return [];
-  const button = emailButton(content.payUrl, "Factuur betalen");
-  return content.activation?.kind === "offer" ? [emailSection({ label: "Factuur betalen", html: escapeEmailHtml(payIntro(content)) }), button] : [button];
+  if (!isFirst(content)) return [emailButton(content.payUrl, "Factuur betalen")];
+  return [
+    emailSection({ label: "Betalen en automatische incasso", html: escapeEmailHtml(firstPaymentExplanation) }),
+    emailButton(content.payUrl, firstPaymentButtonText),
+  ];
 }
 
 function payText(content: ReminderMailContent): string[] {
   if (!content.payUrl) return [];
-  return content.activation?.kind === "offer"
-    ? ["Factuur betalen", payIntro(content), `Factuur betalen: ${content.payUrl}`, ""]
-    : [`Factuur betalen: ${content.payUrl}`, ""];
-}
-
-function activationHtml(content: ReminderMailContent): string[] {
-  if (content.activation?.kind === "offer") {
-    return [emailSection({ label: "Automatische incasso activeren", html: escapeEmailHtml(activationOffer) }), emailButton(content.activation.url, activationButtonText)];
-  }
-  if (content.activation?.kind === "awaiting_confirmation") return [emailSection({ label: "Automatische incasso", html: escapeEmailHtml(activationAwaiting) })];
-  return [];
-}
-
-function activationText(content: ReminderMailContent): string[] {
-  if (content.activation?.kind === "offer") return ["Automatische incasso activeren", activationOffer, `${activationButtonText}: ${content.activation.url}`, ""];
-  if (content.activation?.kind === "awaiting_confirmation") return ["Automatische incasso", activationAwaiting, ""];
-  return [];
+  if (!isFirst(content)) return [`Factuur betalen: ${content.payUrl}`, ""];
+  return [firstPaymentExplanation, "", `${firstPaymentButtonText}: ${content.payUrl}`, ""];
 }
 
 function firstReminder(content: ReminderMailContent): MailBody {
   const opening =
     "Waarschijnlijk is deze factuur aan je aandacht ontsnapt. We willen je vriendelijk herinneren dat deze inmiddels is verlopen.";
-  /* With the activation below it, "ignore this mail" would also wave that away. */
-  const crossed =
-    content.activation?.kind === "offer"
-      ? "Heb je de factuur net betaald? Dan hebben onze berichten elkaar gekruist en hoef je voor de factuur niets meer te doen. De automatische incasso hieronder staat daar los van."
-      : "Heb je de betaling net gedaan? Dan hebben onze berichten elkaar gekruist en kun je deze mail als niet verzonden beschouwen.";
+  const crossed = "Heb je de betaling net gedaan? Dan hebben onze berichten elkaar gekruist en kun je deze mail als niet verzonden beschouwen.";
   const rows = facts(content);
 
   const html = emailShell({
@@ -153,7 +132,6 @@ function firstReminder(content: ReminderMailContent): MailBody {
       emailMeta(rows.map(([label, value]) => ({ label, value })), { label: "Factuurgegevens" }),
       ...payHtml(content),
       emailSection({ label: "Al betaald?", html: escapeEmailHtml(crossed) }),
-      ...activationHtml(content),
       contactSectionHtml(contactIntro),
       emailText(escapeEmailHtml(signOff[0]), { top: 26 }),
       emailText(escapeEmailHtml(signOff[1])),
@@ -170,7 +148,6 @@ function firstReminder(content: ReminderMailContent): MailBody {
     ...payText(content),
     crossed,
     "",
-    ...activationText(content),
     ...contactTextLines(contactIntro),
     "",
     ...signOff,
@@ -207,7 +184,6 @@ function secondReminder(content: ReminderMailContent): MailBody {
       ...payHtml(content),
       ...(content.payUrl ? [emailText(escapeEmailHtml(exact), { top: 14 })] : []),
       emailSection({ label: "Lukt het niet?", html: escapeEmailHtml(help) }),
-      ...activationHtml(content),
       contactSectionHtml(contactIntro),
       emailText(escapeEmailHtml(signOff[0]), { top: 26 }),
       emailText(escapeEmailHtml(signOff[1])),
@@ -227,7 +203,6 @@ function secondReminder(content: ReminderMailContent): MailBody {
     ...(content.payUrl ? [exact, ""] : []),
     help,
     "",
-    ...activationText(content),
     ...contactTextLines(contactIntro),
     "",
     ...signOff,
@@ -264,7 +239,6 @@ function finalNotice(content: ReminderMailContent): MailBody {
       emailSection({ label: "Uiterste termijn", html: escapeEmailHtml(term) }),
       ...payHtml(content),
       emailSection({ label: "Als betaling uitblijft", html: escapeEmailHtml(consequences) }),
-      ...activationHtml(content),
       contactSectionHtml(help),
       emailText(escapeEmailHtml(signOff[0]), { top: 26 }),
       emailText(escapeEmailHtml(signOff[1])),
@@ -283,7 +257,6 @@ function finalNotice(content: ReminderMailContent): MailBody {
     ...payText(content),
     consequences,
     "",
-    ...activationText(content),
     ...contactTextLines(help),
     "",
     ...signOff,
@@ -315,7 +288,6 @@ function directDebitReminder(content: ReminderMailContent): MailBody {
       emailText(escapeEmailHtml(opening)),
       emailMeta(rows.map(([label, value]) => ({ label, value })), { label: "Factuurgegevens" }),
       emailSection({ label: "Automatische incasso", html: escapeEmailHtml(explain) }),
-      ...activationHtml(content),
       contactSectionHtml(contactIntro),
       emailText(escapeEmailHtml(signOff[0]), { top: 26 }),
       emailText(escapeEmailHtml(signOff[1])),
@@ -331,7 +303,6 @@ function directDebitReminder(content: ReminderMailContent): MailBody {
     "",
     explain,
     "",
-    ...activationText(content),
     ...contactTextLines(contactIntro),
     "",
     ...signOff,

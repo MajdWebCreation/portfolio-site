@@ -245,17 +245,17 @@ export async function sendInvoiceToCustomer(
   const numbered = invoice;
 
   /*
-    An invoice issued before direct debit was split off from invoices may
-    carry a frozen note saying that paying it also authorises the monthly
-    collection. That is no longer true -- an invoice payment is always a plain
-    one-off payment and the mandate has its own activation link -- so such a
-    document is not mailed: it would promise something the button does not do.
+    An invoice issued before 9 October may carry a frozen activation note: a
+    named service, a monthly amount and a first debit date fixed on the
+    document. Whether paying gives the mandate is decided now, at payment
+    time (pay-link.ts), and that date is long gone -- so such a document is
+    not mailed: its PDF would promise a schedule nobody keeps.
   */
   if (numbered.activationNote) {
     return {
       ok: false,
       error:
-        "Deze factuur zegt dat betalen ook de automatische incasso activeert. Dat gaat voortaan via een aparte activatielink bij de klant. Annuleer deze factuur en maak een nieuwe aan.",
+        "Deze factuur bevat een oude, vastgelegde incasso-aankondiging met een startdatum die niet meer klopt. Annuleer deze factuur en maak een nieuwe aan; als de klant nog geen machtiging heeft, activeert de betaling van de nieuwe factuur de incasso.",
     };
   }
 
@@ -294,6 +294,8 @@ export async function sendInvoiceToCustomer(
     };
   }
   const payUrl = payLink.kind === "link" ? payLink.url : undefined;
+  /* `first`: that one payment is also the customer's direct debit mandate (pay-link.ts); the mail says so. */
+  const payMode = payLink.kind === "link" ? payLink.mode : undefined;
 
   /* The mail is named after the project; the document itself is not. */
   const project = numbered.projectId ? await getProject(numbered.projectId) : undefined;
@@ -329,6 +331,7 @@ export async function sendInvoiceToCustomer(
     pdf,
     fileName: documentFileName(numbered.number.value),
     ...(payUrl ? { payUrl } : {}),
+    ...(payMode ? { payMode } : {}),
     ...(project ? { projectName: project.name } : {}),
     paymentReference: numbered.paymentReference,
   });

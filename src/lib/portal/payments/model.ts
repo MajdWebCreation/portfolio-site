@@ -1,4 +1,5 @@
 import { directDebitStatus, type DirectDebitStatus } from "@/lib/payments/direct-debit-status";
+import { awaitsDirectDebit } from "@/lib/payments/types";
 import type { MandateState } from "@/lib/mollie/client";
 import { records, text, textOrNull } from "@/lib/portal/json";
 import type { PortalInvoiceView } from "@/lib/portal/invoices/model";
@@ -90,18 +91,12 @@ export function invoicePaymentBlock(view: Pick<PortalInvoiceView, "openCents" | 
 
 /**
  * Whether a direct debit still has to be set up for this customer: a
- * service waits for it -- awaiting the mandate, or running without a
- * collection yet -- and the mandate is neither valid nor on its way.
+ * service waits for it (awaitsDirectDebit, the rule pay-link.ts decides
+ * `first` payments by). It is set up by paying an open invoice online --
+ * that one payment is also the mandate -- never by a separate action.
  */
 export function needsDirectDebit(services: readonly Pick<PortalService, "status" | "collectsByDirectDebit" | "endsOn">[], todayKey: string): boolean {
-  return services.some(
-    (service) =>
-      (service.status === "awaiting_mandate" || (service.status === "active" && !service.collectsByDirectDebit)) &&
-      !(service.endsOn && service.endsOn < todayKey),
+  return services.some((service) =>
+    awaitsDirectDebit({ status: service.status, hasSubscription: service.collectsByDirectDebit, ...(service.endsOn ? { endsOn: service.endsOn } : {}) }, todayKey),
   );
-}
-
-export function mayActivateDirectDebit(status: DirectDebitStatus, services: Parameters<typeof needsDirectDebit>[0], todayKey: string): boolean {
-  if (status === "active" || status === "mandate_pending") return false;
-  return needsDirectDebit(services, todayKey);
 }

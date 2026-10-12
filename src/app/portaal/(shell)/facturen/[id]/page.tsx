@@ -19,6 +19,7 @@ import { readPortalInvoice } from "@/lib/portal/invoices/read";
 import { portalInvoicesPath } from "@/lib/portal/paths";
 import { invoicePaymentBlock } from "@/lib/portal/payments/model";
 import { readPortalPaymentContext } from "@/lib/portal/payments/read";
+import { invoicePaymentModeAction } from "@/lib/portal/payment-actions";
 
 export const metadata: Metadata = { title: "Factuur" };
 
@@ -37,6 +38,8 @@ export default async function PortalInvoicePage({ params }: PageProps) {
   const view = portalInvoiceView(found, todayKey);
   const { invoice, ledger } = view;
   const block = invoicePaymentBlock(view, context);
+  /* The same decision the click gets: `first` when this payment is also the direct debit mandate. */
+  const mode = block === undefined ? await invoicePaymentModeAction(invoice.id) : undefined;
 
   return (
     <div>
@@ -87,7 +90,17 @@ export default async function PortalInvoicePage({ params }: PageProps) {
         </dl>
         {block === undefined ? (
           <div className="mt-6">
-            <PayInvoiceButton invoiceId={invoice.id} label={`${formatCents(view.openCents)} betalen`} />
+            {mode === "first" ? (
+              <p className="mb-4 max-w-prose text-[0.92rem] text-body">
+                Met deze betaling van {formatCents(view.openCents)} voldoet u de factuur en geeft u tegelijkertijd toestemming voor de
+                automatische incasso van de toekomstige maandbedragen van uw dienst. U betaalt nu alleen het factuurbedrag; vóór elke
+                afschrijving krijgt u bericht.
+              </p>
+            ) : null}
+            <PayInvoiceButton
+              invoiceId={invoice.id}
+              label={mode === "first" ? "Factuur betalen en automatische incasso activeren" : `${formatCents(view.openCents)} betalen`}
+            />
             <p className="mt-3 max-w-prose text-[0.86rem] text-muted">
               U betaalt via de beveiligde betaalpagina van onze betaalprovider. Liever per bankoverschrijving? Vermeld dan{" "}
               {invoice.paymentReference}.

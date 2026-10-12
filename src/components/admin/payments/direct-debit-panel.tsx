@@ -14,13 +14,12 @@ import type { DirectDebitView } from "@/lib/payments/direct-debit-view";
 import { directDebitStatusLabels, directDebitStatusTone } from "@/lib/payments/direct-debit-status";
 
 /**
- * A customer's direct debit, and the three things an admin does with it:
- * hand out the EUR 0.01 activation link, mail or copy it, and ask Mollie
- * again what came of it.
- *
- * Shown on the customer and on the invoice, because both are where the admin
- * thinks of it -- and on the invoice it says in so many words that it has
- * nothing to do with that invoice's amount or payment.
+ * A customer's direct debit. Normally the customer authorises with the
+ * online payment of an open invoice -- that one payment is also Mollie's
+ * first payment (pay-link.ts) -- so there is nothing to do here but look
+ * and ask Mollie again. The EUR 0.01 link is the recovery route for a
+ * customer without an open invoice, for instance one who paid by bank
+ * transfer; the server refuses it while an invoice is open.
  */
 export default function DirectDebitPanel({
   customerId,
@@ -69,8 +68,10 @@ export default function DirectDebitPanel({
       ) : null}
 
       <p className="text-[0.82rem] text-muted">
-        De klant betaalt eenmalig €0,01 om ons te machtigen. Dat bedrag staat los van alle facturen
-        {context === "invoice" ? ", ook van deze" : ""} en wordt nergens mee verrekend.
+        De klant geeft de machtiging met de online betaling van een openstaande factuur
+        {context === "invoice" ? ", zoals deze" : ""}: die ene betaling voldoet de factuur en is ook de eerste incassobetaling.
+        Staat er geen factuur open, bijvoorbeeld omdat die per overschrijving is betaald, dan kun je een losse activatielink van
+        €0,01 maken. Dat bedrag wordt nergens mee verrekend.
       </p>
 
       {link ? (
@@ -106,19 +107,18 @@ export default function DirectDebitPanel({
             disabled={busy}
             onClick={() => create.save(() => createMandateActivation(customerId), (value) => setUrl(value.url))}
           >
-            {create.pending ? "Aanmaken…" : "Incasso activeren (€0,01)"}
+            {create.pending ? "Aanmaken…" : "Losse activatielink (€0,01)"}
           </AdminButton>
         ) : null}
-        {view.status !== "not_active" ? (
-          <AdminButton
-            variant="secondary"
-            className="min-h-8 px-3 text-[0.85rem]"
-            disabled={busy}
-            onClick={() => refresh.save(() => refreshDirectDebitStatus(customerId))}
-          >
-            {refresh.pending ? "Controleren…" : "Status controleren"}
-          </AdminButton>
-        ) : null}
+        {/* Also when nothing is on record: an invoice payment may have given the mandate while its webhook went missing. */}
+        <AdminButton
+          variant="secondary"
+          className="min-h-8 px-3 text-[0.85rem]"
+          disabled={busy}
+          onClick={() => refresh.save(() => refreshDirectDebitStatus(customerId))}
+        >
+          {refresh.pending ? "Controleren…" : "Status controleren"}
+        </AdminButton>
       </div>
 
       {error ? (

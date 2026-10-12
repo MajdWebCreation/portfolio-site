@@ -36,12 +36,15 @@ function makeStore(
     links?: Record<string, string>;
     /** The payment ids Mollie says those links produced. */
     linkPayments?: string[];
+    /** What recording the mandate of a paid first invoice payment answers. */
+    mandateOutcome?: WebhookOutcome;
   } = {},
 ) {
   const invoices = new Map((initial.invoices ?? [invoiceFixture()]).map((invoice) => [invoice.id, { ...invoice }]));
   const services = new Map((initial.services ?? []).map((service) => [service.id, { ...service }]));
   const payments: Payment[] = [];
   const activationCalls: { molliePaymentId: string; activationIdHint?: string }[] = [];
+  const mandateCalls: { molliePaymentId: string; customerId: string }[] = [];
   const paymentLinks = new Map(Object.entries(initial.links ?? {}));
   const linkConfirmations: { molliePaymentId: string; invoiceId: string }[] = [];
   const createdInvoices: string[] = [];
@@ -100,6 +103,11 @@ function makeStore(
     },
     async findActivationIdForPaymentLink() {
       return undefined;
+    },
+    /* The mandate step, stubbed: what it was asked, and what Mollie said. */
+    async recordInvoiceMandate(payment, customerId) {
+      mandateCalls.push({ molliePaymentId: payment.id, customerId });
+      return initial.mandateOutcome ?? { handled: true, note: "mandate valid" };
     },
     /*
       The unique index, simulated: the check and the insert are separated by an
@@ -160,6 +168,7 @@ function makeStore(
     services,
     payments,
     activationCalls,
+    mandateCalls,
     linkConfirmations,
     createdInvoices,
   };
@@ -674,10 +683,10 @@ describe("a direct debit activation payment", () => {
   });
 
   /*
-    The old coupling, gone: a service that names this invoice is not switched
-    on by paying it, whatever the payment carries.
+    A paid first payment gives a mandate -- recorded -- but never starts the
+    collection: that stays the admin's step, from the first unpaid period.
   */
-  it("never activates a service because its invoice was paid", async () => {
+  it("never starts a subscription or changes a service because its invoice was paid", async () => {
     const service = recurringFixture({ status: "draft", activationInvoiceId: "inv-1", startsOn: "2026-10-15" });
     const made = makeStore({ services: [service] });
 
@@ -689,5 +698,80 @@ describe("a direct debit activation payment", () => {
 
     expect(made.invoices.get("inv-1")!.status).toBe("paid");
     expect(made.services.get("svc-1")).toEqual(service);
+  });
+});
+
+/*
+  The YM rule on the provider side: one Mollie payment that is both the
+  invoice payment and the first payment of a mandate. It settles the invoice
+  like any other payment, and -- only once paid -- the mandate is recorded.
+*/
+describe("a first payment of an invoice", () => {
+  const firstLinkPayment = (overrides: Partial<MolliePayment> = {}) => {
+    const payment = molliePayment({ sequenceType: "first", customerId: "cst_1", mandateId: "mdt_1", ...overrides });
+    delete payment.metadata;
+    return payment;
+  };
+  const linked = (extra: Parameters<typeof makeStore>[0] = {}) => makeStore({ links: { pl_1: "inv-1" }, linkPayments: ["tr_1"], ...extra });
+
+  it("settles the invoice and records the mandate, for the invoice's own customer", async () => {
+    const { store, invoices, payments, mandateCalls } = linked();
+
+    const outcome = await processMolliePayment(firstLinkPayment(), store, today, { invoiceIdHint: "inv-1" });
+
+    expect(outcome).toMatchObject({ handled: true, invoiceStatus: "paid" });
+    expect(invoices.get("inv-1")!.status).toBe("paid");
+    expect(payments).toHaveLength(1);
+    expect(payments[0]).toMatchObject({ invoiceId: "inv-1", amountCents: total, status: "paid" });
+    expect(mandateCalls).toEqual([{ molliePaymentId: "tr_1", customerId: "cust-1" }]);
+  });
+
+  it("asks Mollie to deliver again while the mandate is pending, with the invoice already settled", async () => {
+    const { store, invoices, mandateCalls } = linked({ mandateOutcome: { handled: false, retry: true, note: "mandate still pending at the provider" } });
+
+    const outcome = await processMolliePayment(firstLinkPayment(), store, today, { invoiceIdHint: "inv-1" });
+
+    expect(outcome).toMatchObject({ retry: true, invoiceStatus: "paid" });
+    expect(invoices.get("inv-1")!.status).toBe("paid");
+    expect(mandateCalls).toHaveLength(1);
+  });
+
+  it.each(["failed", "expired", "canceled", "open"] as const)("records no mandate for a first payment that is %s, and leaves the invoice open", async (status) => {
+    const { store, invoices, mandateCalls } = linked({ invoices: [invoiceFixture({ dueDate: "2026-09-30" })] });
+
+    await processMolliePayment(firstLinkPayment({ status, paidAt: undefined }), store, today, { invoiceIdHint: "inv-1" });
+
+    expect(invoices.get("inv-1")!.status).toBe("sent");
+    expect(mandateCalls).toHaveLength(0);
+  });
+
+  it("settles once and only asks again for the mandate on a duplicate delivery", async () => {
+    const { store, payments, mandateCalls, createdInvoices } = linked();
+
+    for (let i = 0; i < 5; i += 1) await processMolliePayment(firstLinkPayment(), store, today, { invoiceIdHint: "inv-1" });
+
+    expect(payments).toHaveLength(1);
+    expect(createdInvoices).toHaveLength(0);
+    expect(mandateCalls).toHaveLength(5);
+  });
+
+  it("does nothing at all for a first payment its link cannot be confirmed for", async () => {
+    const { store, payments, mandateCalls } = makeStore({ links: { pl_1: "inv-1" }, linkPayments: [] });
+
+    await processMolliePayment(firstLinkPayment(), store, today, { invoiceIdHint: "inv-1" });
+
+    expect(payments).toHaveLength(0);
+    expect(mandateCalls).toHaveLength(0);
+  });
+
+  it("never treats a one-off or a subscription payment as a mandate", async () => {
+    const oneoff = linked();
+    await processMolliePayment(firstLinkPayment({ sequenceType: "oneoff" }), oneoff.store, today, { invoiceIdHint: "inv-1" });
+    expect(oneoff.mandateCalls).toHaveLength(0);
+
+    const service = recurringFixture({ status: "active", mollie: { subscriptionId: "sub_1" }, startsOn: "2026-09-01" });
+    const recurring = makeStore({ invoices: [], services: [service] });
+    await processMolliePayment(molliePayment({ id: "tr_r", sequenceType: "recurring", subscriptionId: "sub_1", metadata: undefined }), recurring.store, today);
+    expect(recurring.mandateCalls).toHaveLength(0);
   });
 });

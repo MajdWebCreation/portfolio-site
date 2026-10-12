@@ -37,6 +37,12 @@ export type DocumentMailContent = {
    */
   payUrl?: string;
   /**
+   * `first`: paying with that button also gives the direct debit mandate for
+   * the customer's monthly service (pay-link.ts). Still one button and the
+   * invoice amount only; the mail says what the payment does.
+   */
+  payMode?: "oneoff" | "first";
+  /**
    * Present when this invoice is a monthly term of a recurring service.
    *
    * Two kinds, and they are genuinely different documents to receive:
@@ -208,6 +214,11 @@ export function buildDocumentMailBody(input: DocumentMailContent): MailBody {
         ["Totaal incl. btw", input.totalLabel],
       ];
 
+  const first = isInvoice && input.payUrl && input.payMode === "first";
+  const firstExplanation =
+    "Met deze betaling voldoe je de factuur en geef je tegelijk toestemming voor de automatische incasso van de maandbedragen van je dienst. Je betaalt nu alleen het factuurbedrag; de maandbedragen worden later afgeschreven, en vooraf laten we je weten wanneer.";
+  const buttonLabel = first ? "Factuur betalen en incasso activeren" : "Factuur betalen";
+
   const attachment = isInvoice
     ? input.payUrl
       ? "De factuur vind je als PDF in de bijlage. Betalen kan met de knop hierboven, of met de gegevens op de factuur zelf."
@@ -229,7 +240,8 @@ export function buildDocumentMailBody(input: DocumentMailContent): MailBody {
         facts.map(([label, value]) => ({ label, value })),
         { label: isInvoice ? "Factuurgegevens" : "Offertegegevens" },
       ),
-      ...(input.payUrl ? [payButton(input.payUrl)] : []),
+      ...(first ? [emailSection({ label: "Betalen en automatische incasso", html: escapeEmailHtml(firstExplanation) })] : []),
+      ...(input.payUrl ? [payButton(input.payUrl, buttonLabel)] : []),
       emailSection({ label: "Bijlage", html: escapeEmailHtml(attachment) }),
       ...(isInvoice ? [contactSectionHtml(closing)] : [emailText(escapeEmailHtml(closing), { top: 26 })]),
     ].join(""),
@@ -242,7 +254,8 @@ export function buildDocumentMailBody(input: DocumentMailContent): MailBody {
     "",
     ...facts.map(([label, value]) => `${label}: ${value}`),
     "",
-    ...(input.payUrl ? [`Factuur betalen: ${input.payUrl}`, ""] : []),
+    ...(first ? [firstExplanation, ""] : []),
+    ...(input.payUrl ? [`${buttonLabel}: ${input.payUrl}`, ""] : []),
     attachment,
     "",
     ...(isInvoice ? contactTextLines(closing) : [closing]),

@@ -9,10 +9,12 @@ import type { Database } from "@/lib/supabase/database.types";
  * request made, links that can be paid, expire or be archived, mandates per
  * Mollie customer.
  *
- * The documents are made by the admin's own flows. Then members pay and
- * activate through lib/portal/privileged.ts -- the same entry the server
- * actions use -- and every refusal, reuse, race and failure window the
- * phase names is checked against what lands in the database and at "Mollie".
+ * The documents are made by the admin's own flows. Then members pay
+ * through lib/portal/privileged.ts -- the same entry the server actions use
+ * -- and every refusal, reuse, race and failure window is checked against
+ * what lands in the database and at "Mollie". A customer whose monthly
+ * service waits for its mandate pays the invoice and gives the mandate in
+ * one payment; there is no separate activation in the portal.
  *
  * Local only (`npx supabase start`, Node 22):
  *
@@ -81,6 +83,8 @@ const mollie = {
   customers: new Map<string, string>(),
   mandates: new Map<string, { id: string; status: "valid" | "pending" | "invalid"; method: string }[]>(),
   creates: [] as { amountCents: number; sequenceType: string; idempotencyKey: string; description: string }[],
+  /* Every `first` link made, with the Mollie customer it attaches the mandate to. */
+  firstLinks: new Map<string, string>(),
   failCreates: 0,
   counter: 0,
 };
@@ -109,6 +113,7 @@ vi.mock("@/lib/mollie/client", async (importOriginal) => {
       mollie.counter += 1;
       const id = `pl_stub${runId}_${mollie.counter}`;
       const link: StubLink = { id, amountCents: input.amountCents, sequenceType: input.sequenceType, href: `https://mollie.test/pay/${id}`, archived: false, paidAt: null, expiresAt: null, ...(input.customerId ? { customerId: input.customerId } : {}) };
+      if (input.sequenceType === "first") mollie.firstLinks.set(id, input.customerId ?? "");
       mollie.links.set(id, link);
       mollie.byKey.set(input.idempotencyKey, id);
       return linkView(link);
@@ -176,9 +181,10 @@ const { sendInvoiceToCustomer } = await import("@/lib/admin/documents/send");
 const { finalizeInvoice } = await import("@/lib/admin/invoices/finalize");
 const { recordManualPayment } = await import("@/lib/payments/payment-actions");
 const { createManualCreditNote } = await import("@/lib/admin/credit-notes/actions");
-const { startInvoicePayment, startMandateActivation } = await import("@/lib/portal/privileged");
+const { startInvoicePayment, previewInvoicePayment } = await import("@/lib/portal/privileged");
 const { readPortalPaymentContext } = await import("@/lib/portal/payments/read");
-const { payInvoiceAction, activateDirectDebitAction } = await import("@/lib/portal/payment-actions");
+const { payInvoiceAction } = await import("@/lib/portal/payment-actions");
+const { createMandateActivation } = await import("@/lib/payments/actions");
 const { PortalDenied } = await import("@/lib/portal/rpc");
 
 type Db = SupabaseClient<Database>;
@@ -186,10 +192,11 @@ const password = "portal-payments-password";
 const stamp = Date.now();
 const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" }).format(new Date());
 
-const ids = { alfa: "", beta: "", gamma: "", alfaUser: "", betaUser: "", gammaUser: "", alfaMembership: "" };
-const inv = { open: "", partlyPaid: "", partlyCredited: "", paid: "", fullyCredited: "", raceFresh: "", failWindow: "", directDebit: "", beta: "" };
-const services = { alfaWaiting: "", alfaCollecting: "", alfaDraft: "", betaCollecting: "" };
-const clients = {} as Record<"alfa" | "beta" | "gamma", Db>;
+const ids = { alfa: "", beta: "", gamma: "", delta: "", alfaUser: "", betaUser: "", gammaUser: "", deltaUser: "", alfaMembership: "" };
+const inv = { open: "", partlyPaid: "", partlyCredited: "", paid: "", fullyCredited: "", raceFresh: "", failWindow: "", directDebit: "", beta: "", deltaOpen: "", deltaBank: "", gamma: "" };
+const services = { alfaCollecting: "", betaCollecting: "", deltaDraft: "" };
+const clients = {} as Record<"alfa" | "beta" | "gamma" | "delta", Db>;
+const deltaCent = { linkId: `pl_cent_${runId}`, activationId: "" };
 
 async function signedIn(email: string): Promise<Db> {
   const client = createClient<Database>(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -287,16 +294,6 @@ async function events(customerId: string, action: string) {
   return data ?? [];
 }
 
-async function serviceRows(customerId: string) {
-  const { data } = await service.from("recurring_services").select("*").eq("customer_id", customerId).order("id");
-  return data ?? [];
-}
-
-async function count(table: "payments" | "mandate_activations", customerId: string): Promise<number> {
-  const { count: found } = await service.from(table).select("id", { count: "exact", head: true }).eq("customer_id", customerId);
-  return found ?? 0;
-}
-
 async function as<T>(client: Db, run: () => Promise<T>): Promise<T> {
   visitor = client;
   return run();
@@ -312,7 +309,7 @@ async function denied(run: Promise<unknown>): Promise<boolean> {
   }
 }
 
-const actor = (customer: "alfa" | "beta" | "gamma", user: "alfaUser" | "betaUser" | "gammaUser") => ({ customerId: ids[customer], userId: ids[user] });
+const actor = (customer: "alfa" | "beta" | "gamma" | "delta", user: "alfaUser" | "betaUser" | "gammaUser" | "deltaUser") => ({ customerId: ids[customer], userId: ids[user] });
 
 beforeAll(async () => {
   if (!local) return;
@@ -347,38 +344,63 @@ beforeAll(async () => {
   /* These two start without a link, as if none was ever made. */
   await service.from("invoice_payment_links").delete().in("invoice_id", [inv.raceFresh, inv.failWindow]);
 
-  services.alfaWaiting = await recurringService(ids.alfa, "awaiting_mandate");
+  /* Alfa's only service collects: nothing of Alfa's waits for a mandate, so Alfa pays one-off. */
   services.alfaCollecting = await recurringService(ids.alfa, "active");
   await service.from("recurring_services").update({ mollie_subscription_id: `sub_portal_pay_${stamp}` }).eq("id", services.alfaCollecting);
-  services.alfaDraft = await recurringService(ids.alfa, "draft");
   inv.directDebit = await sentInvoice(ids.alfa, 2500, { recurring_service_id: services.alfaCollecting, billing_period_start: "2026-11-01", billing_period_end: "2026-11-30" });
 
   inv.beta = await sentInvoice(ids.beta);
   services.betaCollecting = await recurringService(ids.beta, "active");
   await service.from("recurring_services").update({ mollie_subscription_id: `sub_portal_pay_b_${stamp}` }).eq("id", services.betaCollecting);
 
-  /* Gamma already has a mandate on record. */
+  /* Gamma already has a mandate Mollie calls valid: its invoices are paid one-off, never `first` again. */
   await recurringService(ids.gamma, "awaiting_mandate");
   const provider = await service.from("customer_payment_providers").insert({ customer_id: ids.gamma, provider: "mollie", provider_customer_id: `cst_gamma_${stamp}`, provider_mandate_id: `mdt_gamma_${stamp}` });
   if (provider.error) throw new Error(`provider: ${provider.error.message}`);
+  mollie.mandates.set(`cst_gamma_${stamp}`, [{ id: `mdt_gamma_${stamp}`, status: "valid", method: "directdebit" }]);
+  inv.gamma = await sentInvoice(ids.gamma);
+
+  /*
+    Delta: a new monthly service (draft until its collection is started) and
+    no mandate -- the YM case. An older EUR 0.01 link from before is still
+    open at Mollie. Then two invoices are sent; one is paid by bank transfer.
+  */
+  ids.delta = await createCustomer("Delta");
+  services.deltaDraft = await recurringService(ids.delta, "draft");
+  const deltaProvider = await service.from("customer_payment_providers").insert({ customer_id: ids.delta, provider: "mollie", provider_customer_id: `cst_delta_${stamp}` });
+  if (deltaProvider.error) throw new Error(`delta provider: ${deltaProvider.error.message}`);
+  mollie.links.set(deltaCent.linkId, { id: deltaCent.linkId, amountCents: 1, sequenceType: "first", href: `https://mollie.test/pay/${deltaCent.linkId}`, archived: false, paidAt: null, expiresAt: null, customerId: `cst_delta_${stamp}` });
+  const cent = await service
+    .from("mandate_activations")
+    .insert({ customer_id: ids.delta, provider: "mollie", provider_customer_id: `cst_delta_${stamp}`, provider_payment_link_id: deltaCent.linkId, checkout_url: `https://mollie.test/pay/${deltaCent.linkId}`, amount_cents: 1 })
+    .select("id")
+    .single();
+  if (cent.error) throw new Error(`activation: ${cent.error.message}`);
+  deltaCent.activationId = cent.data!.id;
+  inv.deltaOpen = await sentInvoice(ids.delta, 62000);
+  inv.deltaBank = await sentInvoice(ids.delta, 50000);
 
   const alfaUser = await createUser("alfa");
   const betaUser = await createUser("beta");
   const gammaUser = await createUser("gamma");
+  const deltaUser = await createUser("delta");
   ids.alfaUser = alfaUser.id;
   ids.betaUser = betaUser.id;
   ids.gammaUser = gammaUser.id;
+  ids.deltaUser = deltaUser.id;
   ids.alfaMembership = await member(alfaUser.id, ids.alfa, alfaUser.email);
   await member(betaUser.id, ids.beta, betaUser.email);
   await member(gammaUser.id, ids.gamma, gammaUser.email);
+  await member(deltaUser.id, ids.delta, deltaUser.email);
   clients.alfa = await signedIn(alfaUser.email);
   clients.beta = await signedIn(betaUser.email);
   clients.gamma = await signedIn(gammaUser.email);
+  clients.delta = await signedIn(deltaUser.email);
 }, 300_000);
 
 afterAll(async () => {
   if (!local || !service) return;
-  for (const id of [ids.alfaUser, ids.betaUser, ids.gammaUser]) if (id) await service.auth.admin.deleteUser(id);
+  for (const id of [ids.alfaUser, ids.betaUser, ids.gammaUser, ids.deltaUser]) if (id) await service.auth.admin.deleteUser(id);
 }, 120_000);
 
 describe.runIf(local)("the stack under test", () => {
@@ -504,7 +526,6 @@ describe.runIf(local)("paying an invoice", () => {
     await service.from("customer_users").update({ revoked_at: new Date().toISOString() }).eq("id", ids.alfaMembership);
     const before = mollie.creates.length;
     expect(await as(clients.alfa, () => denied(startInvoicePayment(actor("alfa", "alfaUser"), inv.open)))).toBe(true);
-    expect(await as(clients.alfa, () => denied(startMandateActivation(actor("alfa", "alfaUser"))))).toBe(true);
     expect(mollie.creates.length).toBe(before);
     await service.from("customer_users").update({ revoked_at: null }).eq("id", ids.alfaMembership);
   });
@@ -533,92 +554,96 @@ describe.runIf(local)("the server actions", () => {
 
     visitor = createClient<Database>(url, anonKey, { auth: { persistSession: false } });
     await expect(payInvoiceAction({}, form)).rejects.toThrow("redirect:/portaal/inloggen");
-    await expect(activateDirectDebitAction()).rejects.toThrow("redirect:/portaal/inloggen");
   });
 });
 
-describe.runIf(local)("activating direct debit", () => {
-  it("is refused when a mandate is already on record, without asking Mollie", async () => {
+describe.runIf(local)("paying an invoice that is also the mandate", () => {
+  const mailFor = (href: string) => deliverEmail.mock.calls.map((call) => call[0] as { html: string; text: string }).find((mail) => mail.text.includes(href));
+
+  it("the invoice mail carries ONE first-payment link for the invoice amount, on the customer's own Mollie customer", async () => {
+    const [link] = await links(inv.deltaOpen);
+    expect(link).toMatchObject({ amount_cents: 75020, sequence_type: "first" });
+    expect(mollie.firstLinks.get(link!.provider_payment_link_id)).toBe(`cst_delta_${stamp}`);
+    expect(mollie.creates.filter((create) => create.idempotencyKey.includes(inv.deltaOpen))).toEqual([
+      expect.objectContaining({ amountCents: 75020, sequenceType: "first", idempotencyKey: `invoice-link-${inv.deltaOpen}-first-75020` }),
+    ]);
+
+    const mail = mailFor(`https://mollie.test/pay/${link!.provider_payment_link_id}`)!;
+    expect(mail.text).toContain("Factuur betalen en incasso activeren:");
+    expect(mail.text).toContain("tegelijk toestemming voor de automatische incasso");
+    expect(mail.text.match(/https:\/\/mollie\.test\/pay\//g)).toHaveLength(1);
+    expect(mail.text).not.toMatch(/0,01|activatielink/i);
+  });
+
+  it("closed the older EUR 0.01 link before the invoice asked for the mandate", async () => {
+    expect(mollie.links.get(deltaCent.linkId)!.archived).toBe(true);
+    const { data } = await service.from("mandate_activations").select("archived_at").eq("id", deltaCent.activationId).single();
+    expect(data!.archived_at).not.toBeNull();
+  });
+
+  it("the portal offers the same single payment, says what it does, and reuses the mailed link", async () => {
+    const [mailed] = await links(inv.deltaOpen);
+    expect(await as(clients.delta, () => previewInvoicePayment(actor("delta", "deltaUser"), inv.deltaOpen))).toBe("first");
     const before = mollie.creates.length;
-    expect(await as(clients.gamma, () => startMandateActivation(actor("gamma", "gammaUser")))).toEqual({ ok: false, reason: "already_active" });
+    const result = await as(clients.delta, () => startInvoicePayment(actor("delta", "deltaUser"), inv.deltaOpen));
+    expect(result).toEqual({ ok: true, url: `https://mollie.test/pay/${mailed!.provider_payment_link_id}` });
     expect(mollie.creates.length).toBe(before);
   });
 
-  it("is not offered when no service waits for it", async () => {
-    expect(await as(clients.beta, () => startMandateActivation(actor("beta", "betaUser")))).toEqual({ ok: false, reason: "not_needed" });
-  });
+  it("never pays an invoice paid by bank transfer again for the mandate, and closes its mailed link", async () => {
+    const [mailed] = await links(inv.deltaBank);
+    expect(mailed).toMatchObject({ sequence_type: "first" });
+    const paid = await recordManualPayment(inv.deltaBank, { amountCents: 60500, paidOn: today, note: "" });
+    expect(paid).toEqual({ ok: true, value: { status: "paid" } });
+    expect(mollie.links.get(mailed!.provider_payment_link_id)!.archived).toBe(true);
 
-  it("refuses another customer's context", async () => {
-    expect(await as(clients.beta, () => denied(startMandateActivation({ userId: ids.betaUser, customerId: ids.alfa })))).toBe(true);
-  });
-
-  it("hands out the one EUR 0.01 link, touches no service and no payment, and reuses it on the next click", async () => {
-    const servicesBefore = await serviceRows(ids.alfa);
-    const betaBefore = await serviceRows(ids.beta);
-    const paymentsBefore = await count("payments", ids.alfa);
-
-    const first = await as(clients.alfa, () => startMandateActivation(actor("alfa", "alfaUser")));
-    expect(first.ok).toBe(true);
-    const made = mollie.creates.at(-1)!;
-    expect(made).toMatchObject({ amountCents: 1, sequenceType: "first", description: "Activeren automatische incasso" });
-
-    const again = await as(clients.alfa, () => startMandateActivation(actor("alfa", "alfaUser")));
-    expect(again).toEqual(first);
-    expect(mollie.creates.at(-1)).toBe(made);
-
-    expect(await count("mandate_activations", ids.alfa)).toBe(1);
-    expect(await count("payments", ids.alfa)).toBe(paymentsBefore);
-    expect(await serviceRows(ids.alfa)).toEqual(servicesBefore);
-    expect(await serviceRows(ids.beta)).toEqual(betaBefore);
-    expect(await events(ids.alfa, "mandate_activation_requested")).toHaveLength(2);
-    const context = await as(clients.alfa, () => readPortalPaymentContext(ids.alfa));
-    expect(context.directDebit).toBe("link_created");
-  });
-
-  it("settles two clicks on an expired link on one new link", async () => {
-    const { data: open } = await service.from("mandate_activations").select("provider_payment_link_id").eq("customer_id", ids.alfa).is("archived_at", null).is("paid_at", null).single();
-    mollie.links.get(open!.provider_payment_link_id)!.expiresAt = new Date(Date.now() - 1000).toISOString();
-
-    const [a, b] = await as(clients.alfa, () => Promise.all([startMandateActivation(actor("alfa", "alfaUser")), startMandateActivation(actor("alfa", "alfaUser"))]));
-    expect(a.ok && b.ok).toBe(true);
-    expect(a).toEqual(b);
-    const { data: stillOpen } = await service.from("mandate_activations").select("id").eq("customer_id", ids.alfa).is("archived_at", null).is("paid_at", null);
-    expect(stillOpen).toHaveLength(1);
-    /* Every link made at the stub other than the winner can no longer be paid. */
-    const winner = a.ok ? a.url : "";
-    const payable = [...mollie.links.values()].filter((link) => link.sequenceType === "first" && !link.archived && !link.expiresAt);
-    expect(payable.map((link) => link.href)).toEqual([winner]);
-  });
-
-  it("says a paid cent is still being processed instead of making another link", async () => {
-    const { data: open } = await service.from("mandate_activations").select("provider_payment_link_id").eq("customer_id", ids.alfa).is("archived_at", null).is("paid_at", null).single();
-    const link = mollie.links.get(open!.provider_payment_link_id)!;
-    link.paidAt = new Date().toISOString();
     const before = mollie.creates.length;
-    expect(await as(clients.alfa, () => startMandateActivation(actor("alfa", "alfaUser")))).toEqual({ ok: false, reason: "processing" });
+    expect(await as(clients.delta, () => startInvoicePayment(actor("delta", "deltaUser"), inv.deltaBank))).toEqual({ ok: false, reason: "nothing_due" });
+    expect(await as(clients.delta, () => previewInvoicePayment(actor("delta", "deltaUser"), inv.deltaBank))).toBeUndefined();
     expect(mollie.creates.length).toBe(before);
-    link.paidAt = null;
   });
 
-  it("follows Mollie's word on the mandate: pending waits, valid is active from then on", async () => {
-    const { data: provider } = await service.from("customer_payment_providers").select("provider_customer_id").eq("customer_id", ids.alfa).single();
-    const mollieCustomer = provider!.provider_customer_id;
-
-    mollie.mandates.set(mollieCustomer, [{ id: "mdt_pending", status: "pending", method: "directdebit" }]);
-    expect(await as(clients.alfa, () => startMandateActivation(actor("alfa", "alfaUser")))).toEqual({ ok: false, reason: "awaiting_confirmation" });
-
-    mollie.mandates.set(mollieCustomer, [{ id: "mdt_valid", status: "valid", method: "directdebit" }]);
-    expect(await as(clients.alfa, () => startMandateActivation(actor("alfa", "alfaUser")))).toEqual({ ok: false, reason: "already_active" });
-    /* The existing flow wrote the valid mandate down; the portal now says so without asking Mollie. */
-    const context = await as(clients.alfa, () => readPortalPaymentContext(ids.alfa));
-    expect(context.directDebit).toBe("active");
+  it("refuses the admin's loose EUR 0.01 link while an invoice can carry the mandate", async () => {
     const before = mollie.creates.length;
-    expect(await as(clients.alfa, () => startMandateActivation(actor("alfa", "alfaUser")))).toEqual({ ok: false, reason: "already_active" });
+    const refused = await createMandateActivation(ids.delta);
+    expect(refused.ok).toBe(false);
+    expect(!refused.ok && refused.error).toMatch(/staat nog open/);
     expect(mollie.creates.length).toBe(before);
+  });
+
+  it("asks a customer with a valid mandate for an ordinary payment, never a first one", async () => {
+    const [mailed] = await links(inv.gamma);
+    expect(mailed).toMatchObject({ sequence_type: "oneoff" });
+    expect(await as(clients.gamma, () => previewInvoicePayment(actor("gamma", "gammaUser"), inv.gamma))).toBe("oneoff");
+    expect((await as(clients.gamma, () => startInvoicePayment(actor("gamma", "gammaUser"), inv.gamma))).ok).toBe(true);
+    expect(await links(inv.gamma)).toEqual([mailed]);
+  });
+
+  it("does not ask again while Mollie calls the mandate pending: the next link is one-off", async () => {
+    mollie.mandates.set(`cst_delta_${stamp}`, [{ id: "mdt_delta_pending", status: "pending", method: "directdebit" }]);
+    const [before] = await links(inv.deltaOpen);
+    const result = await as(clients.delta, () => startInvoicePayment(actor("delta", "deltaUser"), inv.deltaOpen));
+    expect(result.ok).toBe(true);
+    const [after] = await links(inv.deltaOpen);
+    expect(after).toMatchObject({ sequence_type: "oneoff", amount_cents: 75020 });
+    expect(mollie.links.get(before!.provider_payment_link_id)!.archived).toBe(true);
+    mollie.mandates.delete(`cst_delta_${stamp}`);
+  });
+
+  it("asks for the mandate again in the same single payment once it is missing after all", async () => {
+    const [before] = await links(inv.deltaOpen);
+    const result = await as(clients.delta, () => startInvoicePayment(actor("delta", "deltaUser"), inv.deltaOpen));
+    expect(result.ok).toBe(true);
+    const [after] = await links(inv.deltaOpen);
+    expect(after).toMatchObject({ sequence_type: "first", amount_cents: 75020 });
+    expect(after!.provider_payment_link_id).not.toBe(before!.provider_payment_link_id);
+    /* At most one payable link for this invoice at "Mollie". */
+    const payable = [...mollie.links.values()].filter((link) => !link.archived && link.amountCents === 75020 && (link.id === before!.provider_payment_link_id || link.id === after!.provider_payment_link_id));
+    expect(payable.map((link) => link.id)).toEqual([after!.provider_payment_link_id]);
   });
 
   it("records no provider detail in the portal's events", async () => {
-    const { data } = await service.from("portal_events").select("*").in("customer_id", [ids.alfa, ids.beta, ids.gamma]);
+    const { data } = await service.from("portal_events").select("*").in("customer_id", [ids.alfa, ids.beta, ids.gamma, ids.delta]);
     const text = JSON.stringify(data);
     expect(text).not.toMatch(/pl_stub|cst_|mdt_|mollie\.test|sub_/);
   });

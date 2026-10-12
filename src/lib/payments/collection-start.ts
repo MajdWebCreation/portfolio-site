@@ -35,8 +35,13 @@ import type { Database } from "@/lib/supabase/database.types";
  *     today. A date that is too close moves on by whole months, keeping the
  *     day of the month, and the months skipped are simply not billed.
  *
- * Nothing about the EUR 0.01 activation enters into it: that payment bought
- * a mandate, not a period.
+ * Nothing about how the mandate was given enters into it. The first payment
+ * of an invoice (pay-link.ts) or the EUR 0.01 activation buys no period by
+ * itself: only invoices linked to the service (recurring_service_id with a
+ * billing period) count as billed. An ordinary invoice that happens to
+ * charge a month of the service is not linked -- if one did, the admin
+ * chooses a later first collection (`requestedStart`) so that month is not
+ * collected again.
  */
 export function firstCollectionDate(input: {
   startsOn?: string;
@@ -59,9 +64,9 @@ export function firstCollectionDate(input: {
 export type CollectionStart = { ok: true; firstDebitOn: string } | { ok: false; reason: string };
 
 const mandateReasons = {
-  none: "Deze klant heeft nog geen machtiging. Stuur eerst een incasso-activatielink.",
+  none: "Deze klant heeft nog geen machtiging. Die ontstaat met de online betaling van een openstaande factuur; zonder openstaande factuur kan een losse activatielink.",
   pending: "De machtiging is nog in behandeling bij Mollie. Start de incasso zodra die geldig is.",
-  invalid: "De machtiging van deze klant is niet (meer) geldig. Stuur een nieuwe incasso-activatielink.",
+  invalid: "De machtiging van deze klant is niet (meer) geldig. Een nieuwe ontstaat met de online betaling van een openstaande factuur; zonder openstaande factuur kan een losse activatielink.",
 } as const;
 
 /**

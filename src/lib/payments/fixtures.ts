@@ -310,6 +310,7 @@ export function createFakeDb(seed: Record<string, Row[]> = {}, options: { rpc?: 
     let mode: "select" | "insert" | "update" | "delete" = "select";
     let payload: Row = {};
     let inserted: Row | undefined;
+    let conflictColumns: string[] | undefined;
     let embedded: string[] = [];
 
     const api = {
@@ -369,15 +370,13 @@ export function createFakeDb(seed: Record<string, Row[]> = {}, options: { rpc?: 
       },
       /* One row per conflict column, the way the real upsert behaves. */
       upsert(row: Row, options?: { onConflict?: string }) {
-        const key = options?.onConflict;
-        const existing = key ? table(name).find((candidate) => candidate[key] === row[key]) : undefined;
-        if (existing) {
-          Object.assign(existing, row, { updated_at: "2026-09-01T00:00:00.000Z" });
-          mode = "update";
-          payload = {};
-          inserted = existing;
-          return api;
-        }
+        /*
+          The conflict is looked for when the statement runs, not when it is
+          built -- the way Postgres resolves it -- so two upserts built before
+          either ran still land on one row. Composite keys ("a,b") match on
+          every column.
+        */
+        conflictColumns = options?.onConflict?.split(",").map((column) => column.trim());
         return api.insert(row);
       },
       delete() {
@@ -386,6 +385,14 @@ export function createFakeDb(seed: Record<string, Row[]> = {}, options: { rpc?: 
       },
       run(): { data: Row[]; error: { code?: string; message: string } | null } {
         const reads = { rows: (table_name: string) => table(table_name) };
+        if (mode === "insert" && conflictColumns) {
+          const existing = table(name).find((candidate) => conflictColumns!.every((column) => candidate[column] === payload[column]));
+          if (existing) {
+            Object.assign(existing, payload, { updated_at: "2026-09-01T00:00:00.000Z" });
+            inserted = existing;
+            return { data: [existing], error: null };
+          }
+        }
         if (mode === "insert") {
           const ruled = schemaRules(name, "insert", payload, reads.rows);
           if (ruled) return { data: [], error: ruled };

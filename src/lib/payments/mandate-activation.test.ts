@@ -502,3 +502,45 @@ describe("whether the activation link was mailed", () => {
     expect(await statusNow()).toBe("link_created");
   });
 });
+
+/*
+  Once Mollie calls a mandate valid -- however it came about -- no other
+  invoice of the customer may still ask for one: their payable `first` links
+  are closed, their rows kept so a payment on one stays traceable.
+*/
+describe("a mandate that has become valid", () => {
+  it("closes the customer's other payable first links and leaves one-off links alone", async () => {
+    const { recordMandate } = await import("@/lib/payments/mandate-activation");
+    db = createFakeDb({
+      customers: [customerRowFixture()],
+      customer_payment_providers: [{ ...knownCustomer }],
+      invoice_payment_links: [
+        { id: "l1", invoice_id: "inv-a", customer_id: "cust-1", provider: "mollie", provider_payment_link_id: "pl_first_open", sequence_type: "first", amount_cents: 1000 },
+        { id: "l2", invoice_id: "inv-b", customer_id: "cust-1", provider: "mollie", provider_payment_link_id: "pl_first_paid", sequence_type: "first", amount_cents: 2000 },
+        { id: "l3", invoice_id: "inv-c", customer_id: "cust-1", provider: "mollie", provider_payment_link_id: "pl_oneoff", sequence_type: "oneoff", amount_cents: 3000 },
+      ],
+    });
+    getPaymentLink.mockImplementation(async (id: string) => link(id, id === "pl_first_paid" ? { paidAt: "2026-10-12T10:00:00.000Z" } : {}));
+
+    await recordMandate(db as never, "cust-1", undefined, { state: "valid", providerCustomerId: "cst_flexora", mandateId: "mdt_new" });
+
+    expect(archivePaymentLink.mock.calls.map((call) => call[0])).toEqual(["pl_first_open"]);
+    expect(db.rows("invoice_payment_links")).toHaveLength(3);
+    expect(db.rows("customer_payment_providers")[0]).toMatchObject({ provider_mandate_id: "mdt_new" });
+  });
+
+  it("still records the mandate when a link cannot be closed", async () => {
+    const { recordMandate } = await import("@/lib/payments/mandate-activation");
+    db = createFakeDb({
+      customers: [customerRowFixture()],
+      customer_payment_providers: [{ ...knownCustomer }],
+      invoice_payment_links: [{ id: "l1", invoice_id: "inv-a", customer_id: "cust-1", provider: "mollie", provider_payment_link_id: "pl_first_open", sequence_type: "first", amount_cents: 1000 }],
+    });
+    archivePaymentLink.mockRejectedValueOnce(new Error("Mollie 503"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await recordMandate(db as never, "cust-1", undefined, { state: "valid", providerCustomerId: "cst_flexora", mandateId: "mdt_new" });
+
+    expect(db.rows("customer_payment_providers")[0]).toMatchObject({ provider_mandate_id: "mdt_new" });
+  });
+});

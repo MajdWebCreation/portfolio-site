@@ -4,7 +4,6 @@ import { formatCents } from "@/lib/money";
 import { isAuthorisedCronRequest } from "@/lib/cron/auth";
 import { hasPaymentsAdminAccess, paymentsAdminClient } from "@/lib/payments/admin-client";
 import { reminderPayLink } from "@/lib/payments/pay-link";
-import { reminderActivation } from "@/lib/payments/reminder-activation";
 import { reminderSubject, sendReminderMail } from "@/lib/payments/reminder-email";
 import { createReminderStore } from "@/lib/payments/reminder-store";
 import { runPaymentReminders } from "@/lib/payments/reminder-runner";
@@ -60,27 +59,18 @@ async function handle(request: Request): Promise<Response> {
       createReminderStore(),
       async ({ invoice, stage, recipient, daysOverdue, outstandingCents, finalDateKey, payments, directDebit }) => {
         /*
-          Two separate actions, each with its own decision.
-
-          The invoice's button: payLinkFor's answer, the one the portal and
-          the admin's send get too -- never beside a payment in flight or on
-          an invoice a direct debit collects; the link the invoice already
-          carries is reused when it still fits.
-
-          Direct debit: when a service of this customer still waits for it,
-          the EUR 0.01 activation -- the open link reused, never a second --
-          or, once the customer authorised it, a note that it is being
-          processed. A customer who pays the invoice and never activates
-          the collection is exactly what this second action is for.
+          The invoice's one button: payLinkFor's answer, the one the first
+          invoice mail, the portal and the admin's send get too -- never
+          beside a payment in flight or on an invoice a direct debit
+          collects. While a service of this customer still waits for its
+          mandate, that one payment is also the mandate (`first`), exactly
+          as the first mail asked; the link the invoice already carries is
+          reused when it still fits.
 
           No link is not a reason to stay silent -- the customer has the
           invoice, with the bank details on it.
         */
-        const todayKey = toDateKey(new Date());
-        const [payUrl, activation] = await Promise.all([
-          reminderPayLink(client(), invoice, payments),
-          reminderActivation(client(), invoice.customer.customerId, todayKey),
-        ]);
+        const pay = await reminderPayLink(client(), invoice, payments);
 
         return sendReminderMail(
           recipient,
@@ -91,9 +81,8 @@ async function handle(request: Request): Promise<Response> {
             daysOverdue,
             outstandingLabel: formatCents(outstandingCents),
             finalDateLabel: documentDateLabel(finalDateKey),
-            ...(payUrl ? { payUrl } : {}),
+            ...(pay ? { payUrl: pay.url, payMode: pay.mode } : {}),
             ...(directDebit ? { collectedByDirectDebit: true } : {}),
-            ...(activation.kind === "none" ? {} : { activation }),
           },
           {
             db: client(),

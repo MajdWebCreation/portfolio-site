@@ -18,10 +18,17 @@ import { directDebitStatus, type DirectDebitStatus } from "@/lib/payments/direct
 import type { Database } from "@/lib/supabase/database.types";
 
 /**
- * Activating direct debit, on its own.
+ * Activating direct debit on its own: the recovery route.
  *
- * A customer authorises collection by paying EUR 0.01 through a Mollie
- * payment link with `sequenceType: "first"`. That payment has one purpose:
+ * Normally a customer authorises collection with the online payment of an
+ * open invoice, which is at the same time Mollie's first payment
+ * (pay-link.ts). This module is for the customer who has no open invoice to
+ * do that with -- one who paid by bank transfer, say -- and for the admin
+ * only: the admin actions refuse it while an invoice is open, and no
+ * customer-facing surface offers it.
+ *
+ * Such a customer pays EUR 0.01 through a Mollie payment link with
+ * `sequenceType: "first"`. That payment has one purpose:
  * Mollie turns it into a mandate. It is not an invoice payment and is never
  * treated as one -- it has its own table, it is never written to `payments`,
  * and nothing here reads or changes an invoice.
@@ -228,6 +235,25 @@ export async function requestMandateActivation(db: Db, customerId: string): Prom
   return { ok: true, activation: activationFromRow(data as ActivationRow), reused: false };
 }
 
+/**
+ * Closes the customer's open EUR 0.01 link, when an invoice payment is about
+ * to ask for the mandate instead: one way to authorise at a time, so a
+ * customer holding an older activation mail cannot set up a second mandate
+ * beside the invoice's own `first` payment. A link already paid is left as
+ * it is -- its mandate is Mollie's to report, and processing it is
+ * refreshDirectDebit's job. Closing at Mollie comes first; if that fails this
+ * throws, and no `first` invoice link is made beside a payable cent.
+ */
+export async function closeOpenActivation(db: Db, customerId: string): Promise<void> {
+  const open = await openActivation(db, customerId);
+  if (!open) return;
+  const config = getMollieConfig();
+  const current = await getPaymentLink(open.providerPaymentLinkId, config);
+  if (current.paidAt) return;
+  if (payableLink(current)) await archivePaymentLink(current.id, config);
+  await markArchived(db, open.id);
+}
+
 async function markArchived(db: Db, id: string): Promise<void> {
   const { error } = await db
     .from("mandate_activations")
@@ -280,6 +306,10 @@ export async function recordMandate(
 
   if (mandate.state === "valid" && mandate.providerCustomerId && mandate.mandateId) {
     await storeProviderMandate(db, customerId, mandate.providerCustomerId, mandate.mandateId);
+    /* Authorised: no other invoice's link may ask for a second mandate. Best effort -- the next payment decision replaces such a link anyway. */
+    await closeInvoiceFirstLinks(db, customerId).catch((error: unknown) => {
+      console.error("Could not close the remaining first-payment links", { customerId, error: error instanceof Error ? error.message : error });
+    });
   } else {
     const { error } = await db
       .from("customer_payment_providers")
@@ -287,6 +317,29 @@ export async function recordMandate(
       .eq("customer_id", customerId)
       .eq("provider", "mollie");
     fail("Vervallen machtiging vastleggen", error);
+  }
+}
+
+/**
+ * Once a mandate is valid, the customer's other invoices' `first` links
+ * would set up a second one: each still payable one is closed at Mollie. Our
+ * rows stay as they are, so a payment that did go through on one is still
+ * traced to its invoice; the next request for that invoice makes an ordinary
+ * one-off link (pay-link.ts).
+ */
+async function closeInvoiceFirstLinks(db: Db, customerId: string): Promise<void> {
+  const { data, error } = await db
+    .from("invoice_payment_links")
+    .select("provider_payment_link_id")
+    .eq("customer_id", customerId)
+    .eq("provider", "mollie")
+    .eq("sequence_type", "first");
+  fail("Machtigingsbetaallinks laden", error);
+  if (!data?.length) return;
+  const config = getMollieConfig();
+  for (const row of data) {
+    const current = await getPaymentLink(row.provider_payment_link_id, config);
+    if (payableLink(current)) await archivePaymentLink(current.id, config);
   }
 }
 

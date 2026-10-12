@@ -12,8 +12,10 @@ import type { MandateActivation } from "@/lib/payments/mandate-activation";
  *   active              Mollie called the mandate valid when last asked
  *   problem             paid, but Mollie reports no usable mandate
  *
- * The latest paid activation carries what Mollie last said and wins; the
- * cached mandate on the customer covers a mandate that came about otherwise.
+ * A valid mandate on record wins: it is what Mollie said when last asked,
+ * whichever payment gave it -- a EUR 0.01 activation or, normally, the first
+ * payment of an invoice. Without one, the latest paid activation says where
+ * that attempt stands.
  */
 export type DirectDebitStatus = "not_active" | "link_created" | "link_mailed" | "mandate_pending" | "active" | "problem";
 
@@ -24,12 +26,12 @@ export function directDebitStatus(input: {
   const latestPaid = input.activations.find((activation) => activation.paidAt);
   const open = input.activations.find((activation) => !activation.paidAt && !activation.archivedAt);
 
+  if (input.mandateOnRecord) return "active";
   if (latestPaid && (!open || latestPaid.createdAt > open.createdAt)) {
     if (latestPaid.mandateStatus === "valid") return "active";
     if (!latestPaid.mandateStatus || latestPaid.mandateStatus === "pending") return "mandate_pending";
     return "problem";
   }
-  if (input.mandateOnRecord) return "active";
   if (open) return open.mailedAt ? "link_mailed" : "link_created";
   return "not_active";
 }

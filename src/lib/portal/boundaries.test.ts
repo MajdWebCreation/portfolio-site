@@ -120,7 +120,7 @@ describe("the customer portal", () => {
     /* Each action proves the customer and the resource on the member's session before the system client exists. */
     for (const [name, proofs] of [
       ["startInvoicePayment", ["readPortalInvoice(", "readPortalPaymentContext("]],
-      ["startMandateActivation", ["readPortalPaymentContext(", "readPortalServices("]],
+      ["previewInvoicePayment", ["readPortalInvoice(", "readPortalPaymentContext("]],
     ] as const) {
       const body = privileged.source.slice(privileged.source.indexOf(`export async function ${name}`));
       const elevated = body.indexOf("paymentsAdminClient()");

@@ -18,6 +18,7 @@ import { adminDb } from "@/lib/admin/db";
 import { sendCreditNoteMail } from "@/lib/admin/documents/credit-note-mail";
 import { documentDateLabel } from "@/lib/admin/documents/email";
 import { isDateKey, toDateKey } from "@/lib/admin/format";
+import { closeInvoicePaymentLink } from "@/lib/payments/pay-link";
 import { readInvoiceArtifact } from "@/lib/admin/invoices/artifact";
 import { getInvoice, listInvoicesForRecurringService } from "@/lib/admin/invoices/repository";
 import { documentFileName } from "@/lib/admin/pdf/to-buffer";
@@ -74,6 +75,15 @@ export async function createManualCreditNote(
 
     const result = await createCreditNote(db, { invoiceId, reason: input.reason, issueDate: input.issueDate, lines: input.lines, source: "manual" });
     if (!result.ok) return result;
+    /*
+      The mailed payment link still asks for the amount before this credit --
+      and, while the mandate is missing, says paying it activates the direct
+      debit. Closed, so nobody pays a credited invoice; the next payment
+      started asks for what is left. The credit note itself stands either way.
+    */
+    await closeInvoicePaymentLink(db, invoiceId).catch((closeError: unknown) => {
+      console.error("Could not close an invoice payment link after a credit note", { invoiceId, closeError: closeError instanceof Error ? closeError.message : closeError });
+    });
     revalidate(invoiceId, invoice.customer.customerId, result.creditNote.id);
     return { ok: true, value: { id: result.creditNote.id, number: result.creditNote.number.value, reused: result.reused } };
   } catch (error) {

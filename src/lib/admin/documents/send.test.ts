@@ -56,12 +56,13 @@ vi.mock("@/lib/payments/pay-link", () => ({
 
 const { sendInvoiceToCustomer } = await import("@/lib/admin/documents/send");
 
-/* What `invoicePayLink` really returns: a URL, always a one-off payment link. */
+/* What `invoicePayLink` really returns: a URL, and whether paying it also gives the mandate. */
 const oneoffLink = {
   kind: "link",
   // A Mollie payment link, which stays valid until it is paid; the checkout
   // URL of a Payments-API payment would be dead by the time a mail is opened.
   url: "https://payment-link.mollie.com/payment/pl_1",
+  mode: "oneoff",
 };
 
 beforeEach(() => {
@@ -86,6 +87,16 @@ describe("sending an invoice with a payment link", () => {
     expect(args.payUrl).toBe("https://payment-link.mollie.com/payment/pl_1");
     // Never the short-lived checkout URL of a single payment attempt.
     expect(args.payUrl).not.toContain("pay.mollie.com");
+    expect(sendDocumentMail).toHaveBeenCalledWith(expect.objectContaining({ payMode: "oneoff" }));
+  });
+
+  /* The YM rule: a customer whose service waits for its mandate gets ONE link that pays the invoice and gives the mandate. */
+  it("tells the mail when its one link is also the direct debit mandate", async () => {
+    invoicePayLink.mockResolvedValue({ ...oneoffLink, mode: "first" });
+
+    expect((await sendInvoiceToCustomer("inv-1")).ok).toBe(true);
+    expect(sendDocumentMail).toHaveBeenCalledTimes(1);
+    expect(sendDocumentMail).toHaveBeenCalledWith(expect.objectContaining({ payUrl: "https://payment-link.mollie.com/payment/pl_1", payMode: "first" }));
   });
 
   /*
@@ -171,7 +182,7 @@ describe("an invoice that still promises direct debit", () => {
     const result = await sendInvoiceToCustomer("inv-1");
 
     expect(result.ok).toBe(false);
-    expect(result.ok === false && result.error).toContain("aparte activatielink");
+    expect(result.ok === false && result.error).toContain("oude, vastgelegde incasso-aankondiging");
     expect(invoicePayLink).not.toHaveBeenCalled();
     expect(sendDocumentMail).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();

@@ -7,6 +7,7 @@ import { adminDb } from "@/lib/admin/db";
 import { isDateKey, toDateKey } from "@/lib/admin/format";
 import { getInvoice } from "@/lib/admin/invoices/repository";
 import { invoiceAmounts } from "@/lib/admin/invoices/types";
+import { closeInvoicePaymentLink } from "@/lib/payments/pay-link";
 import { listPaymentsForInvoice } from "@/lib/payments/repository";
 import { settleInvoice } from "@/lib/payments/settlement";
 import { nextInvoiceStatus } from "@/lib/payments/webhook";
@@ -59,6 +60,14 @@ export async function recordManualPayment(
   });
   if (error) return actionFailed(error, "Betaling registreren mislukt.");
 
+  /* The mailed link asks for the old amount -- and maybe for the mandate too; it must not take a second payment. */
+  try {
+    await closeInvoicePaymentLink(db, invoiceId);
+  } catch (closeError) {
+    console.error("Could not close an invoice payment link after a manual payment", { invoiceId, closeError });
+    return { ok: false, error: "De betaling is vastgelegd, maar de betaallink in de factuurmail kon niet worden gesloten bij Mollie. Archiveer die link in het Mollie-dashboard, zodat de klant niet nog eens betaalt." };
+  }
+
   const after = settleInvoice(dueCents, await listPaymentsForInvoice(invoiceId));
   const status = nextInvoiceStatus(invoice, after.settled, todayKey);
   if (status !== invoice.status) {
@@ -69,5 +78,6 @@ export async function recordManualPayment(
   revalidatePath(`/admin/facturen/${invoiceId}`);
   revalidatePath("/admin/betalingen");
   revalidatePath(`/admin/klanten/${invoice.customer.customerId}`);
+
   return { ok: true, value: { status } };
 }

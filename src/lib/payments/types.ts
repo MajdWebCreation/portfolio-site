@@ -339,3 +339,22 @@ export function isRecurringStatus(value: string): value is RecurringStatus {
 export function isCollecting(service: Pick<RecurringService, "status">): boolean {
   return service.status === "active";
 }
+
+/**
+ * A service that still waits for its customer's direct debit mandate: meant
+ * to be collected monthly, nothing collects it yet, and not ended. A draft
+ * counts -- a new service stays draft until the admin starts its collection,
+ * which needs the mandate first. Paused and cancelled do not: nobody is
+ * waiting to collect them.
+ *
+ * The one predicate behind "this customer's invoice payment is also the
+ * mandate" (pay-link.ts) and the portal's direct debit notice.
+ */
+export function awaitsDirectDebit(
+  service: { status: RecurringStatus; hasSubscription: boolean; endsOn?: string },
+  todayKey: string,
+): boolean {
+  if (service.hasSubscription) return false;
+  if (service.endsOn && service.endsOn < todayKey) return false;
+  return service.status === "draft" || service.status === "awaiting_mandate" || service.status === "active";
+}

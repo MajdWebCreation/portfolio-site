@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { invoicePaymentBlock, mayActivateDirectDebit, needsDirectDebit, paymentContextFromRow, portalDirectDebitState } from "@/lib/portal/payments/model";
+import { invoicePaymentBlock, needsDirectDebit, paymentContextFromRow, portalDirectDebitState } from "@/lib/portal/payments/model";
 
 const today = "2026-10-12";
 
@@ -51,11 +51,5 @@ describe("the activation button", () => {
     expect(needsDirectDebit([{ status: "active", collectsByDirectDebit: true }], today)).toBe(false);
     expect(needsDirectDebit([{ ...waiting, endsOn: "2026-10-01" }], today)).toBe(false);
     expect(needsDirectDebit([{ status: "paused", collectsByDirectDebit: false }], today)).toBe(false);
-    expect(mayActivateDirectDebit("not_active", [waiting], today)).toBe(true);
-    expect(mayActivateDirectDebit("problem", [waiting], today)).toBe(true);
-    expect(mayActivateDirectDebit("link_created", [waiting], today)).toBe(true);
-    expect(mayActivateDirectDebit("active", [waiting], today)).toBe(false);
-    expect(mayActivateDirectDebit("mandate_pending", [waiting], today)).toBe(false);
-    expect(mayActivateDirectDebit("not_active", [], today)).toBe(false);
   });
 });

@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { buildDocumentMailBody, invoiceSubject } from "@/lib/admin/documents/email";
 
 /*
-  The invoice mail. Paying an invoice settles that invoice and nothing else --
-  direct debit is activated through its own EUR 0.01 link -- so the mail never
-  speaks of a mandate, a monthly amount or an incasso.
+  The invoice mail. An ordinary invoice payment settles that invoice and the
+  mail says nothing about direct debit. When the payment is also the
+  customer's mandate (payMode "first"), the one button says both and one
+  short section says what that means -- never a second button, never a
+  separate amount.
 
   Amounts are compared with the spaces normalised: Intl puts a non-breaking
   space after the euro sign, which is right in a mail and unreadable in an
@@ -69,3 +71,26 @@ describe("an invoice mail", () => {
     }
   });
 });
+
+describe("an invoice whose one payment is also the direct debit mandate", () => {
+  const combined = buildDocumentMailBody({ ...base, payUrl: "https://payment-link.mollie.com/payment/pl_first", payMode: "first" });
+
+  it("has exactly one button, named for both", () => {
+    expect(combined.html).toContain(">Factuur betalen en incasso activeren<");
+    expect(combined.html).not.toContain(">Factuur betalen<");
+    expect(combined.html.match(/payment-link\.mollie\.com/g)).toHaveLength(1);
+    expect(flat(combined.text)).toContain("Factuur betalen en incasso activeren: https://payment-link.mollie.com/payment/pl_first");
+  });
+
+  it("says the payment settles the invoice and authorises the monthly collection, for the invoice amount only", () => {
+    expect(flat(combined.text)).toContain("Met deze betaling voldoe je de factuur en geef je tegelijk toestemming voor de automatische incasso");
+    expect(flat(combined.text)).toContain("Je betaalt nu alleen het factuurbedrag");
+    expect(combined.text).not.toMatch(/0,01|activatielink/);
+  });
+
+  it("stays an ordinary invoice mail without a link", () => {
+    const none = buildDocumentMailBody({ ...base, payUrl: undefined, payMode: "first" });
+    expect(none.text).not.toContain("incasso");
+  });
+});
+

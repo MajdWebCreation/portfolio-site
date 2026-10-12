@@ -11,6 +11,7 @@ import { requestCancellation, withdrawCancellation, type CancellationDeviation, 
 import { startCollection } from "@/lib/payments/collection-start";
 import type { DirectDebitStatus } from "@/lib/payments/direct-debit-status";
 import { refreshDirectDebit, requestMandateActivation } from "@/lib/payments/mandate-activation";
+import { openInvoiceForMandate } from "@/lib/payments/pay-link";
 import { listPriceChangesForService, schedulePriceChange, withdrawPriceChange } from "@/lib/payments/price-change";
 import { grossOf } from "@/lib/payments/pricing";
 import { getRecurringService } from "@/lib/payments/repository";
@@ -160,7 +161,20 @@ function failure(error: unknown, fallback: string): { ok: false; error: string }
 }
 
 /**
- * "Incasso activeren (€0,01)": the customer's payable activation link. The
+ * The standalone EUR 0.01 link is the recovery route, for a customer with
+ * no open invoice to authorise with. While one is open, paying it is the
+ * mandate (pay-link.ts), and a second route beside it would set the mandate
+ * up twice -- so the link is refused and the invoice named.
+ */
+async function invoiceCarriesMandate(db: Awaited<ReturnType<typeof adminDb>>, customerId: string): Promise<string | undefined> {
+  const open = await openInvoiceForMandate(db, customerId);
+  return open
+    ? `Factuur ${open.number} staat nog open. De online betaling daarvan activeert ook de automatische incasso; stuur die factuur (opnieuw) in plaats van een losse activatielink.`
+    : undefined;
+}
+
+/**
+ * "Losse activatielink (€0,01)": the customer's payable activation link. The
  * open one when it can still be paid; a new one only when there is none.
  */
 export async function createMandateActivation(
@@ -168,6 +182,8 @@ export async function createMandateActivation(
 ): Promise<ActionResult<{ url: string; reused: boolean }>> {
   try {
     const db = await adminDb();
+    const refused = await invoiceCarriesMandate(db, customerId);
+    if (refused) return { ok: false, error: refused };
     const result = await requestMandateActivation(db, customerId);
     if (!result.ok) return { ok: false, error: result.reason };
     revalidateCustomer(customerId);
@@ -188,6 +204,8 @@ export async function mailMandateActivation(customerId: string): Promise<ActionR
     // Checked before anything is made at Mollie: no address, no link.
     const addressed = await resolveCustomerRecipient(db, customerId, "financial");
     if (!addressed.ok) return { ok: false, error: addressed.reason };
+    const refused = await invoiceCarriesMandate(db, customerId);
+    if (refused) return { ok: false, error: refused };
 
     const result = await requestMandateActivation(db, customerId);
     if (!result.ok) return { ok: false, error: result.reason };

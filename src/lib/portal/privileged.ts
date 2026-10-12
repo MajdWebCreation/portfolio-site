@@ -3,22 +3,15 @@ import { invoiceColumns, invoiceFromRow, type InvoiceRow } from "@/lib/admin/inv
 import type { Invoice } from "@/lib/admin/invoices/types";
 import { paymentsAdminClient } from "@/lib/payments/admin-client";
 import { isChargeable } from "@/lib/payments/customer-status";
-import {
-  alreadyActiveReason,
-  paidUnprocessedReason,
-  pendingReason,
-  requestMandateActivation,
-} from "@/lib/payments/mandate-activation";
 import { invoiceAmounts } from "@/lib/admin/invoices/types";
 import { alreadyPaidReason, nothingDueReason } from "@/lib/payments/checkout";
-import { payLinkFor } from "@/lib/payments/pay-link";
+import { invoicePaymentDecision, payLinkFor, type InvoicePaymentMode } from "@/lib/payments/pay-link";
 import { paymentsOfInvoice } from "@/lib/payments/repository";
 import { settleInvoice } from "@/lib/payments/settlement";
 import { portalInvoiceView } from "@/lib/portal/invoices/model";
 import { readPortalInvoice } from "@/lib/portal/invoices/read";
-import { invoicePaymentBlock, mayActivateDirectDebit } from "@/lib/portal/payments/model";
+import { invoicePaymentBlock } from "@/lib/portal/payments/model";
 import { readPortalPaymentContext } from "@/lib/portal/payments/read";
-import { readPortalServices } from "@/lib/portal/services/read";
 import { readPortalRequest } from "@/lib/portal/requests/read";
 import { readPortalDocumentRecord, type PortalDocumentKind } from "@/lib/portal/documents/read";
 import { readInvoiceArtifact } from "@/lib/admin/invoices/artifact";
@@ -32,8 +25,8 @@ import { attachmentRules, bytesMatchMime, type AttachmentMime } from "@/lib/requ
  * on the system client is account-lookup.ts, which only asks whether an
  * address has a portal account.)
  *
- * Paying an invoice and activating direct debit write to tables a member
- * has no rights on (payment links, activations) and talk to Mollie, so they
+ * Paying an invoice writes to tables a member has no rights on (payment
+ * links, and for a `first` payment the Mollie customer) and talks to Mollie, so it
  * run on the system client. That client is made here and nowhere else in
  * the portal, is never handed out, and is reached only after the member's
  * own session proved -- through the portal functions, checked again by the
@@ -42,9 +35,11 @@ import { attachmentRules, bytesMatchMime, type AttachmentMime } from "@/lib/requ
  * Membership of some customer is never enough by itself.
  *
  * What runs on the system client is the administration's own logic,
- * unchanged: the invoice's payment link (payLinkFor -> checkout.ts) and the
- * EUR 0.01 activation link (requestMandateActivation). No amount is
- * computed here; both decide from the records, as they do for the admin.
+ * unchanged: the invoice's payment link (payLinkFor -> checkout.ts), which
+ * is also the direct debit mandate while a service of the customer waits
+ * for one -- the same single payment the invoice mail and the reminders
+ * offer. There is no separate activation from the portal. No amount is
+ * computed here; it is decided from the records, as for the admin.
  *
  * Callers pass the identity requirePortalMember() returned; every decision
  * below is made again from the database rather than taken from them.
@@ -61,15 +56,11 @@ export type PortalActionRefusal =
   | "payment_in_progress"
   | "direct_debit"
   | "unavailable"
-  | "already_active"
-  | "awaiting_confirmation"
-  | "processing"
-  | "not_needed"
   | "failed";
 
 type Db = ReturnType<typeof paymentsAdminClient>;
 
-async function record(db: Db, actor: PortalActor, action: "invoice_payment_started" | "mandate_activation_requested", target: { kind: "invoice" | "customer"; id: string }) {
+async function record(db: Db, actor: PortalActor, action: "invoice_payment_started", target: { kind: "invoice"; id: string }) {
   /* The audit trail of an action that already happened: a failure here is reported, not turned into a failed payment. */
   const { error } = await db.from("portal_events").insert({
     actor_user_id: actor.userId,
@@ -140,35 +131,30 @@ export async function startInvoicePayment(actor: PortalActor, invoiceId: string)
 }
 
 /**
- * "Automatische incasso activeren": the customer's EUR 0.01 activation link.
- *
- * The member's session first reads the customer's direct debit status and
- * services: the mandate must be neither valid nor on its way, and a service
- * of this customer has to be waiting for it. Then requestMandateActivation
- * runs exactly as it does for the admin -- it asks Mollie about the mandate
- * itself, reuses the open link, and lets the database's one-open-link rule
- * settle two clicks at once. It touches no invoice, no payment and no
- * service: the cent buys a mandate, nothing else.
+ * Which kind of payment "Betalen" would start for this invoice, for the
+ * button's words only: `first` when paying it is also the direct debit
+ * mandate. The member's session proves the invoice theirs (portal_invoice)
+ * first; the answer is invoicePaymentDecision's, the one the click itself
+ * gets. Nothing is created here. Undefined when no payment can
+ * be started, or when the answer cannot be had -- the page then says
+ * "betalen", and the click decides again.
  */
-export async function startMandateActivation(actor: PortalActor): Promise<PortalActionResult> {
+export async function previewInvoicePayment(actor: PortalActor, invoiceId: string): Promise<InvoicePaymentMode | undefined> {
+  /* The member's own session proves the invoice theirs; a refusal here is the caller's to handle, never a preview. */
   const todayKey = toDateKey(new Date());
-  const [context, services] = await Promise.all([readPortalPaymentContext(actor.customerId), readPortalServices(actor.customerId)]);
-  if (context.directDebit === "active") return { ok: false, reason: "already_active" };
-  if (context.directDebit === "mandate_pending") return { ok: false, reason: "awaiting_confirmation" };
-  if (!mayActivateDirectDebit(context.directDebit, services, todayKey)) return { ok: false, reason: "not_needed" };
+  const [invoice, context] = await Promise.all([readPortalInvoice(actor.customerId, invoiceId), readPortalPaymentContext(actor.customerId)]);
+  if (invoicePaymentBlock(portalInvoiceView(invoice, todayKey), context)) return undefined;
 
-  const db = paymentsAdminClient();
-  const result = await requestMandateActivation(db, actor.customerId);
-  if (!result.ok) {
-    if (result.reason === alreadyActiveReason) return { ok: false, reason: "already_active" };
-    if (result.reason === pendingReason) return { ok: false, reason: "awaiting_confirmation" };
-    if (result.reason === paidUnprocessedReason) return { ok: false, reason: "processing" };
-    console.error("Portal mandate activation refused", { customerId: actor.customerId, reason: result.reason });
-    return { ok: false, reason: result.reason === "Mollie is niet geconfigureerd." ? "unavailable" : "failed" };
+  try {
+    const db = paymentsAdminClient();
+    const own = await ownInvoice(db, actor, invoiceId);
+    if (!own || !own.issuedAt || !own.sentAt || !isChargeable(own) || own.status === "paid") return undefined;
+    const decision = await invoicePaymentDecision(db, own, await paymentsOfInvoice(db, own.id));
+    return decision.kind === "pay" && !decision.settled ? decision.mode : undefined;
+  } catch (error) {
+    console.error("Portal payment preview failed", { invoiceId, reason: error instanceof Error ? error.message : "onbekende fout" });
+    return undefined;
   }
-
-  await record(db, actor, "mandate_activation_requested", { kind: "customer", id: actor.customerId });
-  return { ok: true, url: result.activation.checkoutUrl };
 }
 
 /**

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { DetailList, DetailRow } from "@/components/admin/detail-list";
-import { ActivateDirectDebitButton } from "@/components/portal/payment-buttons";
+import Link from "next/link";
 import StatusBadge from "@/components/admin/status-badge";
 import { day, Empty, PageHeader } from "@/components/portal/portal-ui";
 import { toDateKey } from "@/lib/admin/format";
@@ -8,18 +8,27 @@ import { formatCents } from "@/lib/money";
 import { orNoAccess, requirePortalMember } from "@/lib/portal/access";
 import { portalServiceStateLabels, portalServiceStateTone, portalServiceView, type PortalServiceView } from "@/lib/portal/services/model";
 import { readPortalServices } from "@/lib/portal/services/read";
-import { mayActivateDirectDebit, portalDirectDebitLabels, portalDirectDebitState, portalDirectDebitTone, type PortalDirectDebitState } from "@/lib/portal/payments/model";
+import { needsDirectDebit, portalDirectDebitLabels, portalDirectDebitState, portalDirectDebitTone, type PortalDirectDebitState } from "@/lib/portal/payments/model";
 import { readPortalPaymentContext } from "@/lib/portal/payments/read";
+import { portalInvoicesPath } from "@/lib/portal/paths";
 import { agreementSourceKindLabels, billingLabel, minimumTermLabel, noticeLabel, prorationRuleLabels, unknownTermsLabel } from "@/lib/payments/service-agreement";
 
 export const metadata: Metadata = { title: "Diensten" };
 
+/*
+  No separate activation here: the mandate is given with the online payment
+  of an open invoice (pay-link.ts), so a customer who still has to authorise
+  is pointed at their invoices.
+*/
+const toInvoices =
+  "U activeert de automatische incasso door uw openstaande factuur online te betalen: met die ene betaling voldoet u de factuur en geeft u tegelijkertijd toestemming voor de incasso van uw toekomstige maandbedragen. Staat er geen factuur open, dan gebeurt dit bij uw eerstvolgende factuur.";
+
 const directDebitExplanation: Record<PortalDirectDebitState, string> = {
-  not_active: "Uw maandbedragen worden automatisch afgeschreven zodra u een machtiging heeft gegeven.",
-  started: "U bent begonnen met machtigen, maar de betaling van € 0,01 is nog niet afgerond. U kunt verdergaan waar u was.",
+  not_active: toInvoices,
+  started: toInvoices,
   awaiting_confirmation: "Uw machtiging is ontvangen. Zodra onze betaalprovider die bevestigt, is de automatische incasso actief.",
   active: "Uw maandbedragen worden automatisch van uw rekening afgeschreven. U krijgt vooraf bericht over elke afschrijving.",
-  problem: "Uw machtiging kon niet worden bevestigd. U kunt opnieuw machtigen, of contact met ons opnemen.",
+  problem: "Uw machtiging kon niet worden bevestigd. Betaal uw openstaande factuur opnieuw online, of neem contact met ons op.",
 };
 
 function money(net: number, gross: number, vatRate: number): string {
@@ -120,8 +129,8 @@ export default async function PortalServicesPage() {
   const [services, context] = await orNoAccess(Promise.all([readPortalServices(member.current.customerId), readPortalPaymentContext(member.current.customerId)]));
   const views = services.map((service) => portalServiceView(service, todayKey));
   const directDebit = portalDirectDebitState(context.directDebit);
-  const offerActivation = mayActivateDirectDebit(context.directDebit, services, todayKey);
-  const showDirectDebit = directDebit !== "not_active" || offerActivation;
+  const pointToInvoices = directDebit !== "active" && directDebit !== "awaiting_confirmation" && needsDirectDebit(services, todayKey);
+  const showDirectDebit = directDebit !== "not_active" || pointToInvoices;
 
   return (
     <div>
@@ -138,14 +147,12 @@ export default async function PortalServicesPage() {
             <StatusBadge tone={portalDirectDebitTone[directDebit]}>{portalDirectDebitLabels[directDebit]}</StatusBadge>
           </div>
           <p className="mt-4 max-w-prose text-[0.95rem] text-body">{directDebitExplanation[directDebit]}</p>
-          {offerActivation ? (
-            <div className="mt-5">
-              <ActivateDirectDebitButton />
-              <p className="mt-3 max-w-prose text-[0.86rem] text-muted">
-                U machtigt via een betaling van € 0,01 bij onze betaalprovider. Dat bedrag activeert alleen de machtiging: het is
-                geen betaling van een factuur of maandbedrag.
-              </p>
-            </div>
+          {pointToInvoices ? (
+            <p className="mt-4 text-[0.95rem]">
+              <Link href={portalInvoicesPath} className="link-static">
+                Naar uw facturen
+              </Link>
+            </p>
           ) : null}
         </section>
       ) : null}

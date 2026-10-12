@@ -76,6 +76,7 @@ const mollie = {
   byKey: new Map<string, string>(),
   customers: new Map<string, string>(),
   mandates: new Map<string, { id: string; status: "valid" | "pending" | "invalid"; method: string }[]>(),
+  subscriptions: [] as { id: string; customerId: string; startDate: string; amountCents: number; mandateId: string; metadata: Record<string, unknown> }[],
   counter: 0,
 };
 const linkView = (link: StubLink) => ({
@@ -128,6 +129,14 @@ vi.mock("@/lib/mollie/client", async (importOriginal) => {
       return { id };
     },
     listMandates: async (customerId: string) => mollie.mandates.get(customerId) ?? [],
+    listSubscriptions: async (customerId: string) =>
+      mollie.subscriptions.filter((item) => item.customerId === customerId).map((item) => ({ id: item.id, status: "active", startDate: item.startDate, metadata: item.metadata })),
+    createSubscription: async (input: { customerId: string; amountCents: number; startDate: string; mandateId: string; metadata: Record<string, unknown> }) => {
+      mollie.counter += 1;
+      const created = { id: `sub_v1${runId}${mollie.counter}`, customerId: input.customerId, startDate: input.startDate, amountCents: input.amountCents, mandateId: input.mandateId, metadata: input.metadata };
+      mollie.subscriptions.push(created);
+      return { id: created.id, status: "active", startDate: created.startDate, metadata: created.metadata };
+    },
   };
 });
 
@@ -183,7 +192,8 @@ const { portalInvoiceView } = await import("@/lib/portal/invoices/model");
 const { readPortalPaymentContext } = await import("@/lib/portal/payments/read");
 const { invoicePaymentBlock } = await import("@/lib/portal/payments/model");
 const { readPortalServices } = await import("@/lib/portal/services/read");
-const { payInvoiceAction, activateDirectDebitAction } = await import("@/lib/portal/payment-actions");
+const { payInvoiceAction } = await import("@/lib/portal/payment-actions");
+const { startCollection } = await import("@/lib/payments/collection-start");
 const { POST: mollieWebhook } = await import("@/app/api/mollie/webhook/route");
 const { GET: documentRoute } = await import("@/app/portaal/documenten/[kind]/[id]/route");
 const { GET: attachmentRoute } = await import("@/app/portaal/(shell)/verzoeken/bijlagen/[attachmentId]/route");
@@ -203,7 +213,7 @@ const B = { customer: "", member: mail("klant-b"), userId: "" };
 const AB = { member: mail("klant-ab"), userId: "" };
 const made = { users: [] as string[], adminUser: "" };
 /* What customer A ends up holding, for the cross-tenant pass. */
-const own = { request: "", attachment: "", quote: "", rejectedQuote: "", decisionQuote: "", invoice: "", service: "", project: "" };
+const own = { request: "", attachment: "", quote: "", rejectedQuote: "", decisionQuote: "", invoice: "", service: "", project: "", firstInvoice: "" };
 
 const fresh = (): Db => createClient<Database>(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
@@ -492,7 +502,7 @@ describe.runIf(local).sequential("a customer's first weeks in the portal", () =>
     expect(await payInvoiceAction({}, form({ invoiceId: own.invoice }))).toEqual({ error: "Op deze factuur staat niets meer open." });
   }, 120_000);
 
-  it("G. activates direct debit with EUR 0.01, which pays no invoice and starts no term", async () => {
+  it("G. pays the invoice and gives the direct debit mandate in ONE Mollie payment; the collection then starts after it", async () => {
     const created = await admin.rpc("create_recurring_service", {
       p_customer_id: A.customer, p_name: "Websitebeheer", p_description: "", p_amount_cents: 2500, p_vat_rate: 21,
       p_starts_on: "2026-11-01", p_status: "awaiting_mandate", p_effective_from: "2026-11-01",
@@ -501,32 +511,63 @@ describe.runIf(local).sequential("a customer's first weeks in the portal", () =>
     if (created.error) throw new Error(created.error.message);
     own.service = created.data as string;
     const serviceBefore = (await service.from("recurring_services").select("*").eq("id", own.service).single()).data!;
-    const paymentsBefore = (await service.from("payments").select("id").eq("customer_id", A.customer)).data!.length;
-    const invoiceBefore = (await service.from("invoices").select("status, updated_at").eq("id", own.invoice).single()).data!;
 
+    /* The first invoice mail: one button, the invoice amount, as Mollie's first payment. */
+    own.firstInvoice = await concept("invoices", A.customer, 62000);
+    expect((await finalizeInvoice(own.firstInvoice)).ok).toBe(true);
+    deliverEmail.mockClear();
+    expect((await sendInvoiceToCustomer(own.firstInvoice)).ok).toBe(true);
+    const mailed = deliverEmail.mock.calls.at(-1)![0] as { text: string; html: string };
+    const hrefs = mailed.text.match(/https:\/\/mollie\.test\/pay\/\S+/g) ?? [];
+    expect(hrefs).toHaveLength(1);
+    expect(mailed.text).toContain("Factuur betalen en incasso activeren:");
+    expect(mailed.text).not.toMatch(/0,01/);
+    const link = [...mollie.links.values()].find((candidate) => candidate.href === hrefs[0])!;
+    expect(link).toMatchObject({ amountCents: 75020, sequenceType: "first" });
+    expect(link.customerId).toMatch(/^cst_v1/);
+
+    /* The portal hands out that same payment. */
     as(browser);
-    expect((await readPortalPaymentContext(A.customer)).directDebit).not.toBe("active");
     resetRateLimits();
-    const checkout = await redirectOf(() => activateDirectDebitAction());
-    const link = [...mollie.links.values()].find((candidate) => candidate.href === checkout)!;
-    expect(link).toMatchObject({ amountCents: 1, sequenceType: "first" });
+    expect(await redirectOf(() => payInvoiceAction({}, form({ invoiceId: own.firstInvoice })))).toBe(link.href);
 
+    /* The customer pays at Mollie; Mollie makes the mandate valid and calls the webhook -- twice. */
     const providerCustomer = link.customerId!;
     mollie.mandates.set(providerCustomer, [{ id: `mdt_v1${runId}`, status: "valid", method: "directdebit" }]);
-    payAtMollie(checkout, { customerId: providerCustomer, mandateId: `mdt_v1${runId}` });
+    payAtMollie(link.href, { customerId: providerCustomer, mandateId: `mdt_v1${runId}` });
     expect(await webhook(link.id)).toBe(200);
+    expect(await webhook(link.id)).toBe(200);
+
+    const paid = (await service.from("payments").select("amount_cents, status").eq("invoice_id", own.firstInvoice)).data!;
+    expect(paid).toEqual([{ amount_cents: 75020, status: "paid" }]);
+    expect((await service.from("invoices").select("status").eq("id", own.firstInvoice).single()).data!.status).toBe("paid");
+    expect((await service.from("customer_payment_providers").select("provider_customer_id, provider_mandate_id").eq("customer_id", A.customer).single()).data).toEqual({
+      provider_customer_id: providerCustomer,
+      provider_mandate_id: `mdt_v1${runId}`,
+    });
+    /* No subscription from a webhook, no EUR 0.01 anywhere, the service as it was. */
+    expect(mollie.subscriptions).toHaveLength(0);
+    expect((await service.from("mandate_activations").select("id").eq("customer_id", A.customer)).data).toEqual([]);
+    expect((await service.from("recurring_services").select("*").eq("id", own.service).single()).data).toEqual(serviceBefore);
 
     as(browser);
     expect((await readPortalPaymentContext(A.customer)).directDebit).toBe("active");
-    resetRateLimits();
-    expect(await activateDirectDebitAction()).toEqual({ error: "Uw automatische incasso is al actief." });
 
-    /* The cent bought a mandate: no invoice payment, no invoice change, the service untouched until YM Creations starts it. */
-    expect((await service.from("payments").select("id").eq("customer_id", A.customer)).data!.length).toBe(paymentsBefore);
-    expect((await service.from("invoices").select("status, updated_at").eq("id", own.invoice).single()).data).toEqual(invoiceBefore);
-    expect((await service.from("recurring_services").select("*").eq("id", own.service).single()).data).toEqual(serviceBefore);
-    const services = await readPortalServices(A.customer);
-    expect(services.find((item) => item.id === own.service)?.status).toBe("awaiting_mandate");
+    /* With the mandate in place the next invoice is an ordinary payment, never a second mandate. */
+    const next = await concept("invoices", A.customer, 10000);
+    expect((await finalizeInvoice(next)).ok).toBe(true);
+    expect((await sendInvoiceToCustomer(next)).ok).toBe(true);
+    const nextLink = (await service.from("invoice_payment_links").select("sequence_type").eq("invoice_id", next).single()).data!;
+    expect(nextLink.sequence_type).toBe("oneoff");
+
+    /* YM starts the monthly collection: on the valid mandate, from a period nobody paid yet. */
+    const started = await startCollection(admin, { id: own.service }, today);
+    expect(started.ok).toBe(true);
+    expect(mollie.subscriptions).toHaveLength(1);
+    expect(mollie.subscriptions[0]).toMatchObject({ customerId: providerCustomer, mandateId: `mdt_v1${runId}`, amountCents: 3025 });
+    const billed = (await service.from("invoices").select("billing_period_start").eq("recurring_service_id", own.service)).data!;
+    expect(billed).toEqual([]);
+    expect(started.ok && started.firstDebitOn > today).toBe(true);
   }, 120_000);
 });
 
