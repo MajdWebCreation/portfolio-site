@@ -218,6 +218,7 @@ export const siteContent = {
       privacy: "Privacyverklaring",
       cookies: "Cookieverklaring",
       cookieSettings: "Cookie-instellingen",
+      customerPortal: "Klantportaal",
     },
     consent: {
       title: "Welkom bij YM Creations",
@@ -386,6 +387,7 @@ export const siteContent = {
       privacy: "Privacy statement",
       cookies: "Cookie statement",
       cookieSettings: "Cookie settings",
+      customerPortal: "Client portal",
     },
     consent: {
       title: "Welcome to YM Creations",

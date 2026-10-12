@@ -5,6 +5,7 @@ import { emailButton, emailMeta, emailNote, emailSection, emailShell, emailText,
 import { formatCents } from "@/lib/money";
 import { activationAmountCents } from "@/lib/payments/mandate-activation";
 import { prenotificationDays } from "@/lib/payments/prenotification";
+import { portalAccessTextLine } from "@/lib/email/portal-access";
 
 /**
  * The mail that carries a direct debit activation link.
@@ -76,6 +77,7 @@ export function buildActivationMail(input: {
 
   const html = emailShell({
     locale: "nl",
+    portalAccess: true,
     title: "Automatische incasso activeren",
     preheader: `Eenmalige activatie van ${cent} voor de automatische incasso`,
     content: [
@@ -112,6 +114,8 @@ export function buildActivationMail(input: {
     "",
     ...signOff,
     companyProfile.website,
+    "",
+    portalAccessTextLine(),
   ].join("\n");
 
   return { subject: activationMailSubject, html, text };

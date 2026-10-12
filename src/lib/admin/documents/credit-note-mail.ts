@@ -3,6 +3,7 @@ import { companyProfile } from "@/lib/admin/documents/company";
 import type { SendMailResult } from "@/lib/admin/documents/email";
 import { contactSectionHtml, contactTextLines } from "@/lib/email/contact";
 import { emailMeta, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
+import { portalAccessTextLine } from "@/lib/email/portal-access";
 
 /**
  * The cover note of a credit note. Like an invoice mail: who, which number,
@@ -42,6 +43,7 @@ export function buildCreditNoteMailBody(input: CreditNoteMailContent): { html: s
 
   const html = emailShell({
     locale: "nl",
+    portalAccess: true,
     title: "Je creditnota",
     preheader: `Creditnota ${input.number} — ${input.totalLabel}`,
     content: [
@@ -72,6 +74,8 @@ export function buildCreditNoteMailBody(input: CreditNoteMailContent): { html: s
     "",
     companyProfile.legalName,
     companyProfile.website,
+    "",
+    portalAccessTextLine(),
   ].join("\n");
 
   return { html, text };

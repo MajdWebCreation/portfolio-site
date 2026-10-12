@@ -5,6 +5,7 @@ import { businessInfo } from "@/lib/content/site-content";
 import { contactSectionHtml, contactTextLines } from "@/lib/email/contact";
 import { emailButton, emailMeta, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
 import { requestCategoryLabels, requestStatusLabels, type RequestCategory, type RequestStatus } from "@/lib/requests/model";
+import { portalAccessTextLine } from "@/lib/email/portal-access";
 
 /**
  * The mails a request produces: the customer's confirmation, YM Creations'
@@ -41,6 +42,7 @@ function customerMail(input: { title: string; preheader: string; contactName: st
   const contact = "Vragen? Reageer gerust op deze mail, of bereik ons hieronder.";
   const html = emailShell({
     locale: "nl",
+    portalAccess: true,
     title: input.title,
     preheader: input.preheader,
     content: [
@@ -66,6 +68,8 @@ function customerMail(input: { title: string; preheader: string; contactName: st
     "",
     ...signOff,
     companyProfile.website,
+    "",
+    portalAccessTextLine(),
   ].join("\n");
   return { html, text };
 }

@@ -5,6 +5,7 @@ import { contactSectionHtml, contactTextLines } from "@/lib/email/contact";
 import { emailMeta, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
 import { formatCents } from "@/lib/money";
 import { prenotificationDays } from "@/lib/payments/collection-policy";
+import { portalAccessTextLine } from "@/lib/email/portal-access";
 
 /**
  * Written confirmation of a change to a monthly service: a new price, or
@@ -68,6 +69,7 @@ export function buildPriceChangeMail(input: PriceChangeMailContent): Built {
 
   const html = emailShell({
     locale: "nl",
+    portalAccess: true,
     title: "Nieuw maandbedrag",
     preheader: `${input.serviceName}: ${formatCents(input.newGrossCents)} per maand incl. btw vanaf ${from}`,
     content: [
@@ -99,6 +101,8 @@ export function buildPriceChangeMail(input: PriceChangeMailContent): Built {
     "",
     ...signOff,
     companyProfile.website,
+    "",
+    portalAccessTextLine(),
   ].join("\n");
 
   return { subject: priceChangeMailSubject(input.serviceName), html, text };
@@ -177,6 +181,7 @@ export function buildCancellationMail(input: CancellationMailContent): Built {
 
   const html = emailShell({
     locale: "nl",
+    portalAccess: true,
     title: "Bevestiging opzegging",
     preheader: `${input.serviceName} loopt tot en met ${ends}`,
     content: [
@@ -208,6 +213,8 @@ export function buildCancellationMail(input: CancellationMailContent): Built {
     "",
     ...signOff,
     companyProfile.website,
+    "",
+    portalAccessTextLine(),
   ].join("\n");
 
   return { subject: cancellationMailSubject(input.serviceName), html, text };

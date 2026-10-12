@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { PortalWelcomeState } from "@/lib/portal/welcome";
 
 /**
  * The one module that speaks to Supabase Auth as an administrator.
@@ -114,4 +115,38 @@ export async function recoveryTokenForEmail(email: string): Promise<{ tokenHash:
   const magic = await admin.generateLink({ type: "magiclink", email });
   if (magic.error || !magic.data.properties?.hashed_token) return null;
   return { tokenHash: magic.data.properties.hashed_token, type: "magiclink" };
+}
+
+/**
+ * Whether the portal's welcome mail is due or was sent, kept on the auth
+ * user's `app_metadata`: per person, written only with the secret key (a
+ * signed-in user cannot change app_metadata), and gone with the account.
+ * No table of its own for two timestamps.
+ */
+
+function welcomeFrom(metadata: Record<string, unknown> | undefined): PortalWelcomeState {
+  const raw = metadata?.portal_welcome;
+  if (!raw || typeof raw !== "object") return {};
+  const { dueAt, sentAt } = raw as Record<string, unknown>;
+  return { ...(typeof dueAt === "string" ? { dueAt } : {}), ...(typeof sentAt === "string" ? { sentAt } : {}) };
+}
+
+/** The welcome state as a session already reports it, without asking the Auth server. */
+export function portalWelcomeFromUser(user: { app_metadata?: Record<string, unknown> }): PortalWelcomeState {
+  return welcomeFrom(user.app_metadata);
+}
+
+/** The welcome state as the Auth server holds it now. */
+export async function readPortalWelcome(userId: string): Promise<PortalWelcomeState> {
+  const { data, error } = await authAdmin().getUserById(userId);
+  if (error || !data.user) throw new Error(`Account laden: ${error?.message ?? "niet gevonden"}`);
+  return welcomeFrom(data.user.app_metadata);
+}
+
+export async function writePortalWelcome(userId: string, state: PortalWelcomeState): Promise<void> {
+  const admin = authAdmin();
+  const { data, error } = await admin.getUserById(userId);
+  if (error || !data.user) throw new Error(`Account laden: ${error?.message ?? "niet gevonden"}`);
+  const updated = await admin.updateUserById(userId, { app_metadata: { ...data.user.app_metadata, portal_welcome: state } });
+  if (updated.error) throw new Error(`Welkomststatus vastleggen: ${updated.error.message}`);
 }

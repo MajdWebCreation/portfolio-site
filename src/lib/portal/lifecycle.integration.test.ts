@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Database } from "@/lib/supabase/database.types";
 
 /**
@@ -44,6 +44,21 @@ vi.mock("next/navigation", () => ({
     throw new Redirected(to);
   },
 }));
+/*
+  Work scheduled "after the response" (the welcome mail) is collected here and
+  awaited at fixed points, so a mail never lands in the next test's count.
+*/
+const afterTasks: Promise<unknown>[] = [];
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/server")>()),
+  after: (task: () => unknown) => {
+    afterTasks.push(Promise.resolve().then(task));
+  },
+}));
+async function settled(): Promise<void> {
+  while (afterTasks.length > 0) await Promise.all(afterTasks.splice(0));
+}
+afterEach(settled);
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = url;
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = anonKey;
@@ -141,10 +156,15 @@ async function eventsFor(customerId: string) {
   return (data ?? []).map((row) => row.action);
 }
 
+/** The welcome mail after a first password carries no token; the token helpers look past it. */
+const welcomeSubject = "Uw klantportaal is gereed";
+const sentMails = () => deliverEmail.mock.calls.map(([sent]) => sent as { to: string; subject: string; text: string; html: string; idempotencyKey?: string });
+const welcomesTo = (email: string) => sentMails().filter((sent) => sent.subject === welcomeSubject && sent.to === email);
+
 function lastToken(): { tokenHash: string; type: string } {
-  const sent = deliverEmail.mock.calls.at(-1)![0] as { text: string };
-  const match = sent.text.match(/token_hash=([^&\s]+)&type=([a-z]+)/);
-  if (!match) throw new Error(`no token in mail: ${sent.text}`);
+  const sent = [...sentMails()].reverse().find((candidate) => candidate.subject !== welcomeSubject);
+  const match = sent?.text.match(/token_hash=([^&\s]+)&type=([a-z]+)/);
+  if (!match) throw new Error(`no token in mail: ${sent?.text}`);
   return { tokenHash: match[1]!, type: match[2]! };
 }
 
@@ -158,7 +178,10 @@ async function redirectOf(run: () => Promise<unknown>): Promise<string> {
   try {
     await run();
   } catch (error) {
-    if (error instanceof Redirected) return error.to;
+    if (error instanceof Redirected) {
+      await settled();
+      return error.to;
+    }
     throw error;
   }
   throw new Error("expected a redirect");
@@ -733,4 +756,105 @@ describe.runIf(local)("REDIRECT / TOKEN SAFETY", () => {
     const verified = await visitor.auth.verifyOtp({ token_hash: token.tokenHash, type: "recovery" });
     if (!verified.error) expect(verified.data.user?.email).toBe(email);
   }, 60_000);
+});
+
+/*
+  The welcome mail: once, after the first password, saying where the portal
+  is. Never on a sign-in, a reset or a change; a failed mail never stands in
+  the way of the account and is tried again on the next sign-in.
+*/
+describe.runIf(local)("WELCOME", () => {
+  const welcomeState = async (email: string) => {
+    const user = await authUser(email);
+    const { data } = await service.auth.admin.getUserById(user!.id);
+    return { userId: user!.id, state: (data.user?.app_metadata?.portal_welcome ?? {}) as { dueAt?: string; sentAt?: string } };
+  };
+
+  it("is sent exactly once after the first password, with the portal address, and never again for a double submit, a sign-in, a reset or a change", async () => {
+    const email = mail("welcome");
+    await invitePortalMember(alfaId, email);
+    await remember(email);
+    const invite = sentMails().at(-1)!;
+    /* The invitation itself already says where to come back to. */
+    expect(invite.html).toContain('href="https://ymcreations.com/portaal"');
+    expect(invite.text).toContain("Later inloggen? Ga naar https://ymcreations.com/portaal");
+    const token = lastToken();
+
+    deliverEmail.mockClear();
+    visitor = fresh();
+    expect(await redirectOf(() => setPassword(token, "welcome-password-01"))).toBe("/portaal");
+    const welcomes = welcomesTo(email);
+    expect(welcomes).toHaveLength(1);
+    expect(welcomes[0]!.text).toContain("https://ymcreations.com/portaal");
+    expect(welcomes[0]!.html).toContain(">Klantportaal openen<");
+    const { userId, state } = await welcomeState(email);
+    expect(welcomes[0]!.idempotencyKey).toBe(`portal-welcome/${userId}`);
+    expect(state.sentAt).toBeTruthy();
+
+    /* The form submitted twice: the spent token sends nothing. */
+    await setPassword(token, "welcome-password-01");
+    await settled();
+    /* A sign-in later. */
+    visitor = fresh();
+    expect(await redirectOf(() => signIn(email, "welcome-password-01"))).toBe("/portaal");
+    /* A password reset. */
+    resetRateLimits();
+    visitor = fresh();
+    await actions.requestPasswordResetAction({ error: null }, form({ email }));
+    visitor = fresh();
+    expect(await redirectOf(() => setPassword(lastToken(), "welcome-password-02"))).toBe("/portaal");
+    /* A password change. */
+    expect(await actions.changePasswordAction({ error: null }, form({ current: "welcome-password-02", password: "welcome-password-03", confirmation: "welcome-password-03" }))).toEqual({ error: null, done: true });
+    await settled();
+
+    expect(welcomesTo(email)).toHaveLength(1);
+  }, 120_000);
+
+  it("never blocks the account when the mail fails, stays due, and is sent once on the next sign-in", async () => {
+    const email = mail("welcome-retry");
+    await invitePortalMember(alfaId, email);
+    await remember(email);
+    const token = lastToken();
+
+    deliverEmail.mockClear();
+    deliverEmail.mockImplementation(async (sent: { subject: string }) =>
+      sent.subject === welcomeSubject ? { sent: false, reason: "Resend 503", failure: "error" } : { sent: true, sentAt: new Date().toISOString(), messageId: "local" },
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    visitor = fresh();
+    expect(await redirectOf(() => setPassword(token, "welcome-retry-pw-01"))).toBe("/portaal");
+    expect((await resolvePortalAccess(visitor, undefined)).state).toBe("member");
+    expect(welcomesTo(email)).toHaveLength(1);
+    const due = await welcomeState(email);
+    expect(due.state.dueAt).toBeTruthy();
+    expect(due.state.sentAt).toBeUndefined();
+
+    /* Resend is back: the next sign-in sends it, the one after that does not. */
+    deliverEmail.mockImplementation(async () => ({ sent: true, sentAt: new Date().toISOString(), messageId: "local" }));
+    deliverEmail.mockClear();
+    visitor = fresh();
+    expect(await redirectOf(() => signIn(email, "welcome-retry-pw-01"))).toBe("/portaal");
+    expect(welcomesTo(email)).toHaveLength(1);
+    expect((await welcomeState(email)).state).toMatchObject({ dueAt: due.state.dueAt, sentAt: expect.any(String) });
+
+    visitor = fresh();
+    expect(await redirectOf(() => signIn(email, "welcome-retry-pw-01"))).toBe("/portaal");
+    expect(welcomesTo(email)).toHaveLength(1);
+  }, 120_000);
+
+  it("is not sent to an existing account that is only given access to another customer", async () => {
+    const email = mail("welcome-second");
+    await invitePortalMember(alfaId, email);
+    await remember(email);
+    visitor = fresh();
+    await redirectOf(() => setPassword(lastToken(), "welcome-second-pw-1"));
+    deliverEmail.mockClear();
+
+    await invitePortalMember(betaId, email);
+    const granted = sentMails().at(-1)!;
+    expect(granted.html).toContain('href="https://ymcreations.com/portaal"');
+    visitor = fresh();
+    expect(await redirectOf(() => signIn(email, "welcome-second-pw-1"))).toBe("/portaal");
+    expect(welcomesTo(email)).toHaveLength(0);
+  }, 120_000);
 });

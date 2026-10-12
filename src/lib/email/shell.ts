@@ -40,6 +40,8 @@
  * These are presentation helpers only: no sending, no data, no copy.
  */
 
+import { portalAccessLabel, portalUrl, portalUrlLabel } from "@/lib/email/portal-access";
+
 /** The site's palette, as literal values — a mail cannot read CSS variables. */
 const palette = {
   paper: "#f4f3ee",
@@ -205,6 +207,13 @@ export function emailShell(input: {
   title: string;
   preheader?: string;
   content: string;
+  /**
+   * A mail of the customer relationship -- an invoice, a reminder, a quote,
+   * a request -- also says where the customer portal is, as one quiet line
+   * in the footer (portal-access.ts). Not for a mail to someone who is not
+   * a customer, such as the reply to a contact form.
+   */
+  portalAccess?: boolean;
 }): string {
   const footerLink = (href: string, text: string) =>
     `<a href="${href}" style="color:${palette.muted};text-decoration:none;">${escapeEmailHtml(text)}</a>`;
@@ -246,7 +255,10 @@ ${
             <div style="margin-top:28px;border-top:1px solid ${palette.line};padding-top:15px;font-family:${sans};font-size:13px;line-height:1.7;color:${palette.muted};">
               YM Creations<br />
               ${footerLink("mailto:contact@ymcreations.com", "contact@ymcreations.com")} &middot; ${footerLink("tel:+31653400220", "+31 6 53 40 02 20")}<br />
-              ${footerLink("https://ymcreations.com", "ymcreations.com")}
+              ${footerLink("https://ymcreations.com", "ymcreations.com")}${
+                input.portalAccess ? `<br />
+              ${escapeEmailHtml(portalAccessLabel)}: ${footerLink(portalUrl, portalUrlLabel)}` : ""
+              }
             </div>
 
           </td>

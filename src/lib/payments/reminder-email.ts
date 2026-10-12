@@ -4,6 +4,7 @@ import { contactSectionHtml, contactTextLines } from "@/lib/email/contact";
 import { emailButton, emailMeta, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
 import { formatCents } from "@/lib/money";
 import { reminderFeeAnnounced, reminderFeeCents, type ReminderStage } from "@/lib/payments/collection-policy";
+import { portalAccessTextLine } from "@/lib/email/portal-access";
 
 /**
  * The three reminder mails.
@@ -124,6 +125,7 @@ function firstReminder(content: ReminderMailContent): MailBody {
 
   const html = emailShell({
     locale: "nl",
+    portalAccess: true,
     title: "Herinnering",
     preheader: `${content.invoiceNumber} — ${content.outstandingLabel} open sinds ${content.dueDateLabel}`,
     content: [
@@ -151,6 +153,8 @@ function firstReminder(content: ReminderMailContent): MailBody {
     ...contactTextLines(contactIntro),
     "",
     ...signOff,
+    "",
+    portalAccessTextLine(),
   ].join("\n");
 
   return { html, text };
@@ -174,6 +178,7 @@ function secondReminder(content: ReminderMailContent): MailBody {
 
   const html = emailShell({
     locale: "nl",
+    portalAccess: true,
     title: "Tweede herinnering",
     preheader: `${content.invoiceNumber} — ${content.outstandingLabel} open sinds ${content.dueDateLabel}`,
     content: [
@@ -206,6 +211,8 @@ function secondReminder(content: ReminderMailContent): MailBody {
     ...contactTextLines(contactIntro),
     "",
     ...signOff,
+    "",
+    portalAccessTextLine(),
   ].join("\n");
 
   return { html, text };
@@ -230,6 +237,7 @@ function finalNotice(content: ReminderMailContent): MailBody {
 
   const html = emailShell({
     locale: "nl",
+    portalAccess: true,
     title: "Laatste aanmaning",
     preheader: `${content.invoiceNumber} — ${content.outstandingLabel} te voldoen vóór ${content.finalDateLabel}`,
     content: [
@@ -260,6 +268,8 @@ function finalNotice(content: ReminderMailContent): MailBody {
     ...contactTextLines(help),
     "",
     ...signOff,
+    "",
+    portalAccessTextLine(),
   ].join("\n");
 
   return { html, text };
@@ -281,6 +291,7 @@ function directDebitReminder(content: ReminderMailContent): MailBody {
 
   const html = emailShell({
     locale: "nl",
+    portalAccess: true,
     title: "Betaling nog niet ontvangen",
     preheader: `${content.invoiceNumber} — ${content.outstandingLabel} nog niet via automatische incasso ontvangen`,
     content: [
@@ -306,6 +317,8 @@ function directDebitReminder(content: ReminderMailContent): MailBody {
     ...contactTextLines(contactIntro),
     "",
     ...signOff,
+    "",
+    portalAccessTextLine(),
   ].join("\n");
 
   return { html, text };

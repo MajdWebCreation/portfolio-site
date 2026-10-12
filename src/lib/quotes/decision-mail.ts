@@ -7,6 +7,7 @@ import { contactSectionHtml, contactTextLines } from "@/lib/email/contact";
 import { emailButton, emailMeta, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
 import { quoteDecisionLabels, type QuoteDecisionKind } from "@/lib/quotes/decision";
 import type { MailOutcome } from "@/lib/requests/mail";
+import { portalAccessTextLine } from "@/lib/email/portal-access";
 
 /**
  * The two mails a portal decision on a quote produces: the customer's
@@ -68,6 +69,7 @@ export function buildDecisionConfirmation(input: DecisionMailContent & { contact
 
   const html = emailShell({
     locale: "nl",
+    portalAccess: true,
     title,
     preheader: accepted ? `Uw akkoord op ${input.quoteNumber} is ontvangen.` : `Uw afwijzing van ${input.quoteNumber} is ontvangen.`,
     content: [
@@ -94,6 +96,8 @@ export function buildDecisionConfirmation(input: DecisionMailContent & { contact
     "",
     ...signOff,
     companyProfile.website,
+    "",
+    portalAccessTextLine(),
   ].join("\n");
 
   return { subject: `${title}: ${input.quoteNumber} | ${companyProfile.name}`, html, text };

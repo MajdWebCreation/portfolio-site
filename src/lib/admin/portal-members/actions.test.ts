@@ -208,7 +208,8 @@ describe("an existing account", () => {
     expect(generateLink).toHaveBeenCalledTimes(1);
     expect(memberships.map((m) => m.customer_id)).toEqual(["cust-1", "cust-2"]);
     expect(mailed()[0]!.text).toContain("Beta BV");
-    expect(mailed()[0]!.text).toContain("/portaal/inloggen");
+    expect(mailed()[0]!.text).toContain("https://ymcreations.com/portaal");
+    expect(mailed()[0]!.text).not.toContain("/portaal/inloggen");
     expect(mailed()[0]!.text).not.toContain("token_hash");
   });
 
@@ -243,7 +244,8 @@ describe("ending and restoring access", () => {
     expect(memberships[0]!.revoked_at).toBeNull();
     expect(events.map((e) => e.action)).toEqual(["member_invited", "member_revoked", "member_reactivated"]);
     /* The person has a password: the door is opened, no token is minted. */
-    expect(mailed()[0]!.text).toContain("/portaal/inloggen");
+    expect(mailed()[0]!.text).toContain("https://ymcreations.com/portaal");
+    expect(mailed()[0]!.text).not.toContain("/portaal/inloggen");
     expect(mailed()[0]!.text).not.toContain("token_hash");
   });
 

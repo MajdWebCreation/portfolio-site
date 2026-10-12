@@ -2,15 +2,17 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { isEmailAddress } from "@/lib/email/address";
 import { rateLimit } from "@/lib/payments/rate-limit";
-import { recoveryTokenForEmail } from "@/lib/portal/admin-auth";
+import { portalWelcomeFromUser, readPortalWelcome, recoveryTokenForEmail, writePortalWelcome } from "@/lib/portal/admin-auth";
 import { isPortalAccount } from "@/lib/portal/account-lookup";
 import { getPortalAccess, portalCustomerCookie, readPortalMemberships } from "@/lib/portal/auth";
-import { passwordResetMail, sendPortalMail, type PortalTokenType } from "@/lib/portal/mail";
+import { passwordResetMail, sendPortalMail, welcomeMail, type PortalTokenType } from "@/lib/portal/mail";
 import { passwordProblem } from "@/lib/portal/password";
 import { portalLoginPath, portalNoAccessPath, portalRoot } from "@/lib/portal/paths";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { settlePortalWelcome, welcomeWorthChecking } from "@/lib/portal/welcome";
 
 /**
  * The portal's account flows. Every one of them is a server action: the
@@ -92,11 +94,49 @@ async function currentUser(supabase: Awaited<ReturnType<typeof createSupabaseSer
   return user;
 }
 
-/** A member goes in; a session without a membership goes to the page that says so. */
-async function enter(supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>): Promise<never> {
+/**
+ * The welcome mail (welcome.ts), after the response: an account that was
+ * just set up gets it once, a sign-in only retries one that is still due. A
+ * failure is logged and costs nothing else -- the member is already in.
+ */
+function welcomeAfterResponse(user: { id: string; email?: string | null; app_metadata?: Record<string, unknown> }, firstSetup: boolean): void {
+  if (!welcomeWorthChecking(portalWelcomeFromUser(user), firstSetup)) return;
+  const task = () =>
+    settlePortalWelcome(
+      {
+        read: readPortalWelcome,
+        write: writePortalWelcome,
+        send: (to, idempotencyKey) => sendPortalMail(to, welcomeMail(), idempotencyKey),
+      },
+      user,
+      firstSetup,
+    )
+      .then((outcome) => {
+        if (outcome === "failed") console.error("Portal welcome mail not sent; it stays due for the next sign-in", { userId: user.id });
+      })
+      .catch((error: unknown) => {
+        console.error("Portal welcome mail failed", { userId: user.id, error: error instanceof Error ? error.message : error });
+      });
+  try {
+    after(task);
+  } catch {
+    /* Outside a request (a script, a test): run it without waiting; it cannot throw. */
+    void task();
+  }
+}
+
+/**
+ * A member goes in; a session without a membership goes to the page that
+ * says so. `passwordSet`: the member just set a password through a mailed
+ * link -- when that also accepted a membership for the first time, this was
+ * the account's setup, and the welcome mail is due.
+ */
+async function enter(supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>, passwordSet = false): Promise<never> {
   const memberships = await readPortalMemberships(supabase);
   if (!memberships || memberships.length === 0) redirect(portalNoAccessPath);
-  await supabase.rpc("portal_mark_membership_accepted");
+  const accepted = await supabase.rpc("portal_mark_membership_accepted");
+  const user = await currentUser(supabase);
+  if (user) welcomeAfterResponse(user, passwordSet && !accepted.error && (accepted.data ?? 0) > 0);
   redirect(portalRoot);
 }
 
@@ -192,7 +232,7 @@ export async function setPasswordWithTokenAction(_previous: FormState, formData:
     if (!(await currentUser(supabase))) return invalidLink;
     const updated = await supabase.auth.updateUser({ password });
     if (updated.error) return isRateLimit(updated.error) ? rateLimited : passwordRejected(updated.error);
-    return enter(supabase);
+    return enter(supabase, true);
   }
 
   if (!tokenHash || !isTokenType(type)) return invalidLink;
@@ -221,7 +261,7 @@ export async function setPasswordWithTokenAction(_previous: FormState, formData:
     return isRateLimit(updated.error) ? rateLimited : passwordRejected(updated.error);
   }
 
-  return enter(supabase);
+  return enter(supabase, true);
 }
 
 /**

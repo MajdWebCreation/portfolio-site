@@ -2,6 +2,7 @@ import Link from "next/link";
 import BrandMark from "@/components/brand-mark";
 import ConsentSettingsButton from "@/components/consent/consent-settings-button";
 import { hasConsentTools } from "@/lib/consent/tools";
+import { portalRoot } from "@/lib/portal/paths";
 import { getCounterpartPath, getLocalizedPath, legalRoutes, type StaticRouteKey } from "@/lib/content/routes";
 import {
   businessInfo,
@@ -96,6 +97,16 @@ export default function SiteFooter({
                   data-track-placement="footer"
                 >
                   {businessInfo.phoneDisplay}
+                </a>
+              </li>
+              <li>
+                {/*
+                  Where existing clients sign in: the one portal address every
+                  mail names. A plain link, since the portal is its own app --
+                  not signed in, /portaal sends the visitor to its login page.
+                */}
+                <a href={portalRoot} className="text-paper/85 transition-colors hover:text-paper">
+                  {footer.customerPortal}
                 </a>
               </li>
               <li className="tabular text-paper/55">

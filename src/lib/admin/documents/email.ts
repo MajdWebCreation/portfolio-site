@@ -4,6 +4,7 @@ import { documentKindLabels, type DocumentKind } from "@/lib/admin/documents/typ
 import { formatDate } from "@/lib/admin/format";
 import { contactSectionHtml, contactTextLines } from "@/lib/email/contact";
 import { emailButton, emailMeta, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
+import { portalAccessTextLine } from "@/lib/email/portal-access";
 
 /**
  * Sending a quote or an invoice to its customer.
@@ -147,6 +148,7 @@ function recurringBody(input: DocumentMailContent & { recurring: NonNullable<Doc
 
   const html = emailShell({
     locale: "nl",
+    portalAccess: true,
     title: `Factuur ${input.number}`,
     preheader: `${serviceName} — ${input.totalLabel} incl. btw${scheduled ? `, incasso ${scheduled}` : ", reeds betaald"}`,
     content: [
@@ -180,6 +182,8 @@ function recurringBody(input: DocumentMailContent & { recurring: NonNullable<Doc
     "Met vriendelijke groet,",
     companyProfile.legalName,
     companyProfile.website,
+    "",
+    portalAccessTextLine(),
   ].join("\n");
 
   return { html, text };
@@ -231,6 +235,7 @@ export function buildDocumentMailBody(input: DocumentMailContent): MailBody {
 
   const html = emailShell({
     locale: "nl",
+    portalAccess: true,
     title,
     preheader: `${isInvoice ? "Factuur" : "Offerte"} ${input.number} — ${input.totalLabel}`,
     content: [
@@ -262,6 +267,8 @@ export function buildDocumentMailBody(input: DocumentMailContent): MailBody {
     "",
     companyProfile.legalName,
     companyProfile.website,
+    "",
+    portalAccessTextLine(),
   ].join("\n");
 
   return { html, text };
