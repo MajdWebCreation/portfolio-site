@@ -2555,6 +2555,14 @@ export type Database = {
           role: string
         }[]
       }
+      portal_payment_context: {
+        Args: { p_customer_id: string }
+        Returns: {
+          mandate_on_record: boolean
+          activations: Json
+          direct_debit_invoice_ids: string[]
+        }[]
+      }
       portal_quote: {
         Args: { p_customer_id: string; p_quote_id: string }
         Returns: {

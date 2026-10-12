@@ -38,6 +38,13 @@ describe("the elevated Supabase client", () => {
     ]);
   });
 
+  /* The system client itself: the jobs, the webhook, the return lookup, analytics sync, and the portal's two narrow doors. */
+  it("is constructed only by the modules named here", () => {
+    const users = files.filter(({ source }) => /paymentsAdminClient\(\)/.test(source)).map(({ path }) => path.replace(root, "src"));
+    expect(users.filter((path) => path.includes("/portal")).sort()).toEqual(["src/lib/portal/account-lookup.ts", "src/lib/portal/privileged.ts"]);
+    for (const path of users) expect(path, path).toMatch(/^src\/(lib\/payments|lib\/portal|lib\/analytics-admin|app\/api)\//);
+  });
+
   it("is never exposed under a NEXT_PUBLIC name", () => {
     const exposed = files.filter(({ source }) => /NEXT_PUBLIC_[A-Z_]*SECRET|NEXT_PUBLIC_[A-Z_]*SERVICE_ROLE/.test(source));
     expect(exposed.map(({ path }) => path)).toEqual([]);

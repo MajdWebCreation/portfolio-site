@@ -24,9 +24,8 @@ import type { Database } from "@/lib/supabase/database.types";
  *                  not a mail to send quietly without a way to pay: the caller
  *                  reports it and leaves the invoice unsent.
  */
-async function collectedByDirectDebit(invoice: Invoice): Promise<boolean> {
+async function collectedByDirectDebit(db: SupabaseClient<Database>, invoice: Invoice): Promise<boolean> {
   if (!invoice.recurringServiceId) return false;
-  const db = await adminDb();
   const { data } = await db
     .from("recurring_services")
     .select("status")
@@ -93,17 +92,13 @@ async function storePaymentLink(
     amount_cents: link.amountCents,
   };
 
-  const { data: found, error: readError } = await db
-    .from("invoice_payment_links")
-    .select("id")
-    .eq("invoice_id", invoice.id)
-    .eq("provider", "mollie")
-    .maybeSingle();
-  if (readError) throw new Error(`Betaallink vastleggen: ${readError.message}`);
-
-  const { error } = found
-    ? await db.from("invoice_payment_links").update(row).eq("id", found.id)
-    : await db.from("invoice_payment_links").insert(row);
+  /*
+    One statement against the unique index, so two requests at once -- a
+    double click in the portal, a send next to a reminder -- both land on the
+    one row instead of the second failing on it. Same invoice and amount means
+    the same idempotency key at Mollie, so both carry the same link.
+  */
+  const { error } = await db.from("invoice_payment_links").upsert(row, { onConflict: "invoice_id,customer_id" });
   if (error) throw new Error(`Betaallink vastleggen: ${error.message}`);
 }
 
@@ -144,14 +139,28 @@ async function invoiceCheckout(
 }
 
 export async function invoicePayLink(invoice: Invoice): Promise<PayLinkResult> {
+  // The admin is signed in here, so these writes go through row level
+  // security like every other admin write; the webhook has its own store.
+  const db = await adminDb();
+  return payLinkFor(db, invoice, () => listPaymentsForInvoice(invoice.id));
+}
+
+/**
+ * The decision itself, on a given client: no Mollie, no link; collected by
+ * direct debit, no link; otherwise the invoice's one link, reused or made.
+ * The admin's send runs it on the admin session, the customer portal on its
+ * payment boundary after the member's own session proved the invoice theirs.
+ */
+export async function payLinkFor(
+  db: SupabaseClient<Database>,
+  invoice: Invoice,
+  payments: () => Promise<readonly Payment[]>,
+): Promise<PayLinkResult> {
   if (!isMollieConfigured()) return { kind: "none", reason: "not-configured" };
-  if (await collectedByDirectDebit(invoice)) return { kind: "none", reason: "direct-debit" };
+  if (await collectedByDirectDebit(db, invoice)) return { kind: "none", reason: "direct-debit" };
 
   try {
-    // The admin is signed in here, so these writes go through row level
-    // security like every other admin write; the webhook has its own store.
-    const db = await adminDb();
-    const result = await invoiceCheckout(db, invoice, await listPaymentsForInvoice(invoice.id));
+    const result = await invoiceCheckout(db, invoice, await payments());
 
     return result.ok ? { kind: "link", url: result.checkoutUrl } : { kind: "failed", reason: result.reason };
   } catch (error) {

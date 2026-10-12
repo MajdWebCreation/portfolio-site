@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DetailList, DetailRow } from "@/components/admin/detail-list";
+import { PayInvoiceButton } from "@/components/portal/payment-buttons";
 import StatusBadge from "@/components/admin/status-badge";
 import { day, DocumentLines, DownloadLink, PageHeader, Section, TotalRow } from "@/components/portal/portal-ui";
 import { formatDate, toDateKey } from "@/lib/admin/format";
@@ -16,6 +17,8 @@ import {
 } from "@/lib/portal/invoices/model";
 import { readPortalInvoice } from "@/lib/portal/invoices/read";
 import { portalInvoicesPath } from "@/lib/portal/paths";
+import { invoicePaymentBlock } from "@/lib/portal/payments/model";
+import { readPortalPaymentContext } from "@/lib/portal/payments/read";
 
 export const metadata: Metadata = { title: "Factuur" };
 
@@ -30,8 +33,10 @@ export default async function PortalInvoicePage({ params }: PageProps) {
   const member = await requirePortalMember();
   const { id } = await params;
   const todayKey = toDateKey(new Date());
-  const view = portalInvoiceView(await orNotFound(readPortalInvoice(member.current.customerId, id)), todayKey);
+  const [found, context] = await orNotFound(Promise.all([readPortalInvoice(member.current.customerId, id), readPortalPaymentContext(member.current.customerId)]));
+  const view = portalInvoiceView(found, todayKey);
   const { invoice, ledger } = view;
+  const block = invoicePaymentBlock(view, context);
 
   return (
     <div>
@@ -80,9 +85,17 @@ export default async function PortalInvoicePage({ params }: PageProps) {
           ) : null}
           <TotalRow term="Nog te betalen" value={formatCents(view.openCents)} strong />
         </dl>
-        {view.openCents > 0 ? (
+        {block === undefined ? (
+          <div className="mt-6">
+            <PayInvoiceButton invoiceId={invoice.id} label={`${formatCents(view.openCents)} betalen`} />
+            <p className="mt-3 max-w-prose text-[0.86rem] text-muted">
+              U betaalt via de beveiligde betaalpagina van onze betaalprovider. Liever per bankoverschrijving? Vermeld dan{" "}
+              {invoice.paymentReference}.
+            </p>
+          </div>
+        ) : block === "direct_debit" ? (
           <p className="mt-4 max-w-prose text-[0.88rem] text-muted">
-            U kunt betalen via de betaallink in de factuurmail of per bankoverschrijving onder vermelding van {invoice.paymentReference}.
+            Deze factuur wordt automatisch van uw rekening afgeschreven; u hoeft zelf niets te betalen.
           </p>
         ) : null}
       </Section>

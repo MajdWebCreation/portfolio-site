@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isValidLocale } from "@/lib/content/site-content";
+import { getPortalAccess } from "@/lib/portal/auth";
+import { portalServicesPath } from "@/lib/portal/paths";
 
 export const metadata: Metadata = {
   title: "Automatische incasso",
@@ -31,6 +33,8 @@ export default async function DirectDebitReturnPage({
   if (!isValidLocale(locale)) notFound();
 
   const problem = status ? messages[status] : undefined;
+  /* Back to the portal for a member who started there; decided by the session, not the URL. */
+  const toPortal = (await getPortalAccess()).state === "member";
 
   return (
     <main className="container-x flex min-h-[70vh] max-w-[42rem] flex-col justify-center py-20" data-clarity-mask="true">
@@ -39,7 +43,12 @@ export default async function DirectDebitReturnPage({
         {problem ??
           "Je machtiging is aangeboden. Zodra onze betaalprovider die bevestigt, staat de automatische incasso klaar en zie je dat terug op je eerste factuur."}
       </p>
-      <p className="mt-8">
+      <p className="mt-8 flex flex-wrap gap-x-6 gap-y-2">
+        {toPortal ? (
+          <Link href={portalServicesPath} className="link-static text-ink">
+            Terug naar het klantportaal
+          </Link>
+        ) : null}
         <Link href={`/${locale}/contact`} className="link-static text-ink">
           Contact opnemen
         </Link>

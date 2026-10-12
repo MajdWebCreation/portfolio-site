@@ -129,6 +129,9 @@ const oneOffRequest = {
   idempotencyKey: "invoice-link-inv-1-oneoff-12100",
 };
 
+/* A link made in place of a stored one carries that one in its key, so an earlier amount never gets the archived link back. */
+const replacingRequest = { ...oneOffRequest, idempotencyKey: "invoice-link-inv-1-oneoff-12100-after-pl_old" };
+
 /** Nothing about direct debit was asked of Mollie or made there. */
 function expectNoMandateWork() {
   expect(listMandates).not.toHaveBeenCalled();
@@ -239,7 +242,7 @@ describe("the payment button on a reminder", () => {
     expect(first).toBe("https://payment-link.mollie.com/payment/pl_new");
     expect(second).toBe(first);
     expect(createPaymentLink).toHaveBeenCalledTimes(1);
-    expect(payload()).toEqual(oneOffRequest);
+    expect(payload()).toEqual(replacingRequest);
     expect(db.rows("invoice_payment_links")).toHaveLength(1);
   });
 
@@ -255,7 +258,7 @@ describe("the payment button on a reminder", () => {
 
     expect(archivePaymentLink).toHaveBeenCalledWith("pl_old", expect.anything());
     expect(url).toBe("https://payment-link.mollie.com/payment/pl_new");
-    expect(payload()).toEqual(oneOffRequest);
+    expect(payload()).toEqual(replacingRequest);
     expectNoMandateWork();
   });
 

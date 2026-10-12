@@ -36,7 +36,7 @@ describe("the report-only policy", () => {
       expect.arrayContaining(["'self'", "https://*.google-analytics.com", "https://*.analytics.google.com", "https://www.googletagmanager.com", "https://abcd.supabase.co"]),
     );
     expect(directive("img-src")).toEqual(expect.arrayContaining(["https://abcd.supabase.co", "https://*.google-analytics.com"]));
-    expect(directive("form-action")).toEqual(["'self'", "https://www.mollie.com"]);
+    expect(directive("form-action")).toEqual(["'self'", "https://www.mollie.com", "https://*.mollie.com"]);
     expect(directive("script-src")).toContain("https://connect.facebook.net");
     expect(directive("connect-src")).toContain("https://www.facebook.com");
     expect(directive("img-src")).toContain("https://www.facebook.com");

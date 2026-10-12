@@ -31,7 +31,9 @@
              own frame (googletagmanager.com) for Ads
     form     server actions post to the site itself; a direct debit
              activation then redirects to Mollie's checkout, and Chrome checks
-             that redirect against form-action as well
+             that redirect against form-action as well -- the portal's pay
+             and activation buttons redirect to Mollie's payment link host,
+             a subdomain of mollie.com
   Development adds 'unsafe-eval', which the dev server's tooling needs.
 
   Clarity: Microsoft documents its hosts as www.clarity.ms, the lettered
@@ -81,7 +83,7 @@ export function buildReportOnlyPolicy(input: { development: boolean; supabaseHos
     `connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com ${ads} https://ad.doubleclick.net ${clarity} ${metaCollectOrigin}${supabase}`,
     "frame-src blob: https://www.googletagmanager.com",
     "frame-ancestors 'none'",
-    "form-action 'self' https://www.mollie.com",
+    "form-action 'self' https://www.mollie.com https://*.mollie.com",
     "base-uri 'self'",
     "object-src 'none'",
     "report-uri /api/csp-report",

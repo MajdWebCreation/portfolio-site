@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import PaymentReturnStatus, { type ReturnCopy } from "@/components/payments/payment-return-status";
 import { isValidLocale, type Locale } from "@/lib/content/site-content";
 import { readPaymentReturnState } from "@/lib/payments/return-lookup";
+import { getPortalAccess } from "@/lib/portal/auth";
+import { portalInvoicesPath } from "@/lib/portal/paths";
 import type { ReturnView } from "@/lib/payments/return-polling";
 
 /**
@@ -91,8 +93,13 @@ export default async function PaymentReturnPage({
 
   // The first answer, before anything reaches the browser: an invoice that is
   // already settled shows its message without a loader flashing past.
-  const initial = await readPaymentReturnState(state);
+  const [initial, access] = await Promise.all([readPaymentReturnState(state), getPortalAccess()]);
   const words = copy[locale];
+  /*
+    A customer who started from the portal goes back to it. Decided by the
+    session alone, never by the return URL; for everyone else nothing changes.
+  */
+  const toPortal = access.state === "member";
 
   return (
     <main className="container-x" data-clarity-mask="true">
@@ -101,8 +108,8 @@ export default async function PaymentReturnPage({
         {...(state ? { token: state } : {})}
         copy={words.messages}
         waitingLabel={words.waiting}
-        homeHref={`/${locale}`}
-        homeLabel={words.home}
+        homeHref={toPortal ? portalInvoicesPath : `/${locale}`}
+        homeLabel={toPortal ? "Terug naar het klantportaal" : words.home}
       />
     </main>
   );

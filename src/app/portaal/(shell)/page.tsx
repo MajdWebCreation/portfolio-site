@@ -98,7 +98,7 @@ export default async function PortalHomePage() {
             ))}
           </DocumentList>
           <p className="mt-3 text-[0.86rem] text-muted">
-            Betalen kan via de betaallink in de factuurmail of per bankoverschrijving onder vermelding van het kenmerk op de factuur.
+            Open een factuur om hem online te betalen, of betaal per bankoverschrijving met het kenmerk op de factuur.
           </p>
         </Section>
       ) : null}

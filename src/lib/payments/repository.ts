@@ -1,9 +1,11 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminDb, failed } from "@/lib/admin/db";
 import { paymentFromRow, prenotificationFromRow, recurringServiceFromRow } from "@/lib/payments/mapper";
 import { listPriceChangesForCustomer, listPriceChangesForServices } from "@/lib/payments/price-change";
 import type { ServiceAgreementRevision } from "@/lib/payments/service-agreement";
 import { listAgreementRevisionsForCustomer, listAgreementRevisionsForService } from "@/lib/payments/service-agreement-revisions";
 import type { DebitPrenotification, Payment, PriceChange, RecurringService } from "@/lib/payments/types";
+import type { Database } from "@/lib/supabase/database.types";
 
 /** Read access to payments and recurring services; admins only, as elsewhere. */
 const paymentColumns =
@@ -31,7 +33,11 @@ export async function listPaymentsForCustomer(customerId: string): Promise<Payme
 }
 
 export async function listPaymentsForInvoice(invoiceId: string): Promise<Payment[]> {
-  const db = await adminDb();
+  return paymentsOfInvoice(await adminDb(), invoiceId);
+}
+
+/** The same read on a given client, for the payment boundary of the customer portal. */
+export async function paymentsOfInvoice(db: SupabaseClient<Database>, invoiceId: string): Promise<Payment[]> {
   const { data, error } = await db
     .from("payments")
     .select(paymentColumns)

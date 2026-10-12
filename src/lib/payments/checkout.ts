@@ -39,6 +39,10 @@ export type CheckoutResult =
   | { ok: true; checkoutUrl: string; paymentLinkId: string; reused: boolean }
   | { ok: false; reason: string };
 
+/** The two refusals that mean "nothing to pay", named so callers can tell them from a failure. */
+export const nothingDueReason = "Deze factuur heeft geen te betalen bedrag.";
+export const alreadyPaidReason = "Deze factuur is al betaald.";
+
 export function checkoutDescription(invoice: Pick<Invoice, "number">): string {
   return `${companyProfile.name} factuur ${invoice.number.value}`;
 }
@@ -72,10 +76,10 @@ export async function ensureInvoiceCheckout(
   if (!isMollieConfigured()) return { ok: false, reason: "Mollie is niet geconfigureerd." };
 
   const total = invoiceAmounts(invoice).dueCents;
-  if (total <= 0) return { ok: false, reason: "Deze factuur heeft geen te betalen bedrag." };
+  if (total <= 0) return { ok: false, reason: nothingDueReason };
 
   const settlement = settleInvoice(total, [...deps.existing]);
-  if (settlement.settled) return { ok: false, reason: "Deze factuur is al betaald." };
+  if (settlement.settled) return { ok: false, reason: alreadyPaidReason };
 
   const config = getMollieConfig();
 
@@ -120,14 +124,17 @@ export async function ensureInvoiceCheckout(
     // An invoice link only ever settles the invoice. Mandates are obtained
     // through their own link, never through an invoice payment.
     sequenceType: "oneoff",
-    // Same invoice and same amount means the same key, so a retried request
-    // returns the link the first one made.
-    idempotencyKey: `invoice-link-${invoice.id}-oneoff-${settlement.outstandingCents}`,
+    // Same invoice, same amount and the same link replaced means the same
+    // key, so a retried request returns the link the first one made. The
+    // replaced link is part of it: an amount that comes back to an earlier
+    // figure must not be answered with that earlier, archived link.
+    idempotencyKey: `invoice-link-${invoice.id}-oneoff-${settlement.outstandingCents}${stored ? `-after-${stored.providerPaymentLinkId}` : ""}`,
     config,
   });
 
-  const href = created._links?.paymentLink?.href;
-  if (!href) return { ok: false, reason: "Mollie gaf geen betaallink terug." };
+  /* Only a link that can be paid is handed out; anything else is a failure to report, never a dead button. */
+  const href = payableLink(created);
+  if (!href) return { ok: false, reason: "Mollie gaf geen betaalbare betaallink terug." };
 
   await deps.persistLink({
     providerPaymentLinkId: created.id,

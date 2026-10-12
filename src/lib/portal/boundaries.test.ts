@@ -49,7 +49,11 @@ describe("the customer portal", () => {
       membership check (service client, customer_users, one column); the
       one bucket read is the document route's, under the member's session.
     */
-    const allowed = new Map([["src/lib/portal/account-lookup.ts", ['.from("customer_users")']]]);
+    const allowed = new Map([
+      ["src/lib/portal/account-lookup.ts", ['.from("customer_users")']],
+      /* The payment boundary: the invoice bound to the proven customer, and the audit row. */
+      ["src/lib/portal/privileged.ts", ['.from("portal_events")', '.from("invoices")']],
+    ]);
     for (const file of portal) {
       const tableReads = [...file.source.matchAll(/(?<!storage)\.from\(\s*["'`][^"'`]*["'`]\s*\)/g)].map((match) => match[0]);
       expect(tableReads, file.path).toEqual(allowed.get(file.path) ?? []);
@@ -80,8 +84,44 @@ describe("the customer portal", () => {
     const elevated = /@\/lib\/(admin\/db|payments\/admin-client)\b|SUPABASE_SECRET_KEY|service_role|portal\/(admin-auth|account-lookup)/;
     const users = portal.filter(({ source }) => elevated.test(source)).map(({ path }) => path);
     /* Invitations and resets need the Auth admin API; nothing that reads customer data does. */
-    expect(users.sort()).toEqual(["src/lib/portal/account-lookup.ts", "src/lib/portal/admin-auth.ts", "src/lib/portal/auth-actions.ts"].sort());
+    expect(users.sort()).toEqual(
+      ["src/lib/portal/account-lookup.ts", "src/lib/portal/admin-auth.ts", "src/lib/portal/auth-actions.ts", "src/lib/portal/privileged.ts"].sort(),
+    );
     for (const path of users) expect(path.startsWith("src/lib/portal/"), path).toBe(true);
+  });
+
+  it("reaches the system client for payments through one module, after the member's own reads", () => {
+    const holders = all.filter(({ source }) => /from "@\/lib\/payments\/admin-client"/.test(source)).map(({ path }) => path);
+    expect(holders.filter((path) => /^src\/(app\/portaal|components\/portal|lib\/portal)\//.test(path)).sort()).toEqual(
+      ["src/lib/portal/account-lookup.ts", "src/lib/portal/privileged.ts"].sort(),
+    );
+
+    const privileged = portal.find(({ path }) => path === "src/lib/portal/privileged.ts")!;
+    /* Each action proves the customer and the resource on the member's session before the system client exists. */
+    for (const [name, proofs] of [
+      ["startInvoicePayment", ["readPortalInvoice(", "readPortalPaymentContext("]],
+      ["startMandateActivation", ["readPortalPaymentContext(", "readPortalServices("]],
+    ] as const) {
+      const body = privileged.source.slice(privileged.source.indexOf(`export async function ${name}`));
+      const elevated = body.indexOf("paymentsAdminClient()");
+      expect(elevated, name).toBeGreaterThan(0);
+      for (const proof of proofs) {
+        const at = body.indexOf(proof);
+        expect(at, `${name} ${proof}`).toBeGreaterThan(0);
+        expect(at, `${name} ${proof} before the system client`).toBeLessThan(elevated);
+      }
+    }
+    /* Only invoices bound to the proven customer are read on it. */
+    expect(privileged.source).toContain('.eq("id", invoiceId).eq("customer_id", actor.customerId)');
+    expect(privileged.source).not.toMatch(/export (const|function|async function) \w*[Cc]lient/);
+
+    /* Reached only through the server actions; never from a page, a component or the browser. */
+    const importers = all.filter(({ source }) => source.includes("portal/privileged")).map(({ path }) => path);
+    expect(importers).toEqual(["src/lib/portal/payment-actions.ts"]);
+    const actions = portal.find(({ path }) => path === "src/lib/portal/payment-actions.ts")!;
+    expect(actions.source).toMatch(/^"use server";/);
+    /* Who acts comes from the session, never from the form. */
+    expect(actions.source).not.toMatch(/formData\.get\("(customerId|userId)"\)/);
   });
 
   it("builds every reader on the member's cookie session", () => {
