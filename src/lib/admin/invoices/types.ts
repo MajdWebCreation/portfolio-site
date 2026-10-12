@@ -1,5 +1,5 @@
 import type { CustomerSnapshot, DocumentLine, DocumentNumber, IssuedActivation } from "@/lib/admin/documents/types";
-import { calculateTotals, type Cents } from "@/lib/money";
+import { calculateTotals, type Cents, type TaxableLine } from "@/lib/money";
 
 /**
  * The stored PDF of a definitive invoice.
@@ -96,7 +96,7 @@ export type Invoice = {
  * against `dueCents`, so a credited invoice is never chased for money it no
  * longer asks for.
  */
-export function invoiceAmounts(invoice: Pick<Invoice, "lines" | "creditedCents">): {
+export function invoiceAmounts(invoice: { lines: readonly TaxableLine[]; creditedCents?: Cents }): {
   totalCents: Cents;
   creditedCents: Cents;
   dueCents: Cents;

@@ -13,6 +13,18 @@ export const portalSetPasswordPath = "/portaal/wachtwoord-instellen";
 export const portalChangePasswordPath = "/portaal/wachtwoord-wijzigen";
 export const portalNoAccessPath = "/portaal/geen-toegang";
 export const portalAccountPath = "/portaal/account";
+export const portalInvoicesPath = "/portaal/facturen";
+export const portalQuotesPath = "/portaal/offertes";
+export const portalServicesPath = "/portaal/diensten";
+export const portalDetailsPath = "/portaal/gegevens";
+
+export function portalInvoicePath(id: string): string {
+  return `${portalInvoicesPath}/${id}`;
+}
+
+export function portalQuotePath(id: string): string {
+  return `${portalQuotesPath}/${id}`;
+}
 
 /**
  * Routes a visitor may reach without a session: signing in, asking for a

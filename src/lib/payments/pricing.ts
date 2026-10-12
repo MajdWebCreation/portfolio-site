@@ -16,12 +16,15 @@ import { isPendingPriceChange, type PriceChange, type RecurringService } from "@
  * about a period by a cent.
  */
 
+/** The fields of a price change the amount of a period is read from. */
+export type PricedChange = Pick<PriceChange, "effectiveFrom" | "oldAmountCents" | "newAmountCents" | "appliedAt" | "canceledAt" | "blockedAt">;
+
 /**
  * Changes that count: carried out or still to come. Never one that was
  * withdrawn or lapsed, and never one that is blocked -- Mollie could not be
  * given its amount, so no period may be billed at it.
  */
-function effective(changes: readonly PriceChange[]): PriceChange[] {
+function effective<T extends PricedChange>(changes: readonly T[]): T[] {
   return changes
     .filter((change) => !change.canceledAt && !(change.blockedAt && !change.appliedAt))
     .sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
@@ -30,7 +33,7 @@ function effective(changes: readonly PriceChange[]): PriceChange[] {
 /** The net amount (excl. VAT) for the period starting on `periodStart`. */
 export function amountForPeriod(
   service: Pick<RecurringService, "amountCents">,
-  changes: readonly PriceChange[],
+  changes: readonly PricedChange[],
   periodStart: string,
 ): Cents {
   const history = effective(changes);
@@ -47,7 +50,7 @@ export function amountForPeriod(
  */
 export function chargeForPeriod(
   service: Pick<RecurringService, "amountCents" | "vatRate">,
-  changes: readonly PriceChange[],
+  changes: readonly PricedChange[],
   periodStart: string,
 ): Cents {
   return grossOf(amountForPeriod(service, changes, periodStart), service.vatRate);

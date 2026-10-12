@@ -2477,6 +2477,67 @@ export type Database = {
         }
         Returns: string
       }
+      portal_customer: {
+        Args: { p_customer_id: string }
+        Returns: {
+          company_name: string
+          contact_name: string
+          email: string
+          phone: string | null
+          street: string
+          postal_code: string
+          city: string
+          country: string
+          kvk_number: string | null
+          vat_number: string | null
+        }[]
+      }
+      portal_document: {
+        Args: { p_customer_id: string; p_id: string; p_kind: string }
+        Returns: {
+          number: string
+          path: string
+          sha256: string
+          bytes: number
+          generated_at: string
+        }[]
+      }
+      portal_invoice: {
+        Args: { p_customer_id: string; p_invoice_id: string }
+        Returns: {
+          id: string
+          number: string
+          issue_date: string
+          due_date: string
+          status: string
+          payment_reference: string
+          billing_period_start: string | null
+          billing_period_end: string | null
+          addressed_to: Json
+          lines: Json
+          payments: Json
+          credit_notes: Json
+          refunds: Json
+        }[]
+      }
+      portal_invoices: {
+        Args: { p_customer_id: string }
+        Returns: {
+          id: string
+          number: string
+          issue_date: string
+          due_date: string
+          status: string
+          payment_reference: string
+          billing_period_start: string | null
+          billing_period_end: string | null
+          addressed_to: Json
+          lines: Json
+          payments: Json
+          credit_notes: Json
+          refunds: Json
+        }[]
+      }
       portal_log_event: {
         Args: { p_action: string; p_customer_id: string }
         Returns: undefined
@@ -2492,6 +2553,65 @@ export type Database = {
           company_name: string
           customer_id: string
           role: string
+        }[]
+      }
+      portal_quote: {
+        Args: { p_customer_id: string; p_quote_id: string }
+        Returns: {
+          id: string
+          number: string
+          issue_date: string
+          valid_until: string
+          status: string
+          subject: string
+          terms_edition: string | null
+          terms_published_on: string | null
+          sent_at: string | null
+          supersedes_quote_id: string | null
+          supersedes_number: string | null
+          superseded_by_quote_id: string | null
+          superseded_by_number: string | null
+          superseded_on: string | null
+          lines: Json
+          versions: Json
+        }[]
+      }
+      portal_quotes: {
+        Args: { p_customer_id: string }
+        Returns: {
+          id: string
+          number: string
+          issue_date: string
+          valid_until: string
+          status: string
+          subject: string
+          terms_edition: string | null
+          terms_published_on: string | null
+          sent_at: string | null
+          supersedes_quote_id: string | null
+          supersedes_number: string | null
+          superseded_by_quote_id: string | null
+          superseded_by_number: string | null
+          superseded_on: string | null
+          lines: Json
+        }[]
+      }
+      portal_services: {
+        Args: { p_customer_id: string }
+        Returns: {
+          id: string
+          name: string
+          status: string
+          amount_cents: number
+          vat_rate: number
+          starts_on: string | null
+          ends_on: string | null
+          cancellation_requested_on: string | null
+          collects_by_direct_debit: boolean
+          last_term_amount_cents: number | null
+          billed_period_starts: string[]
+          price_changes: Json
+          agreements: Json
         }[]
       }
       save_invoice_lines: {

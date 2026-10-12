@@ -1,6 +1,6 @@
 import { isFinanciallyIssued, isLiveRefund, isSettledRefund, type CreditNote, type Refund } from "@/lib/admin/credit-notes/types";
-import { invoiceAmounts, type Invoice } from "@/lib/admin/invoices/types";
-import type { Cents } from "@/lib/money";
+import { invoiceAmounts } from "@/lib/admin/invoices/types";
+import type { Cents, TaxableLine } from "@/lib/money";
 import { isSuccessful, type Payment } from "@/lib/payments/types";
 
 /**
@@ -81,12 +81,21 @@ function clamp(value: number, low: number, high: number): number {
   return Math.min(high, Math.max(low, value));
 }
 
-export function invoiceLedger(input: {
-  invoice: Pick<Invoice, "lines" | "creditedCents">;
-  payments: readonly Payment[];
-  creditNotes: readonly CreditNote[];
-  refunds: readonly Refund[];
-}): InvoiceLedger {
+/**
+ * The fields the ledger reads, and nothing more: the admin hands it whole
+ * records, the customer portal the customer-safe projection of the same
+ * rows, and both get the same answer.
+ */
+export type LedgerInput = {
+  invoice: { lines: readonly TaxableLine[]; creditedCents?: Cents };
+  payments: readonly Pick<Payment, "status" | "amountCents">[];
+  creditNotes: readonly LedgerCreditNote[];
+  refunds: readonly Pick<Refund, "creditNoteId" | "status" | "amountCents" | "createdAt">[];
+};
+
+export type LedgerCreditNote = Pick<CreditNote, "id" | "issueDate" | "createdAt" | "totalCents" | "issuedAt"> & { document?: unknown };
+
+export function invoiceLedger(input: LedgerInput): InvoiceLedger {
   const { totalCents } = invoiceAmounts({ lines: input.invoice.lines });
   /* Only issued notes correct anything; one whose issue did not finish has a number but no document yet. */
   const notes = input.creditNotes.filter(isFinanciallyIssued).sort(byIssueOrder);
@@ -129,10 +138,7 @@ export function invoiceLedger(input: {
 }
 
 /** The ledger of one credit note, out of its invoice's. */
-export function creditNoteLedger(
-  note: CreditNote,
-  input: { invoice: Pick<Invoice, "lines" | "creditedCents">; payments: readonly Payment[]; creditNotes: readonly CreditNote[]; refunds: readonly Refund[] },
-): CreditNoteLedger {
+export function creditNoteLedger(note: LedgerCreditNote, input: LedgerInput): CreditNoteLedger {
   const found = invoiceLedger(input).notes.find((ledger) => ledger.creditNoteId === note.id);
   if (found) return found;
   /* Not issued yet: nothing is owed back on a note that is not a document. */

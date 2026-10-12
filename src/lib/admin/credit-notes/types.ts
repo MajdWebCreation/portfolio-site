@@ -56,7 +56,7 @@ export type CreditNote = {
  * the same (`credit_notes_issued_has_document`): `issued_at` is only ever
  * set together with the document.
  */
-export function isFinanciallyIssued(note: Pick<CreditNote, "issuedAt" | "document">): boolean {
+export function isFinanciallyIssued(note: { issuedAt?: string; document?: unknown }): boolean {
   return Boolean(note.issuedAt && note.document);
 }
 

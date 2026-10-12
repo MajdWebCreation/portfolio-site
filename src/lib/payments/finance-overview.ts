@@ -5,7 +5,7 @@ import type { Invoice } from "@/lib/admin/invoices/types";
 import type { Cents } from "@/lib/money";
 import { settleInvoice } from "@/lib/payments/settlement";
 import type { CollectionView } from "@/lib/payments/collection-state";
-import { isChargeable } from "@/lib/payments/customer-status";
+import { invoiceOpenCents, isChargeable } from "@/lib/payments/customer-status";
 import { recurringOverview, type RecurringOverview } from "@/lib/payments/prenotification";
 import { recurringManagement, type RecurringManagement } from "@/lib/payments/recurring-management";
 import { recurringLifecycle, type DebitPrenotification, type Payment, type PriceChange, type RecurringLifecycle, type RecurringService } from "@/lib/payments/types";
@@ -140,7 +140,7 @@ export function financeOverview(input: FinanceInput): FinanceOverview {
       });
       const settlement = settleInvoice(ledger.dueCents, own);
       const chargeable = isChargeable(invoice);
-      const outstandingCents = chargeable && invoice.status !== "paid" ? settlement.outstandingCents : 0;
+      const outstandingCents = invoiceOpenCents(invoice, settlement);
       const view = input.collectionViews.get(invoice.id);
       const service = invoice.recurringServiceId ? services.find((item) => item.id === invoice.recurringServiceId) : undefined;
       const methodLabel = service?.mollie.subscriptionId

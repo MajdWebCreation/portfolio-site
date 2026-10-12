@@ -43,9 +43,55 @@ describe("the customer portal", () => {
     }
   });
 
-  it("reads no business table directly in this phase", () => {
+  it("reads no table directly: business data only through the portal functions", () => {
+    /*
+      The one table read under the portal is the reset lookup's own
+      membership check (service client, customer_users, one column); the
+      one bucket read is the document route's, under the member's session.
+    */
+    const allowed = new Map([["src/lib/portal/account-lookup.ts", ['.from("customer_users")']]]);
     for (const file of portal) {
-      expect(file.source, file.path).not.toMatch(/\.from\(["'](customers|quotes|invoices|recurring_services|payments|projects)["']\)/);
+      const tableReads = [...file.source.matchAll(/(?<!storage)\.from\(\s*["'`][^"'`]*["'`]\s*\)/g)].map((match) => match[0]);
+      expect(tableReads, file.path).toEqual(allowed.get(file.path) ?? []);
+    }
+  });
+
+  it("calls only the portal's own functions, each naming the customer it is for", () => {
+    const allowedAuthFunctions = ["portal_memberships", "portal_mark_membership_accepted", "portal_log_event"];
+    for (const file of portal) {
+      for (const match of file.source.matchAll(/\.rpc\(\s*["'`]([^"'`]+)["'`]\s*(,\s*\{([^}]*)\})?/g)) {
+        const name = match[1]!;
+        expect(name.startsWith("portal_"), `${file.path} calls ${name}`).toBe(true);
+        if (!allowedAuthFunctions.includes(name)) {
+          expect(match[3] ?? "", `${file.path} ${name} names the customer`).toContain("p_customer_id");
+        }
+      }
+    }
+  });
+
+  it("reads storage only in the document reader, under the member's own session", () => {
+    const storage = portal.filter(({ source }) => /\.storage\b|readInvoiceArtifact/.test(source)).map(({ path }) => path);
+    expect(storage).toEqual(["src/lib/portal/documents/read.ts"]);
+    const reader = portal.find(({ path }) => path === "src/lib/portal/documents/read.ts")!;
+    expect(reader.source).toContain("portalReader()");
+  });
+
+  it("never holds an elevated client outside the account flows", () => {
+    const elevated = /@\/lib\/(admin\/db|payments\/admin-client)\b|SUPABASE_SECRET_KEY|service_role|portal\/(admin-auth|account-lookup)/;
+    const users = portal.filter(({ source }) => elevated.test(source)).map(({ path }) => path);
+    /* Invitations and resets need the Auth admin API; nothing that reads customer data does. */
+    expect(users.sort()).toEqual(["src/lib/portal/account-lookup.ts", "src/lib/portal/admin-auth.ts", "src/lib/portal/auth-actions.ts"].sort());
+    for (const path of users) expect(path.startsWith("src/lib/portal/"), path).toBe(true);
+  });
+
+  it("builds every reader on the member's cookie session", () => {
+    const rpc = portal.find(({ path }) => path === "src/lib/portal/rpc.ts")!;
+    expect(rpc.source).toContain("export const portalReader = createSupabaseServerClient;");
+    const readers = portal.filter(({ path }) => /^src\/lib\/portal\/[a-z]+\/read\.ts$/.test(path));
+    expect(readers.length).toBeGreaterThanOrEqual(5);
+    for (const reader of readers) {
+      expect(reader.source, reader.path).toContain("await portalReader()");
+      expect(reader.source, reader.path).not.toContain("createClient");
     }
   });
 

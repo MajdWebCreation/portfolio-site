@@ -48,6 +48,17 @@ export function isChargeable(invoice: Pick<Invoice, "status">): boolean {
   return invoice.status === "sent" || invoice.status === "overdue" || invoice.status === "paid";
 }
 
+/**
+ * What is still to be collected on an invoice, given its ledger. Nothing on a
+ * document that is no claim, and nothing on one marked paid: invoices settled
+ * before payments were recorded, or by a transfer nobody entered, are still
+ * paid -- the status is the document's own word on that. The payments page
+ * and the customer portal both ask this.
+ */
+export function invoiceOpenCents(invoice: Pick<Invoice, "status">, ledger: { outstandingCents: Cents }): Cents {
+  return isChargeable(invoice) && invoice.status !== "paid" ? ledger.outstandingCents : 0;
+}
+
 export function customerFinancials(
   invoices: readonly Invoice[],
   payments: readonly Payment[],

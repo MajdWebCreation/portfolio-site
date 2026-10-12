@@ -1,7 +1,7 @@
 import { addDays } from "@/lib/admin/documents/validation";
 import { billingPeriod, nextPeriodStart, type BillingPeriod } from "@/lib/payments/billing-period";
 import { prenotificationDays } from "@/lib/payments/collection-policy";
-import { amountForPeriod, endsInside, grossOf, lastTermOf, proratedNetCents } from "@/lib/payments/pricing";
+import { amountForPeriod, endsInside, grossOf, lastTermOf, proratedNetCents, type PricedChange } from "@/lib/payments/pricing";
 import { isCollecting, type DebitPrenotification, type PriceChange, type RecurringService } from "@/lib/payments/types";
 
 /**
@@ -40,12 +40,12 @@ export type DebitSchedule = {
   announceFrom: string;
 };
 
-export type ServiceSchedule = {
+export type ServiceSchedule<Change extends PricedChange = PriceChange> = {
   service: Pick<RecurringService, "id" | "customerId" | "name" | "amountCents" | "vatRate" | "status" | "startsOn" | "endsOn" | "lastTerm" | "mollie">;
   /** `billing_period_start` of every invoice that bills this service. */
   billedPeriodStarts: readonly string[];
   /** The service's price history; what a period costs is read off it. */
-  priceChanges?: readonly PriceChange[];
+  priceChanges?: readonly Change[];
 };
 
 function anchorDayOf(dateKey: string): number {
@@ -102,7 +102,7 @@ export function announceableStart(startsOn: string, todayKey: string): string {
  * then nothing: the first period starting after `endsOn` is not a
  * collection, so it is neither invoiced nor announced.
  */
-export function nextDebitSchedule(input: ServiceSchedule): DebitSchedule | { reason: NoDebitReason } {
+export function nextDebitSchedule(input: ServiceSchedule<PricedChange>): DebitSchedule | { reason: NoDebitReason } {
   const { service, billedPeriodStarts } = input;
 
   if (!isCollecting(service)) return { reason: "not_active" };
@@ -208,7 +208,7 @@ export function matchingAnnouncement(
 }
 
 export function recurringOverview(
-  entry: ServiceSchedule,
+  entry: ServiceSchedule<PricedChange>,
   records: readonly DebitPrenotification[],
   todayKey: string,
 ): RecurringOverview {

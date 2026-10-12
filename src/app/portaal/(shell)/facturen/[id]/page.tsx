@@ -1,0 +1,128 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { DetailList, DetailRow } from "@/components/admin/detail-list";
+import StatusBadge from "@/components/admin/status-badge";
+import { day, DocumentLines, DownloadLink, PageHeader, Section, TotalRow } from "@/components/portal/portal-ui";
+import { formatDate, toDateKey } from "@/lib/admin/format";
+import { formatCents } from "@/lib/money";
+import { orNotFound, requirePortalMember } from "@/lib/portal/access";
+import { portalDocumentHref } from "@/lib/portal/documents/read";
+import {
+  paymentMethodLabel,
+  portalCreditNoteStateLabels,
+  portalInvoiceStateLabels,
+  portalInvoiceStateTone,
+  portalInvoiceView,
+} from "@/lib/portal/invoices/model";
+import { readPortalInvoice } from "@/lib/portal/invoices/read";
+import { portalInvoicesPath } from "@/lib/portal/paths";
+
+export const metadata: Metadata = { title: "Factuur" };
+
+type PageProps = { params: Promise<{ id: string }> };
+
+/**
+ * One invoice: the figures of the document, what arrived against it, the
+ * credit notes that corrected it, and what is still open -- the last from
+ * the ledger, not from a status column. The PDF is the document itself.
+ */
+export default async function PortalInvoicePage({ params }: PageProps) {
+  const member = await requirePortalMember();
+  const { id } = await params;
+  const todayKey = toDateKey(new Date());
+  const view = portalInvoiceView(await orNotFound(readPortalInvoice(member.current.customerId, id)), todayKey);
+  const { invoice, ledger } = view;
+
+  return (
+    <div>
+      <p className="text-[0.9rem]">
+        <Link href={portalInvoicesPath} className="link-static text-muted">
+          ← Facturen
+        </Link>
+      </p>
+      <div className="mt-6">
+        <PageHeader label="Factuur" title={invoice.number} />
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-4">
+        <StatusBadge tone={portalInvoiceStateTone[view.state]}>{portalInvoiceStateLabels[view.state]}</StatusBadge>
+        <DownloadLink href={portalDocumentHref("invoice", invoice.id)}>Factuur downloaden (PDF)</DownloadLink>
+      </div>
+
+      <DetailList className="mt-8">
+        <DetailRow term="Factuurdatum">{day(invoice.issueDate)}</DetailRow>
+        <DetailRow term="Vervaldatum">{day(invoice.dueDate)}</DetailRow>
+        {invoice.billingPeriod ? (
+          <DetailRow term="Periode">
+            {day(invoice.billingPeriod.start)} t/m {day(invoice.billingPeriod.end)}
+          </DetailRow>
+        ) : null}
+        <DetailRow term="Betalingskenmerk">{invoice.paymentReference}</DetailRow>
+        <DetailRow term="Gericht aan">
+          {invoice.addressedTo.companyName}
+          <span className="block text-[0.88rem] text-muted">
+            {invoice.addressedTo.street}, {invoice.addressedTo.postalCode} {invoice.addressedTo.city}
+          </span>
+        </DetailRow>
+      </DetailList>
+
+      <Section title="Specificatie">
+        <DocumentLines lines={invoice.lines} totals={view.totals} />
+      </Section>
+
+      <Section title="Stand van de betaling">
+        <dl className="max-w-sm text-[0.92rem]">
+          <TotalRow term="Factuurbedrag" value={formatCents(ledger.totalCents)} />
+          {ledger.creditedCents > 0 ? <TotalRow term="Gecrediteerd" value={`− ${formatCents(ledger.creditedCents)}`} /> : null}
+          {ledger.paidCents > 0 ? <TotalRow term="Ontvangen" value={`− ${formatCents(ledger.paidCents)}`} /> : null}
+          {ledger.refundedCents > 0 ? <TotalRow term="Aan u terugbetaald" value={`+ ${formatCents(ledger.refundedCents)}`} /> : null}
+          {ledger.refundInFlightCents + ledger.refundDueCents > 0 ? (
+            <TotalRow term="Nog aan u terug te betalen" value={`+ ${formatCents(ledger.refundInFlightCents + ledger.refundDueCents)}`} />
+          ) : null}
+          <TotalRow term="Nog te betalen" value={formatCents(view.openCents)} strong />
+        </dl>
+        {view.openCents > 0 ? (
+          <p className="mt-4 max-w-prose text-[0.88rem] text-muted">
+            U kunt betalen via de betaallink in de factuurmail of per bankoverschrijving onder vermelding van {invoice.paymentReference}.
+          </p>
+        ) : null}
+      </Section>
+
+      {invoice.payments.length > 0 ? (
+        <Section title="Ontvangen betalingen">
+          <ul className="border-t border-line">
+            {invoice.payments.map((payment, index) => (
+              <li key={index} className="flex flex-wrap justify-between gap-x-6 gap-y-1 border-b border-line py-3 text-[0.92rem]">
+                <span className="text-ink">
+                  {payment.paidAt ? formatDate(payment.paidAt) : "Datum onbekend"}
+                  <span className="ml-2 text-muted">{paymentMethodLabel(payment)}</span>
+                </span>
+                <span className="tabular text-ink">{formatCents(payment.amountCents)}</span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+
+      {view.creditNotes.length > 0 ? (
+        <Section title="Creditnota's">
+          <ul className="border-t border-line">
+            {view.creditNotes.map((note) => (
+              <li key={note.id} className="grid gap-x-6 gap-y-1 border-b border-line py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                <div className="min-w-0">
+                  <p className="font-medium text-ink">{note.number}</p>
+                  <p className="mt-0.5 text-[0.86rem] text-muted">
+                    {day(note.issueDate)} · {portalCreditNoteStateLabels[note.state]}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 sm:justify-end">
+                  <span className="tabular text-[0.95rem] text-ink">{formatCents(note.totalCents)}</span>
+                  <DownloadLink href={portalDocumentHref("credit_note", note.id)}>PDF</DownloadLink>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+    </div>
+  );
+}

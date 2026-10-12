@@ -14,6 +14,7 @@ import {
   standardProrationRule,
   type LastTerm,
   type PriceChangeOption,
+  type PricedChange,
   type ProrationRule,
 } from "@/lib/payments/pricing";
 import { resolveAgreementAt, type ResolvedAgreement } from "@/lib/payments/service-agreement";
@@ -143,6 +144,20 @@ export type RecurringManagement = {
   warning?: string;
 };
 
+/**
+ * The price for the period running today, off the history; before the first
+ * collection that is the first period. The admin's service screen and the
+ * customer portal both show this figure.
+ */
+export function currentPeriodNetCents(
+  service: Pick<RecurringService, "amountCents" | "startsOn">,
+  priceChanges: readonly PricedChange[],
+  todayKey: string,
+): number {
+  const runningPeriodStart = service.startsOn ? periodForCharge(service.startsOn, todayKey).start : todayKey;
+  return amountForPeriod(service, priceChanges, runningPeriodStart);
+}
+
 export function recurringManagement(input: {
   service: RecurringService;
   priceChanges: readonly PriceChange[];
@@ -161,10 +176,7 @@ export function recurringManagement(input: {
   const collecting = Boolean(service.mollie.subscriptionId && anchor);
   const anchorDay = anchor ? Number(anchor.slice(8, 10)) : undefined;
 
-  // The price for the period running today, off the history; before the
-  // first collection that is the first period.
-  const runningPeriodStart = anchor ? periodForCharge(anchor, todayKey).start : todayKey;
-  const currentNetCents = amountForPeriod(service, priceChanges, runningPeriodStart);
+  const currentNetCents = currentPeriodNetCents(service, priceChanges, todayKey);
 
   const pending = pendingPriceChange(priceChanges);
   const scheduled: ScheduledPriceChange | undefined =
