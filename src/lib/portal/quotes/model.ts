@@ -82,7 +82,7 @@ export function quoteDetailFromPortalRow(row: QuoteDetailRow): PortalQuoteDetail
 export type PortalQuoteState = "awaiting" | "expired" | "accepted" | "rejected" | "superseded";
 
 export const portalQuoteStateLabels: Record<PortalQuoteState, string> = {
-  awaiting: "Wacht op reactie",
+  awaiting: "Wacht op uw reactie",
   expired: "Verlopen",
   accepted: "Geaccepteerd",
   rejected: "Afgewezen",

@@ -94,8 +94,16 @@ export default async function PortalInvoicePage({ params }: PageProps) {
             </p>
           </div>
         ) : block === "direct_debit" ? (
+          /*
+            No pay button for an invoice the direct debit collects, also once it
+            is past due: a collection may still be under way at the bank, and a
+            second payment beside it would charge the customer twice. Past due,
+            the page says what is true and who sorts it out.
+          */
           <p className="mt-4 max-w-prose text-[0.88rem] text-muted">
-            Deze factuur wordt automatisch van uw rekening afgeschreven; u hoeft zelf niets te betalen.
+            {view.state === "overdue"
+              ? "Deze factuur zou automatisch van uw rekening worden afgeschreven, maar is nog niet betaald. Betaal niet zelf zonder overleg, zodat er niet dubbel wordt afgeschreven: neem contact met ons op via contact@ymcreations.com, dan regelen we de betaling met u."
+              : "Deze factuur wordt automatisch van uw rekening afgeschreven; u hoeft zelf niets te betalen."}
           </p>
         ) : null}
       </Section>

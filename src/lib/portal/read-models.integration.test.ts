@@ -30,6 +30,10 @@ const anonKey = process.env.SUPABASE_LOCAL_ANON_KEY ?? "";
 const loopback = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\]):\d+$/;
 const local = loopback.test(url) && Boolean(serviceKey) && Boolean(anonKey);
 
+/* The document route reads the stored file on the server's own client, after the member's session proved it theirs. */
+process.env.NEXT_PUBLIC_SUPABASE_URL = url;
+process.env.SUPABASE_SECRET_KEY = serviceKey;
+
 /* No Next request context: cookies are a jar, redirects a marker. */
 const jar = new Map<string, string>();
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
@@ -84,7 +88,7 @@ const { readPortalInvoices, readPortalInvoice } = await import("@/lib/portal/inv
 const { readPortalQuotes, readPortalQuote } = await import("@/lib/portal/quotes/read");
 const { readPortalServices } = await import("@/lib/portal/services/read");
 const { readPortalCustomer } = await import("@/lib/portal/customers/read");
-const { readPortalDocument } = await import("@/lib/portal/documents/read");
+const { readPortalDocumentFile } = await import("@/lib/portal/privileged");
 const { portalInvoiceView } = await import("@/lib/portal/invoices/model");
 const { portalServiceView } = await import("@/lib/portal/services/model");
 const { PortalDenied } = await import("@/lib/portal/rpc");
@@ -309,6 +313,17 @@ async function download(db: Db, path: string): Promise<Buffer | null> {
   return Buffer.from(await data.arrayBuffer());
 }
 
+/** A stored PDF the way the portal serves it: proved on the member's session, read by the server. Null when refused. */
+async function served(client: Db, customerId: string, kind: "invoice" | "credit_note" | "quote", id: string): Promise<Buffer | null> {
+  visitor = client;
+  try {
+    return (await readPortalDocumentFile({ customerId }, kind, id)).pdf;
+  } catch (error) {
+    if (error instanceof PortalDenied) return null;
+    throw error;
+  }
+}
+
 async function as<T>(client: Db, read: () => Promise<T>): Promise<T> {
   visitor = client;
   return read();
@@ -496,10 +511,11 @@ describe.runIf(local)("who gets nothing", () => {
     await service.from("customer_users").update({ revoked_at: null }).eq("id", ids.revokedMembership);
     const before = await clients.revoked.rpc("portal_invoices", { p_customer_id: ids.alfa });
     expect(before.error).toBeNull();
-    expect(await download(clients.revoked, paths.alfaInvoice)).not.toBeNull();
+    expect(await served(clients.revoked, ids.alfa, "invoice", docs.alfaPartlyPaid)).not.toBeNull();
 
     await service.from("customer_users").update({ revoked_at: new Date().toISOString() }).eq("id", ids.revokedMembership);
     refused(await clients.revoked.rpc("portal_invoices", { p_customer_id: ids.alfa }), "after revocation");
+    expect(await served(clients.revoked, ids.alfa, "invoice", docs.alfaPartlyPaid)).toBeNull();
     expect(await download(clients.revoked, paths.alfaInvoice)).toBeNull();
   });
 
@@ -687,11 +703,12 @@ describe.runIf(local)("documents", () => {
       ["credit_note", docs.alfaCreditNote, paths.alfaCreditNote],
       ["quote", docs.alfaQuoteV1, paths.alfaQuote],
     ] as const) {
-      const document = await as(clients.alfa, () => readPortalDocument(ids.alfa, kind, id));
+      const document = await as(clients.alfa, () => readPortalDocumentFile({ customerId: ids.alfa }, kind, id));
       expect(document.pdf.subarray(0, 5).toString()).toBe("%PDF-");
       const table = kind === "invoice" ? "invoices" : kind === "quote" ? "quotes" : "credit_notes";
       expect(sha256Hex(document.pdf)).toBe(await column<string>(table, id, "document_sha256"));
-      expect((await download(clients.alfa, path))?.equals(document.pdf)).toBe(true);
+      /* The same bytes the bucket holds -- read here on the service client, since the member has no read on it. */
+      expect((await download(service, path))?.equals(document.pdf)).toBe(true);
     }
   });
 
@@ -706,6 +723,17 @@ describe.runIf(local)("documents", () => {
         expect(await download(client, path), `${label} ${path}`).toBeNull();
       }
     }
+  });
+
+  it("not even the owner reads the bucket directly: no download, no listing, no signed URL that could outlive access", async () => {
+    for (const path of [paths.alfaInvoice, paths.alfaCreditNote, paths.alfaQuote]) {
+      expect(await download(clients.alfa, path), path).toBeNull();
+      const signed = await clients.alfa.storage.from(invoiceDocumentBucket).createSignedUrl(path, 3600);
+      expect(signed.data?.signedUrl ?? null, path).toBeNull();
+    }
+    const year = paths.alfaInvoice.split("/")[0]!;
+    const { data } = await clients.alfa.storage.from(invoiceDocumentBucket).list(year, { limit: 1000 });
+    expect(data ?? []).toEqual([]);
   });
 
   it("an invoice that was never sent has a stored file the customer cannot read", async () => {
@@ -816,9 +844,9 @@ describe.runIf(local)("a member of two customers", () => {
   });
 
   it("downloads each customer's document, and loses one customer's documents when that membership ends", async () => {
-    expect(await download(clients.multi, paths.alfaInvoice)).not.toBeNull();
+    expect(await served(clients.multi, ids.alfa, "invoice", docs.alfaPartlyPaid)).not.toBeNull();
     await service.from("customer_users").update({ revoked_at: new Date().toISOString() }).eq("user_id", ids.multiUser).eq("customer_id", ids.alfa);
-    expect(await download(clients.multi, paths.alfaInvoice)).toBeNull();
+    expect(await served(clients.multi, ids.alfa, "invoice", docs.alfaPartlyPaid)).toBeNull();
     refused(await clients.multi.rpc("portal_invoices", { p_customer_id: ids.alfa }), "after alfa revoked");
     const beta = await clients.multi.rpc("portal_invoices", { p_customer_id: ids.beta });
     expect(beta.error).toBeNull();
@@ -863,7 +891,7 @@ describe.runIf(local)("the function definitions in the database", () => {
     }
   });
 
-  it("keeps the private helpers away from client roles, except the yes/no storage check", async () => {
+  it("keeps the private helpers away from client roles, the retired storage check included", async () => {
     const statement = `
       select p.proname, has_function_privilege('anon', p.oid, 'execute'), has_function_privilege('authenticated', p.oid, 'execute')
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -871,7 +899,7 @@ describe.runIf(local)("the function definitions in the database", () => {
       order by 1`;
     const out = execFileSync("docker", ["exec", "supabase_db_portfolio-site", "psql", "-U", "postgres", "-At", "-F", "|", "-c", statement], { encoding: "utf8" });
     expect(out.trim().split("\n")).toEqual([
-      "portal_can_read_document|f|t",
+      "portal_can_read_document|f|f",
       "portal_invoice_rows|f|f",
       "portal_quote_rows|f|f",
       "portal_require_customer|f|f",

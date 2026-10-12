@@ -34,7 +34,8 @@ export default async function DirectDebitReturnPage({
 
   const problem = status ? messages[status] : undefined;
   /* Back to the portal for a member who started there; decided by the session, not the URL. */
-  const toPortal = (await getPortalAccess()).state === "member";
+  /* Only picks the back link: a failing membership read must never cost this confirmation. */
+  const toPortal = (await getPortalAccess().catch(() => ({ state: "anonymous" as const }))).state === "member";
 
   return (
     <main className="container-x flex min-h-[70vh] max-w-[42rem] flex-col justify-center py-20" data-clarity-mask="true">

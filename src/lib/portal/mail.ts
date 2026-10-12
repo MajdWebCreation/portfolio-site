@@ -47,6 +47,13 @@ function mail(input: { title: string; preheader: string; paragraphs: string[]; b
   return { subject: input.title, html, text };
 }
 
+/*
+  How long a link works is the Auth server's e-mail OTP expiry (one hour on
+  the hosted project, checked 12 Oct 2026); the reset mail says the same.
+  Past it, "Wachtwoord vergeten" mails a fresh link to an invited address too.
+*/
+const linkValidity = "De link werkt een uur. Is hij verlopen, vraag dan via “Wachtwoord vergeten” op de inlogpagina van het klantportaal een nieuwe aan.";
+
 /** A new account: set a password through the link. */
 export function inviteMail(input: { companyName: string; tokenHash: string }): Mail {
   return mail({
@@ -55,6 +62,7 @@ export function inviteMail(input: { companyName: string; tokenHash: string }): M
     paragraphs: [
       `U bent uitgenodigd voor het klantportaal van YM Creations, namens ${input.companyName}.`,
       "Stel via de knop hieronder een wachtwoord in. Daarna logt u in met dit e-mailadres.",
+      linkValidity,
     ],
     button: { href: portalTokenUrl(input.tokenHash, "invite"), label: "Wachtwoord instellen" },
     closing: ["Verwachtte u deze uitnodiging niet? Dan kunt u deze mail negeren; er gebeurt dan niets."],
@@ -69,6 +77,7 @@ export function reinviteMail(input: { companyName: string; tokenHash: string }):
     paragraphs: [
       `Hier is een nieuwe link voor het klantportaal van YM Creations, namens ${input.companyName}. Een eerdere link werkt niet meer.`,
       "Stel via de knop hieronder een wachtwoord in. Daarna logt u in met dit e-mailadres.",
+      linkValidity,
     ],
     button: { href: portalTokenUrl(input.tokenHash, "magiclink"), label: "Wachtwoord instellen" },
     closing: ["Verwachtte u deze mail niet? Dan kunt u hem negeren."],

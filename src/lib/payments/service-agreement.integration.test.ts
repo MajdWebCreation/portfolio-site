@@ -59,6 +59,39 @@ async function chain(id = serviceId) {
   return data!;
 }
 
+/*
+  An accepted offer, made the only way one exists since quotes are issued and
+  decided on record: a concept, numbered under a set of terms, given its
+  document, sent, and accepted by a recorded decision. Dated in a year of its
+  own so the yearly quote counter other files assert on is left alone.
+*/
+async function acceptedQuote(forCustomer: string, subject: string): Promise<string> {
+  const seed = Math.random().toString(36).slice(-6).toUpperCase();
+  const concept = await service
+    .from("quotes")
+    .insert({
+      number_value: `OFF-CONCEPT-${seed}`, number_provisional: true, status: "draft", customer_id: forCustomer,
+      customer_company_name: "Klant", customer_contact_name: "A. Alfa", customer_email: "klant@example.test",
+      customer_street: "Straat 1", customer_postal_code: "1011 AA", customer_city: "Amsterdam", customer_country: "Nederland",
+      issue_date: "2033-09-10", valid_until: "2033-10-10", subject,
+    })
+    .select("id")
+    .single();
+  if (concept.error) throw new Error(`quote: ${concept.error.message}`);
+  const id = concept.data!.id;
+  const lines = await service.rpc("save_quote_lines", { p_quote_id: id, p_lines: [{ description: subject, quantityHundredths: 100, unitPriceCents: 1000, vatRate: 21 }] as never });
+  if (lines.error) throw new Error(`lines: ${lines.error.message}`);
+  const numbered = await admin.rpc("begin_quote_issue", { p_quote_id: id, p_terms_edition: "2026", p_terms_published_on: "2026-09-14" });
+  if (numbered.error) throw new Error(`issue: ${numbered.error.message}`);
+  const stored = await admin.rpc("complete_quote_issue", { p_quote_id: id, p_path: `test/${id}.pdf`, p_sha256: "a".repeat(64), p_bytes: 1 });
+  if (stored.error) throw new Error(`document: ${stored.error.message}`);
+  const sent = await service.from("quotes").update({ status: "sent", sent_at: new Date().toISOString(), recipient_email: "klant@example.test" }).eq("id", id);
+  if (sent.error) throw new Error(`sent: ${sent.error.message}`);
+  const decided = await admin.rpc("admin_record_quote_decision", { p_quote_id: id, p_decision: "accepted", p_source: "signed", p_rejection_reason: null, p_note: null });
+  if (decided.error || decided.data?.[0]?.outcome !== "decided") throw new Error(`decision: ${decided.error?.message ?? decided.data?.[0]?.outcome}`);
+  return id;
+}
+
 beforeAll(async () => {
   if (!local) return;
   service = createClient<Database>(url, serviceKey, { auth: { persistSession: false } });
@@ -97,28 +130,7 @@ beforeAll(async () => {
   serviceId = services.data!.find((row) => row.name === "SEO" ? false : true)!.id;
   otherServiceId = services.data!.find((row) => row.name === "SEO")!.id;
 
-  const quote = await service
-    .from("quotes")
-    .insert({
-      number_value: "YM-O-2026-999001",
-      number_provisional: false,
-      status: "accepted",
-      customer_id: customerId,
-      customer_company_name: "Alfa BV",
-      customer_contact_name: "A. Alfa",
-      customer_email: "alfa@example.test",
-      customer_street: "Straat 1",
-      customer_postal_code: "1011 AA",
-      customer_city: "Amsterdam",
-      customer_country: "Nederland",
-      issue_date: "2026-09-10",
-      valid_until: "2026-10-10",
-      subject: "Websitebeheer",
-    })
-    .select("id")
-    .single();
-  if (quote.error) throw new Error(`quote: ${quote.error.message}`);
-  quoteId = quote.data!.id;
+  quoteId = await acceptedQuote(customerId, "Websitebeheer");
 }, 120_000);
 
 afterAll(async () => {
@@ -166,30 +178,9 @@ describe.runIf(local)("what the schema refuses on its own", () => {
   });
 
   it("refuses an offer of another customer as source", async () => {
-    const other = await service
-      .from("quotes")
-      .insert({
-        number_value: "YM-O-2026-999002",
-        number_provisional: false,
-        status: "accepted",
-        customer_id: otherCustomerId,
-        customer_company_name: "Beta BV",
-        customer_contact_name: "B. Beta",
-        customer_email: "beta@example.test",
-        customer_street: "Straat 2",
-        customer_postal_code: "1011 AB",
-        customer_city: "Amsterdam",
-        customer_country: "Nederland",
-        issue_date: "2026-09-10",
-        valid_until: "2026-10-10",
-        subject: "Iets anders",
-      })
-      .select("id")
-      .single();
-    if (other.error) throw new Error(other.error.message);
-    const { error } = await insert(standard({ source_kind: "accepted_offer", source_label: "Offerte YM-O-2026-999002", source_quote_id: other.data!.id, accepted_on: "2026-09-12", notice_months: 2 }));
+    const other = await acceptedQuote(otherCustomerId, "Iets anders");
+    const { error } = await insert(standard({ source_kind: "accepted_offer", source_label: "Offerte YM-O-2026-999002", source_quote_id: other, accepted_on: "2026-09-12", notice_months: 2 }));
     expect(error?.code).toBe("23503");
-    await service.from("quotes").delete().eq("id", other.data!.id);
   });
 
   it("takes a revision without a set of general terms, but never half a set", async () => {
@@ -269,7 +260,7 @@ describe.runIf(local)("the chain", () => {
     expect((await chain()).find((row) => row.id === second)?.notice_months).toBe(2);
   });
 
-  it("keeps a cancellation's snapshot and its revision when the source offer is removed", async () => {
+  it("keeps a cancellation's snapshot and its revision, and the accepted source offer cannot be removed", async () => {
     const snapshot = await service
       .from("recurring_services")
       .update({
@@ -287,10 +278,11 @@ describe.runIf(local)("the chain", () => {
       .select("id");
     expect(snapshot.error).toBeNull();
 
+    /* An accepted quote is a numbered document with a decision on record: it is never removed, so the link holds. */
     const gone = await service.from("quotes").delete().eq("id", quoteId).select("id");
-    expect(gone.error).toBeNull();
+    expect(gone.error).not.toBeNull();
     const row = (await chain()).find((candidate) => candidate.id === second)!;
-    expect(row.source_quote_id).toBeNull();
+    expect(row.source_quote_id).toBe(quoteId);
     expect(row.source_label).toBe("Offerte YM-O-2026-999001");
     const { data } = await service.from("recurring_services").select("ends_on, cancellation_source, cancellation_agreement_revision_id").eq("id", serviceId).single();
     expect(data).toEqual({ ends_on: "2027-01-09", cancellation_source: "Offerte YM-O-2026-999001", cancellation_agreement_revision_id: second });

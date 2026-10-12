@@ -79,7 +79,7 @@ function passwordRejected(error: { code?: string } | null): FormState {
     error?.code === "same_password"
       ? "Kies een ander wachtwoord dan het vorige."
       : error?.code === "weak_password"
-        ? "Dit wachtwoord is te zwak. Kies een langer of minder voorspelbaar wachtwoord."
+        ? "Dit wachtwoord is te zwak of komt voor in bekende datalekken. Kies een ander wachtwoord."
         : "Het wachtwoord kon niet worden ingesteld. Probeer het opnieuw.";
   return { error: message, kind: "password_rejected" };
 }
@@ -248,7 +248,7 @@ export async function changePasswordAction(_previous: FormState, formData: FormD
 
   const updated = await supabase.auth.updateUser({ password });
   if (updated.error) {
-    return { error: updated.error.code === "same_password" ? "Kies een ander wachtwoord dan het huidige." : updated.error.code === "weak_password" ? "Dit wachtwoord is te zwak. Kies een langer of minder voorspelbaar wachtwoord." : "Het wachtwoord kon niet worden gewijzigd. Probeer het opnieuw." };
+    return { error: updated.error.code === "same_password" ? "Kies een ander wachtwoord dan het huidige." : updated.error.code === "weak_password" ? "Dit wachtwoord is te zwak of komt voor in bekende datalekken. Kies een ander wachtwoord." : "Het wachtwoord kon niet worden gewijzigd. Probeer het opnieuw." };
   }
 
   await supabase.rpc("portal_log_event", { p_action: "password_changed", p_customer_id: access.member.current.customerId });

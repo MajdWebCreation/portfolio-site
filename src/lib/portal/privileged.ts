@@ -20,6 +20,8 @@ import { invoicePaymentBlock, mayActivateDirectDebit } from "@/lib/portal/paymen
 import { readPortalPaymentContext } from "@/lib/portal/payments/read";
 import { readPortalServices } from "@/lib/portal/services/read";
 import { readPortalRequest } from "@/lib/portal/requests/read";
+import { readPortalDocumentRecord, type PortalDocumentKind } from "@/lib/portal/documents/read";
+import { readInvoiceArtifact } from "@/lib/admin/invoices/artifact";
 import { portalReader, portalResult, requireResourceId } from "@/lib/portal/rpc";
 import { notifyQuoteDecisionOn, type NotifyOutcome } from "@/lib/quotes/decision-notify";
 import { announceRequestOn, type AnnounceOutcome } from "@/lib/requests/announce";
@@ -282,4 +284,26 @@ export async function readRequestAttachment(actor: Pick<PortalActor, "customerId
   const { data, error } = await paymentsAdminClient().storage.from(requestBucket).download(row.storage_path);
   if (error || !data) throw new Error(`Bijlage laden: ${error?.message ?? "geen bestand"}`);
   return { fileName: row.file_name, mimeType: row.mime_type, bytes: await data.arrayBuffer() };
+}
+
+export type PortalDocumentFile = { fileName: string; pdf: Buffer };
+
+/**
+ * The bytes of one stored PDF -- invoice, credit note or quote -- for the
+ * download route: the member's session proves through portal_document that
+ * it is this customer's visible document and where it is stored; the system
+ * client then reads exactly that object and checks it against the recorded
+ * hash (readInvoiceArtifact, the check the admin's preview and the mail
+ * make). Throws PortalDenied for anything else, an Error when the file does
+ * not check out.
+ */
+export async function readPortalDocumentFile(actor: Pick<PortalActor, "customerId">, kind: PortalDocumentKind, id: string): Promise<PortalDocumentFile> {
+  const record = await readPortalDocumentRecord(actor.customerId, kind, id);
+  const artifact = await readInvoiceArtifact(
+    paymentsAdminClient(),
+    { number: { value: record.number, provisional: false }, document: { path: record.path, sha256: record.sha256, bytes: record.bytes, generatedAt: record.generatedAt } },
+    kind === "quote" ? "offerte" : kind === "credit_note" ? "creditnota" : "factuur",
+  );
+  if (!artifact.ok) throw new Error(artifact.reason);
+  return { fileName: `${record.number}.pdf`, pdf: artifact.pdf };
 }

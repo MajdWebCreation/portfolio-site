@@ -93,7 +93,8 @@ export default async function PaymentReturnPage({
 
   // The first answer, before anything reaches the browser: an invoice that is
   // already settled shows its message without a loader flashing past.
-  const [initial, access] = await Promise.all([readPaymentReturnState(state), getPortalAccess()]);
+  /* Only picks the back link: a failing membership read must never cost the payment confirmation. */
+  const [initial, access] = await Promise.all([readPaymentReturnState(state), getPortalAccess().catch(() => ({ state: "anonymous" as const }))]);
   const words = copy[locale];
   /*
     A customer who started from the portal goes back to it. Decided by the

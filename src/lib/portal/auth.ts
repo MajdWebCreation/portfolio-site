@@ -29,9 +29,16 @@ export const portalCustomerCookie = "ym_portal_customer";
 
 type Client = SupabaseClient<Database>;
 
+/**
+ * The memberships of the signed-in user. A failing read throws: it is never
+ * access, and it is not "no access" either -- a member hit by a passing
+ * database error gets the portal's error page with a retry, not the page
+ * telling them they have no access.
+ */
 export async function readPortalMemberships(supabase: Client): Promise<PortalMembership[] | null> {
   const { data, error } = await supabase.rpc("portal_memberships");
-  if (error || !data) return null;
+  if (error) throw new Error(`Portaaltoegang laden: ${error.message}`);
+  if (!data) return null;
   return data.map((row) => ({
     customerId: row.customer_id,
     companyName: row.company_name,

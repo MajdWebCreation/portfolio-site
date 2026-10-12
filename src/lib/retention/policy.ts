@@ -53,10 +53,39 @@ export const fiscalCategories: readonly CommunicationCategory[] = [
 ];
 
 /*
-  Not in either list, because it is not a communication: quote_decisions, the
-  record of an accepted or rejected quote (with the account's address and the
-  customer's reason). It is evidence of an agreement and is kept like the
-  invoices it leads to; this job never touches it.
+  What this job does not touch, and why -- the V1 classification of the
+  portal's records. "Not touched" is a technical invariant of this job, not
+  a statement of how long the law requires a record to be kept; a retention
+  period for any of these is a decision still to be made, and would be a
+  rule of its own here, not a side effect.
+
+    invoices, credit notes, payments, refunds
+                      the financial administration: the fiscal retention
+                      period the owner set (above); immutable once issued.
+    quotes            issued quotes are frozen documents with a stored PDF;
+                      a quote may lead to an agreement and an invoice.
+    quote_decisions   append-only by design (no role may update or delete,
+                      triggers refuse it): the evidence of what was accepted
+                      on which document. Holds personal data -- the signing
+                      account's address (actor_email) and the customer's
+                      rejection_reason. Removing or anonymising it is only
+                      ever an explicit, future retention rule with its own
+                      migration, never a cleanup here.
+    customer_profile_changes, portal_events
+                      append-only audit of what a customer or an admin did;
+                      ids and changed field names, company name/KvK/VAT
+                      values only. No period decided yet.
+    customer_requests and registered attachments
+                      the customer's own record of what was asked; kept.
+                      Only uploads that never became an attachment, and
+                      expired upload slots, are removed (below).
+    customer_users, auth users
+                      access, not history: a revoked membership stays as a
+                      row (revoked_at); deleting an auth user is a manual
+                      admin act: memberships go with it (cascade), decisions
+                      and audit rows stay (no foreign key to auth.users), and
+                      requests and attachments stay with their author set to
+                      null.
 */
 
 /** Categories whose body may go after twelve months: the quote, the activation link, the pre-notification. */

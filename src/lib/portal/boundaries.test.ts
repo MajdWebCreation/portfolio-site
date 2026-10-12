@@ -81,11 +81,14 @@ describe("the customer portal", () => {
     expect(storage.sort()).toEqual(
       [
         "src/components/portal/request-uploads.tsx",
-        "src/lib/portal/documents/read.ts",
         "src/lib/portal/privileged.ts",
       ].sort(),
     );
-    expect(portal.find((file) => file.path === "src/lib/portal/documents/read.ts")!.source).toContain("portalReader()");
+    /* Stored PDFs, like request files, are read only by the payment boundary, after portal_document proved them the member's. */
+    const documentRead = portal.find((file) => file.path === "src/lib/portal/privileged.ts")!.source;
+    const fileRead = documentRead.slice(documentRead.indexOf("export async function readPortalDocumentFile"));
+    expect(fileRead.indexOf("readPortalDocumentRecord(")).toBeGreaterThan(0);
+    expect(fileRead.indexOf("readPortalDocumentRecord(")).toBeLessThan(fileRead.indexOf("paymentsAdminClient()"));
     /* Request files are read only by the payment boundary, after a portal function proved them the member's. */
     const privileged = portal.find((file) => file.path === "src/lib/portal/privileged.ts")!;
     expect(privileged.source).toContain("await readPortalRequest(actor.customerId, input.requestId);");
@@ -136,6 +139,7 @@ describe("the customer portal", () => {
     const importers = all.filter(({ source }) => source.includes("portal/privileged")).map(({ path }) => path);
     expect(importers.sort()).toEqual([
       "src/app/portaal/(shell)/verzoeken/bijlagen/[attachmentId]/route.ts",
+      "src/app/portaal/documenten/[kind]/[id]/route.ts",
       "src/lib/portal/payment-actions.ts",
       "src/lib/portal/quotes/actions.ts",
       "src/lib/portal/requests/actions.ts",

@@ -42,9 +42,8 @@ describe("resolving portal access", () => {
     expect(access).toEqual({ state: "no_membership", userId: "u1", email: "a@example.com" });
   });
 
-  it("treats a failing membership read as no access, never as access", async () => {
-    const access = await resolvePortalAccess(client({ user: { id: "u1" }, rpcError: true }), "cust-a");
-    expect(access.state).toBe("no_membership");
+  it("treats a failing membership read as a failure, never as access and never as 'no access'", async () => {
+    await expect(resolvePortalAccess(client({ user: { id: "u1" }, rpcError: true }), "cust-a")).rejects.toThrow("Portaaltoegang laden");
   });
 
   it("acts for the only customer a member has", async () => {
