@@ -112,11 +112,13 @@ describe("which mail is financial", () => {
         "src/lib/admin/documents/send.ts: financial",
         "src/lib/admin/documents/send.ts: general",
         "src/lib/admin/invoices/finalize.ts: financial",
+        "src/lib/admin/requests/actions.ts: general",
         "src/lib/payments/actions.ts: financial",
         "src/lib/payments/actions.ts: financial",
         "src/lib/payments/actions.ts: financial",
         "src/lib/payments/prenotification-store.ts: financial",
         "src/lib/payments/reminder-store.ts: financial",
+        "src/lib/requests/announce.ts: general",
       ].sort(),
     );
   });

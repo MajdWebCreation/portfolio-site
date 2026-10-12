@@ -52,7 +52,8 @@ describe("the customer portal", () => {
     const allowed = new Map([
       ["src/lib/portal/account-lookup.ts", ['.from("customer_users")']],
       /* The payment boundary: the invoice bound to the proven customer, and the audit row. */
-      ["src/lib/portal/privileged.ts", ['.from("portal_events")', '.from("invoices")']],
+      /* ... and, for request files, an attachment whose registration answer was lost, and the name a registered one was given. */
+      ["src/lib/portal/privileged.ts", ['.from("portal_events")', '.from("invoices")', '.from("customer_request_attachments")', '.from("customer_request_attachments")']],
     ]);
     for (const file of portal) {
       const tableReads = [...file.source.matchAll(/(?<!storage)\.from\(\s*["'`][^"'`]*["'`]\s*\)/g)].map((match) => match[0]);
@@ -65,7 +66,9 @@ describe("the customer portal", () => {
     for (const file of portal) {
       for (const match of file.source.matchAll(/\.rpc\(\s*["'`]([^"'`]+)["'`]\s*(,\s*\{([^}]*)\})?/g)) {
         const name = match[1]!;
-        expect(name.startsWith("portal_"), `${file.path} calls ${name}`).toBe(true);
+        /* The system-client functions: request files are registered or given up by the payment boundary, naming the member's customer. */
+        const serviceCall = ["service_register_request_attachment", "service_release_request_upload"].includes(name) && file.path === "src/lib/portal/privileged.ts";
+        expect(name.startsWith("portal_") || serviceCall, `${file.path} calls ${name}`).toBe(true);
         if (!allowedAuthFunctions.includes(name)) {
           expect(match[3] ?? "", `${file.path} ${name} names the customer`).toContain("p_customer_id");
         }
@@ -73,11 +76,25 @@ describe("the customer portal", () => {
     }
   });
 
-  it("reads storage only in the document reader, under the member's own session", () => {
+  it("reads and writes storage only in the named places, under the member's own session", () => {
     const storage = portal.filter(({ source }) => /\.storage\b|readInvoiceArtifact/.test(source)).map(({ path }) => path);
-    expect(storage).toEqual(["src/lib/portal/documents/read.ts"]);
-    const reader = portal.find(({ path }) => path === "src/lib/portal/documents/read.ts")!;
-    expect(reader.source).toContain("portalReader()");
+    expect(storage.sort()).toEqual(
+      [
+        "src/components/portal/request-uploads.tsx",
+        "src/lib/portal/documents/read.ts",
+        "src/lib/portal/privileged.ts",
+      ].sort(),
+    );
+    expect(portal.find((file) => file.path === "src/lib/portal/documents/read.ts")!.source).toContain("portalReader()");
+    /* Request files are read only by the payment boundary, after a portal function proved them the member's. */
+    const privileged = portal.find((file) => file.path === "src/lib/portal/privileged.ts")!;
+    expect(privileged.source).toContain("await readPortalRequest(actor.customerId, input.requestId);");
+    /* The browser stores a request file under the member's own session, at a path of random ids, never the file's name. */
+    const uploads = portal.find(({ path }) => path === "src/components/portal/request-uploads.tsx")!;
+    expect(uploads.source).toContain("createSupabaseBrowserClient()");
+    expect(uploads.source).toContain('supabase.rpc("portal_reserve_request_upload", { p_customer_id: customerId, p_request_id: forRequest })');
+    expect(uploads.source).toContain("upsert: false");
+    expect(uploads.source).not.toMatch(/getPublicUrl|createSignedUrl/);
   });
 
   it("never holds an elevated client outside the account flows", () => {
@@ -117,11 +134,14 @@ describe("the customer portal", () => {
 
     /* Reached only through the server actions; never from a page, a component or the browser. */
     const importers = all.filter(({ source }) => source.includes("portal/privileged")).map(({ path }) => path);
-    expect(importers).toEqual(["src/lib/portal/payment-actions.ts"]);
-    const actions = portal.find(({ path }) => path === "src/lib/portal/payment-actions.ts")!;
-    expect(actions.source).toMatch(/^"use server";/);
-    /* Who acts comes from the session, never from the form. */
-    expect(actions.source).not.toMatch(/formData\.get\("(customerId|userId)"\)/);
+    expect(importers.sort()).toEqual(["src/app/portaal/(shell)/verzoeken/bijlagen/[attachmentId]/route.ts", "src/lib/portal/payment-actions.ts", "src/lib/portal/requests/actions.ts"]);
+    for (const path of ["src/lib/portal/payment-actions.ts", "src/lib/portal/requests/actions.ts"]) {
+      const actions = portal.find((file) => file.path === path)!;
+      expect(actions.source, path).toMatch(/^"use server";/);
+      /* Who acts comes from the session, never from the form: a form's customer id is only compared. */
+      expect(actions.source, path).not.toMatch(/customerId\s*=\s*String\(formData/);
+      expect(actions.source, path).not.toMatch(/formData\.get\("userId"\)/);
+    }
   });
 
   it("builds every reader on the member's cookie session", () => {

@@ -11,6 +11,7 @@ export type AdminModuleKey =
   | "leads"
   | "customers"
   | "projects"
+  | "requests"
   | "pricing"
   | "quotes"
   | "invoices"
@@ -76,6 +77,13 @@ export const adminModules: readonly AdminModule[] = [
     slug: "projecten",
     label: "Projecten",
     description: "Het werk per klant, met status en deadline.",
+    status: "available",
+  },
+  {
+    key: "requests",
+    slug: "verzoeken",
+    label: "Verzoeken",
+    description: "Wat klanten via het klantportaal vragen, met bijlagen en status.",
     status: "available",
   },
   {

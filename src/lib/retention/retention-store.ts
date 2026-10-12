@@ -76,6 +76,29 @@ export function createRetentionStore(db: SupabaseClient<Database>): RetentionSto
       return count ?? 0;
     },
 
+    async requestUploadOrphans(before) {
+      const { data, error } = await db.rpc("request_attachment_orphans", { p_before: before });
+      if (error) throw new Error(`Losse uploads zoeken: ${error.message}`);
+      return (data ?? []).map((row) => row.name);
+    },
+
+    /* The function hands out at most 500 at a time; the runner asks again until a batch comes back short. */
+    orphanBatchSize: 500,
+
+    async removeRequestUploads(paths) {
+      const { data, error } = await db.storage.from("request-attachments").remove(paths);
+      if (error) throw new Error(`Losse uploads verwijderen: ${error.message}`);
+      return data?.length ?? 0;
+    },
+
+    async expiredUploadSlots(before, remove) {
+      const { count, error } = remove
+        ? await db.from("customer_request_upload_slots").delete({ count: "exact" }).lt("reserved_at", before)
+        : await db.from("customer_request_upload_slots").select("storage_path", { count: "exact", head: true }).lt("reserved_at", before);
+      if (error) throw new Error(`Uploadplekken opruimen: ${error.message}`);
+      return count ?? 0;
+    },
+
     async deleteAnalyticsFacts(cutoff, reports) {
       if (reports && reports.length === 0) return 0;
       let query = db.from("analytics_facts").delete({ count: "exact" }).lt("date", cutoff);

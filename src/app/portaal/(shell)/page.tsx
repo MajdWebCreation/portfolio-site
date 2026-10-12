@@ -8,7 +8,17 @@ import { orNoAccess, requirePortalMember } from "@/lib/portal/access";
 import { portalOverview } from "@/lib/portal/dashboard";
 import { portalInvoiceStateLabels, portalInvoiceStateTone, portalInvoiceView } from "@/lib/portal/invoices/model";
 import { readPortalInvoices } from "@/lib/portal/invoices/read";
-import { portalInvoicePath, portalInvoicesPath, portalQuotePath, portalQuotesPath, portalServicesPath } from "@/lib/portal/paths";
+import {
+  portalInvoicePath,
+  portalInvoicesPath,
+  portalNewRequestPath,
+  portalQuotePath,
+  portalQuotesPath,
+  portalRequestPath,
+  portalServicesPath,
+} from "@/lib/portal/paths";
+import { readPortalRequests } from "@/lib/portal/requests/read";
+import { requestStatusLabels, requestStatusTone } from "@/lib/requests/model";
 import { readPortalQuotes } from "@/lib/portal/quotes/read";
 import { portalServiceView } from "@/lib/portal/services/model";
 import { readPortalServices } from "@/lib/portal/services/read";
@@ -28,9 +38,10 @@ export default async function PortalHomePage() {
   const customerId = member.current.customerId;
   const todayKey = toDateKey(new Date());
 
-  const [invoices, quotes, services] = await orNoAccess(
-    Promise.all([readPortalInvoices(customerId), readPortalQuotes(customerId), readPortalServices(customerId)]),
+  const [invoices, quotes, services, requests] = await orNoAccess(
+    Promise.all([readPortalInvoices(customerId), readPortalQuotes(customerId), readPortalServices(customerId), readPortalRequests(customerId)]),
   );
+  const recentRequests = requests.slice(0, 3);
   const overview = portalOverview({
     invoices: invoices.map((invoice) => portalInvoiceView(invoice, todayKey)),
     quotes,
@@ -117,6 +128,29 @@ export default async function PortalHomePage() {
           </DocumentList>
         </Section>
       ) : null}
+
+      <Section title="Recente verzoeken">
+        {recentRequests.length === 0 ? (
+          <Empty>
+            U heeft nog geen verzoeken ingediend.{" "}
+            <Link href={portalNewRequestPath} className="link-static text-ink">
+              Nieuw verzoek
+            </Link>
+          </Empty>
+        ) : (
+          <DocumentList>
+            {recentRequests.map((request) => (
+              <DocumentRow
+                key={request.id}
+                href={portalRequestPath(request.id)}
+                number={request.subject}
+                meta={`Ingediend ${day(request.createdAt.slice(0, 10))}`}
+                badge={<StatusBadge tone={requestStatusTone[request.status]}>{requestStatusLabels[request.status]}</StatusBadge>}
+              />
+            ))}
+          </DocumentList>
+        )}
+      </Section>
 
       <Section title="Recente documenten">
         {overview.recent.length === 0 ? (

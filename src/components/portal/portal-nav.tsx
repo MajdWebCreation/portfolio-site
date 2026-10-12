@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { portalAccountPath, portalDetailsPath, portalInvoicesPath, portalQuotesPath, portalRoot, portalServicesPath } from "@/lib/portal/paths";
+import { portalAccountPath, portalDetailsPath, portalInvoicesPath, portalQuotesPath, portalRequestsPath, portalRoot, portalServicesPath } from "@/lib/portal/paths";
 
 const items = [
   { href: portalRoot, label: "Overzicht" },
   { href: portalInvoicesPath, label: "Facturen" },
   { href: portalQuotesPath, label: "Offertes" },
   { href: portalServicesPath, label: "Diensten" },
+  { href: portalRequestsPath, label: "Verzoeken" },
   { href: portalDetailsPath, label: "Mijn gegevens" },
   { href: portalAccountPath, label: "Account" },
 ] as const;
@@ -20,7 +21,7 @@ function isCurrent(pathname: string, href: string): boolean {
 
 /**
  * The portal's sections, in one row. On a phone the row scrolls sideways
- * rather than folding into a menu: six short words, always in sight.
+ * rather than folding into a menu: seven short words, always in sight.
  */
 export default function PortalNav() {
   const pathname = usePathname();

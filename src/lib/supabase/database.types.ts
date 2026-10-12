@@ -587,6 +587,159 @@ export type Database = {
           },
         ]
       }
+      customer_request_attachments: {
+        Row: {
+          bytes: number
+          created_at: string
+          created_by_user_id: string | null
+          customer_id: string
+          file_name: string
+          id: string
+          mime_type: string
+          request_id: string
+          storage_path: string
+        }
+        Insert: {
+          bytes: number
+          created_at?: string
+          created_by_user_id?: string | null
+          customer_id: string
+          file_name: string
+          id?: string
+          mime_type: string
+          request_id: string
+          storage_path: string
+        }
+        Update: {
+          bytes?: number
+          created_at?: string
+          created_by_user_id?: string | null
+          customer_id?: string
+          file_name?: string
+          id?: string
+          mime_type?: string
+          request_id?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
+      customer_request_status_events: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          customer_id: string
+          from_status: string | null
+          id: string
+          request_id: string
+          to_status: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          customer_id: string
+          from_status?: string | null
+          id?: string
+          request_id: string
+          to_status: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          customer_id?: string
+          from_status?: string | null
+          id?: string
+          request_id?: string
+          to_status?: string
+        }
+        Relationships: []
+      }
+      customer_request_upload_slots: {
+        Row: {
+          consumed_at: string | null
+          customer_id: string
+          request_id: string
+          reserved_at: string
+          reserved_by: string | null
+          storage_path: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          customer_id: string
+          request_id: string
+          reserved_at?: string
+          reserved_by?: string | null
+          storage_path: string
+        }
+        Update: {
+          consumed_at?: string | null
+          customer_id?: string
+          request_id?: string
+          reserved_at?: string
+          reserved_by?: string | null
+          storage_path?: string
+        }
+        Relationships: []
+      }
+      customer_requests: {
+        Row: {
+          announce_attempts: number
+          announce_claimed_at: string | null
+          announced_at: string | null
+          category: string
+          created_at: string
+          created_by_user_id: string | null
+          customer_id: string
+          description: string
+          internal_notified_at: string | null
+          id: string
+          project_id: string | null
+          quote_id: string | null
+          status: string
+          status_changed_at: string
+          subject: string
+          submission_id: string
+          updated_at: string
+        }
+        Insert: {
+          announce_attempts?: number
+          announce_claimed_at?: string | null
+          announced_at?: string | null
+          category: string
+          created_at?: string
+          created_by_user_id?: string | null
+          customer_id: string
+          description: string
+          internal_notified_at?: string | null
+          id?: string
+          project_id?: string | null
+          quote_id?: string | null
+          status?: string
+          status_changed_at?: string
+          subject: string
+          submission_id: string
+          updated_at?: string
+        }
+        Update: {
+          announce_attempts?: number
+          announce_claimed_at?: string | null
+          announced_at?: string | null
+          category?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          customer_id?: string
+          description?: string
+          internal_notified_at?: string | null
+          id?: string
+          project_id?: string | null
+          quote_id?: string | null
+          status?: string
+          status_changed_at?: string
+          subject?: string
+          submission_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           billing_email: string | null
@@ -2518,6 +2671,10 @@ export type Database = {
         }
         Returns: string
       }
+      portal_create_request: {
+        Args: { p_category: string; p_customer_id: string; p_description: string; p_subject: string; p_submission_id: string }
+        Returns: { request_id: string; created: boolean }[]
+      }
       portal_customer: {
         Args: { p_customer_id: string }
         Returns: {
@@ -2662,6 +2819,48 @@ export type Database = {
           lines: Json
         }[]
       }
+      portal_register_request_attachment: {
+        Args: { p_customer_id: string; p_file_name: string; p_mime_type: string; p_request_id: string; p_storage_path: string }
+        Returns: { attachment_id: string; registered: boolean }[]
+      }
+      portal_reserve_request_upload: {
+        Args: { p_customer_id: string; p_request_id: string }
+        Returns: { storage_path: string }[]
+      }
+      portal_request: {
+        Args: { p_customer_id: string; p_request_id: string }
+        Returns: {
+          id: string
+          category: string
+          subject: string
+          description: string
+          status: string
+          created_at: string
+          status_changed_at: string
+          quote_id: string | null
+          quote_number: string | null
+          accepts_attachments: boolean
+          attachments: Json
+        }[]
+      }
+      portal_request_attachment: {
+        Args: { p_attachment_id: string; p_customer_id: string }
+        Returns: { storage_path: string; file_name: string; mime_type: string; bytes: number }[]
+      }
+      portal_requests: {
+        Args: { p_customer_id: string }
+        Returns: {
+          id: string
+          category: string
+          subject: string
+          status: string
+          created_at: string
+          status_changed_at: string
+          quote_id: string | null
+          quote_number: string | null
+          attachment_count: number
+        }[]
+      }
       portal_services: {
         Args: { p_customer_id: string }
         Returns: {
@@ -2701,6 +2900,18 @@ export type Database = {
           updated_at: string
           changed_fields: string[]
         }[]
+      }
+      request_attachment_orphans: {
+        Args: { p_before: string }
+        Returns: { name: string }[]
+      }
+      service_release_request_upload: {
+        Args: { p_customer_id: string; p_storage_path: string }
+        Returns: boolean
+      }
+      service_register_request_attachment: {
+        Args: { p_customer_id: string; p_file_name: string; p_mime_type: string; p_request_id: string; p_storage_path: string; p_user_id: string }
+        Returns: { attachment_id: string; registered: boolean }[]
       }
       save_invoice_lines: {
         Args: { p_invoice_id: string; p_lines: Json }

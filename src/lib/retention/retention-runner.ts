@@ -2,6 +2,8 @@ import {
   communicationBodyHasExpired,
   inquiryHasExpired,
   leadHasExpired,
+  requestUploadOrphanCutoff,
+  requestUploadSlotCutoff,
   retentionCutoff,
   type CommunicationRetentionRow,
   type InquiryRetentionRow,
@@ -40,6 +42,14 @@ export type RetentionStore = {
   /** Analytics facts dated before the cutoff, of the given reports or (null) of all: a count only, no row is read. */
   countAnalyticsFacts(cutoff: string, reports: string[] | null): Promise<number>;
   deleteAnalyticsFacts(cutoff: string, reports: string[] | null): Promise<number>;
+  /** Object paths in the request-attachments bucket with no attachment row, stored before the cutoff. */
+  requestUploadOrphans(before: string): Promise<string[]>;
+  /** Removes the objects; the number actually removed. */
+  removeRequestUploads(paths: string[]): Promise<number>;
+  /** Upload slots reserved before the cutoff: removed when `remove`, else counted. */
+  expiredUploadSlots(before: string, remove: boolean): Promise<number>;
+  /** The most one requestUploadOrphans call returns; a full batch means there may be more. */
+  orphanBatchSize?: number;
 };
 
 export type RetentionOptions = {
@@ -62,6 +72,10 @@ export type RetentionSummary = {
    * independent of whether any analytics provider is configured or syncing.
    */
   analyticsFacts: Array<{ retentionClass: RetentionClass; cutoff: string; selected: number }>;
+  /** Unregistered request uploads older than a day; removed in an applied run. */
+  requestUploadOrphansSelected: number;
+  /** Upload slots older than a week; removed in an applied run. */
+  requestUploadSlotsSelected: number;
 };
 
 export async function runRetention(store: RetentionStore, options: RetentionOptions): Promise<RetentionSummary> {
@@ -92,6 +106,21 @@ export async function runRetention(store: RetentionStore, options: RetentionOpti
     analyticsFacts.push({ retentionClass: target.retentionClass, cutoff: target.cutoff, selected });
   }
 
+  /* In an applied run, batch after batch until the backlog is gone; a dry run counts the first batch. */
+  const orphanCutoff = requestUploadOrphanCutoff(now);
+  const batchSize = store.orphanBatchSize ?? Number.POSITIVE_INFINITY;
+  let orphanCount = 0;
+  for (let round = 0; round < 100; round += 1) {
+    const batch = await store.requestUploadOrphans(orphanCutoff);
+    orphanCount += batch.length;
+    if (!apply || batch.length === 0) break;
+    const removed = await store.removeRequestUploads(batch);
+    /* A batch that did not shrink the backlog would come back unchanged: stop, and leave it to tomorrow. */
+    if (removed === 0 || batch.length < batchSize) break;
+  }
+
+  const requestUploadSlotsSelected = await store.expiredUploadSlots(requestUploadSlotCutoff(now), apply);
+
   return {
     mode: apply ? "applied" : "dry-run",
     cutoff,
@@ -99,5 +128,7 @@ export async function runRetention(store: RetentionStore, options: RetentionOpti
     leadsSelected: leads.length,
     communicationsSelected: communications.length,
     analyticsFacts,
+    requestUploadOrphansSelected: orphanCount,
+    requestUploadSlotsSelected,
   };
 }

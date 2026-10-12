@@ -17,6 +17,16 @@ export const portalInvoicesPath = "/portaal/facturen";
 export const portalQuotesPath = "/portaal/offertes";
 export const portalServicesPath = "/portaal/diensten";
 export const portalDetailsPath = "/portaal/gegevens";
+export const portalRequestsPath = "/portaal/verzoeken";
+export const portalNewRequestPath = "/portaal/verzoeken/nieuw";
+
+export function portalRequestPath(id: string): string {
+  return `${portalRequestsPath}/${id}`;
+}
+
+export function portalRequestAttachmentPath(attachmentId: string): string {
+  return `${portalRequestsPath}/bijlagen/${attachmentId}`;
+}
 
 export function portalInvoicePath(id: string): string {
   return `${portalInvoicesPath}/${id}`;

@@ -33,7 +33,9 @@ export type CommunicationCategory =
   | "payment_final_notice"
   | "recurring_price_change"
   | "recurring_cancellation"
-  | "credit_note_sent";
+  | "credit_note_sent"
+  | "request_received"
+  | "request_status_changed";
 
 export const communicationCategoryOrder: readonly CommunicationCategory[] = [
   "quote_sent",
@@ -48,6 +50,8 @@ export const communicationCategoryOrder: readonly CommunicationCategory[] = [
   "recurring_price_change",
   "recurring_cancellation",
   "credit_note_sent",
+  "request_received",
+  "request_status_changed",
 ];
 
 export const communicationCategoryLabels: Record<CommunicationCategory, string> = {
@@ -63,6 +67,8 @@ export const communicationCategoryLabels: Record<CommunicationCategory, string> 
   recurring_price_change: "Bevestiging prijswijziging maanddienst",
   recurring_cancellation: "Bevestiging opzegging maanddienst",
   credit_note_sent: "Creditnota",
+  request_received: "Ontvangstbevestiging verzoek",
+  request_status_changed: "Statusupdate verzoek",
 };
 
 /**
@@ -139,7 +145,7 @@ export const communicationFilterOrder: readonly CommunicationFilter[] = [
   "other",
 ];
 
-const groups: Record<CommunicationCategory, Exclude<CommunicationFilter, "all" | "other">> = {
+const groups: Record<CommunicationCategory, Exclude<CommunicationFilter, "all">> = {
   quote_sent: "quotes",
   invoice_sent: "invoices",
   invoice_activation_sent: "invoices",
@@ -158,6 +164,9 @@ const groups: Record<CommunicationCategory, Exclude<CommunicationFilter, "all" |
   recurring_cancellation: "payments",
   /* A credit note carries a document, like the invoice it corrects. */
   credit_note_sent: "invoices",
+  /* About a customer's request: neither a document nor money. */
+  request_received: "other",
+  request_status_changed: "other",
 };
 
 /**

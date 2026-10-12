@@ -20,6 +20,8 @@ export type OutboundEmail = {
   /** Defaults to the company address; every transactional mail is answerable. */
   replyTo?: string;
   attachments?: { filename: string; content: Buffer }[];
+  /** Resend's own guard: the same key within a day sends one mail, however often it is asked. */
+  idempotencyKey?: string;
 };
 
 export type DeliveryFailure = {
@@ -72,7 +74,7 @@ export async function deliverEmail(email: OutboundEmail): Promise<DeliveryResult
       html: email.html,
       text: email.text,
       ...(email.attachments ? { attachments: email.attachments } : {}),
-    });
+    }, email.idempotencyKey ? { idempotencyKey: email.idempotencyKey } : undefined);
 
     if (result.error) return { sent: false, reason: result.error.message, failure: "rejected" };
 

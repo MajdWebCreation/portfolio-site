@@ -57,7 +57,35 @@ export const redactableCategories: readonly CommunicationCategory[] = [
   "quote_sent",
   "direct_debit_activation",
   "recurring_invoice_prenotification",
+  /* A request's confirmation and updates repeat what the request itself keeps. */
+  "request_received",
+  "request_status_changed",
 ];
+
+/**
+ * Customer requests and their registered attachments are the customer's own
+ * record of what they asked for, and of what was done or declined; they are
+ * kept, open or closed, and are never removed by this job. What it does
+ * remove is an upload that never became an attachment -- a registration
+ * that failed, a browser closed between storing and registering -- once it
+ * is older than this.
+ */
+export const REQUEST_UPLOAD_ORPHAN_HOURS = 24;
+
+export function requestUploadOrphanCutoff(now: Date): string {
+  return new Date(now.getTime() - REQUEST_UPLOAD_ORPHAN_HOURS * 3600 * 1000).toISOString();
+}
+
+/**
+ * Upload slots are bookkeeping for the daily upload caps and the one-object
+ * rule; a slot is past use a day after it was reserved (registration takes
+ * objects under 23 hours old). Kept a week, then removed.
+ */
+export const REQUEST_UPLOAD_SLOT_DAYS = 7;
+
+export function requestUploadSlotCutoff(now: Date): string {
+  return new Date(now.getTime() - REQUEST_UPLOAD_SLOT_DAYS * 24 * 3600 * 1000).toISOString();
+}
 
 /** The moment before which data has aged out, as an ISO timestamp. */
 export function retentionCutoff(now: Date, months = RETENTION_MONTHS): string {

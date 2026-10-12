@@ -19,6 +19,10 @@ import { readPortalInvoice } from "@/lib/portal/invoices/read";
 import { invoicePaymentBlock, mayActivateDirectDebit } from "@/lib/portal/payments/model";
 import { readPortalPaymentContext } from "@/lib/portal/payments/read";
 import { readPortalServices } from "@/lib/portal/services/read";
+import { readPortalRequest } from "@/lib/portal/requests/read";
+import { portalReader, portalResult, requireResourceId } from "@/lib/portal/rpc";
+import { announceRequestOn, type AnnounceOutcome } from "@/lib/requests/announce";
+import { attachmentRules, bytesMatchMime, type AttachmentMime } from "@/lib/requests/model";
 
 /**
  * The portal's door to elevated rights for money. (The other portal module
@@ -160,4 +164,108 @@ export async function startMandateActivation(actor: PortalActor): Promise<Portal
 
   await record(db, actor, "mandate_activation_requested", { kind: "customer", id: actor.customerId });
   return { ok: true, url: result.activation.checkoutUrl };
+}
+
+/**
+ * The announcement of a request this member's customer owns: the customer's
+ * confirmation and, the first time, YM Creations' own notice. Runs on the
+ * system client because the member has no write on the request; the lease
+ * and the bookkeeping are in announceRequestOn. Nothing here can undo the
+ * request: a failed mail only leaves it unannounced, for the next retry.
+ */
+export async function announceRequest(actor: PortalActor, requestId: string): Promise<AnnounceOutcome> {
+  return announceRequestOn(paymentsAdminClient(), actor.customerId, requestId);
+}
+
+const requestBucket = "request-attachments";
+
+export type RequestUploadResult =
+  | { ok: true; attachment: { id: string; fileName: string; mimeType: string; bytes: number } }
+  | { ok: false; reason: "denied" | "content" | "size" | "type" | "limit" | "closed" | "failed" };
+
+/**
+ * A file the member just stored becomes an attachment of their request.
+ *
+ * The member's own session proves first, through portal_request, that the
+ * request is this customer's; the path has to be that request's own. Only
+ * then the system client reads the object -- members cannot read the bucket
+ * at all, so no member can sign a URL that outlives their access -- checks
+ * its first bytes against the type, and registers it through
+ * service_register_request_attachment, which checks the member's membership
+ * again under a lock on the request. An object that does not make it is
+ * removed; one that cannot be, the daily retention pass removes.
+ */
+export async function registerRequestUpload(
+  actor: PortalActor,
+  input: { requestId: string; storagePath: string; fileName: string; mimeType: AttachmentMime },
+): Promise<RequestUploadResult> {
+  await readPortalRequest(actor.customerId, input.requestId);
+  if (!input.storagePath.startsWith(`${actor.customerId}/${input.requestId}/`)) return { ok: false, reason: "failed" };
+
+  const db = paymentsAdminClient();
+  /* A refused upload is given up -- its slot takes nothing more -- and removed, unless a registration of the same path got there first. */
+  const discard = async (): Promise<"removed" | "registered" | "unknown"> => {
+    const { data: removable, error: releaseError } = await db.rpc("service_release_request_upload", { p_customer_id: actor.customerId, p_storage_path: input.storagePath });
+    if (releaseError) return "unknown";
+    if (!removable) return "registered";
+    const { error } = await db.storage.from(requestBucket).remove([input.storagePath]);
+    if (error) console.error("Unregistered upload could not be removed", { requestId: input.requestId });
+    return "removed";
+  };
+
+  const { data: file, error: readError } = await db.storage.from(requestBucket).download(input.storagePath);
+  if (readError || !file) return { ok: false, reason: "failed" };
+  if (file.size > attachmentRules.maxBytes) {
+    await discard();
+    return { ok: false, reason: "size" };
+  }
+  const head = new Uint8Array(await file.slice(0, 32).arrayBuffer());
+  if (!bytesMatchMime(head, input.mimeType)) {
+    await discard();
+    return { ok: false, reason: "content" };
+  }
+
+  const { data, error } = await db.rpc("service_register_request_attachment", {
+    p_user_id: actor.userId,
+    p_customer_id: actor.customerId,
+    p_request_id: input.requestId,
+    p_storage_path: input.storagePath,
+    p_file_name: input.fileName,
+    p_mime_type: input.mimeType,
+  });
+  if (error) {
+    /* A registration that went through while its answer was lost: the attachment stands, and saying so keeps the browser from uploading it twice. */
+    if ((await discard()) === "registered" && error.code !== "42501") {
+      const { data: stored } = await db.from("customer_request_attachments").select("id, file_name").eq("storage_path", input.storagePath).eq("request_id", input.requestId).maybeSingle();
+      if (stored) return { ok: true, attachment: { id: stored.id, fileName: stored.file_name, mimeType: input.mimeType, bytes: file.size } };
+    }
+    if (error.code === "42501") return { ok: false, reason: "denied" };
+    const reason = error.message.replace("invalid:", "");
+    if (reason === "limit" || reason === "closed" || reason === "type" || reason === "size") return { ok: false, reason };
+    console.error("Attachment registration failed", { requestId: input.requestId, code: error.code });
+    return { ok: false, reason: "failed" };
+  }
+  const row = data?.[0];
+  if (!row) return { ok: false, reason: "failed" };
+  const { data: stored } = await db.from("customer_request_attachments").select("file_name").eq("id", row.attachment_id).maybeSingle();
+  return { ok: true, attachment: { id: row.attachment_id, fileName: stored?.file_name ?? input.fileName, mimeType: input.mimeType, bytes: file.size } };
+}
+
+/**
+ * The bytes of one registered attachment, for the download route: the
+ * member's session proves through portal_request_attachment that it is this
+ * customer's and where it is; the system client then reads exactly that
+ * object. Throws PortalDenied for anything else.
+ */
+export async function readRequestAttachment(actor: Pick<PortalActor, "customerId">, attachmentId: string): Promise<{ fileName: string; mimeType: string; bytes: ArrayBuffer }> {
+  const db = await portalReader();
+  const rows = portalResult(
+    "Bijlage laden",
+    await db.rpc("portal_request_attachment", { p_customer_id: actor.customerId, p_attachment_id: requireResourceId(attachmentId) }),
+  );
+  const row = rows[0];
+  if (!row) throw new Error("Bijlage laden: geen antwoord");
+  const { data, error } = await paymentsAdminClient().storage.from(requestBucket).download(row.storage_path);
+  if (error || !data) throw new Error(`Bijlage laden: ${error?.message ?? "geen bestand"}`);
+  return { fileName: row.file_name, mimeType: row.mime_type, bytes: await data.arrayBuffer() };
 }

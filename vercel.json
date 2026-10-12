@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/analytics-sync",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/request-announcements",
+      "schedule": "30 8 * * *"
     }
   ]
 }

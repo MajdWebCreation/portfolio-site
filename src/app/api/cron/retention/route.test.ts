@@ -23,6 +23,9 @@ const store: RetentionStore = {
   deleteLeads: vi.fn(async () => {}),
   redactCommunications: vi.fn(async () => {}),
   countAnalyticsFacts: vi.fn(async (_cutoff: string, reports: string[] | null) => (reports ? 4 : 9)),
+  requestUploadOrphans: vi.fn(async () => [] as string[]),
+  removeRequestUploads: vi.fn(async (paths: string[]) => paths.length),
+  expiredUploadSlots: vi.fn(async () => 0),
   deleteAnalyticsFacts: vi.fn(async (_cutoff: string, reports: string[] | null) => (reports ? 4 : 9)),
 };
 
@@ -117,7 +120,7 @@ describe("what is logged and returned", () => {
 
     expect(info).toHaveLength(1);
     const [, payload] = info[0];
-    const keys = ["analyticsFacts", "communicationsSelected", "cutoff", "inquiriesSelected", "leadsSelected", "mode"];
+    const keys = ["analyticsFacts", "communicationsSelected", "cutoff", "inquiriesSelected", "leadsSelected", "mode", "requestUploadOrphansSelected", "requestUploadSlotsSelected"];
     expect(Object.keys(payload as object).sort()).toEqual(keys);
     expect(Object.keys(body).sort()).toEqual(keys);
     for (const entry of body.analyticsFacts) expect(Object.keys(entry).sort()).toEqual(["cutoff", "retentionClass", "selected"]);

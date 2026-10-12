@@ -31,6 +31,9 @@ function fakeStore(overrides: Partial<RetentionStore> = {}) {
     deleteLeads: vi.fn(async () => {}),
     redactCommunications: vi.fn(async () => {}),
     countAnalyticsFacts: vi.fn(async () => 0),
+    requestUploadOrphans: vi.fn(async () => ["customer/request/upload-old"]),
+    removeRequestUploads: vi.fn(async (paths: string[]) => paths.length),
+    expiredUploadSlots: vi.fn(async () => 3),
     deleteAnalyticsFacts: vi.fn(async () => 0),
     ...overrides,
   };
@@ -42,6 +45,8 @@ const expectedCounts = {
   inquiriesSelected: 1,
   leadsSelected: 1,
   communicationsSelected: 1,
+  requestUploadOrphansSelected: 1,
+  requestUploadSlotsSelected: 3,
   analyticsFacts: [
     { retentionClass: "aggregate", cutoff: "2024-07-23", selected: 0 },
     { retentionClass: "query_text", cutoff: "2025-05-23", selected: 0 },
@@ -56,6 +61,7 @@ describe("an applied retention run", () => {
     const summary = await runRetention(store, { apply: true, now });
 
     expect(store.deleteInquiries).toHaveBeenCalledWith(["inq-old"]);
+    expect(store.removeRequestUploads).toHaveBeenCalledWith(["customer/request/upload-old"]);
     expect(store.deleteLeads).toHaveBeenCalledWith(["lead-old"]);
     expect(store.redactCommunications).toHaveBeenCalledWith(["comm-quote"]);
     expect(summary).toEqual({ mode: "applied", ...expectedCounts });
@@ -98,6 +104,7 @@ describe("a dry run", () => {
     expect(store.deleteInquiries).not.toHaveBeenCalled();
     expect(store.deleteLeads).not.toHaveBeenCalled();
     expect(store.redactCommunications).not.toHaveBeenCalled();
+    expect(store.removeRequestUploads).not.toHaveBeenCalled();
   });
 
   it("still reads every candidate set, so the count is real", async () => {
@@ -120,6 +127,8 @@ describe("analytics facts in the general retention pass", () => {
     return {
       table,
       countAnalyticsFacts: vi.fn(async (cutoff: string, reports: string[] | null) => table.filter(matches(cutoff, reports)).length),
+      requestUploadOrphans: vi.fn(async () => [] as string[]),
+      removeRequestUploads: vi.fn(async (paths: string[]) => paths.length),
       deleteAnalyticsFacts: vi.fn(async (cutoff: string, reports: string[] | null) => {
         const doomed = table.filter(matches(cutoff, reports));
         for (const row of doomed) table.splice(table.indexOf(row), 1);
@@ -168,5 +177,63 @@ describe("analytics facts in the general retention pass", () => {
     expect(facts.deleteAnalyticsFacts).not.toHaveBeenCalled();
     expect(facts.table).toHaveLength(history.length);
     expect(summary.analyticsFacts.map((entry) => entry.selected)).toEqual([2, 3, 1]);
+  });
+});
+
+describe("unregistered request uploads", () => {
+  /* A store that hands out at most two at a time, from a backlog of five, like the 500-row function does at scale. */
+  function backlog(paths: string[]) {
+    const left = [...paths];
+    return fakeStore({
+      orphanBatchSize: 2,
+      requestUploadOrphans: vi.fn(async () => left.slice(0, 2)),
+      removeRequestUploads: vi.fn(async (removed: string[]) => {
+        for (const path of removed) left.splice(left.indexOf(path), 1);
+        return removed.length;
+      }),
+    });
+  }
+
+  it("are removed batch after batch until none are left", async () => {
+    const store = backlog(["a", "b", "c", "d", "e"]);
+    const summary = await runRetention(store, { apply: true, now });
+    expect(store.removeRequestUploads).toHaveBeenCalledTimes(3);
+    expect(summary.requestUploadOrphansSelected).toBe(5);
+    expect(await store.requestUploadOrphans("x")).toEqual([]);
+  });
+
+  it("are only counted, one batch, in a dry run", async () => {
+    const store = backlog(["a", "b", "c"]);
+    const summary = await runRetention(store, { apply: false, now });
+    expect(store.removeRequestUploads).not.toHaveBeenCalled();
+    expect(summary.requestUploadOrphansSelected).toBe(2);
+  });
+
+  it("are asked for with a cut-off a day back, so a fresh upload is never a candidate", async () => {
+    const store = fakeStore({ requestUploadOrphans: vi.fn(async () => []) });
+    await runRetention(store, { apply: true, now });
+    const cutoff = (store.requestUploadOrphans as ReturnType<typeof vi.fn>).mock.calls[0]![0] as string;
+    expect(Date.parse(cutoff)).toBe(now.getTime() - 24 * 3600 * 1000);
+  });
+
+  it("stop when a removal takes nothing away, instead of asking for the same batch again", async () => {
+    const store = fakeStore({
+      orphanBatchSize: 2,
+      requestUploadOrphans: vi.fn(async () => ["stuck-a", "stuck-b"]),
+      removeRequestUploads: vi.fn(async () => 0),
+    });
+    await runRetention(store, { apply: true, now });
+    expect(store.removeRequestUploads).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("upload slots", () => {
+  it("are removed a week after they were reserved in an applied run, and only counted in a dry run", async () => {
+    const applied = fakeStore();
+    await runRetention(applied, { apply: true, now });
+    expect(applied.expiredUploadSlots).toHaveBeenCalledWith(new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString(), true);
+    const dry = fakeStore();
+    await runRetention(dry, { apply: false, now });
+    expect(dry.expiredUploadSlots).toHaveBeenCalledWith(expect.any(String), false);
   });
 });
