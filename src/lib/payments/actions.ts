@@ -186,7 +186,7 @@ export async function mailMandateActivation(customerId: string): Promise<ActionR
   try {
     const db = await adminDb();
     // Checked before anything is made at Mollie: no address, no link.
-    const addressed = await resolveCustomerRecipient(db, customerId);
+    const addressed = await resolveCustomerRecipient(db, customerId, "financial");
     if (!addressed.ok) return { ok: false, error: addressed.reason };
 
     const result = await requestMandateActivation(db, customerId);
@@ -297,7 +297,7 @@ export async function scheduleRecurringPriceChange(
 
     let mail: MailResult | undefined;
     if (input.sendMail && !result.reused) {
-      const addressed = await resolveCustomerRecipient(db, service.customerId);
+      const addressed = await resolveCustomerRecipient(db, service.customerId, "financial");
       mail = addressed.ok
         ? await sendPriceChangeMail({
             log: { db, customerId: service.customerId, category: "recurring_price_change", recurringServiceId: service.id },
@@ -378,7 +378,7 @@ export async function cancelRecurringService(
 
     let mail: MailResult | undefined;
     if (input.sendMail && !result.reused) {
-      const addressed = await resolveCustomerRecipient(db, service.customerId);
+      const addressed = await resolveCustomerRecipient(db, service.customerId, "financial");
       mail = addressed.ok
         ? await sendCancellationMail({
             log: { db, customerId: service.customerId, category: "recurring_cancellation", recurringServiceId: service.id },

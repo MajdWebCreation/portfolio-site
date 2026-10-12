@@ -3,11 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { actionFailed, type ActionResult } from "@/lib/admin/action-result";
 import { adminDb, orNull } from "@/lib/admin/db";
+import { customerChangedReason } from "@/lib/admin/customers/types";
+import { isEmailAddress } from "@/lib/email/address";
 
 export type CustomerInput = {
   companyName: string;
   contactName: string;
   email: string;
+  billingEmail?: string;
   phone?: string;
   street: string;
   postalCode: string;
@@ -26,6 +29,10 @@ function validate(input: CustomerInput): string | null {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) {
     return "Dit is geen geldig e-mailadres; offertes en facturen gaan er naartoe.";
   }
+  if (input.email.trim().length > 254 || (input.billingEmail?.trim().length ?? 0) > 254) return "Een e-mailadres is hooguit 254 tekens.";
+  if (input.billingEmail?.trim() && !isEmailAddress(input.billingEmail.trim())) {
+    return "Het facturatie-e-mailadres is geen geldig e-mailadres.";
+  }
   if (!input.street.trim() || !input.postalCode.trim() || !input.city.trim()) {
     return "Vul het volledige adres in; offertes en facturen gebruiken het.";
   }
@@ -38,7 +45,9 @@ function toRow(input: CustomerInput) {
     company_name: input.companyName.trim(),
     contact_name: input.contactName.trim(),
     email: input.email.trim(),
-    phone: orNull(input.phone),
+    billing_email: orNull(input.billingEmail?.trim()),
+    /* The same layout the portal stores, so a save that changes nothing is not seen as a change. */
+    phone: orNull(input.phone?.trim().replace(/\s+/g, " ")),
     street: input.street.trim(),
     postal_code: input.postalCode.trim(),
     city: input.city.trim(),
@@ -79,18 +88,37 @@ export async function createCustomer(input: CustomerInput): Promise<ActionResult
 /**
  * Updates a customer. The address is deliberately required: a quote or
  * invoice snapshots it, and a document without an address is not a document.
- * Existing documents keep the snapshot they were made with.
+ * Existing documents keep the snapshot they were made with. Which details
+ * changed is recorded by the database itself (customer_profile_changes,
+ * actor "admin"), in the same transaction as the update.
  */
-export async function updateCustomer(id: string, input: CustomerInput): Promise<ActionResult> {
+export async function updateCustomer(id: string, input: CustomerInput, expectedUpdatedAt: string): Promise<ActionResult> {
   const invalid = validate(input);
   if (invalid) return { ok: false, error: invalid };
 
   const db = await adminDb();
-  const { error } = await db.from("customers").update(toRow(input)).eq("id", id);
+  /* Only over the version this form was opened on; the customer may have changed their details since. */
+  const { data, error } = await db.from("customers").update(toRow(input)).eq("id", id).eq("updated_at", expectedUpdatedAt).select("id");
 
   if (error) return actionFailed(error, "Opslaan mislukt.");
+  if (!data || data.length === 0) return { ok: false, error: customerChangedReason };
 
   revalidatePath("/admin/klanten");
+  revalidatePath(`/admin/klanten/${id}`);
+  return { ok: true };
+}
+
+/**
+ * The internal notes, on their own. Writes nothing else, so a note saved on a
+ * page opened before the customer edited their details carries no stale
+ * copy of those details back into the record.
+ */
+export async function updateCustomerNotes(id: string, notes: string): Promise<ActionResult> {
+  const db = await adminDb();
+  const { data, error } = await db.from("customers").update({ notes }).eq("id", id).select("id");
+  if (error) return actionFailed(error, "Notities opslaan mislukt.");
+  if (!data || data.length === 0) return { ok: false, error: "Deze klant bestaat niet (meer)." };
+
   revalidatePath(`/admin/klanten/${id}`);
   return { ok: true };
 }

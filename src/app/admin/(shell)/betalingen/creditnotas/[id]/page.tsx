@@ -46,7 +46,7 @@ export default async function CreditNotePage({ params }: PageProps) {
     listCreditNotesForInvoice(creditNote.invoiceId),
     listRefundsForInvoice(creditNote.invoiceId),
     listCommunicationsForInvoice(creditNote.invoiceId),
-    readCustomerRecipient(creditNote.customer.customerId),
+    readCustomerRecipient(creditNote.customer.customerId, "financial"),
   ]);
   if (!invoice) notFound();
 

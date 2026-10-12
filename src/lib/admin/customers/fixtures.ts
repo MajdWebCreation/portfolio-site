@@ -14,6 +14,7 @@ export const customerFixtures: Customer[] = [
     notes: "Website met reserveringen. Herinneringsmails gewenst in fase 2 van hun project.",
     status: "active",
     createdAt: "2026-09-04T10:00:00+02:00",
+    updatedAt: "2026-09-04T10:00:00+02:00",
     sourceInquiryId: "inq-2026-0829",
   },
   {
@@ -26,6 +27,7 @@ export const customerFixtures: Customer[] = [
     notes: "Compacte website, tweede taal (Arabisch) mogelijk later.",
     status: "active",
     createdAt: "2026-08-26T15:30:00+02:00",
+    updatedAt: "2026-08-26T15:30:00+02:00",
     sourceLeadId: "lead-2026-015",
   },
   {
@@ -38,6 +40,7 @@ export const customerFixtures: Customer[] = [
     notes: "",
     status: "active",
     createdAt: "2026-09-02T09:15:00+02:00",
+    updatedAt: "2026-09-02T09:15:00+02:00",
     sourceInquiryId: "inq-2026-0831",
   },
   {
@@ -52,5 +55,6 @@ export const customerFixtures: Customer[] = [
     notes: "Project afgerond in 2025. Beheer opgezegd per 1 juli 2026.",
     status: "inactive",
     createdAt: "2025-11-12T11:00:00+01:00",
+    updatedAt: "2025-11-12T11:00:00+01:00",
   },
 ];

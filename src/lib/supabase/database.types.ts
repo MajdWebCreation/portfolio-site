@@ -549,8 +549,47 @@ export type Database = {
           },
         ]
       }
+      customer_profile_changes: {
+        Row: {
+          actor_kind: string
+          actor_user_id: string | null
+          business_changes: Json
+          changed_fields: string[]
+          customer_id: string
+          id: string
+          occurred_at: string
+        }
+        Insert: {
+          actor_kind: string
+          actor_user_id?: string | null
+          business_changes?: Json
+          changed_fields: string[]
+          customer_id: string
+          id?: string
+          occurred_at?: string
+        }
+        Update: {
+          actor_kind?: string
+          actor_user_id?: string | null
+          business_changes?: Json
+          changed_fields?: string[]
+          customer_id?: string
+          id?: string
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_profile_changes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
+          billing_email: string | null
           city: string
           company_name: string
           contact_name: string
@@ -570,6 +609,7 @@ export type Database = {
           vat_number: string | null
         }
         Insert: {
+          billing_email?: string | null
           city: string
           company_name: string
           contact_name: string
@@ -589,6 +629,7 @@ export type Database = {
           vat_number?: string | null
         }
         Update: {
+          billing_email?: string | null
           city?: string
           company_name?: string
           contact_name?: string
@@ -2492,6 +2533,23 @@ export type Database = {
           vat_number: string | null
         }[]
       }
+      portal_customer_profile: {
+        Args: { p_customer_id: string }
+        Returns: {
+          company_name: string
+          contact_name: string
+          email: string
+          billing_email: string | null
+          phone: string | null
+          street: string
+          postal_code: string
+          city: string
+          country: string
+          kvk_number: string | null
+          vat_number: string | null
+          updated_at: string
+        }[]
+      }
       portal_document: {
         Args: { p_customer_id: string; p_id: string; p_kind: string }
         Returns: {
@@ -2620,6 +2678,28 @@ export type Database = {
           billed_period_starts: string[]
           price_changes: Json
           agreements: Json
+        }[]
+      }
+      portal_update_customer_profile: {
+        Args: {
+          p_billing_email: string
+          p_city: string
+          p_company_name: string
+          p_contact_name: string
+          p_country: string
+          p_customer_id: string
+          p_email: string
+          p_expected_updated_at: string
+          p_kvk_number: string
+          p_phone: string
+          p_postal_code: string
+          p_street: string
+          p_vat_number: string
+        }
+        Returns: {
+          outcome: string
+          updated_at: string
+          changed_fields: string[]
         }[]
       }
       save_invoice_lines: {

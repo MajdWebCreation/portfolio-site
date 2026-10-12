@@ -1,5 +1,6 @@
 "use client";
 
+import { isEmailAddress } from "@/lib/email/address";
 import { useState } from "react";
 import AdminButton from "@/components/admin/admin-button";
 import AdminSection from "@/components/admin/admin-section";
@@ -9,7 +10,7 @@ import { SelectField, TextField, TextareaField } from "@/components/admin/form-f
 import SaveControls, { useSave } from "@/components/admin/save-controls";
 import StatusBadge from "@/components/admin/status-badge";
 import { formatDateTime } from "@/lib/admin/format";
-import { updateCustomer, type CustomerInput } from "@/lib/admin/customers/actions";
+import { updateCustomer, updateCustomerNotes, type CustomerInput } from "@/lib/admin/customers/actions";
 import { customerStatusLabels, customerStatusTone, type Customer } from "@/lib/admin/customers/types";
 
 /**
@@ -31,6 +32,7 @@ type Fields = {
   companyName: string;
   contactName: string;
   email: string;
+  billingEmail: string;
   phone: string;
   street: string;
   postalCode: string;
@@ -46,6 +48,7 @@ function fieldsOf(customer: Customer): Fields {
     companyName: customer.companyName,
     contactName: customer.contactName,
     email: customer.email,
+    billingEmail: customer.billingEmail ?? "",
     phone: customer.phone ?? "",
     street: customer.address.street,
     postalCode: customer.address.postalCode,
@@ -64,6 +67,7 @@ function inputOf(fields: Fields, notes: string): CustomerInput {
     companyName: fields.companyName,
     contactName: fields.contactName,
     email: fields.email,
+    billingEmail: optional(fields.billingEmail),
     phone: optional(fields.phone),
     street: fields.street,
     postalCode: fields.postalCode,
@@ -111,6 +115,15 @@ export function CustomerDetailsView({ customer }: { customer: Customer }) {
           {customer.email}
         </a>
       </DetailRow>
+      <DetailRow term="Facturatie-e-mail">
+        {customer.billingEmail ? (
+          <a href={`mailto:${customer.billingEmail}`} className="link-static">
+            {customer.billingEmail}
+          </a>
+        ) : (
+          <span className="text-muted">Zelfde als e-mail</span>
+        )}
+      </DetailRow>
       <DetailRow term="Telefoon">
         {customer.phone ? (
           <a href={`tel:${customer.phone.replace(/\s/g, "")}`} className="link-static tabular">
@@ -157,6 +170,18 @@ export function CustomerDetailsFields({
         <TextField id="contactName" label="Contactpersoon" value={values.contactName} onChange={set("contactName")} error={errors.contactName} />
         <TextField id="email" label="E-mail" type="email" value={values.email} onChange={set("email")} error={errors.email} />
         <TextField id="phone" label="Telefoon" optional type="tel" value={values.phone} onChange={set("phone")} />
+        <div className="sm:col-span-2">
+          <TextField
+            id="billingEmail"
+            label="Facturatie-e-mailadres"
+            optional
+            type="email"
+            value={values.billingEmail}
+            onChange={set("billingEmail")}
+            error={errors.billingEmail}
+            hint="Facturen, herinneringen, creditnota's en incassoberichten gaan hierheen. Leeg: naar het gewone e-mailadres."
+          />
+        </div>
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="sm:col-span-2">
@@ -203,6 +228,7 @@ export default function CustomerDetails({ customer }: { customer: Customer }) {
     const relevant: FieldErrors = Object.fromEntries(
       Object.entries(found).filter(([key, message]) => key !== "notes" && message),
     ) as FieldErrors;
+    if (values.billingEmail.trim() && !isEmailAddress(values.billingEmail.trim())) relevant.billingEmail = "Dit is geen geldig e-mailadres.";
     setErrors(relevant);
     const first = Object.keys(relevant)[0];
     if (first) {
@@ -211,7 +237,7 @@ export default function CustomerDetails({ customer }: { customer: Customer }) {
     }
     // The notes travel as they are stored; they have their own save below.
     save(
-      () => updateCustomer(customer.id, inputOf(values, customer.notes)),
+      () => updateCustomer(customer.id, inputOf(values, customer.notes), customer.updatedAt),
       () => setEditing(false),
     );
   }
@@ -296,7 +322,7 @@ export function CustomerNotes({ customer }: { customer: Customer }) {
           error={error}
           savedAt={savedAt}
           disabled={!dirty}
-          onSave={() => save(() => updateCustomer(customer.id, inputOf(fieldsOf(customer), notes)))}
+          onSave={() => save(() => updateCustomerNotes(customer.id, notes))}
         />
       </div>
     </AdminSection>

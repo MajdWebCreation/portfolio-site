@@ -28,7 +28,7 @@ const quote = (overrides: Partial<Quote> = {}): Quote => ({
 });
 
 const onRecord = (email: string, id = testCustomer.customerId) =>
-  recipientFromCustomer({ id, contact_name: testCustomer.contactName, email });
+  recipientFromCustomer({ id, contact_name: testCustomer.contactName, email }, "general");
 
 describe("the send panel's recipient", () => {
   it("names the address the customer has now for a reopened concept quote", () => {

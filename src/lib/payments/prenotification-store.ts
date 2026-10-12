@@ -114,7 +114,7 @@ export function createPrenotificationStore(): PrenotificationStore {
     },
 
     recipient(customerId: string) {
-      return resolveCustomerRecipient(db, customerId);
+      return resolveCustomerRecipient(db, customerId, "financial");
     },
 
     /*

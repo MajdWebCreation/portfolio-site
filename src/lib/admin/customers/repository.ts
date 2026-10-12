@@ -4,7 +4,7 @@ import type { Customer } from "@/lib/admin/customers/types";
 
 /** Read access to customers; see inquiries/repository.ts for the access rules. */
 const columns =
-  "id, company_name, contact_name, email, phone, street, postal_code, city, country, kvk_number, vat_number, notes, status, source_inquiry_id, source_lead_id, created_at, updated_at";
+  "id, company_name, contact_name, email, billing_email, phone, street, postal_code, city, country, kvk_number, vat_number, notes, status, source_inquiry_id, source_lead_id, created_at, updated_at";
 
 export async function listCustomers(): Promise<Customer[]> {
   const db = await adminDb();

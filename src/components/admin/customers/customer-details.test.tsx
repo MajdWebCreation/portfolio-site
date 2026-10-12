@@ -27,6 +27,7 @@ const customer: Customer = {
   notes: "Via een referral.",
   status: "active",
   createdAt: "2026-09-01T09:00:00.000Z",
+  updatedAt: "2026-09-01T09:00:00.000Z",
 };
 
 describe("the customer's data", () => {
@@ -53,6 +54,7 @@ describe("the customer's data", () => {
       companyName: "Alfa BV",
       contactName: "A. Alfa",
       email: "niet-geldig",
+      billingEmail: "",
       phone: "06 1234 5678",
       street: "Straat 1",
       postalCode: "1011 AA",

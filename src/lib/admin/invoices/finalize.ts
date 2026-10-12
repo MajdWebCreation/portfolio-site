@@ -67,7 +67,7 @@ export async function finalizeInvoice(id: string): Promise<ActionResult<string>>
     // An invoice nobody can be sent is not issued: the number would sit
     // unused. Asked of the customer as they are now, the same question the
     // send flow asks -- not of the address this concept copied.
-    const addressed = await resolveCustomerRecipient(db, invoice.customer.customerId);
+    const addressed = await resolveCustomerRecipient(db, invoice.customer.customerId, "financial");
     if (!addressed.ok) return { ok: false, error: addressed.reason };
   }
 

@@ -45,7 +45,7 @@ export function recipientFixture(overrides: Partial<CustomerContactRow> = {}): C
     contact_name: testCustomer.contactName,
     email: testCustomer.email,
     ...overrides,
-  });
+  }, "financial");
   if (!result.ok) throw new Error(result.reason);
   return result.recipient;
 }

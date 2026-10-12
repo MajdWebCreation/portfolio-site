@@ -59,7 +59,7 @@ export default async function InvoicesDetailPage({ params }: PageProps) {
     getCollectionState(item.id),
     readRecurringServicesForCustomer(item.customer.customerId),
     /* Where a send goes now: the customer record, not the invoice's copy of it. */
-    readCustomerRecipient(item.customer.customerId),
+    readCustomerRecipient(item.customer.customerId, "financial"),
     listCreditNotesForInvoice(item.id),
     listRefundsForInvoice(item.id),
     listCommunicationsForInvoice(item.id),

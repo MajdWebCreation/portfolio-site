@@ -73,7 +73,7 @@ function candidate(overrides: Partial<ReminderCandidate> = {}): ReminderCandidat
     payments: [],
     events: [],
     directDebit: false,
-    recipient: recipientFromCustomer({ id: "cust-1", contact_name: "A. Alfa", email: "a@example.com" }),
+    recipient: recipientFromCustomer({ id: "cust-1", contact_name: "A. Alfa", email: "a@example.com" }, "financial"),
     ...overrides,
   };
 }
@@ -252,7 +252,7 @@ describe("invoices that must be left alone", () => {
   });
 
   it("never chases a customer without a usable address", async () => {
-    const { store, rows } = createStore([candidate({ recipient: recipientFromCustomer({ id: "cust-1", contact_name: "A. Alfa", email: "  " }) })]);
+    const { store, rows } = createStore([candidate({ recipient: recipientFromCustomer({ id: "cust-1", contact_name: "A. Alfa", email: "  " }, "financial") })]);
 
     const summary = await runPaymentReminders(store, mail, subjectFor, day(1));
 
@@ -353,7 +353,7 @@ describe("two customers in one run", () => {
         sentAt: "2026-09-17T09:00:00.000Z",
         customer: { ...invoiceFixture().customer, customerId: "cust-2", companyName: "Beta BV", email: "b@example.com" },
       }),
-      recipient: recipientFromCustomer({ id: "cust-2", contact_name: "B. Beta", email: "b@example.com" }),
+      recipient: recipientFromCustomer({ id: "cust-2", contact_name: "B. Beta", email: "b@example.com" }, "financial"),
     });
     const { store, rows } = createStore([alfa, beta]);
 

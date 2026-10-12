@@ -41,7 +41,7 @@ export default async function QuotesDetailPage({ params }: PageProps) {
     version of a concept.
   */
   const [recipient, successor, predecessor] = await Promise.all([
-    readCustomerRecipient(item.customer.customerId),
+    readCustomerRecipient(item.customer.customerId, "general"),
     isQuoteFrozen(item) ? findQuoteSuccessor(item.id) : undefined,
     item.supersedesQuoteId ? readQuote(item.supersedesQuoteId) : undefined,
   ]);

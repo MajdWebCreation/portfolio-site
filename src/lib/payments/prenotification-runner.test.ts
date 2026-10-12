@@ -95,7 +95,7 @@ function makeStore(
 
     /* The real store reads the customer through the resolver; so does this. */
     async recipient(customerId) {
-      return recipientFromCustomer(contact ? { id: customerId, contact_name: contact.contactName, email: contact.email } : undefined);
+      return recipientFromCustomer(contact ? { id: customerId, contact_name: contact.contactName, email: contact.email } : undefined, "financial");
     },
 
     async claim(key) {

@@ -1,40 +1,30 @@
 import type { Metadata } from "next";
-import { DetailList, DetailRow } from "@/components/admin/detail-list";
+import ProfileForm from "@/components/portal/profile-form";
 import { PageHeader } from "@/components/portal/portal-ui";
 import { orNoAccess, requirePortalMember } from "@/lib/portal/access";
-import { readPortalCustomer } from "@/lib/portal/customers/read";
+import { readPortalProfile } from "@/lib/portal/profile/read";
 
 export const metadata: Metadata = { title: "Mijn gegevens" };
 
-/** The customer's details as YM Creations has them now; the next document is addressed with these. */
+/**
+ * The customer's details as YM Creations has them now, editable. A change
+ * reaches the next quote, invoice and mail; documents that already exist
+ * keep the details they were made with.
+ */
 export default async function PortalDetailsPage() {
   const member = await requirePortalMember();
-  const customer = await orNoAccess(readPortalCustomer(member.current.customerId));
+  const profile = await orNoAccess(readPortalProfile(member.current.customerId));
 
   return (
     <div>
-      <PageHeader label="Mijn gegevens" title={customer.companyName}>
+      <PageHeader label="Mijn gegevens" title={profile.fields.companyName}>
         <p>
-          Zo staan uw gegevens bij YM Creations geregistreerd; nieuwe offertes en facturen worden hierop gericht. Klopt er iets
-          niet? Mail de wijziging naar contact@ymcreations.com.
+          Zo staan uw gegevens bij YM Creations geregistreerd. Wijzigt u iets, dan gebruiken wij dat voor nieuwe offertes,
+          facturen en berichten. Documenten die u al heeft ontvangen, blijven zoals ze zijn.
         </p>
       </PageHeader>
 
-      <DetailList className="mt-10">
-        <DetailRow term="Bedrijfsnaam">{customer.companyName}</DetailRow>
-        <DetailRow term="Contactpersoon">{customer.contactName || "—"}</DetailRow>
-        <DetailRow term="E-mailadres">{customer.email}</DetailRow>
-        <DetailRow term="Telefoon">{customer.phone || "—"}</DetailRow>
-        <DetailRow term="Adres">
-          {customer.street}
-          <span className="block">
-            {customer.postalCode} {customer.city}
-          </span>
-          {customer.country ? <span className="block">{customer.country}</span> : null}
-        </DetailRow>
-        <DetailRow term="KvK-nummer">{customer.kvkNumber || "—"}</DetailRow>
-        <DetailRow term="Btw-nummer">{customer.vatNumber || "—"}</DetailRow>
-      </DetailList>
+      <ProfileForm key={member.current.customerId} customerId={member.current.customerId} fields={profile.fields} version={profile.version} />
     </div>
   );
 }

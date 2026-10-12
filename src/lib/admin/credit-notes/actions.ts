@@ -164,7 +164,7 @@ export async function sendCreditNoteToCustomer(id: string): Promise<ActionResult
   const invoice = await getInvoice(creditNote.invoiceId);
   if (!invoice) return { ok: false, error: "De factuur van deze creditnota bestaat niet (meer)." };
 
-  const addressed = await resolveCustomerRecipient(db, creditNote.customer.customerId);
+  const addressed = await resolveCustomerRecipient(db, creditNote.customer.customerId, "financial");
   if (!addressed.ok) return { ok: false, error: addressed.reason };
 
   const artifact = await readInvoiceArtifact(db, creditNote, "creditnota");

@@ -108,7 +108,7 @@ export function createReminderStore(): ReminderStore {
           /* The customer as they are now. Not where the invoice once went and
              not the invoice's copy of the customer: no fallback at all, so a
              customer without a usable address is reported, not guessed at. */
-          recipient: recipientFromCustomer(customerById.get(invoice.customer.customerId)),
+          recipient: recipientFromCustomer(customerById.get(invoice.customer.customerId), "financial"),
         };
       });
     },

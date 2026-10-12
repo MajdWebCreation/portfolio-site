@@ -94,7 +94,7 @@ export async function sendQuoteToCustomer(id: string): Promise<ActionResult<Sent
     spent: a quote that cannot be mailed should not use up a number, and a
     resend goes to the address the customer has today.
   */
-  const addressed = await resolveCustomerRecipient(db, stored.customer.customerId);
+  const addressed = await resolveCustomerRecipient(db, stored.customer.customerId, "general");
   if (!addressed.ok) return { ok: false, error: addressed.reason };
   const { recipient } = addressed;
 
@@ -238,7 +238,7 @@ export async function sendInvoiceToCustomer(
     question, asked of the customer record now -- before Mollie is asked for
     anything, so an invoice that cannot be mailed opens no payment either.
   */
-  const addressed = await resolveCustomerRecipient(db, invoice.customer.customerId);
+  const addressed = await resolveCustomerRecipient(db, invoice.customer.customerId, "financial");
   if (!addressed.ok) return { ok: false, error: addressed.reason };
   const { recipient } = addressed;
 
