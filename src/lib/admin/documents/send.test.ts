@@ -124,6 +124,20 @@ describe("sending an invoice with a payment link", () => {
     expect(result.ok).toBe(true);
     expect(sendDocumentMail).toHaveBeenCalledWith(expect.not.objectContaining({ payUrl: expect.anything() }));
   });
+
+  /*
+    A payment of this invoice is still running: no second button, and no mail
+    pointing at the bank details either. Nothing goes out and nothing moves.
+  */
+  it("refuses to (re)send while a payment of the invoice is in flight", async () => {
+    invoicePayLink.mockResolvedValue({ kind: "none", reason: "payment-in-flight" });
+
+    const result = await sendInvoiceToCustomer("inv-1");
+
+    expect(result).toEqual({ ok: false, error: expect.stringContaining("Er loopt nog een betaling voor deze factuur") });
+    expect(sendDocumentMail).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
 });
 
 /*

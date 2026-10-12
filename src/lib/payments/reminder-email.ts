@@ -4,6 +4,7 @@ import { contactSectionHtml, contactTextLines } from "@/lib/email/contact";
 import { emailButton, emailMeta, emailSection, emailShell, emailText, escapeEmailHtml } from "@/lib/email/shell";
 import { formatCents } from "@/lib/money";
 import { reminderFeeAnnounced, reminderFeeCents, type ReminderStage } from "@/lib/payments/collection-policy";
+import { activationAmountCents } from "@/lib/payments/mandate-activation";
 
 /**
  * The three reminder mails.
@@ -31,8 +32,20 @@ export type ReminderMailContent = {
   outstandingLabel: string;
   /** "19 okt 2026" -- the last day of the final notice's grace period. */
   finalDateLabel: string;
-  /** The payment button, when one could be offered. */
+  /** The invoice's payment button, when an ordinary payment may be started (payLinkFor). */
   payUrl?: string;
+  /**
+   * The invoice belongs to a service collected by direct debit: there is no
+   * button on purpose, and the mail says why instead of asking the customer
+   * to pay -- a transfer beside a collection would be paid twice.
+   */
+  collectedByDirectDebit?: boolean;
+  /**
+   * The customer's direct debit, a separate action from paying this invoice
+   * (reminder-activation.ts): the EUR 0.01 activation to offer, or the note
+   * that their authorisation is being processed.
+   */
+  activation?: { kind: "offer"; url: string } | { kind: "awaiting_confirmation" };
 };
 
 export type ReminderMailResult = { sent: true; sentAt: string; messageId?: string; communicationId?: string } | { sent: false; reason: string };
@@ -50,8 +63,11 @@ export const reminderSubjects: Record<ReminderStage, string> = {
   final_notice: "Laatste aanmaning voor je openstaande factuur",
 };
 
-export function reminderSubject(stage: ReminderStage): string {
-  return reminderSubjects[stage];
+/** A direct-debit invoice is not chased as unpaid by the customer: its subject says what happened instead. */
+export const directDebitReminderSubject = "Je factuur is nog niet via automatische incasso betaald";
+
+export function reminderSubject(stage: ReminderStage, collectedByDirectDebit = false): string {
+  return collectedByDirectDebit ? directDebitReminderSubject : reminderSubjects[stage];
 }
 
 /** The facts every reminder repeats, in the order they matter. */
@@ -75,11 +91,56 @@ const signOff = ["Met vriendelijke groet,", companyProfile.legalName];
 */
 const contactIntro = "Heb je een vraag of klopt er iets niet? Neem gerust contact met ons op.";
 
+/*
+  Two actions that look alike and are not: paying this invoice, and
+  authorising the monthly collection. When both are offered each gets its own
+  heading and button, and the activation says in so many words that its cent
+  pays no invoice.
+*/
+const activationButtonText = `Incasso activeren (${formatCents(activationAmountCents)})`;
+const activationOffer = `Los van deze factuur: voor je maandelijkse dienst is de automatische incasso nog niet geactiveerd. Dat doe je met een eenmalige betaling van ${formatCents(activationAmountCents)} via de knop hieronder. Die ${formatCents(activationAmountCents)} betaalt deze factuur niet en is geen maandtermijn; het is alleen je toestemming voor de incasso.`;
+const activationAwaiting = "Je toestemming voor de automatische incasso is ontvangen en wordt nog verwerkt. Daarvoor hoef je niets meer te doen.";
+
+function payIntro(content: ReminderMailContent): string {
+  return `Met de knop hieronder betaal je het openstaande bedrag van deze factuur: ${content.outstandingLabel}.`;
+}
+
+/** The invoice's button -- under its own heading when the activation is offered beside it. */
+function payHtml(content: ReminderMailContent): string[] {
+  if (!content.payUrl) return [];
+  const button = emailButton(content.payUrl, "Factuur betalen");
+  return content.activation?.kind === "offer" ? [emailSection({ label: "Factuur betalen", html: escapeEmailHtml(payIntro(content)) }), button] : [button];
+}
+
+function payText(content: ReminderMailContent): string[] {
+  if (!content.payUrl) return [];
+  return content.activation?.kind === "offer"
+    ? ["Factuur betalen", payIntro(content), `Factuur betalen: ${content.payUrl}`, ""]
+    : [`Factuur betalen: ${content.payUrl}`, ""];
+}
+
+function activationHtml(content: ReminderMailContent): string[] {
+  if (content.activation?.kind === "offer") {
+    return [emailSection({ label: "Automatische incasso activeren", html: escapeEmailHtml(activationOffer) }), emailButton(content.activation.url, activationButtonText)];
+  }
+  if (content.activation?.kind === "awaiting_confirmation") return [emailSection({ label: "Automatische incasso", html: escapeEmailHtml(activationAwaiting) })];
+  return [];
+}
+
+function activationText(content: ReminderMailContent): string[] {
+  if (content.activation?.kind === "offer") return ["Automatische incasso activeren", activationOffer, `${activationButtonText}: ${content.activation.url}`, ""];
+  if (content.activation?.kind === "awaiting_confirmation") return ["Automatische incasso", activationAwaiting, ""];
+  return [];
+}
+
 function firstReminder(content: ReminderMailContent): MailBody {
   const opening =
     "Waarschijnlijk is deze factuur aan je aandacht ontsnapt. We willen je vriendelijk herinneren dat deze inmiddels is verlopen.";
+  /* With the activation below it, "ignore this mail" would also wave that away. */
   const crossed =
-    "Heb je de betaling net gedaan? Dan hebben onze berichten elkaar gekruist en kun je deze mail als niet verzonden beschouwen.";
+    content.activation?.kind === "offer"
+      ? "Heb je de factuur net betaald? Dan hebben onze berichten elkaar gekruist en hoef je voor de factuur niets meer te doen. De automatische incasso hieronder staat daar los van."
+      : "Heb je de betaling net gedaan? Dan hebben onze berichten elkaar gekruist en kun je deze mail als niet verzonden beschouwen.";
   const rows = facts(content);
 
   const html = emailShell({
@@ -90,8 +151,9 @@ function firstReminder(content: ReminderMailContent): MailBody {
       emailText(`Beste ${escapeEmailHtml(content.contactName)},`, { top: 18 }),
       emailText(escapeEmailHtml(opening)),
       emailMeta(rows.map(([label, value]) => ({ label, value })), { label: "Factuurgegevens" }),
-      ...(content.payUrl ? [emailButton(content.payUrl, "Factuur betalen")] : []),
+      ...payHtml(content),
       emailSection({ label: "Al betaald?", html: escapeEmailHtml(crossed) }),
+      ...activationHtml(content),
       contactSectionHtml(contactIntro),
       emailText(escapeEmailHtml(signOff[0]), { top: 26 }),
       emailText(escapeEmailHtml(signOff[1])),
@@ -105,9 +167,10 @@ function firstReminder(content: ReminderMailContent): MailBody {
     "",
     ...rows.map(([label, value]) => `${label}: ${value}`),
     "",
-    ...(content.payUrl ? [`Factuur betalen: ${content.payUrl}`, ""] : []),
+    ...payText(content),
     crossed,
     "",
+    ...activationText(content),
     ...contactTextLines(contactIntro),
     "",
     ...signOff,
@@ -141,9 +204,10 @@ function secondReminder(content: ReminderMailContent): MailBody {
       emailText(escapeEmailHtml(opening)),
       emailMeta(rows.map(([label, value]) => ({ label, value })), { label: "Factuurgegevens" }),
       emailSection({ label: "Ons verzoek", html: escapeEmailHtml(request) }),
-      ...(content.payUrl ? [emailButton(content.payUrl, "Factuur betalen")] : []),
+      ...payHtml(content),
       ...(content.payUrl ? [emailText(escapeEmailHtml(exact), { top: 14 })] : []),
       emailSection({ label: "Lukt het niet?", html: escapeEmailHtml(help) }),
+      ...activationHtml(content),
       contactSectionHtml(contactIntro),
       emailText(escapeEmailHtml(signOff[0]), { top: 26 }),
       emailText(escapeEmailHtml(signOff[1])),
@@ -159,9 +223,11 @@ function secondReminder(content: ReminderMailContent): MailBody {
     "",
     request,
     "",
-    ...(content.payUrl ? [`Factuur betalen: ${content.payUrl}`, "", exact, ""] : []),
+    ...payText(content),
+    ...(content.payUrl ? [exact, ""] : []),
     help,
     "",
+    ...activationText(content),
     ...contactTextLines(contactIntro),
     "",
     ...signOff,
@@ -196,8 +262,9 @@ function finalNotice(content: ReminderMailContent): MailBody {
       emailText(escapeEmailHtml(opening)),
       emailMeta(rows.map(([label, value]) => ({ label, value })), { label: "Factuurgegevens" }),
       emailSection({ label: "Uiterste termijn", html: escapeEmailHtml(term) }),
-      ...(content.payUrl ? [emailButton(content.payUrl, "Factuur betalen")] : []),
+      ...payHtml(content),
       emailSection({ label: "Als betaling uitblijft", html: escapeEmailHtml(consequences) }),
+      ...activationHtml(content),
       contactSectionHtml(help),
       emailText(escapeEmailHtml(signOff[0]), { top: 26 }),
       emailText(escapeEmailHtml(signOff[1])),
@@ -213,10 +280,59 @@ function finalNotice(content: ReminderMailContent): MailBody {
     "",
     term,
     "",
-    ...(content.payUrl ? [`Factuur betalen: ${content.payUrl}`, ""] : []),
+    ...payText(content),
     consequences,
     "",
+    ...activationText(content),
     ...contactTextLines(help),
+    "",
+    ...signOff,
+  ].join("\n");
+
+  return { html, text };
+}
+
+/*
+  An invoice of a service collected by direct debit, past the grace window
+  and still unpaid. The money was supposed to come by itself, so this is not
+  a dunning letter and no stage of the ladder turns it into one: it says the
+  payment has not arrived, asks the customer not to transfer it themselves
+  without talking to us -- a transfer beside a collection still under way
+  would be paid twice -- and how to reach us.
+*/
+function directDebitReminder(content: ReminderMailContent): MailBody {
+  const opening = "We hebben de betaling van onderstaande factuur nog niet ontvangen.";
+  const explain =
+    "Deze factuur hoort bij je maandelijkse dienst met automatische incasso. Maak het bedrag niet zelf over zonder overleg, zodat er niet dubbel wordt afgeschreven. Neem contact met ons op, dan zoeken we samen uit wat er misging en regelen we de betaling.";
+  const rows = facts(content, [["Dagen verlopen", String(content.daysOverdue)]]);
+
+  const html = emailShell({
+    locale: "nl",
+    title: "Betaling nog niet ontvangen",
+    preheader: `${content.invoiceNumber} — ${content.outstandingLabel} nog niet via automatische incasso ontvangen`,
+    content: [
+      emailText(`Beste ${escapeEmailHtml(content.contactName)},`, { top: 18 }),
+      emailText(escapeEmailHtml(opening)),
+      emailMeta(rows.map(([label, value]) => ({ label, value })), { label: "Factuurgegevens" }),
+      emailSection({ label: "Automatische incasso", html: escapeEmailHtml(explain) }),
+      ...activationHtml(content),
+      contactSectionHtml(contactIntro),
+      emailText(escapeEmailHtml(signOff[0]), { top: 26 }),
+      emailText(escapeEmailHtml(signOff[1])),
+    ].join(""),
+  });
+
+  const text = [
+    `Beste ${content.contactName},`,
+    "",
+    opening,
+    "",
+    ...rows.map(([label, value]) => `${label}: ${value}`),
+    "",
+    explain,
+    "",
+    ...activationText(content),
+    ...contactTextLines(contactIntro),
     "",
     ...signOff,
   ].join("\n");
@@ -231,7 +347,7 @@ const builders: Record<ReminderStage, (content: ReminderMailContent) => MailBody
 };
 
 export function buildReminderMailBody(content: ReminderMailContent): MailBody {
-  return builders[content.stage](content);
+  return content.collectedByDirectDebit ? directDebitReminder(content) : builders[content.stage](content);
 }
 
 /**
@@ -246,7 +362,7 @@ export async function sendReminderMail(
   const { html, text } = buildReminderMailBody({ ...content, contactName: recipient.contactName });
 
   const result = await sendCustomerEmail(
-    { to: recipient, subject: reminderSubject(content.stage), html, text },
+    { to: recipient, subject: reminderSubject(content.stage, Boolean(content.collectedByDirectDebit)), html, text },
     log,
   );
 

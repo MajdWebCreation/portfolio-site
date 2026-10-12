@@ -8,7 +8,7 @@ import {
   reminderSteps,
   type ReminderStage,
 } from "@/lib/payments/collection-policy";
-import { settleInvoice } from "@/lib/payments/settlement";
+import { settleInvoice, stillCollectedByDirectDebit } from "@/lib/payments/settlement";
 import type { Payment } from "@/lib/payments/types";
 
 /**
@@ -89,6 +89,7 @@ export type CollectionBlock =
   | "handed_over"
   | "payment_in_flight"
   | "direct_debit_pending"
+  | "direct_debit_unresolved"
   | "not_due"
   | "ladder_complete";
 
@@ -104,6 +105,7 @@ export const collectionBlockLabels: Record<CollectionBlock, string> = {
   handed_over: "De vordering is overgedragen.",
   payment_in_flight: "Er loopt een betaling; die wordt eerst afgewacht.",
   direct_debit_pending: "De automatische incasso is onderweg; die wordt eerst afgewacht.",
+  direct_debit_unresolved: "De automatische incasso is niet binnengekomen en de klant is ingelicht. Bekijk de incasso; er gaat geen aanmaning uit zolang die de factuur nog kan innen.",
   not_due: "De vervaldatum is nog niet verstreken.",
   ladder_complete: "Alle herinneringen zijn verstuurd.",
 };
@@ -172,6 +174,11 @@ export type CollectionView = {
   automation: CollectionAutomation;
   /** Why nothing is going out today; absent when a stage is due now. */
   blocked?: CollectionBlock;
+  /**
+   * Still the direct debit's to collect (stillCollectedByDirectDebit): a
+   * reminder for it is the direct-debit notice, never a dunning letter.
+   */
+  collectedByDirectDebit: boolean;
 };
 
 const stageRank: Record<ReminderStage, number> = {
@@ -194,6 +201,7 @@ export function invoiceCollectionView(input: CollectionInput): CollectionView {
   // What is owed after credit notes, never the bare document total.
   const total = invoiceAmounts(invoice).dueCents;
   const settlement = settleInvoice(total, payments);
+  const collectedByDirectDebit = stillCollectedByDirectDebit(Boolean(input.directDebit), settlement);
   const daysOverdue = Math.max(0, daysBetween(invoice.dueDate, todayKey));
   const collectionReadyOn = addDays(invoice.dueDate, collectionReadyDays);
 
@@ -233,19 +241,23 @@ export function invoiceCollectionView(input: CollectionInput): CollectionView {
       once the grace window is over -- a subscription that never charged is
       still something the customer should hear about.
     */
-    if (
-      input.directDebit &&
-      !settlement.failedWithoutRecovery &&
-      daysOverdue < directDebitGraceDays
-    ) {
-      return "direct_debit_pending";
-    }
+    if (collectedByDirectDebit && daysOverdue < directDebitGraceDays) return "direct_debit_pending";
+    /*
+      Past the grace window and still the collection's to make: the customer
+      hears once that the payment has not arrived (the direct-debit notice),
+      and then a person looks at the collection. No ladder climbs on: a
+      second and a final notice for money the customer authorised us to take
+      would dun them for our own collection, and a final notice is what makes
+      an invoice ready to hand over.
+    */
+    if (collectedByDirectDebit && sent.length > 0) return "direct_debit_unresolved";
     if (daysOverdue < reminderSteps[0].daysOverdue) return "not_due";
     if (!dueStep) return "ladder_complete";
     return undefined;
   })();
 
   const collectionReady =
+    !collectedByDirectDebit &&
     sentStages.has("final_notice") &&
     daysOverdue >= collectionReadyDays &&
     settlement.outstandingCents > 0 &&
@@ -254,6 +266,7 @@ export function invoiceCollectionView(input: CollectionInput): CollectionView {
   const automation: CollectionAutomation = (() => {
     if (block && ["draft", "not_sent", "cancelled", "paid", "settled"].includes(block)) return "inactive";
     if (stoppedBy[state]) return "paused";
+    if (block === "direct_debit_unresolved") return "finished";
     if (sentStages.has("final_notice") && !dueStep) return "finished";
     return "running";
   })();
@@ -266,10 +279,14 @@ export function invoiceCollectionView(input: CollectionInput): CollectionView {
     sent,
     attempts,
     ...(block ? { blocked: block } : dueStep ? { dueStage: dueStep.stage } : {}),
-    ...(aheadStep ? { nextStep: { stage: aheadStep.stage, on: addDays(invoice.dueDate, aheadStep.daysOverdue) } } : {}),
+    /* While a person has to look at the collection, no stage is ahead: none would be sent. */
+    ...(aheadStep && block !== "direct_debit_unresolved"
+      ? { nextStep: { stage: aheadStep.stage, on: addDays(invoice.dueDate, aheadStep.daysOverdue) } }
+      : {}),
     collectionReadyOn,
     collectionReady,
     automation,
+    collectedByDirectDebit,
   };
 }
 

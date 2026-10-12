@@ -236,11 +236,45 @@ describe("an invoice collected by direct debit", () => {
     expect(result.dueStage).toBe("first_reminder");
   });
 
-  it("is chased anyway once the grace window has passed", () => {
+  it("gets one notice once the grace window has passed, as the direct-debit notice", () => {
     const result = view({ todayKey: day(5), directDebit: true });
 
     expect(result.blocked).toBeUndefined();
     expect(result.dueStage).toBe("first_reminder");
+    expect(result.collectedByDirectDebit).toBe(true);
+  });
+
+  /*
+    Still the collection's to make: after that one notice no ladder climbs
+    on, and nothing ever makes the invoice ready to hand over -- a person
+    looks at the collection instead.
+  */
+  it("stops after that notice while the collection can still come, and is never ready to hand over", () => {
+    const notified = [sentEvent("first_reminder", 5)];
+    for (const n of [7, 14, 30]) {
+      const result = view({ todayKey: day(n), directDebit: true, events: notified });
+      expect(result.dueStage).toBeUndefined();
+      expect(result.blocked).toBe("direct_debit_unresolved");
+      expect(result.collectionReady).toBe(false);
+      expect(result.automation).toBe("finished");
+      expect(result.nextStep).toBeUndefined();
+    }
+    /* Even a final notice on record from before cannot make it ready while the collection stands. */
+    const all = [sentEvent("first_reminder", 1), sentEvent("second_reminder", 7), sentEvent("final_notice", 14)];
+    expect(view({ todayKey: day(30), directDebit: true, events: all }).collectionReady).toBe(false);
+  });
+
+  it("is no longer the collection's once it failed: the ladder goes on, as for any invoice", () => {
+    const failed = [paymentFixture({ status: "failed", paidAt: undefined })];
+    const result = view({ todayKey: day(7), directDebit: true, payments: failed, events: [sentEvent("first_reminder", 5)] });
+
+    expect(result.collectedByDirectDebit).toBe(false);
+    expect(result.dueStage).toBe("second_reminder");
+  });
+
+  it("waits again while a new attempt is running", () => {
+    const retried = [paymentFixture({ id: "p1", status: "failed", paidAt: undefined, updatedAt: "2026-10-02T00:00:00.000Z" }), paymentFixture({ id: "p2", status: "pending", paidAt: undefined, updatedAt: "2026-10-03T00:00:00.000Z" })];
+    expect(view({ todayKey: day(7), directDebit: true, payments: retried }).blocked).toBe("payment_in_flight");
   });
 
   /* Same engine, same stages, same dates as a plain website invoice. */

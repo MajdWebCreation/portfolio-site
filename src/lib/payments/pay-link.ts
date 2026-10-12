@@ -4,7 +4,7 @@ import { invoiceAmounts, type Invoice } from "@/lib/admin/invoices/types";
 import { isMollieConfigured } from "@/lib/mollie/config";
 import { ensureInvoiceCheckout, type CheckoutResult, type StoredPaymentLink } from "@/lib/payments/checkout";
 import { listPaymentsForInvoice } from "@/lib/payments/repository";
-import { settleInvoice } from "@/lib/payments/settlement";
+import { settleInvoice, stillCollectedByDirectDebit } from "@/lib/payments/settlement";
 import { isCollecting, type Payment } from "@/lib/payments/types";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -26,17 +26,19 @@ import type { Database } from "@/lib/supabase/database.types";
  */
 async function collectedByDirectDebit(db: SupabaseClient<Database>, invoice: Invoice): Promise<boolean> {
   if (!invoice.recurringServiceId) return false;
-  const { data } = await db
+  const { data, error } = await db
     .from("recurring_services")
     .select("status")
     .eq("id", invoice.recurringServiceId)
     .maybeSingle();
+  /* Not knowing is not "no direct debit": a failed read must never produce a second way to pay. */
+  if (error) throw new Error(`Dienst van factuur laden: ${error.message}`);
   return data ? isCollecting({ status: data.status as never }) : false;
 }
 
 export type PayLinkResult =
   | { kind: "link"; url: string }
-  | { kind: "none"; reason: "not-configured" | "direct-debit" }
+  | { kind: "none"; reason: "not-configured" | "direct-debit" | "payment-in-flight" }
   | { kind: "failed"; reason: string };
 
 const linkColumns = "provider_payment_link_id, checkout_url, sequence_type, amount_cents";
@@ -146,10 +148,24 @@ export async function invoicePayLink(invoice: Invoice): Promise<PayLinkResult> {
 }
 
 /**
- * The decision itself, on a given client: no Mollie, no link; collected by
- * direct debit, no link; otherwise the invoice's one link, reused or made.
- * The admin's send runs it on the admin session, the customer portal on its
- * payment boundary after the member's own session proved the invoice theirs.
+ * The decision itself, on a given client: whether an ordinary payment of
+ * this invoice may be started now, and if so its one link, reused or made.
+ * The one rule for every caller -- the admin's send on the admin session,
+ * the customer portal on its payment boundary after the member's own
+ * session proved the invoice theirs, and the reminder job:
+ *
+ *   - no Mollie, no link;
+ *   - a payment still in flight (open, pending), no link: the same debt
+ *     would be paid twice;
+ *   - still the direct debit's to collect (stillCollectedByDirectDebit), no
+ *     link: a collection may be under way at the bank that this system has
+ *     not seen yet. After a failed collection that nothing repaired, the
+ *     invoice is paid like any other -- Mollie does not retry it;
+ *   - otherwise the link for what is still owed, after payments and credit
+ *     notes -- and nothing when nothing is (checkout.ts).
+ *
+ * Direct debit activation is a decision of its own (mandate-activation.ts);
+ * nothing here asks for or makes a mandate.
  */
 export async function payLinkFor(
   db: SupabaseClient<Database>,
@@ -157,10 +173,13 @@ export async function payLinkFor(
   payments: () => Promise<readonly Payment[]>,
 ): Promise<PayLinkResult> {
   if (!isMollieConfigured()) return { kind: "none", reason: "not-configured" };
-  if (await collectedByDirectDebit(db, invoice)) return { kind: "none", reason: "direct-debit" };
 
   try {
-    const result = await invoiceCheckout(db, invoice, await payments());
+    const known = await payments();
+    const settlement = settleInvoice(invoiceAmounts(invoice).dueCents, [...known]);
+    if (settlement.inFlight) return { kind: "none", reason: "payment-in-flight" };
+    if (stillCollectedByDirectDebit(await collectedByDirectDebit(db, invoice), settlement)) return { kind: "none", reason: "direct-debit" };
+    const result = await invoiceCheckout(db, invoice, known);
 
     return result.ok ? { kind: "link", url: result.checkoutUrl } : { kind: "failed", reason: result.reason };
   } catch (error) {
@@ -181,11 +200,17 @@ export async function payLinkFor(
  * reminder without a button is still worth far more than no reminder at all
  * -- the customer already has the invoice, with the bank details on it.
  *
- * The link the invoice already has is reused when it still asks for the
- * same amount and is still payable, so a customer who kept
- * the original mail and one who opens the reminder end up at the same place
- * and a second reminder makes nothing new. A paid invoice gets no button and
- * Mollie is not asked anything.
+ * Whether there is a button at all is payLinkFor's decision -- the same one
+ * the portal and the admin's send make -- so a reminder can never offer a
+ * second way to pay that they refuse: not while a payment is in flight, not
+ * on an invoice collected by direct debit (once the service no longer
+ * collects -- paused, cancelled, ended -- the veto lifts). Activating direct
+ * debit is a separate action with its own decision (reminder-activation.ts).
+ *
+ * Otherwise the link the invoice already has is reused when it still asks
+ * for the same amount and is still payable, so a customer who kept the
+ * original mail and one who opens the reminder end up at the same place and
+ * a second reminder makes nothing new.
  */
 export async function reminderPayLink(
   db: SupabaseClient<Database>,
@@ -193,15 +218,10 @@ export async function reminderPayLink(
   payments: readonly Payment[],
 ): Promise<string | undefined> {
   if (!isMollieConfigured()) return undefined;
+  /* Settled: Mollie is not even asked. Everything else is payLinkFor's to decide. */
   if (settleInvoice(invoiceAmounts(invoice).dueCents, [...payments]).settled) return undefined;
 
-  try {
-    const result = await invoiceCheckout(db, invoice, payments);
-    return result.ok ? result.checkoutUrl : undefined;
-  } catch (error) {
-    // The reminder still goes out; only the button is missing.
-    const reason = error instanceof Error ? error.message : "onbekende fout";
-    console.error("Could not create a reminder payment link", { invoiceId: invoice.id, reason });
-    return undefined;
-  }
+  /* A failure is reported by payLinkFor as a value, and logged there: it only costs the button; the reminder still goes out. */
+  const result = await payLinkFor(db, invoice, async () => payments);
+  return result.kind === "link" ? result.url : undefined;
 }

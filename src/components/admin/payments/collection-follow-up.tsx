@@ -42,6 +42,8 @@ export default function CollectionFollowUp({ rows }: { rows: FollowUpRow[] }) {
           </span>
           {view.collectionReady ? (
             <StatusBadge tone="danger">Incasso gereed</StatusBadge>
+          ) : view.blocked === "direct_debit_unresolved" ? (
+            <StatusBadge tone="danger">Incasso niet binnengekomen</StatusBadge>
           ) : view.state !== "active" ? (
             <StatusBadge tone={collectionStateTone[view.state]}>{collectionStateLabels[view.state]}</StatusBadge>
           ) : (

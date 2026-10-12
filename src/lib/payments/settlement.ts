@@ -66,3 +66,18 @@ export function settleInvoice(totalCents: Cents, payments: readonly Payment[]): 
     failedWithoutRecovery,
   };
 }
+
+/**
+ * Whether this invoice is still the direct debit's to collect: its service
+ * collects (isCollecting) and no failed attempt stands unrepaired. Mollie does
+ * not retry a failed collection, so after one the customer pays the invoice
+ * themselves -- with the ordinary link, the reminders and the portal like any
+ * other invoice. Until then nobody offers a second way to pay beside the
+ * collection, and the reminders do not dun for it.
+ *
+ * The one rule: payLinkFor, the reminder ladder and the reminder mail all ask
+ * it, so they cannot disagree.
+ */
+export function stillCollectedByDirectDebit(serviceCollecting: boolean, settlement: Pick<Settlement, "failedWithoutRecovery">): boolean {
+  return serviceCollecting && !settlement.failedWithoutRecovery;
+}

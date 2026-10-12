@@ -28,6 +28,12 @@ vi.mock("@/lib/admin/communications/provider", () => ({
 vi.mock("@/lib/payments/pay-link", () => ({
   reminderPayLink: (...args: unknown[]) => reminderPayLink(...args),
 }));
+/* The activation link's own rules (reuse, refusals) are mandate-activation.test.ts's; here only what the reminder does with its answer. */
+const requestMandateActivation = vi.fn();
+vi.mock("@/lib/payments/mandate-activation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/payments/mandate-activation")>()),
+  requestMandateActivation: (...args: unknown[]) => requestMandateActivation(...args),
+}));
 
 const { POST: runCron } = await import("@/app/api/cron/payment-reminders/route");
 
@@ -98,6 +104,7 @@ beforeEach(() => {
   db = createFakeDb({ invoices: [invoiceRow()], customers: [customerRow] });
   deliverEmail.mockResolvedValue({ sent: true, sentAt: "2026-10-02T06:00:00.000Z", messageId: "resend-1" });
   reminderPayLink.mockResolvedValue("https://payment-link.mollie.com/payment/pl_1");
+  requestMandateActivation.mockResolvedValue({ ok: true, activation: { checkoutUrl: "https://payment-link.mollie.com/payment/pl_act" }, reused: false });
 });
 
 describe("an ordinary website invoice", () => {
@@ -358,5 +365,100 @@ describe("a customer whose address changed after the invoice went out", () => {
     expect(deliverEmail).not.toHaveBeenCalled();
     expect(events()).toHaveLength(0);
     expect(summary.problems[0].reason).toBe("Klant heeft geen bruikbaar e-mailadres.");
+  });
+});
+
+/*
+  The two actions a customer with a monthly service may need: paying the
+  invoice, and authorising the collection. The historical failure this
+  guards: a reminder with only the invoice's button, paid, and direct debit
+  never activated.
+*/
+describe("a customer whose monthly service still waits for direct debit", () => {
+  const waiting = { id: "svc-1", customer_id: "cust-1", name: "Websitebeheer", status: "awaiting_mandate", mollie_subscription_id: null, ends_on: null };
+  const sentMail = (n = 0) => deliverEmail.mock.calls[n]![0] as { subject: string; html: string; text: string };
+
+  it("gets the invoice's button and, apart from it, the EUR 0.01 activation", async () => {
+    db = createFakeDb({ invoices: [invoiceRow()], customers: [customerRow], recurring_services: [waiting] });
+
+    expect((await run(day(1))).sent).toBe(1);
+
+    const mail = sentMail();
+    expect(mail.subject).toBe("Herinnering voor je openstaande factuur");
+    expect(mail.text).toContain("Factuur betalen: https://payment-link.mollie.com/payment/pl_1");
+    expect(mail.text).toContain("https://payment-link.mollie.com/payment/pl_act");
+    expect(mail.text).toContain("betaalt deze factuur niet");
+    expect(requestMandateActivation).toHaveBeenCalledTimes(1);
+    expect(requestMandateActivation).toHaveBeenCalledWith(db, "cust-1");
+  });
+
+  it("keeps offering the same activation link on the next reminder, and the invoice button only when it is safe", async () => {
+    db = createFakeDb({ invoices: [invoiceRow()], customers: [customerRow], recurring_services: [waiting] });
+    await run(day(1));
+    requestMandateActivation.mockResolvedValue({ ok: true, activation: { checkoutUrl: "https://payment-link.mollie.com/payment/pl_act" }, reused: true });
+    /* A payment started in the meantime: no second invoice button, the activation stays. */
+    reminderPayLink.mockResolvedValue(undefined);
+
+    expect((await run(day(7))).sent).toBe(1);
+
+    const mail = sentMail(1);
+    expect(mail.text).not.toContain("Factuur betalen:");
+    expect(mail.text).toContain("https://payment-link.mollie.com/payment/pl_act");
+  });
+
+  it("says the authorisation is being processed once the customer paid the cent", async () => {
+    const { pendingReason } = await import("@/lib/payments/mandate-activation");
+    db = createFakeDb({ invoices: [invoiceRow()], customers: [customerRow], recurring_services: [waiting] });
+    requestMandateActivation.mockResolvedValue({ ok: false, reason: pendingReason });
+
+    await run(day(1));
+
+    expect(sentMail().text).toContain("wordt nog verwerkt");
+    expect(sentMail().text).not.toContain("pl_act");
+    expect(sentMail().text).toContain("Factuur betalen:");
+  });
+});
+
+describe("an invoice of a service collecting by direct debit", () => {
+  const collecting = { id: "svc-1", customer_id: "cust-1", name: "Websitebeheer", status: "active", mollie_subscription_id: "sub_1", ends_on: null };
+
+  beforeEach(() => {
+    db = createFakeDb({ invoices: [invoiceRow({ recurring_service_id: "svc-1" })], customers: [customerRow], recurring_services: [collecting] });
+    /* payLinkFor's veto, as pay-link.test.ts proves it: no ordinary button on such an invoice. */
+    reminderPayLink.mockResolvedValue(undefined);
+  });
+
+  it("waits through the grace window, then says the payment has not arrived -- no button, no dunning, no activation", async () => {
+    expect((await run(day(1))).sent).toBe(0);
+
+    expect((await run(day(5))).sent).toBe(1);
+    const mail = deliverEmail.mock.calls[0]![0] as { subject: string; text: string; html: string };
+    expect(mail.subject).toBe("Je factuur is nog niet via automatische incasso betaald");
+    expect(mail.text).toContain("Maak het bedrag niet zelf over zonder overleg");
+    expect(mail.text).not.toMatch(/Factuur betalen|alsnog te voldoen|Incasso activeren/);
+    expect(requestMandateActivation).not.toHaveBeenCalled();
+    /* What was recorded is what was sent. */
+    expect(events()[0]).toMatchObject({ subject: "Je factuur is nog niet via automatische incasso betaald" });
+    expect(comms()[0]).toMatchObject({ subject: "Je factuur is nog niet via automatische incasso betaald" });
+  });
+
+  it("sends that notice once: no second reminder, no final notice, never ready to hand over while the collection stands", async () => {
+    await run(day(5));
+    for (const n of [7, 14, 22, 30]) {
+      const summary = await run(day(n));
+      expect(summary.sent).toBe(0);
+      expect(summary.collectionReady).toEqual([]);
+      expect((summary as unknown as { problems: { invoiceId: string }[] }).problems).toEqual([expect.objectContaining({ invoiceId: "inv-1" })]);
+    }
+    expect(deliverEmail).toHaveBeenCalledTimes(1);
+    expect(events().map((event) => event.stage)).toEqual(["first_reminder"]);
+  });
+});
+
+describe("an ordinary invoice of a customer without monthly services", () => {
+  it("never asks anything about direct debit", async () => {
+    await run(day(1));
+    expect(requestMandateActivation).not.toHaveBeenCalled();
+    expect((deliverEmail.mock.calls[0]![0] as { text: string }).text).not.toContain("incasso");
   });
 });

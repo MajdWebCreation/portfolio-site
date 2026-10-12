@@ -113,6 +113,8 @@ export type ReminderMailInput = {
    * still fits, and they were loaded before any of this was decided.
    */
   payments: readonly Payment[];
+  /** Still the direct debit's to collect (the collection view's answer): the mail is the direct-debit notice, with its own subject. */
+  directDebit: boolean;
 };
 
 export type ReminderMailer = (
@@ -150,7 +152,7 @@ function retryable(existing: ReminderClaim, now: number): boolean {
 export async function runPaymentReminders(
   store: ReminderStore,
   mail: ReminderMailer,
-  subjectFor: (stage: ReminderStage) => string,
+  subjectFor: (stage: ReminderStage, directDebit: boolean) => string,
   todayKey: string,
   now: Date = new Date(),
 ): Promise<ReminderSummary> {
@@ -187,6 +189,10 @@ export async function runPaymentReminders(
       if (view.collectionReady) summary.collectionReady.push(invoice.id);
 
       if (!view.dueStage) {
+        /* The customer had their one notice and the collection still has not come: something for a person, said out loud every run. */
+        if (view.blocked === "direct_debit_unresolved") {
+          summary.problems.push({ invoiceId: invoice.id, reason: "Automatische incasso niet binnengekomen; de klant is ingelicht. Controleer de incasso." });
+        }
         summary.skipped += 1;
         continue;
       }
@@ -207,7 +213,7 @@ export async function runPaymentReminders(
         eligibleOn: todayKey,
         daysOverdue: step.daysOverdue,
         recipientEmail: candidate.recipient.recipient.email,
-        subject: subjectFor(stage),
+        subject: subjectFor(stage, view.collectedByDirectDebit),
       };
 
       const claim = await store.claim(key);
@@ -233,6 +239,7 @@ export async function runPaymentReminders(
           outstandingCents: view.outstandingCents,
           finalDateKey: addDays(invoice.dueDate, collectionReadyDays),
           payments: candidate.payments,
+          directDebit: view.collectedByDirectDebit,
         });
       } catch (error) {
         result = { sent: false, reason: error instanceof Error ? error.message : "onbekende fout" };

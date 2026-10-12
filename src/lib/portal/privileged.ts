@@ -125,7 +125,9 @@ export async function startInvoicePayment(actor: PortalActor, invoiceId: string)
   if (settleInvoice(invoiceAmounts(own).dueCents, payments).inFlight) return { ok: false, reason: "payment_in_progress" };
 
   const result = await payLinkFor(db, own, async () => payments);
-  if (result.kind === "none") return { ok: false, reason: result.reason === "direct-debit" ? "direct_debit" : "unavailable" };
+  if (result.kind === "none") {
+    return { ok: false, reason: result.reason === "direct-debit" ? "direct_debit" : result.reason === "payment-in-flight" ? "payment_in_progress" : "unavailable" };
+  }
   if (result.kind === "failed") {
     /* Paid in the moment between the member's read and this one: nothing left to do, not a failure. */
     if (result.reason === alreadyPaidReason || result.reason === nothingDueReason) return { ok: false, reason: "nothing_due" };

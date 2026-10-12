@@ -362,7 +362,8 @@ describe.runIf(local).sequential("a customer's first weeks in the portal", () =>
     const submissionId = crypto.randomUUID();
     const fields = { customerId: A.customer, submissionId, category: "website_change", subject: "Nieuwe pagina", description: "Graag een pagina over onze diensten." };
     const created = await createRequestAction({ status: "idle" }, form(fields));
-    expect(created.status).toBe("created");
+    /* Whole objects in these assertions: a failure here has to say what the action answered. */
+    expect(created).toMatchObject({ status: "created" });
     /* The same intention submitted again stays one request. */
     expect(await createRequestAction({ status: "idle" }, form(fields))).toEqual(created);
     own.request = created.status === "created" ? created.requestId : "";
@@ -380,19 +381,19 @@ describe.runIf(local).sequential("a customer's first weeks in the portal", () =>
     const pdf = new TextEncoder().encode("%PDF-1.4\n%v1\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n");
 
     const first = await upload(png, "image/png", "schets.png");
-    expect(first.ok).toBe(true);
+    expect(first).toMatchObject({ ok: true });
     /* A file that is not what it claims to be fails on its own... */
     const failed = await upload(new TextEncoder().encode("geen pdf"), "application/pdf", "offerte.pdf");
     expect(failed.ok).toBe(false);
     /* ...and the retry with the real file lands on the same request. */
     const retried = await upload(pdf, "application/pdf", "offerte.pdf");
-    expect(retried.ok).toBe(true);
+    expect(retried).toMatchObject({ ok: true });
     own.attachment = first.ok ? first.attachment.id : "";
 
     const { count } = await service.from("customer_requests").select("id", { count: "exact", head: true }).eq("customer_id", A.customer);
     expect(count).toBe(1);
 
-    expect((await setRequestStatus(own.request, "in_review")).ok).toBe(true);
+    expect(await setRequestStatus(own.request, "in_review")).toMatchObject({ ok: true });
     as(browser);
     const seen = await readPortalRequest(A.customer, own.request);
     expect(seen.status).toBe("in_review");

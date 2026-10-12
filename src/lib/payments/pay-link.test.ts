@@ -218,6 +218,43 @@ describe("the payment link of an invoice mail", () => {
   payment of what is still owed -- through the same function, so the two can
   never disagree about what paying does.
 */
+/*
+  One rule for every door that hands out an ordinary invoice payment: the
+  admin's send, the portal and the reminder all ask payLinkFor, so none of
+  them starts a second payment beside one that is still running.
+*/
+describe("an invoice with a payment still in flight", () => {
+  const pending = (status: "open" | "pending") => ({
+    id: "pay-pending",
+    invoice_id: "inv-1",
+    customer_id: "cust-1",
+    amount_cents: 12100,
+    currency: "EUR",
+    status,
+    source: "mollie",
+    provider_payment_id: "tr_pending",
+    method: "directdebit",
+    description: "Factuur",
+    paid_at: null,
+    created_at: "2026-09-20T10:00:00.000Z",
+    updated_at: "2026-09-20T10:00:00.000Z",
+  });
+
+  it.each(["open", "pending"] as const)("gets no link from the admin's send either (%s), and Mollie is not asked", async (status) => {
+    db = createFakeDb({ customers: [customerRowFixture()], recurring_services: [], invoice_payment_links: [storedLink()], payments: [pending(status)] });
+
+    expect(await invoicePayLink(invoiceFixture())).toEqual({ kind: "none", reason: "payment-in-flight" });
+    expect(getPaymentLink).not.toHaveBeenCalled();
+    expect(createPaymentLink).not.toHaveBeenCalled();
+  });
+
+  it("gets its link back once the attempt failed", async () => {
+    db = createFakeDb({ customers: [customerRowFixture()], recurring_services: [], invoice_payment_links: [], payments: [{ ...pending("pending"), status: "failed" }] });
+
+    expect(await invoicePayLink(invoiceFixture())).toEqual({ kind: "link", url: "https://payment-link.mollie.com/payment/pl_new" });
+  });
+});
+
 describe("the payment button on a reminder", () => {
   const remind = (invoice = invoiceFixture(), payments: Parameters<typeof reminderPayLink>[2] = []) =>
     reminderPayLink(db as never, invoice, payments);
@@ -270,6 +307,101 @@ describe("the payment button on a reminder", () => {
 
     expect(payload()).toEqual(oneOffRequest);
     expect(listMandates).not.toHaveBeenCalled();
+  });
+
+  /*
+    The button is the portal's own decision: never a second way to pay beside
+    a collection that may be under way, or beside an attempt still running.
+  */
+  const linkedService = (status: string) => service({ status, activation_invoice_id: null });
+  const onService = (overrides: Parameters<typeof invoiceFixture>[0] = {}) => invoiceFixture({ recurringServiceId: "svc-1", ...overrides });
+
+  it("offers the ordinary link on an open invoice without direct debit", async () => {
+    expect(await remind()).toBe("https://payment-link.mollie.com/payment/pl_new");
+    expect(payload()).toEqual(oneOffRequest);
+  });
+
+  it("offers nothing, and asks Mollie nothing, on an invoice a running direct debit collects", async () => {
+    db = seed({ services: [linkedService("active")], links: [storedLink()] });
+
+    expect(await remind(onService())).toBeUndefined();
+    expect(getPaymentLink).not.toHaveBeenCalled();
+    expect(createPaymentLink).not.toHaveBeenCalled();
+  });
+
+  it.each(["pending", "open"] as const)("offers nothing while a payment is %s, also without direct debit", async (status) => {
+    db = seed({ links: [storedLink()] });
+
+    expect(await remind(invoiceFixture(), [paymentFixture({ status })])).toBeUndefined();
+    expect(await remind(onService(), [paymentFixture({ status, amountCents: 3025 })])).toBeUndefined();
+    expect(getPaymentLink).not.toHaveBeenCalled();
+    expect(createPaymentLink).not.toHaveBeenCalled();
+  });
+
+  it.each(["paused", "canceled"])("offers the link again once the service no longer collects (%s), after a failed collection", async (status) => {
+    db = seed({ services: [linkedService(status)] });
+
+    const url = await remind(onService(), [paymentFixture({ status: "failed" })]);
+
+    expect(url).toBe("https://payment-link.mollie.com/payment/pl_new");
+    expect(payload()).toEqual(oneOffRequest);
+  });
+
+  it("offers the link again after a failed collection that nothing repaired: Mollie does not retry it", async () => {
+    db = seed({ services: [linkedService("active")] });
+
+    const url = await remind(onService(), [paymentFixture({ status: "failed", paidAt: undefined })]);
+
+    expect(url).toBe("https://payment-link.mollie.com/payment/pl_new");
+    expect(payload()).toEqual(oneOffRequest);
+  });
+
+  it("offers nothing again once a new attempt is running after the failure", async () => {
+    db = seed({ services: [linkedService("active")] });
+
+    const url = await remind(onService(), [
+      paymentFixture({ id: "p1", status: "failed", paidAt: undefined, updatedAt: "2026-10-02T00:00:00.000Z" }),
+      paymentFixture({ id: "p2", status: "pending", paidAt: undefined, updatedAt: "2026-10-03T00:00:00.000Z" }),
+    ]);
+
+    expect(url).toBeUndefined();
+    expect(createPaymentLink).not.toHaveBeenCalled();
+  });
+
+  it("offers nothing when the service cannot be read: not knowing is not 'no direct debit'", async () => {
+    db = seed({ services: [linkedService("paused")] });
+    const failing = {
+      ...db,
+      from: (table: string) =>
+        table === "recurring_services"
+          ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: "connection reset" } }) }) }) }
+          : db.from(table),
+    };
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    expect(await reminderPayLink(failing as never, onService(), [])).toBeUndefined();
+    expect(createPaymentLink).not.toHaveBeenCalled();
+  });
+
+  it("asks for what is left after a part payment, and makes one link across retries", async () => {
+    const first = await remind(invoiceFixture(), [paymentFixture({ amountCents: 2100 })]);
+    const retry = await remind(invoiceFixture(), [paymentFixture({ amountCents: 2100 })]);
+
+    expect(first).toBe("https://payment-link.mollie.com/payment/pl_new");
+    expect(retry).toBe(first);
+    expect(createPaymentLink).toHaveBeenCalledTimes(1);
+    expect(payload()).toMatchObject({ amountCents: 10000, sequenceType: "oneoff" });
+    expect(db.rows("invoice_payment_links")).toHaveLength(1);
+  });
+
+  it("asks for the amount a credit note left, and nothing once credit and payments cover it", async () => {
+    await remind(invoiceFixture({ creditedCents: 2100 }));
+    expect(payload()).toMatchObject({ amountCents: 10000, sequenceType: "oneoff" });
+
+    vi.clearAllMocks();
+    db = seed({ links: [storedLink()] });
+    expect(await remind(invoiceFixture({ creditedCents: 2100 }), [paymentFixture({ amountCents: 10000 })])).toBeUndefined();
+    expect(createPaymentLink).not.toHaveBeenCalled();
   });
 
   it("offers nothing, and asks Mollie nothing, for an invoice that is already paid", async () => {

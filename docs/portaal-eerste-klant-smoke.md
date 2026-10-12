@@ -10,7 +10,7 @@ Vooraf in de admin: de klant heeft een correct contact-e-mailadres; als je het p
 | 2 | Klant opent de link en kiest een wachtwoord (≥ 10 tekens) | Komt direct in `/portaal`; een te kort of gelekt wachtwoord geeft een Nederlandse melding. |
 | 3 | Overzicht | Bedrijfsnaam klopt; openstaand bedrag gelijk aan de admin (Betalingen → klant). Geen andere klantnamen zichtbaar. |
 | 4 | Mijn gegevens → één veld wijzigen (bijv. telefoon) → Opslaan → pagina verversen | Wijziging blijft staan; in de admin staat dezelfde waarde. Inlog-e-mail is ongewijzigd. Draai de wijziging desgewenst terug. |
-| 5 | Facturen → factuur openen → PDF downloaden (als er een is) | PDF opent en is exact het document uit de admin (zelfde nummer en bedrag). Bij automatische incasso staat er tot 5 dagen na de vervaldatum géén betaalknop (de afschrijving loopt nog); daarna wel, net als in de herinneringsmail. |
+| 5 | Facturen → factuur openen → PDF downloaden (als er een is) | PDF opent en is exact het document uit de admin (zelfde nummer en bedrag). Bij een factuur die via automatische incasso wordt geïnd staat er géén betaalknop; na de vervaldatum vraagt de pagina om contact op te nemen in plaats van zelf te betalen (geen dubbele afschrijving). |
 | 6 | Offertes → offerte openen → PDF downloaden (als er een is) | PDF opent; status "Wacht op uw reactie". Niet accepteren als dat commercieel nog niet hoort. |
 | 7 | Verzoeken → Nieuw verzoek → met één foto of PDF als bijlage | Verzoek staat in de lijst; klant krijgt een bevestigingsmail; jij krijgt de interne melding. |
 | 8 | Verzoek openen → bijlage downloaden | Bestand opent en is hetzelfde bestand. |

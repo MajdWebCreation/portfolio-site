@@ -275,6 +275,18 @@ export async function sendInvoiceToCustomer(
     creating a second one, so resending keeps handing out the same link.
   */
   const payLink = await invoicePayLink(numbered);
+  /*
+    A payment of this invoice is still running. A mail without a button would
+    point at the bank details on the invoice and invite a transfer beside it;
+    a mail with one would offer the same debt twice. Neither goes out until
+    the attempt has ended.
+  */
+  if (payLink.kind === "none" && payLink.reason === "payment-in-flight") {
+    return {
+      ok: false,
+      error: "Er loopt nog een betaling voor deze factuur. Verstuur hem opnieuw zodra die is verwerkt; nu gaat er niets naar de klant.",
+    };
+  }
   if (payLink.kind === "failed") {
     return {
       ok: false,
