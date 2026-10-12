@@ -466,8 +466,16 @@ describe.runIf(local)("a new version", () => {
     expect(ofConcept.error?.message).toContain("nog niet verzonden");
 
     const acceptedId = await sendNew();
-    const accepted = await setQuoteOutcome(acceptedId, "accepted");
-    expect(accepted.ok).toBe(true);
+    /* Accepted the only way a quote is: by a decision on record. */
+    const accepted = await admin.rpc("admin_record_quote_decision", {
+      p_quote_id: acceptedId,
+      p_decision: "accepted",
+      p_source: "email",
+      p_rejection_reason: null,
+      p_note: null,
+    });
+    expect(accepted.error).toBeNull();
+    expect(accepted.data?.[0]?.outcome).toBe("decided");
     const ofAccepted = await service.from("quotes").insert({
       ...(await conceptColumns()),
       supersedes_quote_id: acceptedId,

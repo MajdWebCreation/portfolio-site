@@ -4,9 +4,12 @@ import { DetailList, DetailRow } from "@/components/admin/detail-list";
 import StatusBadge from "@/components/admin/status-badge";
 import RequestAttachmentAdder from "@/components/portal/request-attachments";
 import { day, PageHeader, Section } from "@/components/portal/portal-ui";
-import { formatDateTime } from "@/lib/admin/format";
+import { formatDateTime, toDateKey } from "@/lib/admin/format";
 import { orNotFound, requirePortalMember } from "@/lib/portal/access";
 import { portalQuotePath, portalRequestAttachmentPath, portalRequestsPath } from "@/lib/portal/paths";
+import { portalQuoteState, portalQuoteStateLabels, portalQuoteStateTone } from "@/lib/portal/quotes/model";
+import { readPortalQuote } from "@/lib/portal/quotes/read";
+import { PortalDenied } from "@/lib/portal/rpc";
 import { readPortalRequest } from "@/lib/portal/requests/read";
 import { formatBytes, requestCategoryLabels, requestStatusLabels, requestStatusTone } from "@/lib/requests/model";
 
@@ -19,6 +22,20 @@ export default async function PortalRequestPage({ params }: PageProps) {
   const member = await requirePortalMember();
   const { id } = await params;
   const request = await orNotFound(readPortalRequest(member.current.customerId, id));
+  /*
+    Where the linked quote stands, read through the quote's own portal read:
+    an accepted or rejected quote shows as such here too, with nothing about
+    the request itself changing. The request read already only names a quote
+    the customer may see; should that change in between, the link stays and
+    the status is left out.
+  */
+  const quote = request.quote
+    ? await readPortalQuote(member.current.customerId, request.quote.id).catch((error: unknown) => {
+        if (error instanceof PortalDenied) return undefined;
+        throw error;
+      })
+    : undefined;
+  const quoteState = quote ? portalQuoteState(quote, toDateKey(new Date())) : undefined;
 
   return (
     <div>
@@ -43,6 +60,11 @@ export default async function PortalRequestPage({ params }: PageProps) {
       {request.quote ? (
         <div className="mt-6 max-w-prose border-l-2 border-accent pl-4 text-[0.95rem] text-body">
           <p>Voor dit verzoek is een offerte beschikbaar.</p>
+          {quoteState ? (
+            <p className="mt-2">
+              <StatusBadge tone={portalQuoteStateTone[quoteState]}>{portalQuoteStateLabels[quoteState]}</StatusBadge>
+            </p>
+          ) : null}
           <p className="mt-2">
             <Link href={portalQuotePath(request.quote.id)} className="link-static text-ink">
               Bekijk offerte {request.quote.number}

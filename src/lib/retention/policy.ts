@@ -52,6 +52,13 @@ export const fiscalCategories: readonly CommunicationCategory[] = [
   "credit_note_sent",
 ];
 
+/*
+  Not in either list, because it is not a communication: quote_decisions, the
+  record of an accepted or rejected quote (with the account's address and the
+  customer's reason). It is evidence of an agreement and is kept like the
+  invoices it leads to; this job never touches it.
+*/
+
 /** Categories whose body may go after twelve months: the quote, the activation link, the pre-notification. */
 export const redactableCategories: readonly CommunicationCategory[] = [
   "quote_sent",
@@ -60,6 +67,8 @@ export const redactableCategories: readonly CommunicationCategory[] = [
   /* A request's confirmation and updates repeat what the request itself keeps. */
   "request_received",
   "request_status_changed",
+  /* The confirmation of a quote decision repeats the decision record, which is kept. */
+  "quote_decision_received",
 ];
 
 /**

@@ -1,4 +1,5 @@
 import { calculateTotals, type DocumentTotals } from "@/lib/money";
+import { isQuoteDecisionKind, isQuoteDecisionSource, type QuoteDecisionKind, type QuoteDecisionSource } from "@/lib/quotes/decision";
 import { records, text, textOrNull } from "@/lib/portal/json";
 import { linesFromJson, type PortalLine } from "@/lib/portal/lines";
 import type { Database } from "@/lib/supabase/database.types";
@@ -13,6 +14,7 @@ import type { Database } from "@/lib/supabase/database.types";
  */
 type QuoteRow = Database["public"]["Functions"]["portal_quotes"]["Returns"][number];
 type QuoteDetailRow = Database["public"]["Functions"]["portal_quote"]["Returns"][number];
+type QuoteDecisionRow = Database["public"]["Functions"]["portal_quote_decision"]["Returns"][number];
 
 export type PortalQuoteStatus = "sent" | "accepted" | "rejected" | "expired";
 
@@ -71,14 +73,16 @@ export function quoteDetailFromPortalRow(row: QuoteDetailRow): PortalQuoteDetail
 }
 
 /**
- * Where a quote stands for the customer. "Vervangen" is derived: a later
- * version of it was sent. An offer still waiting past its date reads as
- * expired, whatever the admin has recorded yet.
+ * Where a quote stands for the customer. A decision on record wins: what the
+ * customer (or a colleague) accepted or rejected stays that, whatever came
+ * after. "Vervangen" is derived: a later version of it was sent. An offer
+ * still waiting past its date reads as expired, whatever the admin has
+ * recorded yet.
  */
 export type PortalQuoteState = "awaiting" | "expired" | "accepted" | "rejected" | "superseded";
 
 export const portalQuoteStateLabels: Record<PortalQuoteState, string> = {
-  awaiting: "Wacht op uw reactie",
+  awaiting: "Wacht op reactie",
   expired: "Verlopen",
   accepted: "Geaccepteerd",
   rejected: "Afgewezen",
@@ -95,10 +99,65 @@ export const portalQuoteStateTone: Record<PortalQuoteState, "neutral" | "accent"
 
 export function portalQuoteState(quote: Pick<PortalQuote, "status" | "validUntil" | "supersededBy">, todayKey: string): PortalQuoteState {
   if (quote.status === "accepted") return "accepted";
-  if (quote.supersededBy) return "superseded";
   if (quote.status === "rejected") return "rejected";
+  if (quote.supersededBy) return "superseded";
   if (quote.status === "expired" || quote.validUntil < todayKey) return "expired";
   return "awaiting";
+}
+
+/**
+ * The decision side of one quote, as the portal holds it: the decision when
+ * there is one, or whether one can be made now and on which document.
+ *
+ *   open          the customer can accept or reject; documentSha256 is the
+ *                 document a decision would be about, and goes back with
+ *                 the form so a page older than the record is refused.
+ *   decided       on record; see decision.
+ *   expired | superseded | closed | not_document
+ *                 no decision possible, for that reason.
+ */
+export type PortalQuoteDecisionState = "open" | "decided" | "expired" | "superseded" | "closed" | "not_document";
+
+export type PortalQuoteDecision = {
+  state: PortalQuoteDecisionState;
+  documentSha256: string | null;
+  termsEdition: string | null;
+  decision?: {
+    kind: QuoteDecisionKind;
+    source: QuoteDecisionSource;
+    decidedAt: string;
+    rejectionReason?: string;
+    /** The sign-in address of the member who decided in the portal; absent for a decision recorded by YM Creations. */
+    decidedBy?: string;
+  };
+};
+
+function decisionState(refusal: string | null): PortalQuoteDecisionState {
+  if (refusal === null) return "open";
+  if (refusal === "decided" || refusal === "expired" || refusal === "superseded" || refusal === "closed" || refusal === "not_document") return refusal;
+  throw new Error(`offertebeslissing ${refusal}`);
+}
+
+export function quoteDecisionFromPortalRow(row: QuoteDecisionRow): PortalQuoteDecision {
+  const state = decisionState(row.refusal);
+  const decided = row.decision !== null && row.decided_at !== null;
+  if (state === "decided" && !decided) throw new Error("offertebeslissing zonder beslissing");
+  return {
+    state,
+    documentSha256: row.document_sha256,
+    termsEdition: row.terms_edition,
+    ...(decided && isQuoteDecisionKind(row.decision) && isQuoteDecisionSource(row.source)
+      ? {
+          decision: {
+            kind: row.decision,
+            source: row.source,
+            decidedAt: row.decided_at!,
+            ...(row.rejection_reason ? { rejectionReason: row.rejection_reason } : {}),
+            ...(row.decided_by_email ? { decidedBy: row.decided_by_email } : {}),
+          },
+        }
+      : {}),
+  };
 }
 
 export function quoteTotals(quote: Pick<PortalQuote, "lines">): DocumentTotals {

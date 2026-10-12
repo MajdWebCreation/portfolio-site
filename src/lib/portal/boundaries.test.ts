@@ -134,8 +134,13 @@ describe("the customer portal", () => {
 
     /* Reached only through the server actions; never from a page, a component or the browser. */
     const importers = all.filter(({ source }) => source.includes("portal/privileged")).map(({ path }) => path);
-    expect(importers.sort()).toEqual(["src/app/portaal/(shell)/verzoeken/bijlagen/[attachmentId]/route.ts", "src/lib/portal/payment-actions.ts", "src/lib/portal/requests/actions.ts"]);
-    for (const path of ["src/lib/portal/payment-actions.ts", "src/lib/portal/requests/actions.ts"]) {
+    expect(importers.sort()).toEqual([
+      "src/app/portaal/(shell)/verzoeken/bijlagen/[attachmentId]/route.ts",
+      "src/lib/portal/payment-actions.ts",
+      "src/lib/portal/quotes/actions.ts",
+      "src/lib/portal/requests/actions.ts",
+    ]);
+    for (const path of ["src/lib/portal/payment-actions.ts", "src/lib/portal/quotes/actions.ts", "src/lib/portal/requests/actions.ts"]) {
       const actions = portal.find((file) => file.path === path)!;
       expect(actions.source, path).toMatch(/^"use server";/);
       /* Who acts comes from the session, never from the form: a form's customer id is only compared. */

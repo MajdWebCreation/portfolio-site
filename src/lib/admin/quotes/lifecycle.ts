@@ -10,7 +10,7 @@ import { snapshotCustomer } from "@/lib/admin/documents/types";
 import { addDays, daysBetween } from "@/lib/admin/documents/validation";
 import { toDateKey } from "@/lib/admin/format";
 import { findQuoteSuccessor, getQuote } from "@/lib/admin/quotes/repository";
-import { isQuoteOutcomeStatus, quoteRevisionBlockedReason, quoteStatusLabels, type QuoteStatus } from "@/lib/admin/quotes/types";
+import { isQuoteDecided, isQuoteOutcomeStatus, quoteRevisionBlockedReason, quoteStatusLabels, type QuoteStatus } from "@/lib/admin/quotes/types";
 import type { Json } from "@/lib/supabase/database.types";
 
 /**
@@ -113,22 +113,23 @@ export async function createQuoteRevision(id: string): Promise<ActionResult<stri
 }
 
 /**
- * What became of a sent quote: accepted, rejected or expired -- or back to
- * plain "sent" when a decision was recorded by mistake.
- *
- * Administrative for now: the admin records what the customer said. The
- * portal's own accept/reject will replace this with a decision the customer
- * makes; until then this is the one place a sent quote's status moves, and
- * it moves nothing else.
+ * An open quote marked expired, or open again: the only statuses the admin
+ * sets by hand. Accepting and rejecting are decisions, recorded through
+ * recordQuoteDecision (decision-actions.ts) or by the customer in the
+ * portal; this refuses them, and so does the database. A decided quote's
+ * status does not move at all.
  */
 export async function setQuoteOutcome(id: string, status: string): Promise<ActionResult<QuoteStatus>> {
-  if (!isQuoteOutcomeStatus(status)) return { ok: false, error: "Kies een geldige status." };
+  if (!isQuoteOutcomeStatus(status)) {
+    return { ok: false, error: "Accepteren of afwijzen leg je vast als beslissing; hier kies je alleen verzonden of verlopen." };
+  }
 
   const db = await adminDb();
 
   const quote = await getQuote(id);
   if (!quote) return { ok: false, error: "Deze offerte bestaat niet (meer)." };
   if (!quote.sentAt) return { ok: false, error: "Een status geef je aan een verzonden offerte." };
+  if (isQuoteDecided(quote)) return { ok: false, error: `Over ${quote.number.value} is beslist; de status ligt vast.` };
   if (quote.status === status) return { ok: true, value: status };
 
   const { error } = await db.from("quotes").update({ status }).eq("id", id);

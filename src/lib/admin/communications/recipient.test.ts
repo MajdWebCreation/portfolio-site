@@ -118,6 +118,8 @@ describe("which mail is financial", () => {
         "src/lib/payments/actions.ts: financial",
         "src/lib/payments/prenotification-store.ts: financial",
         "src/lib/payments/reminder-store.ts: financial",
+        /* The confirmation of a decision on a quote is correspondence about the quote, like the quote itself. */
+        "src/lib/quotes/decision-notify.ts: general",
         "src/lib/requests/announce.ts: general",
       ].sort(),
     );

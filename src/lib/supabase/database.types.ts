@@ -1892,6 +1892,126 @@ export type Database = {
           },
         ]
       }
+      quote_decision_notifications: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          customer_id: string
+          customer_notified_at: string | null
+          decision_id: string
+          internal_notified_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          customer_id: string
+          customer_notified_at?: string | null
+          decision_id: string
+          internal_notified_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          customer_id?: string
+          customer_notified_at?: string | null
+          decision_id?: string
+          internal_notified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_decision_notifications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_decision_notifications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "inquiry_funnel"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "quote_decision_notifications_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: true
+            referencedRelation: "quote_decisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_decisions: {
+        Row: {
+          actor_email: string | null
+          actor_user_id: string
+          customer_id: string
+          decided_at: string
+          decision: string
+          id: string
+          membership_id: string | null
+          note: string | null
+          quote_document_path: string
+          quote_document_sha256: string
+          quote_id: string
+          quote_number: string
+          rejection_reason: string | null
+          source: string
+          terms_edition: string
+          terms_published_on: string
+          terms_confirmed: boolean
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_user_id: string
+          customer_id: string
+          decided_at?: string
+          decision: string
+          id?: string
+          membership_id?: string | null
+          note?: string | null
+          quote_document_path: string
+          quote_document_sha256: string
+          quote_id: string
+          quote_number: string
+          rejection_reason?: string | null
+          source: string
+          terms_edition: string
+          terms_published_on: string
+          terms_confirmed?: boolean
+        }
+        Update: {
+          actor_email?: string | null
+          actor_user_id?: string
+          customer_id?: string
+          decided_at?: string
+          decision?: string
+          id?: string
+          membership_id?: string | null
+          note?: string | null
+          quote_document_path?: string
+          quote_document_sha256?: string
+          quote_id?: string
+          quote_number?: string
+          rejection_reason?: string | null
+          source?: string
+          terms_edition?: string
+          terms_published_on?: string
+          terms_confirmed?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_decisions_quote_same_customer"
+            columns: ["quote_id", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id", "customer_id"]
+          },
+        ]
+      }
       quote_lines: {
         Row: {
           description: string
@@ -2593,6 +2713,22 @@ export type Database = {
       }
     }
     Functions: {
+      admin_record_quote_decision: {
+        Args: {
+          p_decision: string
+          p_note: string | null
+          p_quote_id: string
+          p_rejection_reason: string | null
+          p_source: string
+        }
+        Returns: {
+          decided_at: string | null
+          decision: string | null
+          decision_id: string | null
+          outcome: string
+          source: string | null
+        }[]
+      }
       admin_revoke_portal_membership: {
         Args: { p_customer_id: string; p_membership_id: string }
         Returns: Json
@@ -2707,6 +2843,24 @@ export type Database = {
           updated_at: string
         }[]
       }
+      portal_decide_quote: {
+        Args: {
+          p_customer_id: string
+          p_decision: string
+          p_expected_sha256: string
+          p_quote_id: string
+          p_rejection_reason: string | null
+          p_terms_confirmed: boolean
+        }
+        Returns: {
+          decided_at: string | null
+          decision: string | null
+          decision_id: string | null
+          outcome: string
+          rejection_reason: string | null
+          source: string | null
+        }[]
+      }
       portal_document: {
         Args: { p_customer_id: string; p_id: string; p_kind: string }
         Returns: {
@@ -2797,6 +2951,19 @@ export type Database = {
           superseded_on: string | null
           lines: Json
           versions: Json
+        }[]
+      }
+      portal_quote_decision: {
+        Args: { p_customer_id: string; p_quote_id: string }
+        Returns: {
+          decided_at: string | null
+          decided_by_email: string | null
+          decision: string | null
+          document_sha256: string | null
+          refusal: string | null
+          rejection_reason: string | null
+          source: string | null
+          terms_edition: string | null
         }[]
       }
       portal_quotes: {

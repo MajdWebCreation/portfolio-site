@@ -66,10 +66,12 @@ type QuoteBuilderProps = {
   /** Where the stored quote's mail goes now, resolved by the page; absent for a new quote. */
   recipient?: RecipientResult;
   /** The sent quote this concept is a new version of, when it is one. */
-  predecessor?: Pick<Quote, "id" | "number">;
+  predecessor?: Pick<Quote, "id" | "number" | "status">;
 };
 
 export default function QuoteBuilder({ stored, customers, projects, todayKey, recipient, predecessor }: QuoteBuilderProps) {
+  /* The database refuses to issue a new version of an accepted quote; the screen does not offer it. */
+  const predecessorAccepted = predecessor?.status === "accepted";
   const router = useRouter();
   // "NIEUW" until the record is created; both server and client render the same number.
   const [quote, setQuote] = useState<Quote>(() => stored ?? blank(todayKey, "nieuw", "offerte-regel-1"));
@@ -200,6 +202,12 @@ export default function QuoteBuilder({ stored, customers, projects, todayKey, re
               .
             </p>
           ) : null}
+          {predecessorAccepted ? (
+            <p role="alert" className="border-l-2 border-danger pl-3 text-[0.85rem] leading-snug text-body">
+              {predecessor!.number.value} is inmiddels geaccepteerd. Deze nieuwe versie wordt daarom niet meer uitgegeven of
+              verstuurd; verwijder het concept of laat het staan.
+            </p>
+          ) : null}
         </div>
         <div className="border-t border-line pt-6">
           <DocumentPanel
@@ -207,10 +215,12 @@ export default function QuoteBuilder({ stored, customers, projects, todayKey, re
             fileName={`${quote.number.value}.pdf`}
             ready={ready}
             action={
-              <SendPanel
-                doc={{ kind: "quote", quote }}
-                recipient={recipient ?? { ok: false, reason: "Sla de offerte eerst op." }}
-              />
+              predecessorAccepted ? null : (
+                <SendPanel
+                  doc={{ kind: "quote", quote }}
+                  recipient={recipient ?? { ok: false, reason: "Sla de offerte eerst op." }}
+                />
+              )
             }
           />
         </div>

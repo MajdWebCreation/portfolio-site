@@ -35,7 +35,8 @@ export type CommunicationCategory =
   | "recurring_cancellation"
   | "credit_note_sent"
   | "request_received"
-  | "request_status_changed";
+  | "request_status_changed"
+  | "quote_decision_received";
 
 export const communicationCategoryOrder: readonly CommunicationCategory[] = [
   "quote_sent",
@@ -52,6 +53,7 @@ export const communicationCategoryOrder: readonly CommunicationCategory[] = [
   "credit_note_sent",
   "request_received",
   "request_status_changed",
+  "quote_decision_received",
 ];
 
 export const communicationCategoryLabels: Record<CommunicationCategory, string> = {
@@ -69,6 +71,7 @@ export const communicationCategoryLabels: Record<CommunicationCategory, string> 
   credit_note_sent: "Creditnota",
   request_received: "Ontvangstbevestiging verzoek",
   request_status_changed: "Statusupdate verzoek",
+  quote_decision_received: "Offertebeslissing",
 };
 
 /**
@@ -167,6 +170,8 @@ const groups: Record<CommunicationCategory, Exclude<CommunicationFilter, "all">>
   /* About a customer's request: neither a document nor money. */
   request_received: "other",
   request_status_changed: "other",
+  /* The confirmation of a decision on a quote: with the quote it is about. */
+  quote_decision_received: "quotes",
 };
 
 /**

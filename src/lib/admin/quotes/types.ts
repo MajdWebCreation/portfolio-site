@@ -83,14 +83,21 @@ export function isQuoteStatus(value: string): value is QuoteStatus {
 }
 
 /**
- * The statuses an admin may give a quote the customer has.
+ * The statuses an admin may still set by hand on a quote the customer has.
  *
  * 'draft' is not among them: a number was spent and a file exists, and the
- * database refuses the way back. 'sent' is, so a decision recorded by
- * mistake can be undone until the customer's own decision replaces this
- * dropdown.
+ * database refuses the way back. 'accepted' and 'rejected' are not either:
+ * those are decisions, recorded once in quote_decisions -- by the customer
+ * in the portal or by an admin through "Beslissing vastleggen" -- and the
+ * database refuses either status without that record. What is left is
+ * marking an open quote expired, or open again.
  */
-export const quoteOutcomeStatuses: readonly QuoteStatus[] = ["sent", "accepted", "rejected", "expired"];
+export const quoteOutcomeStatuses: readonly QuoteStatus[] = ["sent", "expired"];
+
+/** Decided: accepted or rejected, on record in quote_decisions and fixed for good. */
+export function isQuoteDecided(quote: Pick<Quote, "status">): boolean {
+  return quote.status === "accepted" || quote.status === "rejected";
+}
 
 export function isQuoteOutcomeStatus(value: string): value is QuoteStatus {
   return (quoteOutcomeStatuses as readonly string[]).includes(value);

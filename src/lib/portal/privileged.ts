@@ -21,6 +21,7 @@ import { readPortalPaymentContext } from "@/lib/portal/payments/read";
 import { readPortalServices } from "@/lib/portal/services/read";
 import { readPortalRequest } from "@/lib/portal/requests/read";
 import { portalReader, portalResult, requireResourceId } from "@/lib/portal/rpc";
+import { notifyQuoteDecisionOn, type NotifyOutcome } from "@/lib/quotes/decision-notify";
 import { announceRequestOn, type AnnounceOutcome } from "@/lib/requests/announce";
 import { attachmentRules, bytesMatchMime, type AttachmentMime } from "@/lib/requests/model";
 
@@ -175,6 +176,19 @@ export async function startMandateActivation(actor: PortalActor): Promise<Portal
  */
 export async function announceRequest(actor: PortalActor, requestId: string): Promise<AnnounceOutcome> {
   return announceRequestOn(paymentsAdminClient(), actor.customerId, requestId);
+}
+
+/**
+ * The mails of a decision this member's customer just made on a quote: the
+ * customer's confirmation and YM Creations' notice. Runs on the system
+ * client because the member has no write on the notification row; the
+ * lease and the bookkeeping are in notifyQuoteDecisionOn, and the row is
+ * claimed only together with the member's own customer. The decision is on
+ * record before this runs and nothing here can touch it: a failed mail only
+ * leaves the notification unmarked, for the next retry.
+ */
+export async function notifyQuoteDecision(actor: PortalActor, decisionId: string): Promise<NotifyOutcome> {
+  return notifyQuoteDecisionOn(paymentsAdminClient(), actor.customerId, requireResourceId(decisionId));
 }
 
 const requestBucket = "request-attachments";

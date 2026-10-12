@@ -8,6 +8,7 @@ import { requireAdminAccess } from "@/lib/admin/access";
 import { listCustomers } from "@/lib/admin/customers/repository";
 import { toDateKey } from "@/lib/admin/format";
 import { listProjects } from "@/lib/admin/projects/repository";
+import { getQuoteDecision } from "@/lib/admin/quotes/decisions";
 import { findQuoteSuccessor } from "@/lib/admin/quotes/repository";
 import { isQuoteFrozen } from "@/lib/admin/quotes/types";
 import { readCustomerRecipient, readQuote } from "@/lib/admin/readers";
@@ -40,10 +41,11 @@ export default async function QuotesDetailPage({ params }: PageProps) {
     concept may be a new version of something, but nothing can be a new
     version of a concept.
   */
-  const [recipient, successor, predecessor] = await Promise.all([
+  const [recipient, successor, predecessor, decision] = await Promise.all([
     readCustomerRecipient(item.customer.customerId, "general"),
     isQuoteFrozen(item) ? findQuoteSuccessor(item.id) : undefined,
     item.supersedesQuoteId ? readQuote(item.supersedesQuoteId) : undefined,
+    item.sentAt ? getQuoteDecision(item.id) : undefined,
   ]);
 
   return (
@@ -66,7 +68,14 @@ export default async function QuotesDetailPage({ params }: PageProps) {
         no form.
       */}
       {isQuoteFrozen(item) ? (
-        <QuoteIssued quote={item} recipient={recipient} successor={successor} predecessor={predecessor} />
+        <QuoteIssued
+          quote={item}
+          recipient={recipient}
+          successor={successor}
+          predecessor={predecessor}
+          decision={decision}
+          todayKey={toDateKey(new Date())}
+        />
       ) : (
         /*
           Keyed on what sending changes. Issuing a number happens on the

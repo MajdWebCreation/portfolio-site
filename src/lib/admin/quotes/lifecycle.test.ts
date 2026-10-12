@@ -184,25 +184,42 @@ describe("a new version of a sent quote", () => {
   });
 });
 
-describe("what became of a sent quote", () => {
-  it("is recorded on the quote and nowhere else", async () => {
-    const result = await setQuoteOutcome("quo-1", "accepted");
+describe("the status an admin sets by hand", () => {
+  it("marks an open quote expired on the quote and nowhere else", async () => {
+    const result = await setQuoteOutcome("quo-1", "expired");
 
-    expect(result).toEqual({ ok: true, value: "accepted" });
-    expect(db.rows("quotes")[0]).toMatchObject({ status: "accepted", document_sha256: "a".repeat(64), sent_at: "2026-09-01T10:00:00.000Z" });
+    expect(result).toEqual({ ok: true, value: "expired" });
+    expect(db.rows("quotes")[0]).toMatchObject({ status: "expired", document_sha256: "a".repeat(64), sent_at: "2026-09-01T10:00:00.000Z" });
+  });
+
+  it.each(["accepted", "rejected"])("never sets %s: that is a decision, recorded on its own", async (status) => {
+    const result = await setQuoteOutcome("quo-1", status);
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? "" : result.error).toMatch(/beslissing/);
+    expect(db.rows("quotes")[0]!.status).toBe("sent");
+  });
+
+  it.each(["accepted", "rejected"] as const)("does not move a quote that was %s", async (status) => {
+    place(sent({ status }));
+
+    const result = await setQuoteOutcome("quo-1", "sent");
+
+    expect(result.ok).toBe(false);
+    expect(db.rows("quotes")[0]!.status).toBe(status);
   });
 
   it("never goes back to a concept", async () => {
     const result = await setQuoteOutcome("quo-1", "draft");
 
-    expect(result).toEqual({ ok: false, error: "Kies een geldige status." });
+    expect(result.ok).toBe(false);
     expect(db.rows("quotes")[0]!.status).toBe("sent");
   });
 
   it("is refused on a quote the customer does not have", async () => {
     place(quoteFixture());
 
-    const result = await setQuoteOutcome("quo-1", "accepted");
+    const result = await setQuoteOutcome("quo-1", "expired");
 
     expect(result.ok).toBe(false);
     expect(db.rows("quotes")[0]!.status).toBe("draft");
