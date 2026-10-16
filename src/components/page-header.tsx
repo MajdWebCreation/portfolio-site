@@ -14,6 +14,12 @@ type PageHeaderProps = {
   children?: ReactNode;
   /** A drawing next to the title; the intro then stays short and sits under the title. */
   visual?: ReactNode;
+  /**
+   * Whether the drawing also shows on a phone. Off when what follows the
+   * header is the reason the visitor came (a price, a choice) and the
+   * drawing would push it below the first screen.
+   */
+  visualOnMobile?: boolean;
 };
 
 /**
@@ -28,6 +34,7 @@ export default function PageHeader({
   intro,
   children,
   visual,
+  visualOnMobile = true,
 }: PageHeaderProps) {
   if (visual) {
     return (
@@ -40,7 +47,11 @@ export default function PageHeader({
               {intro ? <p className="lede mt-5 max-w-[28rem]">{intro}</p> : null}
               {children ? <div className="mt-6">{children}</div> : null}
             </div>
-            <div className="w-full max-w-[32rem] sm:ml-auto lg:col-span-5 lg:max-w-none xl:col-span-6">
+            <div
+              className={`w-full max-w-[32rem] sm:ml-auto lg:col-span-5 lg:max-w-none xl:col-span-6 ${
+                visualOnMobile ? "" : "max-sm:hidden"
+              }`}
+            >
               {visual}
             </div>
           </div>

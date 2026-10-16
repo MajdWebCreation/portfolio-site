@@ -37,6 +37,14 @@ export type ContactPayload = {
   company?: string;
   phone?: string;
   message: string;
+  /**
+   * The project type chosen on the pricing page, as its id (lib/pricing).
+   * Optional, untrusted: the route keeps it only when it is one of the fixed
+   * ids and describes it from the catalog, never from anything sent along.
+   * With a choice, the request needs an email address and a name or a
+   * company; the message may be empty.
+   */
+  package?: string;
   /** Honeypot. A filled value marks the submission as automated. */
   website?: string;
   /**

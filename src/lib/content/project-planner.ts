@@ -56,7 +56,6 @@ export type PlannerState = {
   starterNeedApi: boolean;
   businessSeoGrowth: boolean;
   businessAdvancedEmail: boolean;
-  businessAdminLite: boolean;
   businessLightApi: boolean;
   businessNeedBooking: boolean;
   businessNeedDashboard: boolean;
@@ -235,7 +234,6 @@ export const initialPlannerState: PlannerState = {
   starterNeedApi: false,
   businessSeoGrowth: false,
   businessAdvancedEmail: false,
-  businessAdminLite: false,
   businessLightApi: false,
   businessNeedBooking: false,
   businessNeedDashboard: false,
@@ -685,9 +683,6 @@ export function buildPlannerSummary(
     }
     if (state.businessAdvancedEmail) {
       addAddon("email-flow");
-    }
-    if (state.businessAdminLite) {
-      addAddon("content-admin");
     }
     if (state.businessLightApi) {
       addAddon("light-api");

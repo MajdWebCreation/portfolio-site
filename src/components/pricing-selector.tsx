@@ -3,7 +3,8 @@
 import { useRef, useState, useSyncExternalStore } from "react";
 import { trackEvent } from "@/lib/analytics/track";
 import CtaLink from "@/components/cta-link";
-import { isPackageId, type PackageId } from "@/lib/pricing";
+import type { CtaTarget } from "@/lib/analytics/events";
+import { isPackageId, type PackageId, type ProductCategory } from "@/lib/pricing";
 
 export type SelectorAddOn = {
   label: string;
@@ -18,8 +19,17 @@ export type SelectorAddOnGroup = {
   items: SelectorAddOn[];
 };
 
+/** Where a card's action leads, when not the planner with the type preselected. */
+export type SelectorAction = {
+  href: string;
+  label: string;
+  target: CtaTarget;
+};
+
 export type SelectorPackage = {
   id: PackageId;
+  /** The tab on the pricing page the type sits under; travels with every event. */
+  category: ProductCategory;
   name: string;
   /** One short line: who the type is for. */
   tagline: string;
@@ -35,10 +45,19 @@ export type SelectorPackage = {
   /** Three to five points that set the type apart, for the overview cards. */
   highlights: string[];
   included: string[];
+  /** What the starting price deliberately leaves out; the few lines that keep the boundary honest. */
+  notIncluded: string[];
+  /** Extensions without an amount in the catalog yet, offered on request. */
+  onRequest: string[];
   addOnGroups: SelectorAddOnGroup[];
   /** Boundary text; for custom work the scope explanation. */
   boundary: string;
-  plannerHref: string;
+  /** The contact form with this type filled in: the one action on the card and in the detail row. */
+  requestHref: string;
+  /** "Vraag deze website aan" / "Bespreek dit project". */
+  requestLabel: string;
+  /** A quiet second link on the card, under the main action. */
+  secondaryAction?: SelectorAction;
 };
 
 export type SelectorLabels = {
@@ -46,10 +65,11 @@ export type SelectorLabels = {
   monthlyLabel: string;
   scopeNote: string;
   includedLabel: string;
+  notIncludedLabel: string;
   addOnsLabel: string;
+  onRequestLabel: string;
   boundaryLabel: string;
   scopeLabel: string;
-  ctaLabel: string;
 };
 
 /** Copy for an active development discount; absent when there is none. */
@@ -94,8 +114,8 @@ const noHash = () => null;
  * read; a row opens on a tap, or through the type's hash, which the cards
  * above link to. Every panel is in the HTML, so the content is there without
  * JavaScript and for search engines; JavaScript only decides which one is
- * shown. The call to action leads to the project planner with the type
- * preselected.
+ * shown. The call to action leads to the contact form with the type filled
+ * in; the project planner stays a route of its own.
  */
 export default function PricingSelector({ packages, labels, discount }: PricingSelectorProps) {
   const hashId = useSyncExternalStore(subscribeHash, readHash, noHash);
@@ -112,7 +132,10 @@ export default function PricingSelector({ packages, labels, discount }: PricingS
   const select = (id: PackageId) => {
     const next = active === id ? null : id;
     /* Opening a type is interest; closing it again is not. */
-    if (next) trackEvent("pricing_package_select", { package_id: id });
+    if (next) {
+      const pkg = packages.find((item) => item.id === id);
+      trackEvent("pricing_package_select", { package_id: id, product_category: pkg?.category });
+    }
     setChoice(next);
     /* Keep the choice in the URL hash (no history entry), so back from the planner reopens it. */
     window.history.replaceState(null, "", next ? `#${next}` : window.location.pathname);
@@ -243,6 +266,19 @@ export default function PricingSelector({ packages, labels, discount }: PricingS
                         </li>
                       ))}
                     </ul>
+                    {pkg.notIncluded.length > 0 ? (
+                      <>
+                        <p className="label-mono mt-6">{labels.notIncludedLabel}</p>
+                        <ul className="mt-3 space-y-2 text-[0.92rem] leading-snug text-muted">
+                          {pkg.notIncluded.map((item) => (
+                            <li key={item} className="flex gap-3">
+                              <span aria-hidden="true" className="mt-[0.65em] h-px w-3 shrink-0 bg-line-strong" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : null}
                   </div>
                   <div>
                     <p className="label-mono">{labels.addOnsLabel}</p>
@@ -275,6 +311,20 @@ export default function PricingSelector({ packages, labels, discount }: PricingS
                           ) : null}
                         </div>
                       ))}
+                      {pkg.onRequest.length > 0 ? (
+                        <div>
+                          <p className="text-[0.78rem] uppercase tracking-[0.06em] text-faint">
+                            {labels.onRequestLabel}
+                          </p>
+                          <ul className="mt-1 divide-y divide-line border-b border-line">
+                            {pkg.onRequest.map((item) => (
+                              <li key={item} className="py-1.5 text-[0.92rem] leading-snug text-body">
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -290,13 +340,14 @@ export default function PricingSelector({ packages, labels, discount }: PricingS
 
                 <div className="mt-8 border-t border-line pt-6">
                   <CtaLink
-                    href={pkg.plannerHref}
+                    href={pkg.requestHref}
                     data-track-event="pricing_cta_click"
                     data-track-package-id={pkg.id}
-                    data-track-cta-target="planner"
+                    data-track-product-category={pkg.category}
+                    data-track-cta-target="contact"
                     data-track-placement="pricing_details"
                   >
-                    {labels.ctaLabel}
+                    {pkg.requestLabel}
                   </CtaLink>
                 </div>
               </div>

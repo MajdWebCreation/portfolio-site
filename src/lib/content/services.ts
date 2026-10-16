@@ -194,7 +194,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
             heading: "Wat de prijs bepaalt",
             paragraphs: [
               "De prijs volgt het type project, niet een lijst losse functies. Een compacte website van één tot vijf pagina's is een ander type dan een bedrijfswebsite van zes tot twaalf pagina's met een bredere contentstructuur, formulieren en een beheeromgeving om zelf teksten en afbeeldingen aan te passen. Vraagt het product om een reserverings- of aanvraagflow, statusbeheer of prijslogica, dan verschuift het naar een zwaarder type. De vanafprijzen per type staan op de [tarievenpagina](/nl/tarieven).",
-              "Binnen een type is vooral de inhoud bepalend. Teksten komen van jou; we schrijven mee en scherpen aan, maar het verhaal is van het bedrijf. Fotografie, een uitgebreidere beheeromgeving waarin je ook projecten en referenties zelf beheert, en een extra taal zijn de onderdelen die de scope het vaakst laten bewegen. Wat er precies in zit, staat in het voorstel dat na de intake volgt.",
+              "Binnen een type is vooral de inhoud bepalend. Teksten komen van jou; we schrijven mee en scherpen aan, maar het verhaal is van het bedrijf. Fotografie, een extra taal en koppelingen met andere systemen zijn de onderdelen die de scope het vaakst laten bewegen. Wat er precies in zit, staat in het voorstel dat na de intake volgt.",
             ],
           },
           {
@@ -232,7 +232,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
         scope: [
           "Teksten: we schrijven mee of scherpen aan, de inhoud komt van jou",
           "Fotografie en beeld",
-          "Een uitgebreidere beheeromgeving waarin je ook projecten, referenties en secties zelf beheert; teksten en afbeeldingen pas je standaard zelf aan",
+          "Een tweede taal, met een eigen URL per taal",
           "Advertenties en doorlopende SEO na livegang",
         ],
         approachTitle: "Zo verloopt het traject",
@@ -311,7 +311,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
         scope: [
           "Copy: we co-write or sharpen it, the content comes from you",
           "Photography and imagery",
-          "An extended admin environment in which you also manage projects, testimonials and sections yourself; text and images you edit yourself as standard",
+          "A second language, with its own URL per language",
           "Advertising and ongoing SEO after launch",
         ],
         approachTitle: "How the project runs",

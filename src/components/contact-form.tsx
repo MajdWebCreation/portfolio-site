@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { trackEvent } from "@/lib/analytics/track";
 import type { ErrorKind } from "@/lib/analytics/events";
 import { attributionPayload, currentAttribution } from "@/lib/attribution/capture";
 import { attributionEventParams } from "@/lib/attribution/event-params";
+import { packageIdFromSearch, type PackageChoice } from "@/lib/contact/package-request";
+import type { PackageId } from "@/lib/pricing";
 import { reportLead } from "@/lib/tracking/conversions";
 
 type ContactFormCopy = {
@@ -21,6 +23,18 @@ type ContactFormCopy = {
   sendingLabel: string;
   successMessage: string;
   errorMessage: string;
+  /** Above the chosen project type: "Je keuze". */
+  choiceLabel: string;
+  /** Link back to the pricing page next to the choice. */
+  changeChoiceLabel: string;
+  /** Under the choice: what the short form needs. */
+  choiceHint: string;
+  /** Label of the message field when the choice makes it optional. */
+  messageOptionalLabel: string;
+  messageOptionalPlaceholder: string;
+  /** The button when a project type is chosen: "Verstuur aanvraag". */
+  requestLabel: string;
+  requestSuccessMessage: string;
 };
 
 /**
@@ -42,6 +56,14 @@ type ContactFormProps = {
   locale: "nl" | "en";
   note?: ContactFormNote;
   className?: string;
+  /**
+   * The five project types as the pricing catalog describes them, read on
+   * the server. The form shows the one named in `?package=` and sends its
+   * id along; without them, or without a known id, it is the plain form.
+   */
+  packageChoices?: Record<PackageId, PackageChoice>;
+  /** Where "change your choice" leads: the pricing page. */
+  pricingHref?: string;
 };
 
 type FormState = {
@@ -69,13 +91,26 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+/*
+  The project type a pricing card put in the URL (?package=...). Read from
+  the browser, which is the only place it exists; the page itself stays
+  static. Checked against the fixed set of ids: anything else is no choice.
+*/
+const subscribeNoop = () => () => {};
+const readPackageParam = () => packageIdFromSearch(window.location.search);
+const noPackage = () => null;
+
 export default function ContactForm({
   copy,
   locale,
   note,
   className = "",
+  packageChoices,
+  pricingHref,
 }: ContactFormProps) {
   const isDutch = locale === "nl";
+  const packageParam = useSyncExternalStore(subscribeNoop, readPackageParam, noPackage);
+  const choice = packageParam && packageChoices ? packageChoices[packageParam] : null;
   const [form, setForm] = useState<FormState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
@@ -100,10 +135,19 @@ export default function ContactForm({
     });
   }
 
+  /*
+    With a project type chosen, the form asks for the least that still lets
+    the request be answered: an address, and a name or a company. The plain
+    form keeps its name and its message. The server applies the same rules.
+  */
   function validateForm(values: FormState) {
     const errors: Partial<Record<ContactField, string>> = {};
 
-    if (values.name.trim().length < 2) {
+    if (choice) {
+      if (values.name.trim().length < 2 && values.company.trim().length < 2) {
+        errors.name = isDutch ? "Vul je naam of bedrijfsnaam in" : "Enter your name or company name";
+      }
+    } else if (values.name.trim().length < 2) {
       errors.name = isDutch ? "Vul je naam in" : "Enter your name";
     }
 
@@ -113,12 +157,14 @@ export default function ContactForm({
         : "Enter a valid email address";
     }
 
-    if (!values.message.trim()) {
-      errors.message = isDutch ? "Vul je bericht in" : "Enter your message";
-    } else if (values.message.trim().length < 12) {
-      errors.message = isDutch
-        ? "Je bericht is te kort"
-        : "Your message is too short";
+    if (!choice) {
+      if (!values.message.trim()) {
+        errors.message = isDutch ? "Vul je bericht in" : "Enter your message";
+      } else if (values.message.trim().length < 12) {
+        errors.message = isDutch
+          ? "Je bericht is te kort"
+          : "Your message is too short";
+      }
     }
 
     return errors;
@@ -127,7 +173,7 @@ export default function ContactForm({
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     if (!started.current && key !== "website" && value.length > 0) {
       started.current = true;
-      trackEvent("contact_start", { form: "contact" });
+      trackEvent("contact_start", { form: "contact", preselected_package: choice?.id ?? "none" });
     }
     setForm((prev) => ({ ...prev, [key]: value }));
     if (status !== "idle") setStatus("idle");
@@ -174,7 +220,7 @@ export default function ContactForm({
           "Content-Type": "application/json",
         },
         /* Where the visit came from travels with the request; the server checks it again. */
-        body: JSON.stringify({ ...form, locale, ...attributionPayload() }),
+        body: JSON.stringify({ ...form, locale, ...(choice ? { package: choice.id } : {}), ...attributionPayload() }),
       });
 
       if (!response.ok) {
@@ -201,7 +247,11 @@ export default function ContactForm({
       const accepted = (await response.json().catch(() => null)) as { leadEventId?: unknown } | null;
       reportLead({ form: "contact", eventId: accepted?.leadEventId, contact: { email: form.email } });
 
-      trackEvent("contact_submit", { form: "contact", ...attributionEventParams(currentAttribution()) });
+      trackEvent("contact_submit", {
+        form: "contact",
+        preselected_package: choice?.id ?? "none",
+        ...attributionEventParams(currentAttribution()),
+      });
       setStatus("success");
       setForm(initialState);
       setFieldErrors({});
@@ -227,6 +277,31 @@ export default function ContactForm({
     <div className={className} data-clarity-mask="true">
       <div>
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+          {choice ? (
+            /* The choice made on the pricing page, named from the catalog; the visitor does not make it again. */
+            <div className="rounded-sm border border-line bg-paper-deep px-4 py-4 sm:px-5" data-package-choice={choice.id}>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+                <div>
+                  <p className="label-mono">{copy.choiceLabel}</p>
+                  <p className="mt-1 text-[1.15rem] font-semibold leading-snug tracking-[-0.01em] text-ink">
+                    {choice.name}
+                  </p>
+                  <p className="mt-0.5 text-[0.92rem] leading-snug text-muted">
+                    {choice.price} {isDutch ? "excl. btw" : "excl. VAT"}
+                    <span aria-hidden="true"> · </span>
+                    {isDutch ? "technisch beheer" : "technical management"} {choice.monthly}
+                  </p>
+                </div>
+                {pricingHref ? (
+                  <Link href={`${pricingHref}#${choice.id}`} className="link-static text-[0.9rem] text-muted hover:text-ink">
+                    {copy.changeChoiceLabel}
+                  </Link>
+                ) : null}
+              </div>
+              <p className="mt-3 text-[0.9rem] leading-snug text-body">{copy.choiceHint}</p>
+            </div>
+          ) : null}
+
           <div className="hidden">
             <label htmlFor="website">Website</label>
             <input
@@ -252,7 +327,7 @@ export default function ContactForm({
                 placeholder={copy.namePlaceholder}
                 className={`${inputBase} ${fieldErrors.name ? inputError : ""}`}
                 autoComplete="name"
-                required
+                required={!choice}
                 aria-invalid={Boolean(fieldErrors.name)}
                 aria-describedby={fieldErrors.name ? "contact-name-error" : undefined}
               />
@@ -305,16 +380,16 @@ export default function ContactForm({
 
           <div>
             <label htmlFor="message" className={labelBase}>
-              {copy.messageLabel}
+              {choice ? copy.messageOptionalLabel : copy.messageLabel}
             </label>
             <textarea
               id="message"
               name="message"
               value={form.message}
               onChange={(e) => updateField("message", e.target.value)}
-              placeholder={copy.messagePlaceholder}
-              className={`${inputBase} min-h-[180px] resize-y ${fieldErrors.message ? inputError : ""}`}
-              required
+              placeholder={choice ? copy.messageOptionalPlaceholder : copy.messagePlaceholder}
+              className={`${inputBase} resize-y ${choice ? "min-h-[120px]" : "min-h-[180px]"} ${fieldErrors.message ? inputError : ""}`}
+              required={!choice}
               aria-invalid={Boolean(fieldErrors.message)}
               aria-describedby={fieldErrors.message ? "contact-message-error" : undefined}
             />
@@ -331,12 +406,12 @@ export default function ContactForm({
               disabled={isSubmitting}
               className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-sm bg-ink px-6 text-[0.95rem] font-medium text-paper transition-colors duration-200 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSubmitting ? copy.sendingLabel : copy.submitLabel}
+              {isSubmitting ? copy.sendingLabel : choice ? copy.requestLabel : copy.submitLabel}
             </button>
 
             <div className="min-h-6 text-[0.9rem] leading-snug" aria-live="polite">
               {status === "success" ? (
-                <span className="text-success">{copy.successMessage}</span>
+                <span className="text-success">{choice ? copy.requestSuccessMessage : copy.successMessage}</span>
               ) : null}
               {status === "error" ? (
                 <span className="text-danger">{formError || copy.errorMessage}</span>

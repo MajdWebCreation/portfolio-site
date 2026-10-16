@@ -1,15 +1,32 @@
 import type { Locale } from "@/lib/content/site-content";
+import type { ProductCategory } from "@/lib/pricing/categories";
+import type { PackageId } from "@/lib/pricing/packages";
 
 /**
  * Copy of the pricing page. Packages, amounts and extensions live in
  * `@/lib/pricing`; this file only holds the words around them.
  *
- * The page reads top to bottom as one line of thought: what is true of every
- * website (hero and principles), which types there are and what they start
- * at (overview cards), what each type gets exactly (details), the project
- * type for software rather than a website (platform band), how an amount is
- * built up (model) and where to go when the type is not clear yet (closing).
+ * The page reads top to bottom as one line of thought: what the visitor
+ * wants made (hero and the three categories, each with its cards, its
+ * details and a route for what falls outside them), what is true of every
+ * website (principles), how an amount is built up (model) and where to go
+ * when the type is not clear yet (closing).
  */
+export type PricingCategoryCopy = {
+  /** Tab name: "Website", "Webshop", "Maatwerk". */
+  name: string;
+  /** One line that says who the category is for, in the tab and above the cards. */
+  descriptor: string;
+  /** A short paragraph above the cards, where the category needs explaining (custom work). */
+  intro?: string;
+  /**
+   * A quiet route next to the cards for what falls outside them: one
+   * sentence and one link. `contact` leads to the contact page, `custom`
+   * to the custom-work tab on this page.
+   */
+  route?: { text: string; label: string; target: "contact" | "custom" };
+};
+
 export type PricingPageContent = {
   metaTitle: string;
   metaDescription: string;
@@ -18,23 +35,33 @@ export type PricingPageContent = {
     title: string;
     intro: string;
   };
+  /** The first question on the page and the three answers to it. */
+  categories: {
+    title: string;
+    /** Before the open tab's name under the tabs: "Je bekijkt". */
+    viewingLabel: string;
+    items: Record<ProductCategory, PricingCategoryCopy>;
+  };
   /** Three short claims that hold for every website; said here and nowhere else on the page. */
   principles: {
     title: string;
     items: { title: string; text: string }[];
   };
   overview: {
-    label: string;
-    title: string;
     /** Above every starting amount, on the cards. */
     fromLabel: string;
     /** Before the monthly amount on a card: "Technisch beheer vanaf € 15 p/m". */
     managementLabel: string;
     vatNote: string;
-    ctaLabel: string;
-    /** Jump to the type's full detail further down the page. */
+    /** Jump to the type's full detail further down the panel. */
     detailsLabel: string;
   };
+  /**
+   * The action on every card and detail row: straight to the contact form
+   * with the type filled in. Worded per type, so a website is requested and
+   * a project is discussed; never a planner step.
+   */
+  requestLabels: Record<PackageId, string>;
   details: {
     label: string;
     title: string;
@@ -43,18 +70,16 @@ export type PricingPageContent = {
     /** Under a scope-driven amount: what the starting price covers. */
     scopeNote: string;
     includedLabel: string;
+    /** Above the few lines the starting price deliberately leaves out. */
+    notIncludedLabel: string;
     addOnsLabel: string;
+    /** Above extensions the type offers without a listed amount. */
+    onRequestLabel: string;
     boundaryLabel: string;
     scopeLabel: string;
-    ctaLabel: string;
   };
+  /** The card of the web application type carries a second link to its service page. */
   platform: {
-    label: string;
-    title: string;
-    text: string;
-    fromLabel: string;
-    highlightsLabel: string;
-    ctaLabel: string;
     /** To the service page about web applications. */
     secondaryLabel: string;
   };
@@ -80,7 +105,42 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
       label: "Tarieven",
       title: "Een website die past bij jouw bedrijf. Niet andersom.",
       intro:
-        "Iedere website wordt ontworpen en gebouwd rond jouw bedrijf. Kies hieronder het projecttype dat het beste aansluit bij wat je nodig hebt.",
+        "Kies eerst wat je wilt laten maken: een website, een webshop of maatwerk. Daarna zie je per type de vanafprijs en wat erbij hoort.",
+    },
+    categories: {
+      title: "Wat wil je laten maken?",
+      viewingLabel: "Je bekijkt",
+      items: {
+        website: {
+          name: "Website",
+          descriptor: "Zichtbaar zijn en aanvragen of contact krijgen.",
+          route: {
+            text: "Meer pagina's, een andere opzet of iets dat hier niet tussen staat?",
+            label: "Bespreek je website",
+            target: "contact",
+          },
+        },
+        webshop: {
+          name: "Webshop",
+          descriptor: "Producten online verkopen, met winkelwagen, betalingen en bestellingen.",
+          route: {
+            text: "B2B-prijzen, klantaccounts met eigen logica of koppelingen met je systemen? Dat gaat verder dan een webshop.",
+            label: "Bekijk maatwerk",
+            target: "custom",
+          },
+        },
+        custom: {
+          name: "Maatwerk",
+          descriptor: "De website of software voert een proces van je bedrijf uit.",
+          intro:
+            "Reserveringen met eigen regels, een klantportaal, een configurator, dashboards, workflows of koppelingen: dan is het geen gewone website of webshop meer. Hoe ver het gaat, bepaalt welk van deze twee typen past.",
+          route: {
+            text: "Een configurator, klantportaal of andere bedrijfssoftware nodig? Beschrijf kort je proces, dan hoor je welk type past.",
+            label: "Bespreek je project",
+            target: "contact",
+          },
+        },
+      },
     },
     principles: {
       title: "Wat voor iedere website geldt",
@@ -100,33 +160,32 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
       ],
     },
     overview: {
-      label: "Projecttypes",
-      title: "Wat heb je nodig?",
       fromLabel: "Vanaf",
       managementLabel: "Technisch beheer",
       vatNote: "Vanafprijzen, exclusief btw.",
-      ctaLabel: "Kies dit projecttype",
       detailsLabel: "Wat is inbegrepen",
+    },
+    requestLabels: {
+      starter: "Vraag deze website aan",
+      business: "Vraag deze website aan",
+      webshop: "Vraag deze webshop aan",
+      smart: "Bespreek dit project",
+      platform: "Bespreek dit project",
     },
     details: {
       label: "Details",
-      title: "Wat je per projecttype krijgt.",
+      title: "Wat je precies krijgt.",
       onceFromLabel: "Eenmalig vanaf",
       monthlyLabel: "Technisch beheer",
       scopeNote: "Voor een afgebakende eerste versie. Functionaliteit en omvang bepalen de uiteindelijke prijs.",
       includedLabel: "Inbegrepen",
+      notIncludedLabel: "Bewust niet inbegrepen",
       addOnsLabel: "Uitbreidingen bij dit type",
+      onRequestLabel: "Ook mogelijk, prijs op aanvraag",
       boundaryLabel: "Ander projecttype als",
       scopeLabel: "Wat de prijs bepaalt",
-      ctaLabel: "Kies dit projecttype",
     },
     platform: {
-      label: "Meer dan een website",
-      title: "Meer nodig dan een website?",
-      text: "Portalen, dashboards, accounts, workflows, koppelingen of volledig eigen software. Gebouwd rond je eigen proces: na een discovery vooraf krijg je een voorstel met scope, prijs en planning.",
-      fromLabel: "Vanaf",
-      highlightsLabel: "Wat erbij hoort",
-      ctaLabel: "Bespreek je project",
       secondaryLabel: "Meer over webapplicaties",
     },
     model: {
@@ -159,7 +218,42 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
       label: "Pricing",
       title: "A website that fits your business. Not the other way round.",
       intro:
-        "Every website is designed and built around your business. Choose the project type below that best matches what you need.",
+        "First choose what you want made: a website, a webshop or custom work. Then you see the starting price and what comes with each type.",
+    },
+    categories: {
+      title: "What do you want made?",
+      viewingLabel: "You are viewing",
+      items: {
+        website: {
+          name: "Website",
+          descriptor: "Be found and receive enquiries or contact.",
+          route: {
+            text: "More pages, a different structure or something that is not listed here?",
+            label: "Discuss your website",
+            target: "contact",
+          },
+        },
+        webshop: {
+          name: "Webshop",
+          descriptor: "Sell products online, with cart, payments and orders.",
+          route: {
+            text: "B2B pricing, customer accounts with their own logic or integrations with your systems? That goes beyond a webshop.",
+            label: "See custom work",
+            target: "custom",
+          },
+        },
+        custom: {
+          name: "Custom",
+          descriptor: "The website or software runs a process of your business.",
+          intro:
+            "Bookings with their own rules, a client portal, a configurator, dashboards, workflows or integrations: then it is no longer a regular website or webshop. How far it goes decides which of these two types fits.",
+          route: {
+            text: "Need a configurator, a client portal or other business software? Describe your process briefly and you will hear which type fits.",
+            label: "Discuss your project",
+            target: "contact",
+          },
+        },
+      },
     },
     principles: {
       title: "What holds for every website",
@@ -179,33 +273,32 @@ export const pricingPageContent: Record<Locale, PricingPageContent> = {
       ],
     },
     overview: {
-      label: "Project types",
-      title: "What do you need?",
       fromLabel: "From",
       managementLabel: "Technical management",
       vatNote: "Starting prices, excluding VAT.",
-      ctaLabel: "Choose this project type",
       detailsLabel: "What is included",
+    },
+    requestLabels: {
+      starter: "Request this website",
+      business: "Request this website",
+      webshop: "Request this webshop",
+      smart: "Discuss this project",
+      platform: "Discuss this project",
     },
     details: {
       label: "Details",
-      title: "What each project type gets you.",
+      title: "What you get exactly.",
       onceFromLabel: "One-off from",
       monthlyLabel: "Technical management",
       scopeNote: "For a clearly scoped first version. Functionality and size determine the final price.",
       includedLabel: "Included",
+      notIncludedLabel: "Deliberately not included",
       addOnsLabel: "Extensions for this type",
+      onRequestLabel: "Also possible, price on request",
       boundaryLabel: "Another project type when",
       scopeLabel: "What sets the price",
-      ctaLabel: "Choose this project type",
     },
     platform: {
-      label: "More than a website",
-      title: "Need more than a website?",
-      text: "Portals, dashboards, accounts, workflows, integrations or fully custom software. Built around your own process: after a discovery up front you receive a proposal with scope, price and planning.",
-      fromLabel: "From",
-      highlightsLabel: "What comes with it",
-      ctaLabel: "Discuss your project",
       secondaryLabel: "More about web applications",
     },
     model: {

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import ContactForm from "@/components/contact-form";
+import type { PackageChoice } from "@/lib/contact/package-request";
 import { getLocalizedPath, legalRoutes } from "@/lib/content/routes";
+import type { PackageId } from "@/lib/pricing";
 import {
   businessInfo,
   type Locale,
@@ -13,6 +15,8 @@ type ContactBlockProps = {
   kvkLabel: string;
   /** A WhatsApp row under the phone number; only where a page asks for it. */
   whatsapp?: { href: string; label: string };
+  /** The project types a pricing card can put on the form (`?package=`); only the contact page passes them. */
+  packageChoices?: Record<PackageId, PackageChoice>;
 };
 
 const formCopy = {
@@ -31,6 +35,13 @@ const formCopy = {
     successMessage: "Bericht ontvangen. Je krijgt een bevestiging per e-mail en snel een inhoudelijke reactie.",
     errorMessage:
       "Versturen is niet gelukt. Probeer het opnieuw of mail naar contact@ymcreations.com.",
+    choiceLabel: "Je keuze",
+    changeChoiceLabel: "Andere keuze",
+    choiceHint: "Je e-mailadres en je naam of bedrijfsnaam zijn genoeg. Een toelichting mag, maar hoeft niet.",
+    messageOptionalLabel: "Toelichting (optioneel)",
+    messageOptionalPlaceholder: "Bijvoorbeeld: wat doet je bedrijf, en is er al een website?",
+    requestLabel: "Verstuur aanvraag",
+    requestSuccessMessage: "Aanvraag ontvangen. Je krijgt een bevestiging per e-mail en snel een persoonlijke reactie.",
   },
   en: {
     nameLabel: "Name",
@@ -47,6 +58,13 @@ const formCopy = {
     successMessage: "Message received. You get an email confirmation and a substantive reply soon.",
     errorMessage:
       "Sending failed. Try again or email contact@ymcreations.com.",
+    choiceLabel: "Your choice",
+    changeChoiceLabel: "Change choice",
+    choiceHint: "Your email address and your name or company name are enough. A note is welcome, but not required.",
+    messageOptionalLabel: "Note (optional)",
+    messageOptionalPlaceholder: "For example: what does your business do, and is there a website already?",
+    requestLabel: "Send request",
+    requestSuccessMessage: "Request received. You get an email confirmation and a personal reply soon.",
   },
 } as const;
 
@@ -59,6 +77,7 @@ export default function ContactBlock({
   content,
   kvkLabel,
   whatsapp,
+  packageChoices,
 }: ContactBlockProps) {
   return (
     <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
@@ -121,6 +140,8 @@ export default function ContactBlock({
         <ContactForm
           copy={formCopy[locale]}
           locale={locale}
+          packageChoices={packageChoices}
+          pricingHref={getLocalizedPath(locale, "pricing")}
           note={{
             text: content.businessNote,
             termsLabel: content.termsLabel,

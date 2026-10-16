@@ -4,7 +4,9 @@ import ContactBlock from "@/components/contact-block";
 import JsonLd from "@/components/json-ld";
 import PageHeader from "@/components/page-header";
 import SiteShell from "@/components/site-shell";
+import { describePackageChoices } from "@/lib/contact/package-request";
 import { getLocalizedPath, getRouteAlternates } from "@/lib/content/routes";
+import { getPricingCatalog } from "@/lib/pricing/source";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
 import { organizationSchema, webPageSchema } from "@/lib/schema";
 import { isValidLocale, siteContent } from "@/lib/content/site-content";
@@ -62,6 +64,12 @@ export default async function ContactPage({
   const content = siteContent[locale];
   const meta = contactPageMeta[locale];
   const path = getLocalizedPath(locale, "contact");
+  /*
+    A pricing card links here with `?package=<id>`. The five types are
+    described from the catalog on the server and handed to the form, which
+    shows the one the URL names; the page itself stays static.
+  */
+  const packageChoices = describePackageChoices(await getPricingCatalog(), locale);
 
   return (
     <>
@@ -84,6 +92,7 @@ export default async function ContactPage({
               locale={locale}
               content={content.contact}
               kvkLabel={content.footer.kvkLabel}
+              packageChoices={packageChoices}
             />
           </div>
         </section>

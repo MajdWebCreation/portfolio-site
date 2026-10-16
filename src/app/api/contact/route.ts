@@ -2,7 +2,10 @@ import { Resend } from "resend";
 import { cleanAdClickIds, validateAttribution } from "@/lib/attribution/classify";
 import { CONSENT_COOKIE, parseConsent, readCookieValue } from "@/lib/consent/consent";
 import { storeInquiry, type ConsentSnapshot } from "@/lib/contact/inquiry";
+import { describePackageChoice, packageRequestLine } from "@/lib/contact/package-request";
 import type { ContactMode, ContactPayload } from "@/lib/contact/payload";
+import { isPackageId, type PackageId } from "@/lib/pricing";
+import { getPricingCatalog } from "@/lib/pricing/source";
 import { normalizeWebsiteUrl, websiteUrlHost } from "@/lib/contact/website-url";
 import { reportMetaLead } from "@/lib/meta/capi";
 import { createLeadEventId } from "@/lib/meta/event-id";
@@ -31,11 +34,14 @@ type NormalizedSubmission = {
   website: string;
   /** The websitecheck address, normalised; empty when missing or not a website address. */
   websiteUrl: string;
+  /** The project type chosen on the pricing page; only a known id, only on a contact request. */
+  packageId: PackageId | null;
   planner?: ContactPayload["planner"];
 };
 
 type ValidationField =
   | "name"
+  | "nameOrCompany"
   | "email"
   | "phone"
   | "websiteUrl"
@@ -86,6 +92,7 @@ function normalizeSubmission(body: ContactPayload): NormalizedSubmission {
     message: mode === "websitecheck" ? "" : (body.message?.trim() ?? ""),
     website: body.website?.trim() ?? "",
     websiteUrl: mode === "websitecheck" ? (normalizeWebsiteUrl(body.websiteUrl) ?? "") : "",
+    packageId: mode === "contact" && isPackageId(body.package) ? body.package : null,
     planner: body.planner,
   };
 }
@@ -122,6 +129,7 @@ function isValidEmail(value: string) {
 function getValidationMessage(locale: "en" | "nl", field: ValidationField) {
   const nl: Record<ValidationField, string> = {
     name: "Vul je naam in",
+    nameOrCompany: "Vul je naam of bedrijfsnaam in",
     email: "Vul een geldig e-mailadres in",
     phone: "Controleer je telefoonnummer",
     websiteUrl: "Vul het adres van je website in, bijvoorbeeld www.jouwbedrijf.nl",
@@ -141,6 +149,7 @@ function getValidationMessage(locale: "en" | "nl", field: ValidationField) {
 
   const en: Record<ValidationField, string> = {
     name: "Enter your name",
+    nameOrCompany: "Enter your name or company name",
     email: "Enter a valid email address",
     phone: "Check your phone number",
     websiteUrl: "Enter your website address, for example www.yourcompany.com",
@@ -164,7 +173,19 @@ function getValidationMessage(locale: "en" | "nl", field: ValidationField) {
 function validateSubmission(submission: NormalizedSubmission) {
   const errors: ValidationErrorMap = {};
 
-  if (submission.name.length < 2) {
+  /*
+    A request for a project type chosen on the pricing page asks for as
+    little as possible: an address to answer to, and a name or a company
+    to address it to. The message is welcome but not needed; the choice
+    itself says what the request is about.
+  */
+  const fromPricing = submission.mode === "contact" && submission.packageId !== null;
+
+  if (fromPricing) {
+    if (submission.name.length < 2 && submission.company.length < 2) {
+      errors.name = getValidationMessage(submission.locale, "nameOrCompany");
+    }
+  } else if (submission.name.length < 2) {
     errors.name = getValidationMessage(submission.locale, "name");
   }
 
@@ -173,7 +194,7 @@ function validateSubmission(submission: NormalizedSubmission) {
   }
 
   if (submission.mode === "contact") {
-    if (submission.message.trim().length < 12) {
+    if (!fromPricing && submission.message.trim().length < 12) {
       errors.message = getValidationMessage(submission.locale, "message");
     }
     return errors;
@@ -368,15 +389,16 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ContactPayload;
     const {
-      name,
+      name: givenName,
       email,
       company,
       phone,
-      message,
+      message: givenMessage,
       website,
       websiteUrl,
       mode,
       locale,
+      packageId,
       planner,
     } = normalizeSubmission(body);
 
@@ -398,15 +420,16 @@ export async function POST(request: Request) {
     }
 
     const validationErrors = validateSubmission({
-      name,
+      name: givenName,
       email,
       company,
       phone,
-      message,
+      message: givenMessage,
       website,
       websiteUrl,
       mode,
       locale,
+      packageId,
       planner,
     });
 
@@ -422,6 +445,20 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    /*
+      A request from a pricing card. The chosen type is described from the
+      catalog (its name and what it starts at, in the visitor's language)
+      and becomes the first line of the stored message, so the admin, the
+      notification and the confirmation all name it without a lookup. When
+      the visitor gave only a company, that company is the name the request
+      is filed under: the table asks for one, and the company is who asked.
+    */
+    const choice = packageId ? describePackageChoice(await getPricingCatalog(), locale, packageId) : null;
+    const message = choice
+      ? [packageRequestLine(choice, locale), givenMessage].filter(Boolean).join("\n\n")
+      : givenMessage;
+    const name = givenName || company;
 
     /*
       Where the visit came from, as the browser reported it. Checked here
@@ -487,6 +524,7 @@ export async function POST(request: Request) {
       message,
       websiteUrl,
       planner,
+      packageName: choice?.name ?? null,
     });
 
     /*
@@ -512,8 +550,10 @@ function mailFailure(error: { name?: unknown; statusCode?: unknown } | null | un
 }
 
 /** The owner's notification and the visitor's confirmation. Never throws; a failure is logged without visitor data. */
-async function sendInquiryMails(submission: Omit<NormalizedSubmission, "website">): Promise<void> {
-  const { mode, locale, name, email, company, phone, message, websiteUrl, planner } = submission;
+async function sendInquiryMails(
+  submission: Omit<NormalizedSubmission, "website" | "packageId"> & { packageName: string | null },
+): Promise<void> {
+  const { mode, locale, name, email, company, phone, message, websiteUrl, planner, packageName } = submission;
   try {
     const to = process.env.CONTACT_TO_EMAIL;
     const from = process.env.CONTACT_FROM_EMAIL;
@@ -533,7 +573,9 @@ async function sendInquiryMails(submission: Omit<NormalizedSubmission, "website"
           : `New Project Planner inquiry — ${planner?.recommendedPackage || "Unknown package"}`
         : mode === "websitecheck"
           ? `Nieuwe websitecheck-aanvraag — ${websiteUrlHost(websiteUrl)}`
-          : `New website inquiry from ${name}`;
+          : packageName
+            ? `New project request — ${packageName} — ${name}`
+            : `New website inquiry from ${name}`;
 
     const adminHeading =
       mode === "project_planner"

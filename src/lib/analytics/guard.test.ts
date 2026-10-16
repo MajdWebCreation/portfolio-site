@@ -28,6 +28,7 @@ const validSamples: { [K in ParamKey]: AllParams[K] } = {
   service_kind: "package",
   package_id: "business",
   preselected_package: "none",
+  product_category: "website",
   article_slug: "wat-kost-een-website-in-2026",
   article_category: "websites",
   link_domain: "flexorabouw.nl",

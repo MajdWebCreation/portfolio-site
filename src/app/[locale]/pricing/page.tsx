@@ -1,19 +1,23 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import CtaLink from "@/components/cta-link";
+import CtaLink, { ctaVariants } from "@/components/cta-link";
 import JsonLd from "@/components/json-ld";
 import PageHeader from "@/components/page-header";
 import { PricingViewEvent } from "@/components/page-events";
 import PricingCards from "@/components/pricing-cards";
+import PricingCategories from "@/components/pricing-categories";
 import PricingHeroSketch from "@/components/pricing-hero-sketch";
 import PricingSelector, {
-  OriginalPrice,
   type SelectorAddOnGroup,
   type SelectorPackage,
 } from "@/components/pricing-selector";
 import SiteShell from "@/components/site-shell";
 import { getLocalizedPath, getRouteAlternates } from "@/lib/content/routes";
-import { getDevelopmentDiscountCopy, getPricingPageContent } from "@/lib/content/pricing";
+import {
+  getDevelopmentDiscountCopy,
+  getPricingPageContent,
+  type PricingCategoryCopy,
+} from "@/lib/content/pricing";
 import { getServiceAlternates } from "@/lib/content/services";
 import {
   addOnGroupLabels,
@@ -25,10 +29,15 @@ import {
   formatStartingPrice,
   getPackageMetadata,
   getPackages,
+  getProductCategory,
+  isAddOnShown,
+  packagesInCategory,
+  productCategories,
   type AddOnGroup,
   type CatalogPackage,
   type DevelopmentDiscount,
   type PricingCatalog,
+  type ProductCategory,
 } from "@/lib/pricing";
 import { getPricingCatalog } from "@/lib/pricing/source";
 import { buildMetadata, getCanonicalUrl } from "@/lib/seo";
@@ -84,13 +93,16 @@ export default async function PricingPage({
 function toSelectorPackage(
   pkg: CatalogPackage,
   locale: Locale,
-  plannerPath: string,
+  contactPath: string,
+  requestLabel: string,
   discount: DevelopmentDiscount,
 ): SelectorPackage {
   const groups = new Map<AddOnGroup, SelectorAddOnGroup>();
   const metadata = getPackageMetadata(pkg.id);
 
   for (const addOn of pkg.addOns) {
+    /* Add-ons whose content the research puts inside the type are not offered. */
+    if (!isAddOnShown(pkg.id, addOn.id)) continue;
     const group = groups.get(addOn.group) ?? {
       label: addOnGroupLabels[addOn.group][locale],
       note: addOnGroupNotes[addOn.group]?.[locale],
@@ -109,8 +121,10 @@ function toSelectorPackage(
 
   return {
     id: pkg.id,
+    category: getProductCategory(pkg.id),
     name: pkg.name[locale],
-    tagline: pkg.tagline[locale],
+    /* Who the type is for, from the research; the catalog tagline stays for the planner and the admin. */
+    tagline: metadata.audience[locale],
     /* Every starting amount is a lower bound: the quote sets the final price. */
     price: formatStartingPrice(starting.amount, locale, true),
     priceAmount: formatEuro(starting.amount, locale),
@@ -119,10 +133,53 @@ function toSelectorPackage(
     scopeDriven: pkg.scopeDriven,
     highlights: metadata.highlights[locale],
     included: metadata.included[locale],
+    notIncluded: metadata.notIncluded[locale],
+    onRequest: metadata.onRequest[locale],
     addOnGroups: [...groups.values()],
     boundary: metadata.boundary[locale],
-    plannerHref: `${plannerPath}?package=${pkg.id}`,
+    /* The contact form, with this type filled in (lib/contact/package-request). */
+    requestHref: `${contactPath}?package=${pkg.id}`,
+    requestLabel,
   };
+}
+
+/* The route under a category's cards: what falls outside them, in one
+   sentence and one link, clearly second to the types above it. To the
+   contact page, or to the custom-work tab on this page; the latter is a
+   plain anchor so the hash change reaches the tabs. */
+function CategoryRoute({
+  category,
+  route,
+  contactPath,
+}: {
+  category: ProductCategory;
+  route: NonNullable<PricingCategoryCopy["route"]>;
+  contactPath: string;
+}) {
+  const tracking = {
+    "data-track-event": "pricing_cta_click",
+    "data-track-package-id": "none",
+    "data-track-product-category": category,
+    "data-track-placement": "pricing_category",
+  } as const;
+
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 border-b border-line py-5 text-[0.95rem] leading-snug">
+      <p className="max-w-[40rem] text-muted">{route.text}</p>
+      {route.target === "contact" ? (
+        <CtaLink href={contactPath} variant="text" {...tracking} data-track-cta-target="contact">
+          {route.label}
+        </CtaLink>
+      ) : (
+        <a href="#custom" className={ctaVariants.text} {...tracking} data-track-cta-target="pricing">
+          {route.label}
+          <span aria-hidden="true" className="translate-y-px">
+            →
+          </span>
+        </a>
+      )}
+    </div>
+  );
 }
 
 export async function PricingPageContent({ locale }: { locale: Locale }) {
@@ -134,10 +191,9 @@ export async function PricingPageContent({ locale }: { locale: Locale }) {
   const webAppPath = getServiceAlternates("web-app-development").languages[locale];
   const catalog: PricingCatalog = await getPricingCatalog();
   const discount = catalog.developmentDiscount;
-  const packages = getPackages(catalog).map((pkg) => toSelectorPackage(pkg, locale, plannerPath, discount));
-  /* Websites side by side; the platform is software rather than a website and gets its own section. */
-  const websites = packages.filter((pkg) => pkg.id !== "platform");
-  const platform = packages.find((pkg) => pkg.id === "platform");
+  const packages = getPackages(catalog).map((pkg) =>
+    toSelectorPackage(pkg, locale, contactPath, pricing.requestLabels[pkg.id], discount),
+  );
   /* The structured data states the lowest price a visitor actually sees. */
   const lowest = formatEuro(
     Math.min(...getPackages(catalog).map((pkg) => developmentPrice(pkg.startingPrice, discount).amount)),
@@ -147,16 +203,58 @@ export async function PricingPageContent({ locale }: { locale: Locale }) {
   const selectorDiscount = discountCopy
     ? { note: discountCopy.note, originalLabel: discountCopy.originalLabel }
     : undefined;
+  const cardLabels = {
+    fromLabel: pricing.overview.fromLabel,
+    managementLabel: pricing.overview.managementLabel,
+    scopeNote: pricing.details.scopeNote,
+    detailsLabel: pricing.overview.detailsLabel,
+  };
   const detailLabels = {
     onceFromLabel: pricing.details.onceFromLabel,
     monthlyLabel: pricing.details.monthlyLabel,
     scopeNote: pricing.details.scopeNote,
     includedLabel: pricing.details.includedLabel,
+    notIncludedLabel: pricing.details.notIncludedLabel,
     addOnsLabel: pricing.details.addOnsLabel,
+    onRequestLabel: pricing.details.onRequestLabel,
     boundaryLabel: pricing.details.boundaryLabel,
     scopeLabel: pricing.details.scopeLabel,
-    ctaLabel: pricing.details.ctaLabel,
   };
+
+  /* The web application type is software rather than a website: its card
+     carries the service page as a second link. */
+  const forCards = (pkg: SelectorPackage): SelectorPackage =>
+    pkg.id === "platform"
+      ? { ...pkg, secondaryAction: { href: webAppPath, label: pricing.platform.secondaryLabel, target: "service" } }
+      : pkg;
+
+  /* One panel per category: its types side by side, the route for what
+     falls outside them under them, and the full detail of those types. */
+  const panels = Object.fromEntries(
+    productCategories.map((category) => {
+      const copy = pricing.categories.items[category];
+      const ids = packagesInCategory(category);
+      const inCategory = ids.flatMap((id) => packages.filter((pkg) => pkg.id === id));
+
+      return [
+        category,
+        <div key={category}>
+          {copy.intro ? (
+            <p className="mb-6 max-w-[40rem] text-[1.05rem] leading-relaxed text-body sm:mb-8">{copy.intro}</p>
+          ) : null}
+          <PricingCards packages={inCategory.map(forCards)} labels={cardLabels} discount={selectorDiscount} />
+          {copy.route ? <CategoryRoute category={category} route={copy.route} contactPath={contactPath} /> : null}
+          <div className="pt-12 lg:pt-16">
+            <div className="grid gap-3 pb-5 lg:grid-cols-12 lg:gap-8">
+              <p className="label-mono lg:col-span-4">{pricing.details.label}</p>
+              <h3 className="display-sm max-w-[24ch] lg:col-span-8">{pricing.details.title}</h3>
+            </div>
+            <PricingSelector packages={inCategory} labels={detailLabels} discount={selectorDiscount} />
+          </div>
+        </div>,
+      ];
+    }),
+  ) as Record<ProductCategory, React.ReactNode>;
 
   return (
     <>
@@ -175,14 +273,36 @@ export async function PricingPageContent({ locale }: { locale: Locale }) {
           title={pricing.hero.title}
           intro={pricing.hero.intro}
           visual={<PricingHeroSketch />}
+          visualOnMobile={false}
         />
 
+        {/* The first question, and the three answers as tabs: a visitor
+            compares only the types that fit what they want made. */}
+        <section className="container-x pt-10 lg:pt-14" aria-labelledby="pricing-categories">
+          <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3 pb-6">
+            <h2 id="pricing-categories" className="display-md">
+              {pricing.categories.title}
+            </h2>
+            <p className="text-[0.95rem] leading-snug text-muted">{pricing.overview.vatNote}</p>
+          </div>
+          <PricingCategories
+            labelledBy="pricing-categories"
+            viewingLabel={pricing.categories.viewingLabel}
+            tabs={productCategories.map((category) => ({
+              id: category,
+              name: pricing.categories.items[category].name,
+              descriptor: pricing.categories.items[category].descriptor,
+            }))}
+            panels={panels}
+          />
+        </section>
+
         {/* What holds for every website, said once. */}
-        <section className="container-x pt-10 lg:pt-12" aria-labelledby="pricing-principles">
-          <h2 id="pricing-principles" className="sr-only">
+        <section className="container-x pt-14 lg:pt-20" aria-labelledby="pricing-principles">
+          <h2 id="pricing-principles" className="label-mono">
             {pricing.principles.title}
           </h2>
-          <ul className="grid gap-x-8 gap-y-5 sm:grid-cols-3">
+          <ul className="mt-6 grid gap-x-8 gap-y-5 sm:grid-cols-3">
             {pricing.principles.items.map((item) => (
               <li key={item.title} className="border-t border-line-strong pt-4">
                 <p className="text-[1rem] font-semibold leading-snug tracking-[-0.01em] text-ink">
@@ -195,119 +315,6 @@ export async function PricingPageContent({ locale }: { locale: Locale }) {
             ))}
           </ul>
         </section>
-
-        {/* The website types side by side: the comparison needs no interaction. */}
-        <section className="container-x pt-14 lg:pt-20" aria-labelledby="pricing-overview">
-          <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3 pb-6">
-            <div>
-              <p className="label-mono">{pricing.overview.label}</p>
-              <h2 id="pricing-overview" className="display-md mt-2">
-                {pricing.overview.title}
-              </h2>
-            </div>
-            <p className="text-[0.95rem] leading-snug text-muted">{pricing.overview.vatNote}</p>
-          </div>
-          <PricingCards
-            packages={websites}
-            labels={{
-              fromLabel: pricing.overview.fromLabel,
-              managementLabel: pricing.overview.managementLabel,
-              ctaLabel: pricing.overview.ctaLabel,
-              detailsLabel: pricing.overview.detailsLabel,
-            }}
-            discount={selectorDiscount}
-          />
-        </section>
-
-        {/* The full detail per website type, one row each, opened on demand. */}
-        <section className="container-x pt-14 lg:pt-20" aria-labelledby="pricing-details">
-          <div className="grid gap-3 pb-5 lg:grid-cols-12 lg:gap-8">
-            <p className="label-mono lg:col-span-4">{pricing.details.label}</p>
-            <h2 id="pricing-details" className="display-sm max-w-[24ch] lg:col-span-8">
-              {pricing.details.title}
-            </h2>
-          </div>
-          <PricingSelector packages={websites} labels={detailLabels} discount={selectorDiscount} />
-        </section>
-
-        {/* Software rather than a website: its own band, so a custom website
-            and custom software do not read as one thing. */}
-        {platform ? (
-          <section className="mt-16 bg-paper-deep lg:mt-24" aria-labelledby="pricing-platform">
-            <div className="container-x py-14 lg:py-20">
-              <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
-                <div className="lg:col-span-7">
-                  <p className="label-mono">{pricing.platform.label}</p>
-                  <h2 id="pricing-platform" className="display-md mt-2 max-w-[18ch]">
-                    {pricing.platform.title}
-                  </h2>
-                  <p className="mt-4 max-w-[32rem] text-[1.05rem] leading-relaxed text-body">
-                    {pricing.platform.text}
-                  </p>
-                  <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
-                    <CtaLink
-                      href={contactPath}
-                      data-track-event="pricing_cta_click"
-                      data-track-package-id={platform.id}
-                      data-track-cta-target="contact"
-                      data-track-placement="pricing_platform"
-                    >
-                      {pricing.platform.ctaLabel}
-                    </CtaLink>
-                    <CtaLink
-                      href={webAppPath}
-                      variant="text"
-                      className="text-muted"
-                      data-track-event="pricing_cta_click"
-                      data-track-package-id={platform.id}
-                      data-track-cta-target="service"
-                      data-track-placement="pricing_platform"
-                    >
-                      {pricing.platform.secondaryLabel}
-                    </CtaLink>
-                  </div>
-                </div>
-                <div className="lg:col-span-4 lg:col-start-9">
-                  <p className="label-mono">{pricing.platform.fromLabel}</p>
-                  <p className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <span className="tabular text-[2rem] font-semibold leading-none tracking-[-0.03em] text-ink">
-                      {platform.priceAmount}
-                    </span>
-                    {selectorDiscount && platform.originalPriceAmount ? (
-                      <span className="text-[1rem] leading-none">
-                        <OriginalPrice
-                          amount={platform.originalPriceAmount}
-                          label={selectorDiscount.originalLabel}
-                        />
-                      </span>
-                    ) : null}
-                  </p>
-                  {selectorDiscount && platform.originalPriceAmount ? (
-                    <p className="mt-2 text-[0.82rem] leading-snug text-muted">{selectorDiscount.note}</p>
-                  ) : null}
-                  <p className="mt-2 max-w-[18rem] text-[0.85rem] leading-snug text-muted">
-                    {pricing.details.scopeNote}
-                  </p>
-                  <p className="mt-6 label-mono">{pricing.platform.highlightsLabel}</p>
-                  <ul className="mt-3">
-                    {platform.highlights.map((item) => (
-                      <li
-                        key={item}
-                        className="flex gap-3 border-t border-line-strong py-2.5 text-[0.95rem] leading-snug text-body"
-                      >
-                        <span aria-hidden="true" className="mt-[0.6em] h-px w-3 shrink-0 bg-accent" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-              <div className="mt-12 lg:mt-16">
-                <PricingSelector packages={[platform]} labels={detailLabels} discount={selectorDiscount} />
-              </div>
-            </div>
-          </section>
-        ) : null}
 
         {/* The model behind the amounts: what is paid once, what per month. */}
         <section className="container-x pt-14 lg:pt-20" aria-labelledby="pricing-model">

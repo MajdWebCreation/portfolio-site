@@ -69,6 +69,7 @@ export const paramShapes: Record<ParamKey, Shape> = {
   service_kind: { kind: "enum", values: ["package", "custom", "improve"] },
   package_id: { kind: "token" },
   preselected_package: { kind: "token" },
+  product_category: { kind: "enum", values: ["website", "webshop", "custom"] },
   article_slug: { kind: "token" },
   article_category: { kind: "token" },
   link_domain: { kind: "hostname" },

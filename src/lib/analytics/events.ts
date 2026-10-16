@@ -1,5 +1,5 @@
 import type { ServiceFamilyKey, ServiceKey, ServiceKind } from "@/lib/content/services";
-import type { PackageId } from "@/lib/pricing";
+import type { PackageId, ProductCategory } from "@/lib/pricing";
 import type { PlannerPriority, PlannerTimeline } from "@/lib/content/project-planner";
 import type { StaticRouteKey } from "@/lib/content/routes";
 import type { BlogCategory } from "@/lib/content/blog";
@@ -86,6 +86,9 @@ export const placements = [
   "case_header",
   "article_list",
   "article_related",
+  "pricing_cards",
+  "pricing_category",
+  "pricing_details",
   "pricing_selector",
   "pricing_closing",
   "planner_header",
@@ -129,6 +132,8 @@ export type AllParams = {
 
   package_id: PackageId | "none";
   preselected_package: PackageId | "none";
+  /** The tab on the pricing page a package or control sits under. */
+  product_category: ProductCategory;
 
   article_slug: string;
   article_category: BlogCategory;
@@ -176,8 +181,10 @@ export const analyticsEvents = {
 
   /* Interest in prices and packages. */
   pricing_view: { params: ["preselected_package"] },
-  pricing_package_select: { params: ["package_id"] },
-  pricing_cta_click: { params: ["package_id", "cta_target", "placement"] },
+  /* A tab on the pricing page: website, webshop or custom work. */
+  pricing_category_select: { params: ["product_category"] },
+  pricing_package_select: { params: ["package_id", "product_category"] },
+  pricing_cta_click: { params: ["package_id", "cta_target", "placement", "product_category"] },
 
   /* Every other call to action, by stable id. */
   cta_click: { params: ["cta_id", "cta_target", "placement"] },
@@ -191,9 +198,9 @@ export const analyticsEvents = {
   article_view: { params: ["article_slug", "article_category"] },
   article_cta_click: { params: ["article_slug", "cta_target", "placement"] },
 
-  /* Contact form funnel. */
-  contact_start: { params: ["form"] },
-  contact_submit: { params: ["form", "traffic_class", "traffic_source"], keyEvent: true },
+  /* Contact form funnel. `preselected_package`: the project type a pricing card put on the form, or "none". */
+  contact_start: { params: ["form", "preselected_package"] },
+  contact_submit: { params: ["form", "preselected_package", "traffic_class", "traffic_source"], keyEvent: true },
   contact_error: { params: ["form", "error_kind", "fields"] },
   /* A tap on the business phone number or the WhatsApp link (lib/tracking/conversions.ts). */
   contact_click: { params: ["contact_method", "placement"], keyEvent: true },
@@ -217,9 +224,11 @@ export const analyticsEventNames = Object.keys(analyticsEvents) as AnalyticsEven
 
 /**
  * Parameters a call site may leave out: the attribution pair exists only
- * when a source was actually seen, and an event without it is still whole.
+ * when a source was actually seen, and the product category only where a
+ * control sits under one of the pricing tabs; an event without them is
+ * still whole.
  */
-export type OptionalParamKey = "traffic_class" | "traffic_source";
+export type OptionalParamKey = "traffic_class" | "traffic_source" | "product_category";
 
 /** The parameters a call site must supply for one event. */
 export type EventParams<N extends AnalyticsEventName> = {

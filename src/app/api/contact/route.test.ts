@@ -20,6 +20,13 @@ vi.mock("resend", () => ({
   },
 }));
 
+/* The pricing catalog a request for a project type is described from: the seed amounts, no database. */
+vi.mock("@/lib/pricing/source", async () => {
+  const { catalogFromRows } = await import("@/lib/pricing/catalog");
+  const { seedAddOnRows, seedPackageRows } = await import("@/lib/pricing/test-fixtures");
+  return { getPricingCatalog: async () => catalogFromRows(seedPackageRows, seedAddOnRows) };
+});
+
 /* Work scheduled with `after` (the Meta Conversions API call) is collected here and run by the test. */
 const scheduled: (() => unknown)[] = [];
 vi.mock("next/server", async (importOriginal) => ({
@@ -296,6 +303,99 @@ describe("the existing origins after the websitecheck extension", () => {
   it("treats an unknown mode as contact", async () => {
     await POST(request({ ...visitor, mode: "something_else" }));
     expect(storeInquiry.mock.calls[0][0]).toMatchObject({ origin: "contact" });
+  });
+});
+
+/*
+  A request straight from a pricing card: the chosen type travels as its id,
+  the form asks for an address and a name or a company, and the stored
+  message names the type from the catalog.
+*/
+describe("a request for a project type chosen on the pricing page", () => {
+  beforeEach(() => {
+    storeInquiry.mockResolvedValue(undefined);
+    send.mockResolvedValue({ data: { id: "m1" } });
+  });
+
+  const chosen = { email: "anna@example.com", locale: "nl", package: "starter" };
+
+  it("accepts an email address and a name, without a message, and stores the type as the first line", async () => {
+    const response = await POST(request({ ...chosen, name: "Anna Voorbeeld", message: "" }));
+
+    expect(response.status).toBe(200);
+    expect(storeInquiry.mock.calls[0][0]).toMatchObject({
+      origin: "contact",
+      name: "Anna Voorbeeld",
+      company: "",
+      message: "Gekozen projecttype: Compacte website (vanaf €\u00a0695 excl. btw, technisch beheer vanaf €\u00a015 p/m)",
+    });
+  });
+
+  it("accepts an email address and a company only, and files the request under the company", async () => {
+    const response = await POST(request({ ...chosen, name: "", company: "Bakkerij Jansen", message: "" }));
+
+    expect(response.status).toBe(200);
+    expect(storeInquiry.mock.calls[0][0]).toMatchObject({ name: "Bakkerij Jansen", company: "Bakkerij Jansen" });
+  });
+
+  it("refuses an email address alone: a name or a company is needed", async () => {
+    const response = await POST(request({ ...chosen, name: "", company: "", message: "" }));
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).fieldErrors).toEqual({ name: "Vul je naam of bedrijfsnaam in" });
+    expect(storeInquiry).not.toHaveBeenCalled();
+  });
+
+  it("refuses a name without an email address", async () => {
+    const response = await POST(request({ ...chosen, email: "", name: "Anna Voorbeeld" }));
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).fieldErrors).toHaveProperty("email");
+    expect(storeInquiry).not.toHaveBeenCalled();
+  });
+
+  it("keeps a note the visitor added under the chosen type", async () => {
+    await POST(request({ ...chosen, name: "Anna Voorbeeld", message: "Graag ook een logo." }));
+
+    expect(storeInquiry.mock.calls[0][0].message).toBe(
+      "Gekozen projecttype: Compacte website (vanaf €\u00a0695 excl. btw, technisch beheer vanaf €\u00a015 p/m)\n\nGraag ook een logo.",
+    );
+  });
+
+  it("names every type from the catalog, in the request's language", async () => {
+    for (const [id, line] of [
+      ["webshop", "Chosen project type: Webshop (from €1,995 excl. VAT, technical management from €35 per month)"],
+      ["smart", "Chosen project type: Website with bookings (from €2,495 excl. VAT, technical management from €39 per month)"],
+      ["platform", "Chosen project type: Web application or platform (from €4,995 excl. VAT, technical management from €69 per month)"],
+    ] as const) {
+      storeInquiry.mockClear();
+      await POST(request({ ...chosen, locale: "en", package: id, name: "Anna", message: "" }));
+      expect(storeInquiry.mock.calls[0][0].message).toBe(line);
+    }
+  });
+
+  it("names the type in the owner's notification", async () => {
+    await POST(request({ ...chosen, name: "Anna Voorbeeld", message: "" }));
+    expect(send.mock.calls[0][0].subject).toBe("New project request — Compacte website — Anna Voorbeeld");
+  });
+
+  it("treats an unknown type as no choice: the plain contact rules apply", async () => {
+    const response = await POST(request({ ...chosen, package: "premium", name: "Anna Voorbeeld", message: "" }));
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).fieldErrors).toHaveProperty("message");
+    expect(storeInquiry).not.toHaveBeenCalled();
+  });
+
+  it("ignores the type on a planner or websitecheck request", async () => {
+    await POST(request({ ...visitor, mode: "websitecheck", package: "starter", websiteUrl: "example.nl" }));
+    expect(storeInquiry.mock.calls[0][0]).toMatchObject({ origin: "websitecheck", message: "" });
+  });
+
+  it("still asks the plain form for a name and a message", async () => {
+    const response = await POST(request({ ...visitor, name: "", company: "Bakkerij Jansen", message: "" }));
+    expect(response.status).toBe(400);
+    expect((await response.json()).fieldErrors).toMatchObject({ name: "Vul je naam in", message: "Je bericht is te kort" });
   });
 });
 
