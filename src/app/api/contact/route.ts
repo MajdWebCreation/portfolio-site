@@ -7,6 +7,8 @@ import type { ContactMode, ContactPayload } from "@/lib/contact/payload";
 import { isPackageId, type PackageId } from "@/lib/pricing";
 import { getPricingCatalog } from "@/lib/pricing/source";
 import { normalizeWebsiteUrl, websiteUrlHost } from "@/lib/contact/website-url";
+import { isServiceKey, serviceRequestLine, serviceRequestName } from "@/lib/contact/service-request";
+import type { ServiceKey } from "@/lib/content/services";
 import { reportMetaLead } from "@/lib/meta/capi";
 import { createLeadEventId } from "@/lib/meta/event-id";
 import { buildWebsitecheckConfirmation } from "@/lib/email/websitecheck";
@@ -36,6 +38,8 @@ type NormalizedSubmission = {
   websiteUrl: string;
   /** The project type chosen on the pricing page; only a known id, only on a contact request. */
   packageId: PackageId | null;
+  /** The service whose landing page sent the request; only a known key, only on a contact request. */
+  serviceKey: ServiceKey | null;
   planner?: ContactPayload["planner"];
 };
 
@@ -93,6 +97,7 @@ function normalizeSubmission(body: ContactPayload): NormalizedSubmission {
     website: body.website?.trim() ?? "",
     websiteUrl: mode === "websitecheck" ? (normalizeWebsiteUrl(body.websiteUrl) ?? "") : "",
     packageId: mode === "contact" && isPackageId(body.package) ? body.package : null,
+    serviceKey: mode === "contact" && isServiceKey(body.service) ? body.service : null,
     planner: body.planner,
   };
 }
@@ -174,12 +179,14 @@ function validateSubmission(submission: NormalizedSubmission) {
   const errors: ValidationErrorMap = {};
 
   /*
-    A request for a project type chosen on the pricing page asks for as
-    little as possible: an address to answer to, and a name or a company
-    to address it to. The message is welcome but not needed; the choice
-    itself says what the request is about.
+    A request for a project type chosen on the pricing page, or sent from a
+    service's own landing page, asks for as little as possible: an address
+    to answer to, and a name or a company to address it to. The message is
+    welcome but not needed; the choice or the page itself says what the
+    request is about.
   */
-  const fromPricing = submission.mode === "contact" && submission.packageId !== null;
+  const fromPricing =
+    submission.mode === "contact" && (submission.packageId !== null || submission.serviceKey !== null);
 
   if (fromPricing) {
     if (submission.name.length < 2 && submission.company.length < 2) {
@@ -196,6 +203,10 @@ function validateSubmission(submission: NormalizedSubmission) {
   if (submission.mode === "contact") {
     if (!fromPricing && submission.message.trim().length < 12) {
       errors.message = getValidationMessage(submission.locale, "message");
+    }
+    /* A landing page may ask for a number; the plain form and a pricing request have no field for one. */
+    if (submission.serviceKey && submission.phone && !phonePattern.test(submission.phone)) {
+      errors.phone = getValidationMessage(submission.locale, "phone");
     }
     return errors;
   }
@@ -392,13 +403,14 @@ export async function POST(request: Request) {
       name: givenName,
       email,
       company,
-      phone,
+      phone: givenPhone,
       message: givenMessage,
       website,
       websiteUrl,
       mode,
       locale,
       packageId,
+      serviceKey,
       planner,
     } = normalizeSubmission(body);
 
@@ -423,13 +435,14 @@ export async function POST(request: Request) {
       name: givenName,
       email,
       company,
-      phone,
+      phone: givenPhone,
       message: givenMessage,
       website,
       websiteUrl,
       mode,
       locale,
       packageId,
+      serviceKey,
       planner,
     });
 
@@ -455,10 +468,16 @@ export async function POST(request: Request) {
       is filed under: the table asks for one, and the company is who asked.
     */
     const choice = packageId ? describePackageChoice(await getPricingCatalog(), locale, packageId) : null;
-    const message = choice
-      ? [packageRequestLine(choice, locale), givenMessage].filter(Boolean).join("\n\n")
-      : givenMessage;
+    /* A request from a service's landing page names that page the same way, so the record is never an empty message. */
+    const requestLine = choice
+      ? packageRequestLine(choice, locale)
+      : serviceKey
+        ? serviceRequestLine(serviceKey, locale)
+        : null;
+    const message = requestLine ? [requestLine, givenMessage].filter(Boolean).join("\n\n") : givenMessage;
     const name = givenName || company;
+    /* The number travels only from a landing page; the other contact forms have no field for one. */
+    const phone = serviceKey ? givenPhone : mode === "contact" ? "" : givenPhone;
 
     /*
       Where the visit came from, as the browser reported it. Checked here
@@ -524,7 +543,7 @@ export async function POST(request: Request) {
       message,
       websiteUrl,
       planner,
-      packageName: choice?.name ?? null,
+      packageName: choice?.name ?? (serviceKey ? serviceRequestName(serviceKey, locale) : null),
     });
 
     /*
@@ -551,7 +570,7 @@ function mailFailure(error: { name?: unknown; statusCode?: unknown } | null | un
 
 /** The owner's notification and the visitor's confirmation. Never throws; a failure is logged without visitor data. */
 async function sendInquiryMails(
-  submission: Omit<NormalizedSubmission, "website" | "packageId"> & { packageName: string | null },
+  submission: Omit<NormalizedSubmission, "website" | "packageId" | "serviceKey"> & { packageName: string | null },
 ): Promise<void> {
   const { mode, locale, name, email, company, phone, message, websiteUrl, planner, packageName } = submission;
   try {
@@ -631,7 +650,7 @@ async function sendInquiryMails(
         <p><strong>Email:</strong> ${escapeHtml(email)}</p>
         <p><strong>Company:</strong> ${escapeHtml(company || "—")}</p>
         ${
-          mode === "project_planner"
+          mode === "project_planner" || (mode === "contact" && phone)
             ? `<p><strong>Phone:</strong> ${escapeHtml(phone || "—")}</p>`
             : ""
         }
@@ -681,7 +700,7 @@ ${adminHeading}
 Name: ${name}
 Email: ${email}
 Company: ${company || "—"}
-${mode === "project_planner" || mode === "websitecheck" ? `Phone: ${phone || "—"}` : ""}
+${mode === "project_planner" || mode === "websitecheck" || phone ? `Phone: ${phone || "—"}` : ""}
 ${mode === "websitecheck" ? `Website: ${websiteUrl}` : `
 Message:
 ${message}`}

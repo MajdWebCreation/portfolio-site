@@ -233,7 +233,7 @@ export default function ConsentDialog({
       aria-labelledby={titleId}
       aria-describedby={showPreferences ? undefined : bodyId}
       onKeyDown={onDialogKeyDown}
-      className="consent-in fixed inset-x-0 bottom-0 z-40 max-h-[70dvh] overflow-y-auto overscroll-contain rounded-t-lg border-t border-line bg-surface p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-lift sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[27rem] sm:rounded-lg sm:border sm:p-6 sm:pb-6"
+      className="consent-in fixed inset-x-0 bottom-0 z-40 max-h-[70dvh] overflow-y-auto overscroll-contain rounded-t-lg border-t border-line bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-lift sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[27rem] sm:rounded-lg sm:border sm:p-6 sm:pb-6"
     >
       {showPreferences ? (
         <div>
@@ -309,24 +309,25 @@ export default function ConsentDialog({
         </div>
       ) : (
         <div>
-          <h2 id={titleId} ref={titleRef} tabIndex={-1} className="text-[1.05rem] font-semibold text-ink outline-none">
+          {/* On a phone the card is kept to about a third of the screen: the offer behind it stays readable. */}
+          <h2 id={titleId} ref={titleRef} tabIndex={-1} className="font-semibold text-ink outline-none max-sm:sr-only sm:text-[1.05rem]">
             {copy.title}
           </h2>
-          <p id={bodyId} className="mt-2 text-[0.9rem] leading-relaxed text-muted">
+          <p id={bodyId} className="text-[0.85rem] leading-snug text-muted sm:mt-2 sm:text-[0.9rem] sm:leading-relaxed">
             {copy.body}
           </p>
 
-          {/* Two answers, the same width, one Tab apart; "accept all" carries the primary colour. */}
-          <div className="mt-5 grid gap-3 xs:grid-cols-2">
-            <CtaButton variant="secondary" onClick={() => decide({ analytics: false, recordings: false, marketing: false })} className="w-full px-3">
+          {/* Two answers, the same width, one Tab apart; "accept all" carries the primary colour. The padding is forced below the button's own, so both fit one line on a narrow phone. */}
+          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:mt-5 sm:gap-3">
+            <CtaButton variant="secondary" onClick={() => decide({ analytics: false, recordings: false, marketing: false })} className="w-full px-2! text-[0.9rem]! sm:px-3! sm:text-[0.95rem]!">
               {copy.necessaryOnly}
             </CtaButton>
-            <CtaButton variant="primary" onClick={() => decide({ analytics: true, recordings: true, marketing: true })} className="w-full px-3">
+            <CtaButton variant="primary" onClick={() => decide({ analytics: true, recordings: true, marketing: true })} className="w-full px-2! text-[0.9rem]! sm:px-3! sm:text-[0.95rem]!">
               {copy.acceptAll}
             </CtaButton>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 sm:mt-4 sm:gap-y-2">
             <button type="button" onClick={openPreferences} className="link-line inline-flex items-center gap-1.5 text-[0.9rem] font-medium text-ink">
               {copy.preferences}
               <span aria-hidden="true">→</span>

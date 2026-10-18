@@ -14,10 +14,11 @@ import type { Json } from "@/lib/supabase/database.types";
  * any policy runs. See the inquiry_public_intake migration.
  *
  * Three origins, three shapes, matching the table's own check constraint: a
- * contact request has no phone number and no planner payload; the planner
- * sends its structured block verbatim, prices included as the formatted
- * strings the visitor saw; a websitecheck carries the normalised address of
- * the website and, optionally, a phone number, and no message.
+ * contact request has no planner payload and no address, and a phone number
+ * only when it came from a service's landing page (the route decides); the
+ * planner sends its structured block verbatim, prices included as the
+ * formatted strings the visitor saw; a websitecheck carries the normalised
+ * address of the website and, optionally, a phone number, and no message.
  *
  * The attribution is the route's already validated value or null; null
  * writes null in all five columns. `utm_term`/`utm_content`, Google Ads'
@@ -82,7 +83,7 @@ export async function storeInquiry(submission: InquirySubmission): Promise<void>
     email: submission.email,
     company: orNull(submission.company),
     message: submission.message,
-    phone: isPlanner || isWebsitecheck ? orNull(submission.phone) : null,
+    phone: orNull(submission.phone),
     planner: isPlanner ? ((submission.planner ?? {}) as unknown as Json) : null,
     website_url: isWebsitecheck ? (submission.websiteUrl ?? null) : null,
     traffic_class: submission.attribution?.trafficClass ?? null,

@@ -115,7 +115,7 @@ describe("storeInquiry for a websitecheck", () => {
 });
 
 describe("storeInquiry for the existing origins", () => {
-  it("keeps a contact request without phone, planner or address", async () => {
+  it("keeps a contact request without planner or address, with the phone the route passed", async () => {
     await storeInquiry({
       origin: "contact",
       locale: "en",
@@ -128,7 +128,7 @@ describe("storeInquiry for the existing origins", () => {
       attribution: null,
     });
 
-    expect(insert.mock.calls[0][0]).toMatchObject({ origin: "contact", phone: null, planner: null, website_url: null, company: "Example BV" });
+    expect(insert.mock.calls[0][0]).toMatchObject({ origin: "contact", phone: "0612345678", planner: null, website_url: null, company: "Example BV" });
   });
 
   it("keeps a planner request with its block and phone, and no address", async () => {

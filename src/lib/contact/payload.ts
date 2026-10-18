@@ -45,6 +45,14 @@ export type ContactPayload = {
    * company; the message may be empty.
    */
   package?: string;
+  /**
+   * The service whose landing page sent the request, as its key
+   * (lib/content/services). Optional, untrusted: the route keeps it only
+   * when it is one of the fixed keys. With a service, the request needs an
+   * email address and a name or a company; the message and the phone number
+   * are optional.
+   */
+  service?: string;
   /** Honeypot. A filled value marks the submission as automated. */
   website?: string;
   /**

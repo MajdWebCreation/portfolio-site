@@ -7,6 +7,7 @@ import type { ErrorKind } from "@/lib/analytics/events";
 import { attributionPayload, currentAttribution } from "@/lib/attribution/capture";
 import { attributionEventParams } from "@/lib/attribution/event-params";
 import { packageIdFromSearch, type PackageChoice } from "@/lib/contact/package-request";
+import type { ServiceKey } from "@/lib/content/services";
 import type { PackageId } from "@/lib/pricing";
 import { reportLead } from "@/lib/tracking/conversions";
 
@@ -32,9 +33,25 @@ type ContactFormCopy = {
   /** Label of the message field when the choice makes it optional. */
   messageOptionalLabel: string;
   messageOptionalPlaceholder: string;
-  /** The button when a project type is chosen: "Verstuur aanvraag". */
+  /** The button when a project type is chosen or a landing page asks: "Verstuur aanvraag". */
   requestLabel: string;
   requestSuccessMessage: string;
+  /** The one field for who asks, on a landing page's short form. */
+  nameOrCompanyLabel: string;
+  nameOrCompanyPlaceholder: string;
+  phoneLabel: string;
+  phonePlaceholder: string;
+};
+
+/**
+ * The short form of a service's landing page: who asks, an address, and
+ * optionally a number to call and a note. The service travels with the
+ * request so the record names the page it came from.
+ */
+export type LandingRequest = {
+  service: ServiceKey;
+  /** Next to the button: "Reactie op werkdagen binnen 24 uur." */
+  replyNote: string;
 };
 
 /**
@@ -64,12 +81,15 @@ type ContactFormProps = {
   packageChoices?: Record<PackageId, PackageChoice>;
   /** Where "change your choice" leads: the pricing page. */
   pricingHref?: string;
+  /** Set by a service's landing page: the short form, with a phone field. */
+  request?: LandingRequest;
 };
 
 type FormState = {
   name: string;
   email: string;
   company: string;
+  phone: string;
   message: string;
   website: string;
 };
@@ -78,11 +98,15 @@ const initialState: FormState = {
   name: "",
   email: "",
   company: "",
+  phone: "",
   message: "",
   website: "",
 };
 
-type ContactField = "name" | "email" | "message";
+type ContactField = "name" | "email" | "phone" | "message";
+
+/* Digits with the separators people type; six to thirty characters. The same bound as the route. */
+const phonePattern = /^\+?[0-9][0-9 ()./-]{5,29}$/;
 
 /* Thrown after a non-2xx response, so the catch can tell it from a network failure. */
 class ContactRequestFailed extends Error {}
@@ -107,10 +131,13 @@ export default function ContactForm({
   className = "",
   packageChoices,
   pricingHref,
+  request,
 }: ContactFormProps) {
   const isDutch = locale === "nl";
   const packageParam = useSyncExternalStore(subscribeNoop, readPackageParam, noPackage);
   const choice = packageParam && packageChoices ? packageChoices[packageParam] : null;
+  /* A chosen type or a landing page: the request says what it is about, so the form asks less. */
+  const short = Boolean(choice) || Boolean(request);
   const [form, setForm] = useState<FormState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
@@ -136,9 +163,10 @@ export default function ContactForm({
   }
 
   /*
-    With a project type chosen, the form asks for the least that still lets
-    the request be answered: an address, and a name or a company. The plain
-    form keeps its name and its message. The server applies the same rules.
+    With a project type chosen, or on a landing page, the form asks for the
+    least that still lets the request be answered: an address, and a name or
+    a company. The plain form keeps its name and its message. The server
+    applies the same rules.
   */
   function validateForm(values: FormState) {
     const errors: Partial<Record<ContactField, string>> = {};
@@ -148,7 +176,9 @@ export default function ContactForm({
         errors.name = isDutch ? "Vul je naam of bedrijfsnaam in" : "Enter your name or company name";
       }
     } else if (values.name.trim().length < 2) {
-      errors.name = isDutch ? "Vul je naam in" : "Enter your name";
+      errors.name = request
+        ? isDutch ? "Vul je naam of bedrijfsnaam in" : "Enter your name or company name"
+        : isDutch ? "Vul je naam in" : "Enter your name";
     }
 
     if (!values.email.trim() || !isValidEmail(values.email.trim())) {
@@ -157,7 +187,11 @@ export default function ContactForm({
         : "Enter a valid email address";
     }
 
-    if (!choice) {
+    if (request && values.phone.trim() && !phonePattern.test(values.phone.trim())) {
+      errors.phone = isDutch ? "Controleer je telefoonnummer" : "Check your phone number";
+    }
+
+    if (!short) {
       if (!values.message.trim()) {
         errors.message = isDutch ? "Vul je bericht in" : "Enter your message";
       } else if (values.message.trim().length < 12) {
@@ -178,7 +212,7 @@ export default function ContactForm({
     setForm((prev) => ({ ...prev, [key]: value }));
     if (status !== "idle") setStatus("idle");
     if (formError) setFormError("");
-    if (key === "name" || key === "email" || key === "message") {
+    if (key === "name" || key === "email" || key === "phone" || key === "message") {
       const fieldKey = key as ContactField;
       setFieldErrors((prev) => {
         if (!prev[fieldKey]) return prev;
@@ -220,7 +254,13 @@ export default function ContactForm({
           "Content-Type": "application/json",
         },
         /* Where the visit came from travels with the request; the server checks it again. */
-        body: JSON.stringify({ ...form, locale, ...(choice ? { package: choice.id } : {}), ...attributionPayload() }),
+        body: JSON.stringify({
+          ...form,
+          locale,
+          ...(choice ? { package: choice.id } : {}),
+          ...(request ? { service: request.service } : {}),
+          ...attributionPayload(),
+        }),
       });
 
       if (!response.ok) {
@@ -317,14 +357,14 @@ export default function ContactForm({
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
               <label htmlFor="name" className={labelBase}>
-                {copy.nameLabel}
+                {request ? copy.nameOrCompanyLabel : copy.nameLabel}
               </label>
               <input
                 id="name"
                 name="name"
                 value={form.name}
                 onChange={(e) => updateField("name", e.target.value)}
-                placeholder={copy.namePlaceholder}
+                placeholder={request ? copy.nameOrCompanyPlaceholder : copy.namePlaceholder}
                 className={`${inputBase} ${fieldErrors.name ? inputError : ""}`}
                 autoComplete="name"
                 required={!choice}
@@ -363,33 +403,60 @@ export default function ContactForm({
             </div>
           </div>
 
-          <div>
-            <label htmlFor="company" className={labelBase}>
-              {copy.companyLabel}
-            </label>
-            <input
-              id="company"
-              name="company"
-              value={form.company}
-              onChange={(e) => updateField("company", e.target.value)}
-              placeholder={copy.companyPlaceholder}
-              className={inputBase}
-              autoComplete="organization"
-            />
-          </div>
+          {request ? (
+            /* One number, optional: on a phone, being called back is often the shorter way. */
+            <div>
+              <label htmlFor="phone" className={labelBase}>
+                {copy.phoneLabel}
+              </label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                inputMode="tel"
+                value={form.phone}
+                onChange={(e) => updateField("phone", e.target.value)}
+                placeholder={copy.phonePlaceholder}
+                className={`${inputBase} ${fieldErrors.phone ? inputError : ""}`}
+                autoComplete="tel"
+                aria-invalid={Boolean(fieldErrors.phone)}
+                aria-describedby={fieldErrors.phone ? "contact-phone-error" : undefined}
+              />
+              {fieldErrors.phone ? (
+                <p id="contact-phone-error" className={errorText}>
+                  {fieldErrors.phone}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <div>
+              <label htmlFor="company" className={labelBase}>
+                {copy.companyLabel}
+              </label>
+              <input
+                id="company"
+                name="company"
+                value={form.company}
+                onChange={(e) => updateField("company", e.target.value)}
+                placeholder={copy.companyPlaceholder}
+                className={inputBase}
+                autoComplete="organization"
+              />
+            </div>
+          )}
 
           <div>
             <label htmlFor="message" className={labelBase}>
-              {choice ? copy.messageOptionalLabel : copy.messageLabel}
+              {short ? copy.messageOptionalLabel : copy.messageLabel}
             </label>
             <textarea
               id="message"
               name="message"
               value={form.message}
               onChange={(e) => updateField("message", e.target.value)}
-              placeholder={choice ? copy.messageOptionalPlaceholder : copy.messagePlaceholder}
-              className={`${inputBase} resize-y ${choice ? "min-h-[120px]" : "min-h-[180px]"} ${fieldErrors.message ? inputError : ""}`}
-              required={!choice}
+              placeholder={short ? copy.messageOptionalPlaceholder : copy.messagePlaceholder}
+              className={`${inputBase} resize-y ${short ? "min-h-[120px]" : "min-h-[180px]"} ${fieldErrors.message ? inputError : ""}`}
+              required={!short}
               aria-invalid={Boolean(fieldErrors.message)}
               aria-describedby={fieldErrors.message ? "contact-message-error" : undefined}
             />
@@ -406,16 +473,18 @@ export default function ContactForm({
               disabled={isSubmitting}
               className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-sm bg-ink px-6 text-[0.95rem] font-medium text-paper transition-colors duration-200 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSubmitting ? copy.sendingLabel : choice ? copy.requestLabel : copy.submitLabel}
+              {isSubmitting ? copy.sendingLabel : short ? copy.requestLabel : copy.submitLabel}
             </button>
 
-            <div className="min-h-6 text-[0.9rem] leading-snug" aria-live="polite">
+            <div className="min-h-6 text-[0.9rem] leading-snug sm:pt-3" aria-live="polite">
               {status === "success" ? (
-                <span className="text-success">{choice ? copy.requestSuccessMessage : copy.successMessage}</span>
+                <span className="text-success">{short ? copy.requestSuccessMessage : copy.successMessage}</span>
               ) : null}
               {status === "error" ? (
                 <span className="text-danger">{formError || copy.errorMessage}</span>
               ) : null}
+              {/* What happens after the button, where the button is; it makes way for the answer. */}
+              {status === "idle" && request ? <span className="text-muted">{request.replyNote}</span> : null}
             </div>
           </div>
 

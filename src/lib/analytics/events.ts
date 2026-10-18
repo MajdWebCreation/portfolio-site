@@ -82,6 +82,8 @@ export const placements = [
   "next_step",
   "process_cta",
   "contact_block",
+  /* The fixed bar at the bottom of a service's landing page on a phone. */
+  "action_bar",
   "project_row",
   "case_header",
   "article_list",

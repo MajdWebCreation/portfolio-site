@@ -1,11 +1,14 @@
 import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 import ArticleRichText from "@/components/article-rich-text";
-import ContactBlock from "@/components/contact-block";
+import { contactFormCopy } from "@/components/contact-block";
+import ContactForm from "@/components/contact-form";
 import CtaLink from "@/components/cta-link";
 import FaqList from "@/components/faq-list";
 import GoogleReviews from "@/components/google-reviews";
+import LandingActionBar, { type LandingActionBarLabels } from "@/components/landing-action-bar";
 import RevealScope from "@/components/reveal-scope";
+import { legalRoutes } from "@/lib/content/routes";
 import type { Project } from "@/lib/content/projects";
 import { getLocalizedPath } from "@/lib/content/routes";
 import type { LocalizedService } from "@/lib/content/services";
@@ -26,6 +29,12 @@ import {
  *
  * Motion is limited to three things: the hero settles in, the page capture in
  * the hero moves slowly, and sections rise once as they scroll into view.
+ *
+ * On a phone the page is built around the first screen and the thumb: the
+ * title, the prices and the button come before the introduction, a fixed
+ * bar with the three ways to get in touch follows the visitor through the
+ * middle of the page, and the form comes before the contact details so the
+ * button lands on a field.
  */
 
 export type ServiceLandingLabels = {
@@ -35,6 +44,10 @@ export type ServiceLandingLabels = {
   allProjects: string;
   readCase: string;
   contact: string;
+  /** The landing page's own primary action: what the visitor gets. */
+  proposal: string;
+  /** The fixed bar on a phone. */
+  actionBar: LandingActionBarLabels;
   pricing: string;
   directLead: string;
   call: string;
@@ -207,28 +220,35 @@ export default function ServiceLanding({
       {/* Offer and the way to contact, with live work next to it. */}
       <section className="sl-hero relative overflow-hidden bg-ink text-paper">
         <div aria-hidden="true" className="sl-grid" />
-        <div className="container-x relative pb-16 pt-10 sm:pt-12 lg:pb-24 lg:pt-16">
-          <div className="sl-crumbs rise">{breadcrumb}</div>
+        <div className="container-x relative pb-16 pt-10 max-md:pt-8 sm:pt-12 lg:pb-24 lg:pt-16">
+          {/* The trail is for the wide screen; on a phone the first screen is for the offer. */}
+          <div className="sl-crumbs rise max-md:hidden">{breadcrumb}</div>
 
-          <div className="mt-8 grid gap-14 max-md:mt-7 max-md:gap-12 lg:mt-10 lg:grid-cols-12 lg:items-center lg:gap-8">
-            <div className={hasStage ? "lg:col-span-6" : "lg:col-span-9"}>
-              <h1 className="sl-title rise text-paper">
+          <div className="mt-8 grid gap-14 max-md:mt-0 max-md:gap-12 lg:mt-10 lg:grid-cols-12 lg:items-center lg:gap-8">
+            {/*
+              On a phone the column is reordered: title, prices, button and
+              the direct line first, the introduction after them. What a
+              visitor can act on is then on the first screen; the reasoning
+              follows.
+            */}
+            <div className={`max-md:flex max-md:flex-col ${hasStage ? "lg:col-span-6" : "lg:col-span-9"}`}>
+              <h1 className="sl-title rise text-paper max-md:order-1">
                 <HeroTitle title={service.title} lead={service.titleLead} />
               </h1>
-              <p className="rise rise-delay-1 mt-6 max-w-[34rem] text-[clamp(1.08rem,1rem+0.4vw,1.25rem)] leading-relaxed text-paper/70 max-md:mt-5 max-md:text-[1.02rem]">
+              <p className="rise rise-delay-1 mt-6 max-w-[34rem] text-[clamp(1.08rem,1rem+0.4vw,1.25rem)] leading-relaxed text-paper/70 max-md:order-5 max-md:mt-7 max-md:text-[1rem]">
                 {service.intro}
               </p>
 
               {/* Below md the rows are a two-column list, name and page range left, price right, under one hairline. */}
               {priceSummary ? (
-                <div className="rise rise-delay-1 mt-7 flex items-start gap-3 max-md:mt-6 max-md:border-t max-md:border-paper/15 max-md:pt-4">
+                <div className="rise rise-delay-1 mt-7 flex items-start gap-3 max-md:order-2 max-md:mt-4 max-md:border-t max-md:border-paper/15 max-md:pt-3">
                   <span aria-hidden="true" className="mt-[0.7rem] block h-px w-8 shrink-0 bg-accent-soft max-md:hidden" />
                   <div className="max-w-[34rem] flex-1">
                     <dl>
                       {priceSummary.rows.map((row) => (
                         <div
                           key={row.name}
-                          className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-1 text-paper max-md:grid max-md:grid-cols-[1fr_auto] max-md:py-1.5"
+                          className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-1 text-paper max-md:grid max-md:grid-cols-[1fr_auto] max-md:py-1"
                         >
                           <dt className="text-[1.02rem] font-medium">
                             {row.name}
@@ -242,23 +262,24 @@ export default function ServiceLanding({
                         </div>
                       ))}
                     </dl>
-                    <p className="pt-1.5 text-[0.9rem] text-paper/60 max-md:pt-2 max-md:text-[0.85rem]">{priceSummary.management}</p>
+                    <p className="pt-1.5 text-[0.9rem] text-paper/60 max-md:pt-1 max-md:text-[0.85rem]">{priceSummary.management}</p>
                   </div>
                 </div>
               ) : null}
 
-              <div className="rise rise-delay-2 mt-8 flex flex-wrap items-center gap-x-7 gap-y-4 max-md:mt-7 max-md:gap-y-5">
+              <div className="rise rise-delay-2 mt-8 flex flex-wrap items-center gap-x-7 gap-y-4 max-md:order-3 max-md:mt-5 max-md:gap-y-4">
                 <CtaLink
-                  href="#contact"
+                  href="#aanvraag"
                   variant="inverse"
                   className="sl-cta max-sm:w-full"
+                  data-landing-cta=""
                   data-track-event="service_cta_click"
                   data-track-service-id={service.key}
                   data-track-cta-id="service_header_contact"
                   data-track-cta-target="contact"
                   data-track-placement="service_header"
                 >
-                  {text.contact}
+                  {text.proposal}
                   <span aria-hidden="true" className="sl-cta-arrow">
                     →
                   </span>
@@ -278,7 +299,7 @@ export default function ServiceLanding({
                 ) : null}
               </div>
 
-              <p className="rise rise-delay-3 mt-7 text-[0.95rem] leading-relaxed text-paper/60 max-md:mt-6" data-track-placement="service_header">
+              <p className="rise rise-delay-3 mt-7 text-[0.95rem] leading-relaxed text-paper/60 max-md:order-4 max-md:mt-5" data-track-placement="service_header">
                 {text.directLead} {text.call}{" "}
                 <a
                   href={`tel:${businessInfo.phone}`}
@@ -567,16 +588,75 @@ export default function ServiceLanding({
           </div>
         </div>
         <div className="container-x relative -mt-28 max-md:-mt-24 lg:-mt-32">
-          <div className="sl-card rounded-md border border-line bg-paper p-6 max-xs:p-5 sm:p-10 lg:p-14" data-reveal>
-            <ContactBlock
-              locale={locale}
-              content={content.contact}
-              kvkLabel={content.footer.kvkLabel}
-              whatsapp={{ href: whatsappHref, label: text.whatsappLabel }}
-            />
+          {/*
+            The form card is what the buttons point to, so a tap lands on
+            the first field. On a phone the form comes first and the direct
+            ways to get in touch follow it; on a wide screen they sit next to
+            each other as on the contact page.
+          */}
+          <div
+            id="aanvraag"
+            className="sl-card scroll-mt-20 rounded-md border border-line bg-paper p-6 max-xs:p-5 sm:p-10 lg:p-14"
+            data-reveal
+          >
+            <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
+              <div className="order-2 lg:order-1 lg:col-span-4">
+                <p className="label-mono">{content.contact.directLabel}</p>
+                <dl className="mt-3 divide-y divide-line border-y border-line" data-track-placement="contact_block">
+                  <div className="grid grid-cols-[5.5rem_1fr] gap-4 py-3 text-[0.98rem]">
+                    <dt className="text-muted">E-mail</dt>
+                    <dd>
+                      <a href={`mailto:${businessInfo.email}`} className="link-static break-all text-ink">
+                        {businessInfo.email}
+                      </a>
+                    </dd>
+                  </div>
+                  <div className="grid grid-cols-[5.5rem_1fr] gap-4 py-3 text-[0.98rem]">
+                    <dt className="text-muted">{locale === "nl" ? "Telefoon" : "Phone"}</dt>
+                    <dd>
+                      <a href={`tel:${businessInfo.phone}`} className="link-static tabular text-ink">
+                        {businessInfo.phoneDisplay}
+                      </a>
+                    </dd>
+                  </div>
+                  <div className="grid grid-cols-[5.5rem_1fr] gap-4 py-3 text-[0.98rem]">
+                    <dt className="text-muted">WhatsApp</dt>
+                    <dd>
+                      <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="link-static text-ink">
+                        {text.whatsappLabel}
+                      </a>
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="order-1 lg:order-2 lg:col-span-7 lg:col-start-6">
+                <ContactForm
+                  copy={contactFormCopy[locale]}
+                  locale={locale}
+                  request={{ service: service.key, replyNote: content.contact.replyNote }}
+                  note={{
+                    text: content.contact.businessNote,
+                    termsLabel: content.contact.termsLabel,
+                    termsHref: legalRoutes.terms,
+                    privacyText: content.contact.privacyNote,
+                    privacyLabel: content.contact.privacyLabel,
+                    privacyHref: getLocalizedPath(locale, "privacy"),
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </section>
+
+      <LandingActionBar
+        serviceKey={service.key}
+        requestHref="#aanvraag"
+        telHref={`tel:${businessInfo.phone}`}
+        whatsappHref={whatsappHref}
+        labels={text.actionBar}
+      />
     </>
   );
 }

@@ -781,3 +781,65 @@ describe("rate limiting", () => {
     expect((await POST(from("198.51.100.4"))).status).toBe(200);
   });
 });
+
+/*
+  A request from a service's own landing page: the service travels as its
+  key, the form asks for an address and a name or a company, a phone number
+  is welcome, and the stored message names the page.
+*/
+describe("a request from a service's landing page", () => {
+  beforeEach(() => {
+    storeInquiry.mockResolvedValue(undefined);
+    send.mockResolvedValue({ data: { id: "m1" } });
+  });
+
+  const landing = { email: "anna@example.com", locale: "nl", service: "business-websites" };
+
+  it("accepts a name, an address and a phone number without a message, and names the page as the first line", async () => {
+    const response = await POST(request({ ...landing, name: "Anna Voorbeeld", phone: " 06 12345678 ", message: "" }));
+
+    expect(response.status).toBe(200);
+    expect(storeInquiry.mock.calls[0][0]).toMatchObject({
+      origin: "contact",
+      name: "Anna Voorbeeld",
+      phone: "06 12345678",
+      message: "Aanvraag via de pagina: Bedrijfswebsite",
+    });
+    const adminMail = send.mock.calls[0][0] as { subject: string; text: string };
+    expect(adminMail.subject).toContain("Bedrijfswebsite");
+    expect(adminMail.text).toContain("Phone: 06 12345678");
+  });
+
+  it("keeps a note under the page line, and works without a phone number", async () => {
+    await POST(request({ ...landing, name: "Anna", message: "Installatiebedrijf, nog geen site." }));
+
+    expect(storeInquiry.mock.calls[0][0]).toMatchObject({
+      phone: "",
+      message: "Aanvraag via de pagina: Bedrijfswebsite\n\nInstallatiebedrijf, nog geen site.",
+    });
+  });
+
+  it("refuses a phone number that is not one, and a missing name", async () => {
+    const badPhone = await POST(request({ ...landing, name: "Anna", phone: "bel mij" }));
+    expect(badPhone.status).toBe(400);
+    expect((await badPhone.json()).fieldErrors).toHaveProperty("phone");
+
+    const noName = await POST(request({ ...landing, name: "" }));
+    expect(noName.status).toBe(400);
+    expect((await noName.json()).fieldErrors).toHaveProperty("name");
+    expect(storeInquiry).not.toHaveBeenCalled();
+  });
+
+  it("treats an unknown service as the plain form: the message is required and no number is stored", async () => {
+    const short = await POST(request({ ...visitor, service: "time-travel", message: "" }));
+    expect(short.status).toBe(400);
+
+    await POST(request({ ...visitor, service: "time-travel", phone: "0612345678" }));
+    expect(storeInquiry.mock.calls[0][0]).toMatchObject({ origin: "contact", phone: "", message: visitor.message });
+  });
+
+  it("stores no number for the plain contact form even when one is sent", async () => {
+    await POST(request({ ...visitor, phone: "0612345678" }));
+    expect(storeInquiry.mock.calls[0][0]).toMatchObject({ phone: "" });
+  });
+});

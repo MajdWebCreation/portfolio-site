@@ -19,7 +19,7 @@ type ContactBlockProps = {
   packageChoices?: Record<PackageId, PackageChoice>;
 };
 
-const formCopy = {
+export const contactFormCopy = {
   nl: {
     nameLabel: "Naam",
     emailLabel: "E-mail",
@@ -42,6 +42,10 @@ const formCopy = {
     messageOptionalPlaceholder: "Bijvoorbeeld: wat doet je bedrijf, en is er al een website?",
     requestLabel: "Verstuur aanvraag",
     requestSuccessMessage: "Aanvraag ontvangen. Je krijgt een bevestiging per e-mail en snel een persoonlijke reactie.",
+    nameOrCompanyLabel: "Naam of bedrijfsnaam",
+    nameOrCompanyPlaceholder: "Hoe mogen we je aanspreken?",
+    phoneLabel: "Telefoon (optioneel)",
+    phonePlaceholder: "06 12345678",
   },
   en: {
     nameLabel: "Name",
@@ -65,6 +69,10 @@ const formCopy = {
     messageOptionalPlaceholder: "For example: what does your business do, and is there a website already?",
     requestLabel: "Send request",
     requestSuccessMessage: "Request received. You get an email confirmation and a personal reply soon.",
+    nameOrCompanyLabel: "Name or company name",
+    nameOrCompanyPlaceholder: "How should we address you?",
+    phoneLabel: "Phone (optional)",
+    phonePlaceholder: "+31 6 12345678",
   },
 } as const;
 
@@ -138,7 +146,7 @@ export default function ContactBlock({
 
       <div className="lg:col-span-7 lg:col-start-6">
         <ContactForm
-          copy={formCopy[locale]}
+          copy={contactFormCopy[locale]}
           locale={locale}
           packageChoices={packageChoices}
           pricingHref={getLocalizedPath(locale, "pricing")}
