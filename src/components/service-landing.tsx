@@ -224,24 +224,25 @@ export default function ServiceLanding({
           {/* The trail is for the wide screen; on a phone the first screen is for the offer. */}
           <div className="sl-crumbs rise max-md:hidden">{breadcrumb}</div>
 
-          <div className="mt-8 grid gap-14 max-md:mt-0 max-md:gap-12 lg:mt-10 lg:grid-cols-12 lg:items-center lg:gap-8">
+          <div className="mt-8 grid gap-14 max-md:mt-0 max-md:flex max-md:flex-col max-md:gap-0 lg:mt-10 lg:grid-cols-12 lg:items-center lg:gap-8">
             {/*
-              On a phone the column is reordered: title, prices, button and
-              the direct line first, the introduction after them. What a
-              visitor can act on is then on the first screen; the reasoning
-              follows.
+              On a phone the two columns dissolve into one order: the title,
+              the live work right under it, then the prices, the button and
+              the direct line, and the introduction last. The text column
+              contributes its children directly (`contents`), so the stage
+              can sit between the title and the prices.
             */}
-            <div className={`max-md:flex max-md:flex-col ${hasStage ? "lg:col-span-6" : "lg:col-span-9"}`}>
+            <div className={`max-md:contents ${hasStage ? "lg:col-span-6" : "lg:col-span-9"}`}>
               <h1 className="sl-title rise text-paper max-md:order-1">
                 <HeroTitle title={service.title} lead={service.titleLead} />
               </h1>
-              <p className="rise rise-delay-1 mt-6 max-w-[34rem] text-[clamp(1.08rem,1rem+0.4vw,1.25rem)] leading-relaxed text-paper/70 max-md:order-5 max-md:mt-7 max-md:text-[1rem]">
+              <p className="rise rise-delay-1 mt-6 max-w-[34rem] text-[clamp(1.08rem,1rem+0.4vw,1.25rem)] leading-relaxed text-paper/70 max-md:order-6 max-md:mt-7 max-md:text-[1rem]">
                 {service.intro}
               </p>
 
               {/* Below md the rows are a two-column list, name and page range left, price right, under one hairline. */}
               {priceSummary ? (
-                <div className="rise rise-delay-1 mt-7 flex items-start gap-3 max-md:order-2 max-md:mt-4 max-md:border-t max-md:border-paper/15 max-md:pt-3">
+                <div className="rise rise-delay-1 mt-7 flex items-start gap-3 max-md:order-3 max-md:mt-8 max-md:border-t max-md:border-paper/15 max-md:pt-3">
                   <span aria-hidden="true" className="mt-[0.7rem] block h-px w-8 shrink-0 bg-accent-soft max-md:hidden" />
                   <div className="max-w-[34rem] flex-1">
                     <dl>
@@ -267,7 +268,7 @@ export default function ServiceLanding({
                 </div>
               ) : null}
 
-              <div className="rise rise-delay-2 mt-8 flex flex-wrap items-center gap-x-7 gap-y-4 max-md:order-3 max-md:mt-5 max-md:gap-y-4">
+              <div className="rise rise-delay-2 mt-8 flex flex-wrap items-center gap-x-7 gap-y-4 max-md:order-4 max-md:mt-5 max-md:gap-y-4">
                 <CtaLink
                   href="#aanvraag"
                   variant="inverse"
@@ -299,7 +300,7 @@ export default function ServiceLanding({
                 ) : null}
               </div>
 
-              <p className="rise rise-delay-3 mt-7 text-[0.95rem] leading-relaxed text-paper/60 max-md:order-4 max-md:mt-5" data-track-placement="service_header">
+              <p className="rise rise-delay-3 mt-7 text-[0.95rem] leading-relaxed text-paper/60 max-md:order-5 max-md:mt-5" data-track-placement="service_header">
                 {text.directLead} {text.call}{" "}
                 <a
                   href={`tel:${businessInfo.phone}`}
@@ -321,7 +322,7 @@ export default function ServiceLanding({
             </div>
 
             {hasStage ? (
-              <div className="lg:col-span-6">
+              <div className="max-md:order-2 max-md:mt-7 lg:col-span-6">
                 <HeroStage
                   locale={locale}
                   page={pageProject}
