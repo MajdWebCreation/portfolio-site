@@ -13,7 +13,7 @@ import ProcessSteps from "@/components/process-steps";
 import ProjectRow from "@/components/project-row";
 import ProseSections from "@/components/prose-sections";
 import { ViewEvent } from "@/components/page-events";
-import ServiceLanding, { type PriceSummary } from "@/components/service-landing";
+import ServiceLanding from "@/components/service-landing";
 import SiteShell from "@/components/site-shell";
 import { getServiceBreadcrumbs } from "@/lib/content/breadcrumbs";
 import { getCaseStudyPathForProject } from "@/lib/content/cases";
@@ -88,6 +88,16 @@ export default async function ServiceDetailPage({
 
   return <ServiceDetailContent locale={locale} slug={slug} />;
 }
+
+/**
+ * The header's prices, as the page built them from the catalog: one row per
+ * project type shown (the smallest first), each with its page range, and the
+ * monthly technical management every delivered product runs under.
+ */
+type PriceSummary = {
+  rows: { name: string; scope: string | null; price: string }[];
+  management: string;
+};
 
 const labels = {
   nl: {
@@ -253,9 +263,11 @@ export async function ServiceDetailContent({
     name so the two are not read as one offer. The monthly management line
     states the lowest of the types shown; every delivered product runs under
     it (pricing page), so a "from" price without it would be incomplete.
+    A page that takes the enquiry itself shows no prices: the conversation
+    comes first there.
   */
   let priceSummary: PriceSummary | null = null;
-  if (service.pricePackage) {
+  if (service.pricePackage && !service.contactOnPage) {
     const catalog = await getPricingCatalog();
     const ids: PackageId[] = service.entryPackage ? [service.entryPackage, service.pricePackage] : [service.pricePackage];
     const packages = ids.map((id) => getPackage(catalog, id));
@@ -313,7 +325,6 @@ export async function ServiceDetailContent({
             content={content}
             text={text}
             breadcrumb={<Breadcrumbs locale={locale} items={crumbs} />}
-            priceSummary={priceSummary}
             proofProjects={proofProjects.map((project) => ({
               ...project,
               casePath: getCaseStudyPathForProject(locale, project.id),

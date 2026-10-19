@@ -171,7 +171,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
           "Een website laten maken die vertelt wat je doet en de weg naar contact kort houdt.",
         titleLead: "Een website laten maken",
         intro:
-          "De structuur volgt uit wat je aanbiedt en hoe klanten contact opnemen. Gebouwd in eigen code, zodat de site snel blijft en meegroeit als je aanbod verandert.",
+          "Gebouwd in eigen code rond jouw diensten, zodat bezoekers snel zien waarom ze bij jou moeten zijn. En na livegang sta je er niet alleen voor: in je eigen klantportaal keur je offertes goed, betaal je facturen en geef je wijzigingen door, zonder mailtjes heen en weer.",
         summary: "Dienstenpagina's, contactflow en lokale vindbaarheid.",
         sections: [
           {

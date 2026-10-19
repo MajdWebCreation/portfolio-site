@@ -31,7 +31,7 @@ import {
  * the hero moves slowly, and sections rise once as they scroll into view.
  *
  * On a phone the page is built around the first screen and the thumb: the
- * title, the prices and the button come before the introduction, a fixed
+ * title, the live work and the button come before the introduction, a fixed
  * bar with the three ways to get in touch follows the visitor through the
  * middle of the page, and the form comes before the contact details so the
  * button lands on a field.
@@ -56,23 +56,12 @@ export type ServiceLandingLabels = {
   liveWork: string;
 };
 
-/**
- * The header's prices, as the page built them from the catalog: one row per
- * project type shown (the smallest first), each with its page range, and the
- * monthly technical management every delivered product runs under.
- */
-export type PriceSummary = {
-  rows: { name: string; scope: string | null; price: string }[];
-  management: string;
-};
-
 type ServiceLandingProps = {
   locale: Locale;
   service: LocalizedService;
   content: SiteContent;
   text: ServiceLandingLabels;
   breadcrumb: ReactNode;
-  priceSummary: PriceSummary | null;
   proofProjects: (Project & { casePath: string | null })[];
   /** The project the header shows live; without one, the first proof project with a page capture. */
   stageProject?: Project;
@@ -197,7 +186,6 @@ export default function ServiceLanding({
   content,
   text,
   breadcrumb,
-  priceSummary,
   proofProjects,
   stageProject,
   whatsappHref,
@@ -227,10 +215,10 @@ export default function ServiceLanding({
           <div className="mt-8 grid gap-14 max-md:mt-0 max-md:flex max-md:flex-col max-md:gap-0 lg:mt-10 lg:grid-cols-12 lg:items-center lg:gap-8">
             {/*
               On a phone the two columns dissolve into one order: the title,
-              the live work right under it, then the prices, the button and
-              the direct line, and the introduction last. The text column
-              contributes its children directly (`contents`), so the stage
-              can sit between the title and the prices.
+              the live work right under it, then the button and the direct
+              line, and the introduction last. The text column contributes
+              its children directly (`contents`), so the stage can sit
+              between the title and the button.
             */}
             <div className={`max-md:contents ${hasStage ? "lg:col-span-6" : "lg:col-span-9"}`}>
               <h1 className="sl-title rise text-paper max-md:order-1">
@@ -239,34 +227,6 @@ export default function ServiceLanding({
               <p className="rise rise-delay-1 mt-6 max-w-[34rem] text-[clamp(1.08rem,1rem+0.4vw,1.25rem)] leading-relaxed text-paper/70 max-md:order-6 max-md:mt-7 max-md:text-[1rem]">
                 {service.intro}
               </p>
-
-              {/* Below md the rows are a two-column list, name and page range left, price right, under one hairline. */}
-              {priceSummary ? (
-                <div className="rise rise-delay-1 mt-7 flex items-start gap-3 max-md:order-3 max-md:mt-8 max-md:border-t max-md:border-paper/15 max-md:pt-3">
-                  <span aria-hidden="true" className="mt-[0.7rem] block h-px w-8 shrink-0 bg-accent-soft max-md:hidden" />
-                  <div className="max-w-[34rem] flex-1">
-                    <dl>
-                      {priceSummary.rows.map((row) => (
-                        <div
-                          key={row.name}
-                          className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-1 text-paper max-md:grid max-md:grid-cols-[1fr_auto] max-md:py-1"
-                        >
-                          <dt className="text-[1.02rem] font-medium">
-                            {row.name}
-                            {row.scope ? (
-                              <span className="ml-2 text-[0.85rem] font-normal text-paper/60 max-md:ml-0 max-md:block max-md:text-[0.82rem] max-md:leading-snug">
-                                {row.scope}
-                              </span>
-                            ) : null}
-                          </dt>
-                          <dd className="text-[1.02rem] font-medium max-md:text-right max-md:text-[0.98rem]">{row.price}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                    <p className="pt-1.5 text-[0.9rem] text-paper/60 max-md:pt-1 max-md:text-[0.85rem]">{priceSummary.management}</p>
-                  </div>
-                </div>
-              ) : null}
 
               <div className="rise rise-delay-2 mt-8 flex flex-wrap items-center gap-x-7 gap-y-4 max-md:order-4 max-md:mt-5 max-md:gap-y-4">
                 <CtaLink
