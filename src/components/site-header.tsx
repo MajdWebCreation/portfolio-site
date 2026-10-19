@@ -1,5 +1,5 @@
 import Link from "next/link";
-import BrandMark from "@/components/brand-mark";
+import HeaderBrand from "@/components/header-brand";
 import MobileNav from "@/components/mobile-nav";
 import { getCounterpartPath, getLocalizedPath, type StaticRouteKey } from "@/lib/content/routes";
 import type { Locale, SiteContent } from "@/lib/content/site-content";
@@ -56,11 +56,7 @@ export default function SiteHeader({
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-paper">
       <div className="container-x flex h-16 items-center justify-between gap-6 lg:h-[4.5rem]">
-        <BrandMark
-          href={homePath}
-          priority
-          className="h-8 w-[112px] sm:h-9 sm:w-[124px]"
-        />
+        <HeaderBrand href={homePath} className="h-8 w-[112px] sm:h-9 sm:w-[124px]" />
 
         <nav
           aria-label={locale === "nl" ? "Hoofdnavigatie" : "Main navigation"}
