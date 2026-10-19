@@ -56,7 +56,7 @@ export default function SiteHeader({
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-paper">
       <div className="container-x flex h-16 items-center justify-between gap-6 lg:h-[4.5rem]">
-        <HeaderBrand href={homePath} className="h-8 w-[112px] sm:h-9 sm:w-[124px]" />
+        <HeaderBrand href={homePath} className="h-11 w-[64px] lg:h-12 lg:w-[70px]" />
 
         <nav
           aria-label={locale === "nl" ? "Hoofdnavigatie" : "Main navigation"}
