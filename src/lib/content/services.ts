@@ -146,6 +146,8 @@ type ServiceDefinition = {
    * Google reviews on the page, instead of only a link to the contact page.
    */
   contactOnPage?: boolean;
+  /** The landing page shows the client portal under its trajectory, where the last step hands it over. */
+  showsPortal?: boolean;
   locale: Record<Locale, LocalizedServiceContent>;
 };
 
@@ -160,6 +162,7 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
     entryPackage: "starter",
     formerSlugs: { nl: ["bedrijfswebsite"] },
     contactOnPage: true,
+    showsPortal: true,
     locale: {
       nl: {
         slug: "website-laten-maken",
@@ -247,7 +250,11 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
           },
           {
             title: "Bouw en livegang",
-            text: "We bouwen, testen op telefoon en desktop en zetten de site live. Daarna blijven we bereikbaar voor aanpassingen.",
+            text: "We bouwen, testen op telefoon en desktop en zetten de site live op je eigen domein, met uitleg van het beheer.",
+          },
+          {
+            title: "Na livegang",
+            text: "Je krijgt een eigen inlog voor het klantportaal. Een wijziging geef je daar door met bijlagen, en je ziet wanneer we ermee bezig zijn.",
           },
         ],
         ctaTitle: "Een nieuwe bedrijfswebsite?",
@@ -326,7 +333,11 @@ export const serviceDefinitions: Record<ServiceKey, ServiceDefinition> = {
           },
           {
             title: "Build and launch",
-            text: "We build, test on phone and desktop and put the site live. After that we stay available for changes.",
+            text: "We build, test on phone and desktop and put the site live on your own domain, with a walkthrough of the admin.",
+          },
+          {
+            title: "After launch",
+            text: "You get your own login for the client portal. You submit a change there with attachments, and see when we are working on it.",
           },
         ],
         ctaTitle: "A new business website?",
@@ -1858,6 +1869,7 @@ export type LocalizedService = LocalizedServiceContent & {
   pricePackage?: PackageId;
   entryPackage?: PackageId;
   contactOnPage: boolean;
+  showsPortal: boolean;
   path: string;
   overviewPath: string;
   contactPath: string;
@@ -1891,6 +1903,7 @@ export function getServicesForLocale(locale: Locale): LocalizedService[] {
       pricePackage: definition.pricePackage,
       entryPackage: definition.entryPackage,
       contactOnPage: definition.contactOnPage ?? false,
+      showsPortal: definition.showsPortal ?? false,
       path:
         locale === "en"
           ? `/en/services/${localized.slug}`

@@ -22,6 +22,12 @@ type ProcessPageContent = {
   phasesLabel: string;
   phases: ProcessPhase[];
   resultLabel: string;
+  portal: {
+    label: string;
+    title: string;
+    text: string;
+    items: string[];
+  };
   scale: {
     title: string;
     text: string;
@@ -81,11 +87,22 @@ export const processPageContent: Record<Locale, ProcessPageContent> = {
       {
         number: "04",
         title: "Livegang en daarna",
-        text: "We zetten het product live op je eigen domein en dragen het over, inclusief uitleg van het beheer. Daarna blijven we beschikbaar voor vragen, aanpassingen en uitbreidingen.",
-        result: "Een live product, en een adres voor alles wat daarna komt.",
+        text: "We zetten het product live op je eigen domein en dragen het over, inclusief uitleg van het beheer. Je krijgt ook een eigen inlog voor het klantportaal, waar vragen, aanpassingen en uitbreidingen daarna binnenkomen.",
+        result: "Een live product, en één plek voor alles wat daarna komt.",
       },
     ],
     resultLabel: "Resultaat",
+    portal: {
+      label: "Na livegang",
+      title: "Je eigen klantportaal",
+      text: "Na de oplevering loopt het contact niet via losse mailtjes. In het portaal zie je wat er voor je bedrijf openstaat, met elke offerte en factuur als PDF erbij.",
+      items: [
+        "Een wijziging doorgeven, met bijlagen, en zien wanneer we ermee bezig zijn",
+        "Een offerte lezen en online accepteren of afwijzen",
+        "Facturen online betalen, of automatische incasso instellen voor het technisch beheer",
+        "Je bedrijfsgegevens en factuuradres zelf bijwerken",
+      ],
+    },
     scale: {
       title: "Dezelfde hoofdlijn, een andere omvang",
       text: "Elk project doorloopt deze vier fasen, maar niet even lang. Een bedrijfswebsite vraagt één gesprek en een paar feedbackrondes. Een platform of 3D-configurator vraagt meer uitzoekwerk vooraf en een bouw in meerdere delen.",
@@ -146,11 +163,22 @@ export const processPageContent: Record<Locale, ProcessPageContent> = {
       {
         number: "04",
         title: "Launch and after",
-        text: "We take the product live on your own domain and hand it over, including a walkthrough of the admin. After that we stay available for questions, changes and extensions.",
-        result: "A live product, and one address for everything that comes next.",
+        text: "We take the product live on your own domain and hand it over, including a walkthrough of the admin. You also get your own login for the client portal, where questions, changes and extensions come in from then on.",
+        result: "A live product, and one place for everything that comes next.",
       },
     ],
     resultLabel: "Result",
+    portal: {
+      label: "After launch",
+      title: "Your own client portal",
+      text: "After handover, contact does not run through loose emails. In the portal you see what is open for your business, with every quote and invoice as a PDF.",
+      items: [
+        "Submit a change, with attachments, and see when we are working on it",
+        "Read a quote and accept or decline it online",
+        "Pay invoices online, or set up direct debit for technical management",
+        "Update your company details and billing address yourself",
+      ],
+    },
     scale: {
       title: "The same outline, a different size",
       text: "Every project goes through these four phases, but not for equally long. A business website takes one conversation and a few feedback rounds. A platform or 3D configurator takes more research up front and a build in several parts.",
@@ -179,5 +207,30 @@ export const processPageContent: Record<Locale, ProcessPageContent> = {
       primary: "Plan an intake",
       secondary: "View pricing",
     },
+  },
+};
+
+/**
+ * The two captures of the client portal, shown on the process page and on
+ * the landing page that sells the website. Taken from the real portal with
+ * a sample customer, so nothing on them belongs to an actual client.
+ */
+export const portalPreviewContent: Record<
+  Locale,
+  { desktopAlt: string; phoneAlt: string; caption: string }
+> = {
+  nl: {
+    desktopAlt:
+      "Het overzicht in het klantportaal: openstaand bedrag, een factuur om te betalen en een offerte die op een reactie wacht",
+    phoneAlt:
+      "Een offerte in het klantportaal op een telefoon, met de specificatie en de knoppen om te accepteren of af te wijzen",
+    caption: "Het klantportaal, met voorbeeldgegevens",
+  },
+  en: {
+    desktopAlt:
+      "The overview in the client portal: amount outstanding, an invoice to pay and a quote waiting for a response",
+    phoneAlt:
+      "A quote in the client portal on a phone, with the specification and the buttons to accept or decline",
+    caption: "The client portal (in Dutch), with sample data",
   },
 };

@@ -6,6 +6,7 @@ import ContactForm from "@/components/contact-form";
 import CtaLink from "@/components/cta-link";
 import FaqList from "@/components/faq-list";
 import GoogleReviews from "@/components/google-reviews";
+import PortalPreview from "@/components/portal-preview";
 import LandingActionBar, { type LandingActionBarLabels } from "@/components/landing-action-bar";
 import RevealScope from "@/components/reveal-scope";
 import { legalRoutes } from "@/lib/content/routes";
@@ -475,7 +476,11 @@ export default function ServiceLanding({
         <h2 className="display-md" data-reveal>
           {service.approachTitle}
         </h2>
-        <ol className="mt-10 grid gap-y-10 max-md:mt-8 max-md:gap-y-9 lg:mt-14 lg:grid-cols-3">
+        <ol
+          className={`mt-10 grid gap-y-10 max-md:mt-8 max-md:gap-y-9 lg:mt-14 ${
+            service.approach.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"
+          }`}
+        >
           {service.approach.map((step, index) => (
             <li key={step.title} data-reveal style={delay(index * 160)} className="relative lg:pr-10">
               <span aria-hidden="true" className="sl-rail" />
@@ -491,6 +496,13 @@ export default function ServiceLanding({
             </li>
           ))}
         </ol>
+
+        {/* The portal the last step hands over, as the customer sees it. */}
+        {service.showsPortal ? (
+          <div className="mt-14 max-w-[60rem] max-md:mt-12 lg:mt-20" data-reveal>
+            <PortalPreview locale={locale} />
+          </div>
+        ) : null}
       </section>
 
       {/* The buying question in running text: heading left, text right. */}

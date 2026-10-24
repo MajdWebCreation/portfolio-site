@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/json-ld";
 import PageHeader from "@/components/page-header";
+import PortalPreview from "@/components/portal-preview";
 import ProcessCta from "@/components/process-cta";
 import ProcessHeroSketch from "@/components/process-hero-sketch";
 import ProcessScale from "@/components/process-scale";
@@ -82,6 +83,34 @@ export function ProcessPageContent({ locale }: { locale: Locale }) {
             phases={page.phases}
             resultLabel={page.resultLabel}
           />
+        </section>
+
+        {/* What follows the last phase: the client portal, as the customer sees it. */}
+        <section className="pt-2 lg:pt-4" aria-labelledby="process-portal">
+          <div className="container-x">
+            <div className="grid gap-10 border-t border-line pt-10 lg:grid-cols-12 lg:items-center lg:gap-8 lg:pt-14">
+              <div className="lg:col-span-4">
+                <p className="label-mono text-accent">{page.portal.label}</p>
+                <h2 id="process-portal" className="display-sm mt-1.5">
+                  {page.portal.title}
+                </h2>
+                <p className="mt-4 max-w-[30rem] text-[1.05rem] leading-relaxed text-body">
+                  {page.portal.text}
+                </p>
+                <ul className="mt-5 max-w-[30rem] space-y-2.5 text-[1rem] leading-snug text-body">
+                  {page.portal.items.map((item) => (
+                    <li key={item} className="flex gap-3">
+                      <span aria-hidden="true" className="mt-[0.7em] h-px w-3 shrink-0 bg-accent" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="lg:col-span-7 lg:col-start-6">
+                <PortalPreview locale={locale} />
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* Same outline at a different size, and what helps at the start. */}
