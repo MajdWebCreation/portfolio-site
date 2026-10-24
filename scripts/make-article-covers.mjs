@@ -2,7 +2,8 @@
 /**
  * Draws the cover image of every library article.
  *
- *   node scripts/make-article-covers.mjs
+ *   node scripts/make-article-covers.mjs                 (all covers)
+ *   node scripts/make-article-covers.mjs <slug> <slug>   (only these)
  *
  * The covers are technical drawings, not photography: hairlines and mono
  * labels on paper, one accent colour, the same language as the sketches on
@@ -530,6 +531,340 @@ const covers = {
     out += label(64, 600, "rechten, toegang, data, accounts en documentatie samen", { size: 13, fill: muted });
     return out;
   },
+
+  /* Websites & webshops (tweede reeks) ------------------------------------*/
+  "herroepingsknop-webshop": () => {
+    let out = text(64, 170, "Herroepen als vaste route door de webshop", { size: 26, weight: 600 });
+    out += label(80, 226, "ingangen", { size: 12, fill: muted });
+    ["orderbevestiging", "account", "footer"].forEach((caption, index) => {
+      const y = 240 + index * 76;
+      out += node(80, y, 200, 50, caption);
+      out += seg(280, y + 25, 340, 341, { stroke: line, width: 1 });
+    });
+    out += node(340, 311, 210, 60, "herroepen", { tone: accent, fill: "#eef1fc" });
+    out += arrow(558, 341, 54);
+    ["bestelling", "bevestigen", "ontvangstmail"].forEach((caption, index) => {
+      const x = 620 + index * 170;
+      out += node(x, 316, 140, 50, caption);
+      if (index < 2) out += arrow(x + 146, 341, 18);
+    });
+    out += seg(1030, 366, 1030, 430, { stroke: line, width: 1 });
+    out += seg(690, 430, 1030, 430, { stroke: line, width: 1 });
+    ["retour", "terugbetaling", "boekhouding"].forEach((caption, index) => {
+      const x = 620 + index * 170;
+      out += seg(x + 70, 430, x + 70, 470, { stroke: line, width: 1 });
+      out += node(x, 470, 140, 44, caption);
+    });
+    out += label(64, 600, "scheid wat de wet vraagt van wat een ontwerpkeuze is", { size: 13, fill: muted });
+    return out;
+  },
+
+  "wat-is-een-goede-landingspagina": () => {
+    let out = text(64, 170, "Eén doel, één bezoeker, één volgende stap", { size: 26, weight: 600 });
+    out += box(80, 250, 240, 130, { stroke: strong });
+    out += label(100, 280, "advertentie", { size: 12, fill: muted });
+    out += box(100, 298, 200, 14, { stroke: accent, fill: "#eef1fc", r: 2 });
+    out += box(100, 326, 170, 10, { stroke: line, width: 1, fill: deep, r: 2 });
+    out += box(100, 346, 140, 10, { stroke: line, width: 1, fill: deep, r: 2 });
+    out += label(80, 410, "wat de bezoeker verwacht", { size: 12, fill: muted });
+
+    out += box(440, 220, 320, 370, { stroke: strong });
+    out += seg(440, 252, 760, 252, { stroke: line, width: 1 });
+    out += label(460, 241, "landingspagina", { size: 11, fill: muted });
+    out += box(464, 276, 272, 20, { stroke: accent, fill: "#eef1fc", r: 2 });
+    [260, 230, 250].forEach((width, index) => {
+      out += box(464, 316 + index * 18, width, 10, { stroke: line, width: 1, fill: deep, r: 2 });
+    });
+    out += box(464, 384, 272, 60, { stroke: line, width: 1, fill: deep, r: 2 });
+    out += label(480, 418, "bewijs", { size: 11, fill: muted });
+    out += box(464, 462, 240, 10, { stroke: line, width: 1, fill: deep, r: 2 });
+    out += box(464, 480, 200, 10, { stroke: line, width: 1, fill: deep, r: 2 });
+    out += node(520, 516, 160, 44, "volgende stap", { tone: accent, fill: "#eef1fc" });
+
+    out += `<path d="M300,305 C380,305 390,286 464,286" fill="none" stroke="${accent}" stroke-width="1.5" stroke-dasharray="5 5"/>`;
+    out += label(382, 270, "zelfde belofte", { anchor: "middle", size: 11, fill: accent });
+
+    out += arrow(690, 538, 100);
+    out += node(810, 510, 200, 56, "één doel", { tone: accent, fill: "#eef1fc" });
+    out += label(810, 494, "meetbaar", { size: 12, fill: muted });
+    out += label(64, 624, "een campagnepagina doet ander werk dan een SEO-pagina", { size: 13, fill: muted });
+    return out;
+  },
+
+  "website-migreren-zonder-seo-verlies": () => {
+    const old = ["/diensten/oud", "/over-ons", "/blog/artikel", "/producten/item", "/contact-oud"];
+    const fresh = ["/over", "/diensten/nieuw", "/kennis/artikel", "/contact", "/aanbod/item"];
+    const map = [1, 0, 2, 4, 3];
+    let out = text(64, 170, "Elke oude URL krijgt een bestemming", { size: 26, weight: 600 });
+    out += label(100, 226, "oud", { size: 12, fill: muted });
+    out += label(570, 226, "redirectmap", { anchor: "middle", size: 12, fill: muted });
+    out += label(780, 226, "nieuw", { size: 12, fill: muted });
+    old.forEach((caption, index) => {
+      const y = 240 + index * 50;
+      const target = 240 + map[index] * 50;
+      const highlight = index === 2;
+      out += box(100, y, 260, 36, { stroke: strong, r: 3 });
+      out += label(116, y + 23, caption, { size: 12, fill: body });
+      out += seg(360, y + 18, 780, target + 18, { stroke: highlight ? accent : strong, width: highlight ? 1.5 : 1 });
+      out += dot(780, target + 18, 3.5, highlight ? accent : strong);
+    });
+    fresh.forEach((caption, index) => {
+      const y = 240 + index * 50;
+      const highlight = index === 2;
+      out += box(780, y, 260, 36, { stroke: highlight ? accent : strong, fill: highlight ? "#eef1fc" : paper, r: 3 });
+      out += label(796, y + 23, caption, { size: 12, fill: highlight ? accent : body });
+    });
+    const phases = ["inventaris", "redirectmap", "testen", "livegang", "monitoren"];
+    out += seg(120, 540, 1020, 540, { stroke: line, width: 1 });
+    phases.forEach((caption, index) => {
+      const x = 120 + index * 225;
+      const last = index === phases.length - 1;
+      out += last ? dot(x, 540, 6) : ring(x, 540, 6);
+      out += label(x, 572, caption, { anchor: "middle", size: 12, fill: last ? accent : muted });
+    });
+    out += label(64, 624, "controleer per URL, voor en na livegang", { size: 13, fill: muted });
+    return out;
+  },
+
+  /* Webapplicaties & portalen (tweede reeks) ------------------------------*/
+  "reserveringssysteem-website": () => {
+    let out = text(64, 170, "Beschikbaarheid is het eigenlijke model", { size: 26, weight: 600 });
+    const x0 = 230;
+    const y0 = 250;
+    for (let column = 0; column <= 6; column += 1) {
+      out += seg(x0 + column * 80, y0, x0 + column * 80, y0 + 192, { stroke: line, width: 1 });
+    }
+    for (let row = 0; row <= 3; row += 1) {
+      out += seg(x0, y0 + row * 64, x0 + 480, y0 + row * 64, { stroke: line, width: 1 });
+    }
+    ["medewerker", "ruimte", "apparaat"].forEach((caption, row) => {
+      out += label(x0 - 16, y0 + row * 64 + 36, caption, { size: 12, anchor: "end", fill: muted });
+    });
+    const bookings = [
+      [0, 0, 2],
+      [0, 3, 1],
+      [1, 1, 2],
+      [1, 5, 1],
+      [2, 0, 1],
+      [2, 2, 2],
+    ];
+    bookings.forEach(([row, column, span]) => {
+      out += box(x0 + column * 80 + 6, y0 + row * 64 + 10, span * 80 - 12, 44, { stroke: strong, fill: deep, r: 2 });
+    });
+    out += `<rect x="${x0 + 4 * 80 + 3}" y="${y0 - 12}" width="74" height="216" rx="4" fill="none" stroke="${accent}" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+    out += label(x0 + 4 * 80 + 40, y0 + 230, "boekbaar", { anchor: "middle", size: 12, fill: accent });
+    out += label(x0, y0 + 230, "tijd →", { size: 12, fill: muted });
+
+    out += arrow(726, 346, 56);
+    out += label(800, 240, "rond de boeking", { size: 12, fill: muted });
+    ["regels en prijzen", "aanbetaling", "annulering en no-show", "bevestiging en agenda", "eigen systemen"].forEach((caption, index) => {
+      const y = 258 + index * 46;
+      out += box(800, y, 290, 36, { stroke: strong, r: 3 });
+      out += label(816, y + 23, caption, { size: 12, fill: body });
+    });
+    out += label(64, 600, "een agenda volstaat tot beschikbaarheid van meerdere dingen afhangt", { size: 13, fill: muted });
+    return out;
+  },
+
+  "app-laten-maken-webapp-of-native": () => {
+    let out = text(64, 170, "Begin bij het gebruik, niet bij de vorm", { size: 26, weight: 600 });
+    ["wie opent het", "hoe vaak", "welke apparaatfuncties", "offline of online", "zoekmachine of appwinkel"].forEach((caption, index) => {
+      const y = 240 + index * 52;
+      out += box(80, y, 280, 38, { stroke: strong, r: 3 });
+      out += label(96, y + 24, caption, { size: 12, fill: body });
+      out += seg(360, y + 19, 446, 380, { stroke: line, width: 1 });
+    });
+    out += ring(470, 380, 26, accent);
+    out += dot(470, 380, 6);
+    out += seg(470, 354, 470, 250, { stroke: strong, width: 1 });
+    out += seg(470, 250, 1030, 250, { stroke: strong, width: 1 });
+    out += seg(650, 250, 650, 290, { stroke: strong, width: 1 });
+    out += seg(850, 250, 850, 275, { stroke: strong, width: 1 });
+    out += seg(1030, 250, 1030, 275, { stroke: strong, width: 1 });
+
+    // webapp: a browser window
+    out += box(560, 290, 180, 140, { stroke: strong });
+    out += seg(560, 312, 740, 312, { stroke: line, width: 1 });
+    [574, 586, 598].forEach((x) => (out += ring(x, 301, 3)));
+    out += box(576, 326, 148, 14, { stroke: line, width: 1, fill: deep, r: 2 });
+    out += box(576, 352, 120, 10, { stroke: line, width: 1, fill: deep, r: 2 });
+    out += box(576, 370, 140, 10, { stroke: line, width: 1, fill: deep, r: 2 });
+    out += box(576, 394, 70, 22, { stroke: strong, r: 3 });
+
+    // PWA: a phone that still has an address bar
+    out += box(800, 275, 100, 180, { stroke: strong, r: 14 });
+    out += box(812, 290, 76, 12, { stroke: line, width: 1, r: 6 });
+    out += box(814, 318, 72, 12, { stroke: line, width: 1, fill: deep, r: 2 });
+    out += box(814, 338, 60, 8, { stroke: line, width: 1, fill: deep, r: 2 });
+    out += box(814, 354, 66, 8, { stroke: line, width: 1, fill: deep, r: 2 });
+    out += box(814, 376, 40, 18, { stroke: strong, r: 3 });
+    out += seg(830, 440, 870, 440, { stroke: strong, width: 1.5 });
+
+    // native: a phone with an app grid
+    out += box(980, 275, 100, 180, { stroke: strong, r: 14 });
+    for (let row = 0; row < 3; row += 1) {
+      for (let column = 0; column < 3; column += 1) {
+        out += box(995 + column * 26, 300 + row * 28, 18, 18, { stroke: strong, fill: deep, r: 4 });
+      }
+    }
+    out += seg(1010, 440, 1050, 440, { stroke: strong, width: 1.5 });
+
+    out += label(650, 490, "webapp", { anchor: "middle", size: 13, fill: body });
+    out += label(850, 490, "PWA", { anchor: "middle", size: 13, fill: body });
+    out += label(1030, 490, "native app", { anchor: "middle", size: 13, fill: body });
+    out += label(64, 600, "de vorm volgt uit wie het opent, hoe vaak en waarvoor", { size: 13, fill: muted });
+    return out;
+  },
+
+  /* 3D-configurators (tweede reeks) ---------------------------------------*/
+  "productconfigurator-webshop": () => {
+    const columns = ["keuzes", "regels", "prijs", "winkelmand", "orderregel", "productie"];
+    const lanes = [
+      ["plugin of app", [0, 0, 0, 0, 0, 0]],
+      ["eigen frontend", [1, 1, 1, 0, 0, 1]],
+      ["volledig maatwerk", [1, 1, 1, 1, 1, 1]],
+    ];
+    let out = text(64, 170, "Waar de configuratie de winkelmand in gaat", { size: 26, weight: 600 });
+    const x0 = 330;
+    columns.forEach((caption, column) => {
+      out += label(x0 + column * 130 + 59, 250, caption, { anchor: "middle", size: 12, fill: muted });
+    });
+    lanes.forEach(([caption, cells], row) => {
+      const y = 272 + row * 76;
+      out += label(x0 - 20, y + 32, caption, { anchor: "end", size: 12, fill: body });
+      cells.forEach((own, column) => {
+        out += box(x0 + column * 130, y, 118, 56, { stroke: own ? accent : strong, fill: own ? "#eef1fc" : deep, r: 3 });
+      });
+    });
+    const split = x0 + 3 * 130 - 6;
+    out += seg(split, 262, split, 494, { stroke: accent, width: 1.5, dash: "5 5" });
+    out += label(split, 516, "overdracht", { anchor: "middle", size: 12, fill: accent });
+    out += box(330, 548, 24, 16, { stroke: strong, fill: deep, r: 2 });
+    out += label(364, 561, "platform of plugin", { size: 12, fill: muted });
+    out += box(560, 548, 24, 16, { stroke: accent, fill: "#eef1fc", r: 2 });
+    out += label(594, 561, "eigen code", { size: 12, fill: accent });
+    out += label(64, 620, "grenzen van varianten en opties bepalen de route", { size: 13, fill: muted });
+    return out;
+  },
+
+  /* Automatisering & koppelingen (tweede reeks) ---------------------------*/
+  "ideal-wero-webshop": () => {
+    let out = text(64, 170, "Eén betaalmethode, drie soorten integratie", { size: 26, weight: 600 });
+    out += seg(140, 240, 760, 240, { stroke: strong });
+    out += seg(760, 240, 1040, 240, { stroke: strong, dash: "6 6" });
+    out += ring(140, 240, 6);
+    out += dot(420, 240, 6);
+    out += ring(760, 240, 6);
+    out += ring(1040, 240, 6, line);
+    out += label(140, 272, "nu", { anchor: "middle", size: 12, fill: muted });
+    out += label(420, 272, "co-branding", { anchor: "middle", size: 12, fill: accent });
+    out += label(760, 272, "migratie na goedkeuring", { anchor: "middle", size: 12, fill: muted });
+    out += label(1040, 272, "einddatum nog open", { anchor: "middle", size: 12, fill: muted });
+    const rows = [
+      ["hosted checkout", "afspraken bij je betaalprovider nalopen"],
+      ["eigen API-integratie", "statussen, tests en weergave zelf aanpassen"],
+      ["platformplugin", "updates van de plugin volgen"],
+    ];
+    rows.forEach(([route, todo], index) => {
+      const y = 330 + index * 68;
+      const highlight = index === 1;
+      out += box(140, y, 300, 48, { stroke: highlight ? accent : strong, fill: highlight ? "#eef1fc" : paper });
+      out += label(160, y + 29, route, { size: 13, fill: highlight ? accent : ink });
+      out += arrow(452, y + 24, 60);
+      out += box(530, y, 510, 48, { stroke: line, width: 1, fill: deep, r: 3 });
+      out += label(550, y + 29, todo, { size: 12, fill: body });
+    });
+    out += label(64, 600, "scheid wat bevestigd is van wat nog niet vaststaat", { size: 13, fill: muted });
+    return out;
+  },
+
+  "webshop-koppelen-boekhouding": () => {
+    let out = text(64, 170, "Order, factuur, betaling en uitbetaling zijn niet hetzelfde", { size: 26, weight: 600 });
+    ["order", "factuur", "betaling", "uitbetaling", "bankrekening"].forEach((caption, index) => {
+      const x = 80 + index * 210;
+      out += node(x, 250, 170, 56, caption);
+      if (index < 4) out += arrow(x + 176, 278, 28);
+    });
+    out += seg(165, 306, 165, 420, { stroke: line, width: 1 });
+    out += node(80, 420, 170, 48, "btw en OSS");
+    out += seg(375, 306, 375, 420, { stroke: accent, width: 1.5, dash: "5 5" });
+    out += node(290, 420, 170, 48, "creditnota");
+
+    out += label(670, 392, "tussenrekening", { anchor: "middle", size: 12, fill: accent });
+    out += box(490, 404, 360, 90, { stroke: accent, fill: "#eef1fc" });
+    out += seg(670, 404, 670, 494, { stroke: accent, width: 1 });
+    out += seg(585, 306, 580, 404, { stroke: line, width: 1 });
+    out += seg(795, 306, 760, 404, { stroke: line, width: 1 });
+    out += label(580, 454, "ontvangen", { anchor: "middle", size: 12, fill: body });
+    out += label(760, 442, "uitbetaald", { anchor: "middle", size: 12, fill: body });
+    out += label(760, 466, "kosten", { anchor: "middle", size: 12, fill: body });
+
+    out += `<path d="M1005,306 L1005,449 L850,449" fill="none" stroke="${accent}" stroke-width="1.5" stroke-dasharray="5 5"/>`;
+    out += label(928, 440, "aansluiten", { anchor: "middle", size: 12, fill: accent });
+    out += label(64, 600, "elk bedrag één keer, op de juiste rekening", { size: 13, fill: muted });
+    return out;
+  },
+
+  /* Techniek & strategie (tweede reeks) -----------------------------------*/
+  "toegankelijkheid-website-verplicht": () => {
+    const diamond = (cx, cy, hw, hh) =>
+      `<path d="M${cx - hw},${cy} L${cx},${cy - hh} L${cx + hw},${cy} L${cx},${cy + hh} Z" fill="${paper}" stroke="${strong}" stroke-width="1.5"/>`;
+    let out = text(64, 170, "Eerst de vraag of je eronder valt", { size: 26, weight: 600 });
+    out += diamond(210, 320, 130, 56);
+    out += label(210, 324, "in scope van de wet?", { anchor: "middle", size: 12, fill: body });
+    out += arrow(345, 320, 50);
+    out += label(368, 308, "ja", { anchor: "middle", size: 12, fill: muted });
+    out += diamond(545, 320, 140, 56);
+    out += label(545, 324, "micro-onderneming?", { anchor: "middle", size: 12, fill: body });
+    out += arrow(690, 320, 50);
+    out += label(713, 308, "nee", { anchor: "middle", size: 12, fill: muted });
+    out += node(750, 290, 330, 60, "toegankelijk maken", { tone: accent, fill: "#eef1fc" });
+
+    out += arrow(210, 380, 50, { dir: "down" });
+    out += label(222, 410, "nee", { size: 12, fill: muted });
+    out += node(100, 440, 220, 50, "niet van toepassing");
+    out += arrow(545, 380, 50, { dir: "down" });
+    out += label(557, 410, "ja", { size: 12, fill: muted });
+    out += node(415, 440, 260, 50, "alleen diensten vrijgesteld");
+
+    out += seg(780, 350, 780, 563, { stroke: line, width: 1 });
+    ["toetsenbord", "schermlezer", "checkout", "toegankelijkheidsverklaring", "testen"].forEach((caption, index) => {
+      const y = 370 + index * 44;
+      out += seg(780, y + 17, 800, y + 17, { stroke: line, width: 1 });
+      out += box(800, y, 280, 34, { stroke: strong, r: 3 });
+      out += label(816, y + 22, caption, { size: 12, fill: body });
+    });
+    out += label(64, 624, "eerst de definities, daarna de techniek", { size: 13, fill: muted });
+    return out;
+  },
+
+  "cookiebanner-verplicht": () => {
+    let out = text(64, 170, "Geen tags vóór de keuze", { size: 26, weight: 600 });
+    out += node(80, 297, 180, 56, "pagina laadt");
+    out += arrow(266, 325, 54);
+    out += box(330, 240, 300, 170, { stroke: accent, fill: "#eef1fc" });
+    out += label(350, 270, "keuze van de bezoeker", { size: 12, fill: accent });
+    out += node(350, 303, 125, 44, "accepteren");
+    out += node(485, 303, 125, 44, "weigeren");
+    out += label(480, 384, "even makkelijk", { anchor: "middle", size: 12, fill: muted });
+
+    out += arrow(640, 325, 104);
+    out += label(692, 312, "na akkoord", { anchor: "middle", size: 12, fill: muted });
+    ["analysetags", "advertentietags", "overige trackers"].forEach((caption, index) => {
+      const y = 244 + index * 60;
+      out += `<rect x="760" y="${y}" width="260" height="46" rx="4" fill="none" stroke="${strong}" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+      out += label(780, y + 28, caption, { size: 12, fill: muted });
+    });
+
+    out += arrow(420, 412, 52, { dir: "down" });
+    out += node(330, 470, 180, 50, "vastleggen");
+    out += arrow(518, 495, 36);
+    out += node(562, 470, 180, 50, "intrekken");
+    out += arrow(750, 495, 36);
+    out += node(794, 470, 226, 50, "tags weer uit");
+    out += label(64, 600, "de banner klopt pas als de techniek erachter klopt", { size: 13, fill: muted });
+    return out;
+  },
 };
 
 /* ------------------------------------------------------------------ run --*/
@@ -555,18 +890,36 @@ const kickers = {
   "technische-schuld-software": "Techniek & strategie",
   "technisch-onderhoud-website-webapp-na-livegang": "Techniek & strategie",
   "website-code-data-eigendom-vendor-lock-in": "Techniek & strategie",
+  "herroepingsknop-webshop": "Websites & webshops",
+  "wat-is-een-goede-landingspagina": "Websites & webshops",
+  "website-migreren-zonder-seo-verlies": "Websites & webshops",
+  "reserveringssysteem-website": "Webapplicaties & portalen",
+  "app-laten-maken-webapp-of-native": "Webapplicaties & portalen",
+  "productconfigurator-webshop": "3D-configurators",
+  "ideal-wero-webshop": "Automatisering & koppelingen",
+  "webshop-koppelen-boekhouding": "Automatisering & koppelingen",
+  "toegankelijkheid-website-verplicht": "Techniek & strategie",
+  "cookiebanner-verplicht": "Techniek & strategie",
 };
 
 const outDir = "public/images/artikelen";
 mkdirSync(outDir, { recursive: true });
 
 const slugs = Object.keys(covers);
-if (slugs.length !== 20) throw new Error(`expected 20 covers, have ${slugs.length}`);
+if (slugs.length !== 30) throw new Error(`expected 30 covers, have ${slugs.length}`);
+
+// Optional filter: `node scripts/make-article-covers.mjs <slug> <slug> ...`
+// writes only the named covers; no arguments writes all of them.
+const requested = process.argv.slice(2);
+for (const slug of requested) {
+  if (!covers[slug]) throw new Error(`${slug}: no such cover`);
+}
+const selected = requested.length > 0 ? requested : slugs;
 
 const svgDir = process.env.COVER_SVG_DIR;
 if (svgDir) mkdirSync(svgDir, { recursive: true });
 
-for (const slug of slugs) {
+for (const slug of selected) {
   const kicker = kickers[slug];
   if (!kicker) throw new Error(`${slug}: no cluster kicker`);
 
